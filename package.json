@@ -1,0 +1,105 @@
+{
+    "name": "vscode-md-spreadsheet",
+    "displayName": "Markdown Spreadsheet Editor",
+    "description": "WYSIWYG editor for Markdown tables using md-spreadsheet-parser",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.90.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "vscode-md-spreadsheet.openEditor",
+                "title": "Markdown: Open Spreadsheet Editor"
+            }
+        ],
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "vscode-md-spreadsheet.openEditor",
+                    "when": "resourceLangId == markdown",
+                    "group": "navigation"
+                }
+            ]
+        }
+    },
+    "configuration": {
+        "title": "Markdown Spreadsheet",
+        "properties": {
+            "mdSpreadsheet.parsing.rootMarker": {
+                "type": "string",
+                "default": "# Tables",
+                "description": "The marker indicating the start of the data section."
+            },
+            "mdSpreadsheet.parsing.sheetHeaderLevel": {
+                "type": "integer",
+                "default": 2,
+                "description": "The markdown header level for sheets."
+            },
+            "mdSpreadsheet.parsing.tableHeaderLevel": {
+                "type": [
+                    "integer",
+                    "null"
+                ],
+                "default": 3,
+                "description": "The markdown header level for tables. If null, table names are not extracted."
+            },
+            "mdSpreadsheet.parsing.captureDescription": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether to capture text between the table header and the table as a description."
+            },
+            "mdSpreadsheet.parsing.columnSeparator": {
+                "type": "string",
+                "default": "|",
+                "description": "Character used to separate columns."
+            },
+            "mdSpreadsheet.parsing.headerSeparatorChar": {
+                "type": "string",
+                "default": "-",
+                "description": "Character used in the separator row."
+            },
+            "mdSpreadsheet.parsing.requireOuterPipes": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether tables must have outer pipes."
+            },
+            "mdSpreadsheet.parsing.stripWhitespace": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether to strip whitespace from cell values."
+            }
+        }
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "npm run build:webview && tsc -p ./",
+        "build:webview": "vite build",
+        "dev": "vite",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "vscode-test"
+    },
+    "devDependencies": {
+        "@types/mocha": "^10.0.6",
+        "@types/node": "20.x",
+        "@types/vscode": "^1.90.0",
+        "@typescript-eslint/eslint-plugin": "^7.11.0",
+        "@typescript-eslint/parser": "^7.11.0",
+        "@vscode/test-cli": "^0.0.9",
+        "@vscode/test-electron": "^2.4.0",
+        "eslint": "^8.57.0",
+        "typescript": "^5.4.5",
+        "vite": "^7.2.4"
+    },
+    "dependencies": {
+        "@vscode/webview-ui-toolkit": "^1.4.0",
+        "lit": "^3.3.1"
+    }
+}

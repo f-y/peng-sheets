@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "module": "commonjs",
+        "target": "es2022",
+        "outDir": "out",
+        "lib": [
+            "es2022"
+        ],
+        "sourceMap": true,
+        "rootDir": "src",
+        "strict": true
+    },
+    "exclude": [
+        "node_modules",
+        ".vscode-test",
+        "webview-ui",
+        "vite.config.ts"
+    ]
+}
