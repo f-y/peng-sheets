@@ -15,6 +15,7 @@ export default defineConfig({
             },
         },
     },
+    publicDir: "resources",
     server: {
         port: 5173,
         strictPort: true,
