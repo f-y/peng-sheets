@@ -1,5 +1,6 @@
 {
     "name": "vscode-md-spreadsheet",
+    "publisher": "f-y",
     "displayName": "Markdown Spreadsheet Editor",
     "description": "WYSIWYG editor for Markdown tables using md-spreadsheet-parser",
     "version": "0.0.1",
@@ -9,6 +10,10 @@
     "categories": [
         "Other"
     ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/f-y/vscode-md-spreadsheet.git"
+    },
     "activationEvents": [],
     "main": "./out/extension.js",
     "contributes": {
