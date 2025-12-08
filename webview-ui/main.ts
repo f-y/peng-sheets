@@ -1,17 +1,14 @@
 import { html, css, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { provideVSCodeDesignSystem, vsCodePanels, vsCodePanelTab, vsCodePanelView } from "@vscode/webview-ui-toolkit";
+import { provideVSCodeDesignSystem } from "@vscode/webview-ui-toolkit";
 
 import "./components/spreadsheet-toolbar";
 import "./components/spreadsheet-table";
 import { TableJSON } from "./components/spreadsheet-table";
 
 // Register the VS Code Design System components
-provideVSCodeDesignSystem().register(
-  vsCodePanels(),
-  vsCodePanelTab(),
-  vsCodePanelView()
-);
+// Register the VS Code Design System components
+provideVSCodeDesignSystem().register();
 
 declare const loadPyodide: any;
 
@@ -31,32 +28,79 @@ const vscode = acquireVsCodeApi();
 export class MyEditor extends LitElement {
   static styles = css`
     :host {
-      display: block;
-      padding: 0; /* Removed global padding */
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
       color: var(--vscode-foreground);
       font-family: var(--vscode-font-family);
+      background: var(--vscode-editor-background);
     }
-    .toolbar-container {
-        padding: 0;
-        border-bottom: 1px solid var(--vscode-widget-border);
+
+    /* Toolbar Section */
+    spreadsheet-toolbar {
+      flex: 0 0 auto;
     }
+
+    /* Content Section (Grow) */
+    .content-area {
+      flex: 1 1 auto;
+      overflow: auto;
+      position: relative;
+    }
+
+    .sheet-view {
+      height: 100%;
+      display: none;
+    }
+    
+    .sheet-view.active {
+      display: block;
+    }
+
     .sheet-container {
-        padding: 0;
-        margin-top: 0;
+      padding: 0;
     }
-    vscode-panel-view {
-        padding: 0;
+
+    /* Bottom Tabs Section */
+    .bottom-tabs {
+      flex: 0 0 auto;
+      display: flex;
+      background: var(--vscode-editor-background); /* Or slightly darker/lighter */
+      border-top: 1px solid var(--vscode-widget-border);
+      overflow-x: auto;
     }
+
+    .tab-item {
+      padding: 5px 10px;
+      cursor: pointer;
+      border-right: 1px solid var(--vscode-widget-border);
+      background: var(--vscode-editor-background);
+      color: var(--vscode-foreground);
+      font-size: 13px;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 60px;
+    }
+
+    .tab-item:hover {
+      background: var(--vscode-list-hoverBackground);
+    }
+
+    .tab-item.active {
+      background: var(--vscode-list-activeSelectionBackground);
+      color: var(--vscode-list-activeSelectionForeground);
+      font-weight: bold;
+    }
+
     .output {
-        margin-top: 1rem;
+        margin: 1rem;
         white-space: pre-wrap;
         font-family: monospace;
         background: var(--vscode-editor-background);
         padding: 0.5rem;
         border: 1px solid var(--vscode-widget-border);
-    }
-    .sheet-container {
-        margin-top: 1rem;
     }
   `;
 
@@ -74,6 +118,9 @@ export class MyEditor extends LitElement {
 
   @state()
   workbook: WorkbookJSON | null = null;
+
+  @state()
+  activeSheetIndex: number = 0;
 
   async firstUpdated() {
     try {
@@ -111,8 +158,14 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
         table = sheet.tables[table_idx]
         
         # Update value
-        # Ensure row exists (it should)
-        if 0 <= row_idx < len(table.rows):
+        if row_idx < 0:
+            # Update Header
+            if table.headers is not None and 0 <= col_idx < len(table.headers):
+                table.headers[col_idx] = new_value
+            else:
+                 return json.dumps({"error": "Header column index out of range or headers missing"})
+        elif 0 <= row_idx < len(table.rows):
+            # Update Body Row
             row = table.rows[row_idx]
             if 0 <= col_idx < len(row):
                 row[col_idx] = new_value
@@ -177,12 +230,10 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
 
     return html`
         <spreadsheet-toolbar></spreadsheet-toolbar>
-        <vscode-panels>
-            ${workbook.sheets.map((sheet, index) => html`
-                <vscode-panel-tab id="tab-${index}">${sheet.name}</vscode-panel-tab>
-            `)}
+        
+        <div class="content-area">
             ${workbook.sheets.map((sheet, sheetIndex) => html`
-                <vscode-panel-view id="view-${sheetIndex}">
+                <div class="sheet-view ${this.activeSheetIndex === sheetIndex ? 'active' : ''}">
                     <div class="sheet-container">
                         ${sheet.tables.map((table, tableIndex) => html`
                             <spreadsheet-table 
@@ -194,9 +245,20 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
                             </spreadsheet-table>
                         `)}
                     </div>
-                </vscode-panel-view>
+                </div>
             `)}
-        </vscode-panels>
+        </div>
+
+        <div class="bottom-tabs">
+            ${workbook.sheets.map((sheet, index) => html`
+                <div 
+                    class="tab-item ${this.activeSheetIndex === index ? 'active' : ''}"
+                    @click="${() => this.activeSheetIndex = index}"
+                >
+                    ${sheet.name || `Sheet ${index + 1}`}
+                </div>
+            `)}
+        </div>
       `;
   }
 

@@ -81,10 +81,14 @@ export class SpreadsheetTable extends LitElement {
         position: sticky;
         left: 0;
         z-index: 10;
-        /* width: 40px; Removed explicit width, let grid handle it */
+        width: max-content;
         user-select: none;
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
+        padding: 0 0.6rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     /* Corner Cell */
@@ -93,9 +97,15 @@ export class SpreadsheetTable extends LitElement {
         position: sticky;
         top: 0;
         left: 0;
+        width: max-content;
+        color: var(--header-bg);
         z-index: 20;
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
+        padding: 0 0.6rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
   `;
 
@@ -149,8 +159,8 @@ export class SpreadsheetTable extends LitElement {
         const table = this.table;
         const colCount = table.headers ? table.headers.length : (table.rows.length > 0 ? table.rows[0].length : 0);
 
-        // Grid Template: RowHeader (40px) + Columns (1fr each)
-        const gridStyle = `grid-template-columns: 40px repeat(${colCount}, minmax(100px, 1fr));`;
+        // Grid Template: RowHeader (max-content) + Columns (1fr each)
+        const gridStyle = `grid-template-columns: max-content repeat(${colCount}, minmax(100px, 1fr));`;
 
         return html`
         <div>
@@ -160,35 +170,25 @@ export class SpreadsheetTable extends LitElement {
             <div class="table-container">
                 <div class="grid" style="${gridStyle}">
                     <!-- Corner Cell -->
-                    <div class="cell header-corner"></div>
+                    <div class="cell header-corner">${table.rows.length}</div>
 
-                    <!-- Column Headers (A, B, C...) -->
+                    <!-- Column Headers (Integrated) -->
                     ${Array.from({ length: colCount }).map((_, i) => html`
                         <div class="cell header-col">
-                            ${this._getColumnLabel(i)}
+                            ${table.headers && table.headers[i] ? html`
+                                <div 
+                                    style="font-weight: bold; width: 100%; height: 100%;"
+                                    contenteditable="true"
+                                    @blur="${(e: FocusEvent) => this._handleCellEdit(e, -1, i)}"
+                                    @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e)}"
+                                >${table.headers[i]}</div>
+                            ` : ''}
                         </div>
                     `)}
 
-                    <!-- Data Headers (if present) -->
-                    ${table.headers ? html`
-                        <div class="cell header-row">1</div>
-                        ${table.headers.map((header, i) => html`
-                            <div class="cell header-col" style="top: 25px; z-index: 5; background-color: var(--vscode-editor-background); border-bottom: 2px solid var(--border-color);">
-                                <b>${header}</b>
-                            </div>
-                        `)}
-                        <!-- Note: If we treat Markdown headers as Row 1, they should be in the data area but styled? 
-                             Or should they be the sticky header? 
-                             Excel doesn't have "table headers" usually, just A/B/C. 
-                             Markdown tables DO have headers. 
-                             Let's render Markdown headers as the first row of DATA, but maybe bold.
-                             And the Row Header for them is "1".
-                        -->
-                    ` : ''}
-
                     <!-- Data Rows -->
                     ${table.rows.map((row, rowIndex) => html`
-                        <div class="cell header-row">${rowIndex + (table.headers ? 2 : 1)}</div>
+                        <div class="cell header-row">${rowIndex + 1}</div>
                         ${row.map((cell, colIndex) => html`
                             <div 
                                 class="cell"
