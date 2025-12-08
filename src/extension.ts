@@ -36,14 +36,31 @@ export function activate(context: vscode.ExtensionContext) {
         const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
             if (e.document.uri.toString() === document.uri.toString()) {
                 const content = e.document.getText();
-                // Escape backticks and backslashes for the initial content injection (if we were re-injecting, but here we post message)
-                // For postMessage we send the raw content
                 panel.webview.postMessage({
                     type: 'update',
                     content: content
                 });
             }
         });
+
+        // Listen for messages from the webview
+        panel.webview.onDidReceiveMessage(
+            message => {
+                switch (message.type) {
+                    case 'updateRange':
+                        const edit = new vscode.WorkspaceEdit();
+                        const startPosition = new vscode.Position(message.startLine, 0);
+                        const endPosition = new vscode.Position(message.endLine, 0);
+                        const range = new vscode.Range(startPosition, endPosition);
+
+                        edit.replace(document.uri, range, message.content);
+                        vscode.workspace.applyEdit(edit);
+                        return;
+                }
+            },
+            undefined,
+            context.subscriptions
+        );
 
         // Listen for configuration changes
         const changeConfigSubscription = vscode.workspace.onDidChangeConfiguration(e => {
@@ -74,13 +91,13 @@ export function activate(context: vscode.ExtensionContext) {
                 vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js')
             );
             wheelUri = panel.webview.asWebviewUri(
-                vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'md_spreadsheet_parser-0.1.0-py3-none-any.whl')
+                vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'md_spreadsheet_parser-0.1.2-py3-none-any.whl')
             );
             cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net ${panel.webview.cspSource}`;
             cspConnectSrc = `https://cdn.jsdelivr.net ${panel.webview.cspSource}`;
         } else {
             scriptUri = "http://localhost:5173/webview-ui/main.ts";
-            wheelUri = "http://localhost:5173/md_spreadsheet_parser-0.1.0-py3-none-any.whl";
+            wheelUri = "http://localhost:5173/md_spreadsheet_parser-0.1.2-py3-none-any.whl";
             cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net http://localhost:5173`;
             cspConnectSrc = `https://cdn.jsdelivr.net http://localhost:5173 ws://localhost:5173`;
             viteClient = '<script type="module" src="http://localhost:5173/@vite/client"></script>';

@@ -1,28 +1,19 @@
 import { html, css, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { provideVSCodeDesignSystem, vsCodeDataGrid, vsCodeDataGridCell, vsCodeDataGridRow, vsCodePanels, vsCodePanelTab, vsCodePanelView } from "@vscode/webview-ui-toolkit";
+import { provideVSCodeDesignSystem, vsCodePanels, vsCodePanelTab, vsCodePanelView } from "@vscode/webview-ui-toolkit";
+
+import "./components/spreadsheet-toolbar";
+import "./components/spreadsheet-table";
+import { TableJSON } from "./components/spreadsheet-table";
 
 // Register the VS Code Design System components
 provideVSCodeDesignSystem().register(
-
-  vsCodeDataGrid(),
-  vsCodeDataGridRow(),
-  vsCodeDataGridCell(),
-
   vsCodePanels(),
   vsCodePanelTab(),
   vsCodePanelView()
 );
 
 declare const loadPyodide: any;
-
-interface TableJSON {
-  name: string | null;
-  description: string | null;
-  headers: string[] | null;
-  rows: string[][];
-  metadata: any;
-}
 
 interface SheetJSON {
   name: string;
@@ -33,19 +24,28 @@ interface WorkbookJSON {
   sheets: SheetJSON[];
 }
 
+// Acquire VS Code API
+const vscode = acquireVsCodeApi();
+
 @customElement("my-editor")
 export class MyEditor extends LitElement {
   static styles = css`
     :host {
       display: block;
-      padding: 1rem;
+      padding: 0; /* Removed global padding */
       color: var(--vscode-foreground);
       font-family: var(--vscode-font-family);
     }
-    .toolbar {
-      margin-bottom: 1rem;
-      display: flex;
-      gap: 0.5rem;
+    .toolbar-container {
+        padding: 0;
+        border-bottom: 1px solid var(--vscode-widget-border);
+    }
+    .sheet-container {
+        padding: 0;
+        margin-top: 0;
+    }
+    vscode-panel-view {
+        padding: 0;
     }
     .output {
         margin-top: 1rem;
@@ -57,12 +57,6 @@ export class MyEditor extends LitElement {
     }
     .sheet-container {
         margin-top: 1rem;
-    }
-    .table-container {
-        margin-bottom: 2rem;
-    }
-    h3 {
-        margin-bottom: 0.5rem;
     }
   `;
 
@@ -98,6 +92,48 @@ export class MyEditor extends LitElement {
       const micropip = this.pyodide.pyimport("micropip");
       const wheelUri = (window as any).wheelUri;
       await micropip.install(wheelUri);
+
+      // Define Python helper functions
+      await this.pyodide.runPythonAsync(`
+import json
+from md_spreadsheet_parser import parse_workbook, MultiTableParsingSchema, generate_table_markdown
+
+workbook = None
+schema = None
+
+def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
+    global workbook, schema
+    if workbook is None:
+        return json.dumps({"error": "No workbook loaded"})
+    
+    try:
+        sheet = workbook.sheets[sheet_idx]
+        table = sheet.tables[table_idx]
+        
+        # Update value
+        # Ensure row exists (it should)
+        if 0 <= row_idx < len(table.rows):
+            row = table.rows[row_idx]
+            if 0 <= col_idx < len(row):
+                row[col_idx] = new_value
+            else:
+                 # Handle column expansion if needed, but for now strict
+                 return json.dumps({"error": "Column index out of range"})
+        else:
+             return json.dumps({"error": "Row index out of range"})
+
+        # Generate new markdown for the table
+        # We assume the schema is still valid
+        new_md = generate_table_markdown(table, schema) + "\\n"
+        
+        return json.dumps({
+            "start_line": table.start_line,
+            "end_line": table.end_line,
+            "markdown": new_md
+        })
+    except Exception as e:
+        return json.dumps({"error": str(e)})
+      `);
 
       if (this.markdownInput) {
         await this._parseWorkbook();
@@ -140,14 +176,23 @@ export class MyEditor extends LitElement {
     if (workbook.sheets.length === 0) return html`<p>No sheets found.</p>`;
 
     return html`
+        <spreadsheet-toolbar></spreadsheet-toolbar>
         <vscode-panels>
             ${workbook.sheets.map((sheet, index) => html`
                 <vscode-panel-tab id="tab-${index}">${sheet.name}</vscode-panel-tab>
             `)}
-            ${workbook.sheets.map((sheet, index) => html`
-                <vscode-panel-view id="view-${index}">
+            ${workbook.sheets.map((sheet, sheetIndex) => html`
+                <vscode-panel-view id="view-${sheetIndex}">
                     <div class="sheet-container">
-                        ${sheet.tables.map(table => this._renderTable(table))}
+                        ${sheet.tables.map((table, tableIndex) => html`
+                            <spreadsheet-table 
+                                .table="${table}" 
+                                .sheetIndex="${sheetIndex}" 
+                                .tableIndex="${tableIndex}"
+                                @cell-edit="${this._onCellEdit}"
+                            >
+                            </spreadsheet-table>
+                        `)}
                     </div>
                 </vscode-panel-view>
             `)}
@@ -155,34 +200,42 @@ export class MyEditor extends LitElement {
       `;
   }
 
-  private _renderTable(table: TableJSON) {
-    return html`
-        <div class="table-container">
-            ${table.name ? html`<h3>${table.name}</h3>` : ''}
-            ${table.description ? html`<p>${table.description}</p>` : ''}
-            <vscode-data-grid aria-label="${table.name || 'Table'}">
-                ${table.headers ? html`
-                    <vscode-data-grid-row row-type="header">
-                        ${table.headers.map((header, i) => html`
-                            <vscode-data-grid-cell cell-type="columnheader" grid-column="${i + 1}">
-                                ${header}
-                            </vscode-data-grid-cell>
-                        `)}
-                    </vscode-data-grid-row>
-                ` : ''}
-                ${table.rows.map(row => html`
-                    <vscode-data-grid-row>
-                        ${row.map((cell, i) => html`
-                            <vscode-data-grid-cell grid-column="${i + 1}">${cell}</vscode-data-grid-cell>
-                        `)}
-                    </vscode-data-grid-row>
-                `)}
-            </vscode-data-grid>
-        </div>
-      `;
+  private async _onCellEdit(e: CustomEvent) {
+    const { sheetIndex, tableIndex, rowIndex, colIndex, newValue } = e.detail;
+    await this._handleCellEdit(sheetIndex, tableIndex, rowIndex, colIndex, newValue);
   }
 
+  private async _handleCellEdit(sheetIdx: number, tableIdx: number, rowIdx: number, colIdx: number, newValue: string) {
+    // Optimistic update? Or wait for python?
+    // Let's call python
+    if (!this.pyodide) return;
 
+    try {
+      const resultJson = await this.pyodide.runPythonAsync(`
+            update_cell(${sheetIdx}, ${tableIdx}, ${rowIdx}, ${colIdx}, ${JSON.stringify(newValue)})
+          `);
+      const result = JSON.parse(resultJson);
+
+      if (result.error) {
+        console.error("Error updating cell:", result.error);
+        return;
+      }
+
+      if (result.start_line !== null && result.end_line !== null) {
+        vscode.postMessage({
+          type: 'updateRange',
+          startLine: result.start_line,
+          endLine: result.end_line,
+          content: result.markdown
+        });
+      } else {
+        console.warn("Cannot update: missing source mapping for table.");
+      }
+
+    } catch (err) {
+      console.error("Failed to update cell", err);
+    }
+  }
 
   private async _parseWorkbook() {
     if (!this.pyodide) return;
@@ -190,9 +243,6 @@ export class MyEditor extends LitElement {
       this.pyodide.globals.set("md_text", this.markdownInput);
       this.pyodide.globals.set("config", JSON.stringify(this.config));
       const result = await this.pyodide.runPythonAsync(`
-import json
-from md_spreadsheet_parser import parse_workbook, MultiTableParsingSchema
-
 config_dict = json.loads(config)
 schema = MultiTableParsingSchema(
     root_marker=config_dict.get("rootMarker", "# Tables"),
@@ -216,3 +266,6 @@ json.dumps(workbook.json, indent=2)
     }
   }
 }
+
+// Add global definition for acquireVsCodeApi
+declare function acquireVsCodeApi(): any;
