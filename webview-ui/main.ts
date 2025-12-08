@@ -157,13 +157,28 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
         sheet = workbook.sheets[sheet_idx]
         table = sheet.tables[table_idx]
         
-        # Update value
         if row_idx < 0:
             # Update Header
             if table.headers is not None and 0 <= col_idx < len(table.headers):
                 table.headers[col_idx] = new_value
             else:
                  return json.dumps({"error": "Header column index out of range or headers missing"})
+        elif row_idx == len(table.rows):
+            # Add New Row
+            width = 0
+            if table.headers:
+                width = len(table.headers)
+            elif len(table.rows) > 0:
+                width = len(table.rows[0])
+            else:
+                return json.dumps({"error": "Cannot determine table width for new row"})
+            
+            if col_idx >= width:
+                 return json.dumps({"error": "Column index out of range for new row"})
+
+            new_row = [""] * width
+            new_row[col_idx] = new_value
+            table.rows.append(new_row)
         elif 0 <= row_idx < len(table.rows):
             # Update Body Row
             row = table.rows[row_idx]
@@ -229,24 +244,19 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
     if (workbook.sheets.length === 0) return html`<p>No sheets found.</p>`;
 
     return html`
-        <spreadsheet-toolbar></spreadsheet-toolbar>
-        
         <div class="content-area">
-            ${workbook.sheets.map((sheet, sheetIndex) => html`
-                <div class="sheet-view ${this.activeSheetIndex === sheetIndex ? 'active' : ''}">
-                    <div class="sheet-container">
-                        ${sheet.tables.map((table, tableIndex) => html`
-                            <spreadsheet-table 
-                                .table="${table}" 
-                                .sheetIndex="${sheetIndex}" 
-                                .tableIndex="${tableIndex}"
-                                @cell-edit="${this._onCellEdit}"
-                            >
-                            </spreadsheet-table>
-                        `)}
-                    </div>
-                </div>
-            `)}
+            ${this.workbook && this.workbook.sheets.length > 0 ? html`
+                 <div class="sheet-container">
+                    ${this.workbook.sheets[this.activeSheetIndex].tables.map((table, tableIndex) => html`
+                        <spreadsheet-table 
+                            .table="${table}" 
+                            .sheetIndex="${this.activeSheetIndex}" 
+                            .tableIndex="${tableIndex}"
+                            @cell-edit="${this._onCellEdit}"
+                        ></spreadsheet-table>
+                    `)}
+                 </div>
+            ` : html``}
         </div>
 
         <div class="bottom-tabs">
@@ -259,7 +269,7 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
                 </div>
             `)}
         </div>
-      `;
+    `;
   }
 
   private async _onCellEdit(e: CustomEvent) {
@@ -274,8 +284,8 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
 
     try {
       const resultJson = await this.pyodide.runPythonAsync(`
-            update_cell(${sheetIdx}, ${tableIdx}, ${rowIdx}, ${colIdx}, ${JSON.stringify(newValue)})
-          `);
+update_cell(${sheetIdx}, ${tableIdx}, ${rowIdx}, ${colIdx}, ${JSON.stringify(newValue)})
+  `);
       const result = JSON.parse(resultJson);
 
       if (result.error) {
@@ -307,23 +317,23 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
       const result = await this.pyodide.runPythonAsync(`
 config_dict = json.loads(config)
 schema = MultiTableParsingSchema(
-    root_marker=config_dict.get("rootMarker", "# Tables"),
-    sheet_header_level=config_dict.get("sheetHeaderLevel", 2),
-    table_header_level=config_dict.get("tableHeaderLevel"),
-    capture_description=config_dict.get("captureDescription", False),
-    column_separator=config_dict.get("columnSeparator", "|"),
-    header_separator_char=config_dict.get("headerSeparatorChar", "-"),
-    require_outer_pipes=config_dict.get("requireOuterPipes", True),
-    strip_whitespace=config_dict.get("stripWhitespace", True)
+  root_marker = config_dict.get("rootMarker", "# Tables"),
+  sheet_header_level = config_dict.get("sheetHeaderLevel", 2),
+  table_header_level = config_dict.get("tableHeaderLevel", 3),
+  capture_description = config_dict.get("captureDescription", True),
+  column_separator = config_dict.get("columnSeparator", "|"),
+  header_separator_char = config_dict.get("headerSeparatorChar", "-"),
+  require_outer_pipes = config_dict.get("requireOuterPipes", True),
+  strip_whitespace = config_dict.get("stripWhitespace", True)
 )
 
 workbook = parse_workbook(md_text, schema)
-json.dumps(workbook.json, indent=2)
+json.dumps(workbook.json, indent = 2)
           `);
       this.output = "Parsed successfully!";
       this.workbook = JSON.parse(result);
     } catch (e: any) {
-      this.output = `Error parsing: ${e.message}`;
+      this.output = `Error parsing: ${e.message} `;
       this.workbook = null;
     }
   }

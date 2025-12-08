@@ -1,5 +1,6 @@
 import { html, css, LitElement, PropertyValues } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { live } from "lit/directives/live.js";
 import { provideVSCodeDesignSystem, vsCodeButton } from "@vscode/webview-ui-toolkit";
 
 provideVSCodeDesignSystem().register(vsCodeButton());
@@ -84,7 +85,7 @@ export class SpreadsheetTable extends LitElement {
     }
 
     /* Headers */
-    .header-col {
+    .cell.header-col {
         background-color: var(--header-bg);
         font-weight: normal;
         color: var(--vscode-descriptionForeground);
@@ -105,7 +106,7 @@ export class SpreadsheetTable extends LitElement {
         position: sticky;
         left: 0;
         z-index: 10;
-        width: max-content;
+        /* width: max-content; Removed */
         user-select: none;
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
@@ -121,7 +122,7 @@ export class SpreadsheetTable extends LitElement {
         position: sticky;
         top: 0;
         left: 0;
-        width: max-content;
+        /* width: max-content; Removed */
         color: var(--header-bg);
         z-index: 20;
         border-right: 1px solid var(--border-color);
@@ -266,7 +267,7 @@ export class SpreadsheetTable extends LitElement {
         // Cols: 0 to colCount - 1
 
         if (newR < -1) newR = -1;
-        if (newR >= rowCount) newR = rowCount - 1;
+        if (newR > rowCount) newR = rowCount; // Allow selecting the ghost row (index = rowCount)
         if (newC < 0) newC = 0;
         if (newC >= colCount) newC = colCount - 1;
 
@@ -276,32 +277,45 @@ export class SpreadsheetTable extends LitElement {
         this._shouldFocusCell = true;
     }
 
-    private _commitEdit(e: Event) {
-        const target = e.target as HTMLElement;
-        const newValue = target.innerText; // Use innerText to get generic text
+    private _isCommitting: boolean = false;
 
-        // Dispatch update
-        this.dispatchEvent(new CustomEvent('cell-edit', {
-            detail: {
-                sheetIndex: this.sheetIndex,
-                tableIndex: this.tableIndex,
-                rowIndex: this.selectedRow,
-                colIndex: this.selectedCol,
-                newValue: newValue
-            },
-            bubbles: true,
-            composed: true
-        }));
+    private async _commitEdit(e: Event) {
+        if (this._isCommitting) return;
+        this._isCommitting = true;
 
-        this.isEditing = false;
+        try {
+            const target = e.target as HTMLElement;
+            const newValue = target.innerText; // Use innerText to get generic text
 
-        // Optional: Move selection down after edit (Excel style)
-        // this._moveSelection(1, 0); 
-        // For now just stay or better, focus back to div without contenteditable
-        this._shouldFocusCell = true;
+            // Explicitly clear content of target to prevent ghosting if strict mode fails
+            // This is safe because if it re-renders with data, it will be filled. 
+            // If it re-renders as empty ghost cell, it will remain empty.
+            if (target) target.textContent = "";
+
+            // Dispatch update
+            this.dispatchEvent(new CustomEvent('cell-edit', {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    rowIndex: this.selectedRow,
+                    colIndex: this.selectedCol,
+                    newValue: newValue
+                },
+                bubbles: true,
+                composed: true
+            }));
+
+            this.isEditing = false;
+            this._shouldFocusCell = true; // Focus back to item
+        } finally {
+            // Short delay to prevent blur from triggering immediately after?
+            // Or just reset.
+            this._isCommitting = false;
+        }
     }
 
     private _cancelEdit() {
+        if (this._isCommitting) return;
         this.isEditing = false;
         // Revert content usage? Lit will re-render and revert text if we didn't update state.
         this.requestUpdate();
@@ -310,7 +324,8 @@ export class SpreadsheetTable extends LitElement {
 
     private _handleBlur(e: FocusEvent) {
         // If editing, commit on blur?
-        if (this.isEditing) {
+        // Check if we are still editing and not already committing
+        if (this.isEditing && !this._isCommitting) {
             this._commitEdit(e);
         }
     }
@@ -326,8 +341,11 @@ export class SpreadsheetTable extends LitElement {
 
         return html`
         <div>
-            ${table.name ? html`<h3>${table.name}</h3>` : ''}
-            ${table.description ? html`<p>${table.description}</p>` : ''}
+            ${table.name
+                ? html`<h3 style="margin: 1rem 0 0.5rem 0; color: var(--vscode-foreground);">${table.name}</h3>`
+                : html`<h3 style="margin: 1rem 0 0.5rem 0; color: var(--vscode-disabledForeground); font-style: italic;">(Untitled Table)</h3>`
+            }
+            ${table.description ? html`<p style="margin: 0 0 1rem 0; color: var(--vscode-descriptionForeground);">${table.description}</p>` : ''}
             
             <div class="table-container">
                 <div class="grid" style="${gridStyle}">
@@ -336,22 +354,19 @@ export class SpreadsheetTable extends LitElement {
 
                     <!-- Column Headers (Integrated) -->
                     ${Array.from({ length: colCount }).map((_, i) => html`
-                        <div class="cell header-col">
-                            ${table.headers && table.headers[i] ? html`
-                                <div 
-                                    class="cell ${this.selectedRow === -1 && this.selectedCol === i ? 'selected' : ''} ${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'editing' : ''}"
-                                    style="font-weight: bold; width: 100%; height: 100%; border: none;"
-                                    data-row="-1"
-                                    data-col="${i}"
-                                    tabindex="${this.selectedRow === -1 && this.selectedCol === i ? '0' : '-1'}"
-                                    contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}"
-                                    @click="${(e: MouseEvent) => this._handleCellClick(e, -1, i)}"
-                                    @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
-                                    @blur="${(e: FocusEvent) => this._handleBlur(e)}"
-                                    @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e, true)}"
-                                >${table.headers[i]}</div>
-                            ` : ''}
-                        </div>
+                        <div 
+                            class="cell header-col ${this.selectedRow === -1 && this.selectedCol === i ? 'selected' : ''} ${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'editing' : ''}"
+                            style="font-weight: bold;"
+                            data-row="-1"
+                            data-col="${i}"
+                            tabindex="${this.selectedRow === -1 && this.selectedCol === i ? '0' : '-1'}"
+                            contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}"
+                            @click="${(e: MouseEvent) => this._handleCellClick(e, -1, i)}"
+                            @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
+                            @blur="${(e: FocusEvent) => this._handleBlur(e)}"
+                            @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e, true)}"
+                            .textContent=${table.headers && table.headers[i] ? table.headers[i] : ''}
+                        ></div>
                     `)}
 
                     <!-- Data Rows -->
@@ -368,8 +383,26 @@ export class SpreadsheetTable extends LitElement {
                                 @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, rowIndex, colIndex)}"
                                 @blur="${(e: FocusEvent) => this._handleBlur(e)}"
                                 @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e)}"
-                            >${cell}</div>
+                                .textContent=${cell}
+                            ></div>
                         `)}
+                    `)}
+
+                    <!-- Ghost Row (Add Row) -->
+                    <div class="cell header-row" style="color: var(--vscode-disabledForeground);">${table.rows.length + 1}</div>
+                    ${Array.from({ length: colCount }).map((_, colIndex) => html`
+                         <div 
+                            class="cell ${this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'selected' : ''} ${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'editing' : ''}"
+                            data-row="${table.rows.length}"
+                            data-col="${colIndex}"
+                            tabindex="${this.selectedRow === table.rows.length && this.selectedCol === colIndex ? '0' : '-1'}"
+                            contenteditable="${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'true' : 'false'}"
+                            @click="${(e: MouseEvent) => this._handleCellClick(e, table.rows.length, colIndex)}"
+                            @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, table.rows.length, colIndex)}"
+                            @blur="${(e: FocusEvent) => this._handleBlur(e)}"
+                            @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e)}"
+                            .textContent=${live("")}
+                        ></div>
                     `)}
                 </div>
             </div>
