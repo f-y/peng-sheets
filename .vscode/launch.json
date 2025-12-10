@@ -8,7 +8,7 @@
             "args": [
                 "--extensionDevelopmentPath=${workspaceFolder}",
                 "${workspaceFolder}/sample-workspace",
-                "${workspaceFolder}/sample-workspace/example.md"
+                "${workspaceFolder}/sample-workspace/hybrid_notebook.md"
             ],
             "outFiles": [
                 "${workspaceFolder}/out/**/*.js"

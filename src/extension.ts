@@ -1,132 +1,175 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Congratulations, your extension "vscode-md-spreadsheet" is now active!');
+    let currentPanel: vscode.WebviewPanel | undefined = undefined;
+    let activeDocument: vscode.TextDocument | undefined = undefined;
 
-    let disposable = vscode.commands.registerCommand('vscode-md-spreadsheet.openEditor', () => {
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-md-spreadsheet.openEditor', () => {
         const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-            vscode.window.showErrorMessage('No active editor found');
+        if (!editor || editor.document.languageId !== 'markdown') {
+            vscode.window.showErrorMessage('No active Markdown editor found');
             return;
         }
 
-        const document = editor.document;
-        if (document.languageId !== 'markdown') {
-            vscode.window.showErrorMessage('Active file is not a Markdown file');
-            return;
+        if (currentPanel) {
+            currentPanel.reveal(vscode.ViewColumn.Beside);
+            if (activeDocument !== editor.document) {
+                updatePanel(editor.document);
+            }
+        } else {
+            createPanel(editor.document);
         }
+    }));
 
-        const initialContent = document.getText();
-        // Escape backticks and backslashes to prevent JS syntax errors in the template string
-        const escapedContent = initialContent.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
+    // Switch context when active editor changes
+    context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(editor => {
+        if (currentPanel && editor && editor.document.languageId === 'markdown') {
+            if (activeDocument !== editor.document) {
+                updatePanel(editor.document);
+            }
+        }
+    }));
 
-        const panel = vscode.window.createWebviewPanel(
+    // Detect content changes
+    context.subscriptions.push(vscode.workspace.onDidChangeTextDocument(e => {
+        if (currentPanel && activeDocument && e.document.uri.toString() === activeDocument.uri.toString()) {
+            currentPanel.webview.postMessage({
+                type: 'update',
+                content: e.document.getText()
+            });
+        }
+    }));
+
+    // Detect config changes
+    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration(e => {
+        if (currentPanel && e.affectsConfiguration('mdSpreadsheet.parsing')) {
+            currentPanel.webview.postMessage({
+                type: 'configUpdate',
+                config: vscode.workspace.getConfiguration('mdSpreadsheet.parsing')
+            });
+        }
+    }));
+
+    function updatePanel(document: vscode.TextDocument) {
+        if (!currentPanel) return;
+        activeDocument = document;
+        currentPanel.title = `MD Spreadsheet - ${path.basename(document.fileName)}`;
+        currentPanel.webview.postMessage({
+            type: 'update',
+            content: document.getText()
+        });
+    }
+
+    function createPanel(document: vscode.TextDocument) {
+        activeDocument = document;
+        currentPanel = vscode.window.createWebviewPanel(
             'mdSpreadsheet',
-            'Markdown Spreadsheet',
+            `MD Spreadsheet - ${path.basename(document.fileName)}`,
             vscode.ViewColumn.Beside,
             {
                 enableScripts: true,
                 localResourceRoots: [
-                    vscode.Uri.joinPath(context.extensionUri, 'out', 'webview')
+                    vscode.Uri.joinPath(context.extensionUri, 'out', 'webview'),
+                    vscode.Uri.joinPath(context.extensionUri, 'resources')
                 ]
             }
         );
 
-        // Listen for changes to the document
-        const changeDocumentSubscription = vscode.workspace.onDidChangeTextDocument(e => {
-            if (e.document.uri.toString() === document.uri.toString()) {
-                const content = e.document.getText();
-                panel.webview.postMessage({
-                    type: 'update',
-                    content: content
-                });
-            }
-        });
+        currentPanel.webview.html = getWebviewContent(currentPanel.webview, context, document);
 
-        // Listen for messages from the webview
-        panel.webview.onDidReceiveMessage(
+        currentPanel.onDidDispose(() => {
+            currentPanel = undefined;
+            activeDocument = undefined;
+        }, null, context.subscriptions);
+
+        currentPanel.webview.onDidReceiveMessage(
             message => {
+                if (!activeDocument) {
+                    console.error("No active document!");
+                    return;
+                }
+                // console.log("Received message from webview:", message);
                 switch (message.type) {
                     case 'updateRange':
+                        // console.log("Handling updateRange");
                         const edit = new vscode.WorkspaceEdit();
                         const startPosition = new vscode.Position(message.startLine, 0);
                         const endPosition = new vscode.Position(message.endLine, 0);
                         const range = new vscode.Range(startPosition, endPosition);
 
-                        edit.replace(document.uri, range, message.content);
+                        edit.replace(activeDocument.uri, range, message.content);
                         vscode.workspace.applyEdit(edit);
+                        return;
+                    case 'createSpreadsheet':
+                        const wsEdit = new vscode.WorkspaceEdit();
+                        const docText = activeDocument.getText();
+                        const prefix = docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : '\n';
+                        const template = `# Tables\n\n## Sheet 1\n\n### Table 1\n\n|   |   |\n| - | - |\n|   |   |\n`;
+                        const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
+                        wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
+                        vscode.workspace.applyEdit(wsEdit);
                         return;
                 }
             },
             undefined,
             context.subscriptions
         );
+    }
+}
 
-        // Listen for configuration changes
-        const changeConfigSubscription = vscode.workspace.onDidChangeConfiguration(e => {
-            if (e.affectsConfiguration('mdSpreadsheet.parsing')) {
-                const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
-                panel.webview.postMessage({
-                    type: 'configUpdate',
-                    config: config
-                });
-            }
-        });
+function getWebviewContent(webview: vscode.Webview, context: vscode.ExtensionContext, document: vscode.TextDocument): string {
+    const isProduction = context.extensionMode === vscode.ExtensionMode.Production;
+    let scriptUri: vscode.Uri | string;
+    let wheelUri: vscode.Uri | string;
+    let cspScriptSrc: string;
+    let cspConnectSrc: string;
+    let viteClient = '';
 
-        // Make sure we get rid of the listener when our editor is closed.
-        panel.onDidDispose(() => {
-            changeDocumentSubscription.dispose();
-            changeConfigSubscription.dispose();
-        });
+    if (isProduction) {
+        scriptUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js')
+        );
+        wheelUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.1.3-py3-none-any.whl')
+        );
+        cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net ${webview.cspSource}`;
+        cspConnectSrc = `https://cdn.jsdelivr.net ${webview.cspSource}`;
+    } else {
+        scriptUri = "http://localhost:5173/webview-ui/main.ts";
+        // Use local resource for wheel even in dev mode to bypass Vite 404/MIME issues
+        wheelUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.1.3-py3-none-any.whl')
+        );
+        cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net http://localhost:5173`;
+        cspConnectSrc = `https://cdn.jsdelivr.net http://localhost:5173 ws://localhost:5173 ${webview.cspSource}`;
+        viteClient = '<script type="module" src="http://localhost:5173/@vite/client"></script>';
+    }
 
-        const isProduction = context.extensionMode === vscode.ExtensionMode.Production;
-        let scriptUri: vscode.Uri | string;
-        let wheelUri: vscode.Uri | string;
-        let cspScriptSrc: string;
-        let cspConnectSrc: string;
-        let viteClient = '';
+    const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
+    const initialContent = document.getText();
+    const escapedContent = initialContent.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
 
-        if (isProduction) {
-            scriptUri = panel.webview.asWebviewUri(
-                vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js')
-            );
-            wheelUri = panel.webview.asWebviewUri(
-                vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'md_spreadsheet_parser-0.1.2-py3-none-any.whl')
-            );
-            cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net ${panel.webview.cspSource}`;
-            cspConnectSrc = `https://cdn.jsdelivr.net ${panel.webview.cspSource}`;
-        } else {
-            scriptUri = "http://localhost:5173/webview-ui/main.ts";
-            wheelUri = "http://localhost:5173/md_spreadsheet_parser-0.1.2-py3-none-any.whl";
-            cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net http://localhost:5173`;
-            cspConnectSrc = `https://cdn.jsdelivr.net http://localhost:5173 ws://localhost:5173`;
-            viteClient = '<script type="module" src="http://localhost:5173/@vite/client"></script>';
-        }
-
-        const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
-
-        panel.webview.html = `<!DOCTYPE html>
-		<html lang="en">
-		<head>
-			<meta charset="UTF-8">
-			<meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' ${cspScriptSrc}; connect-src ${cspConnectSrc};">
-			<title>Markdown Spreadsheet</title>
-		</head>
-		<body>
-			<my-editor></my-editor>
-            <script>
-                window.wheelUri = "${wheelUri}";
-                window.initialContent = \`${escapedContent}\`;
-                window.initialConfig = ${JSON.stringify(config)};
-            </script>
-            <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
-			${viteClient}
-			<script type="module" src="${scriptUri}"></script>
-		</body>
-		</html>`;
-    });
-    context.subscriptions.push(disposable);
+    return `<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' ${cspScriptSrc}; connect-src ${cspConnectSrc};">
+        <title>Markdown Spreadsheet</title>
+    </head>
+    <body>
+        <md-spreadsheet-editor></md-spreadsheet-editor>
+        <script>
+            window.wheelUri = "${wheelUri}";
+            window.initialContent = \`${escapedContent}\`;
+            window.initialConfig = ${JSON.stringify(config)};
+        </script>
+        <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+        ${viteClient}
+        <script type="module" src="${scriptUri}"></script>
+    </body>
+    </html>`;
 }
 
 export function deactivate() { }

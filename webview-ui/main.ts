@@ -4,9 +4,10 @@ import { provideVSCodeDesignSystem } from "@vscode/webview-ui-toolkit";
 
 import "./components/spreadsheet-toolbar";
 import "./components/spreadsheet-table";
+import "./components/spreadsheet-onboarding";
+import "./components/spreadsheet-document-view";
 import { TableJSON } from "./components/spreadsheet-table";
 
-// Register the VS Code Design System components
 // Register the VS Code Design System components
 provideVSCodeDesignSystem().register();
 
@@ -17,14 +18,34 @@ interface SheetJSON {
   tables: TableJSON[];
 }
 
+interface DocumentJSON {
+  type: 'document';
+  title: string;
+  content: string;
+}
+
 interface WorkbookJSON {
   sheets: SheetJSON[];
+}
+
+interface TabDefinition {
+  type: 'sheet' | 'document' | 'onboarding';
+  title: string;
+  index: number;
+  sheetIndex?: number;
+  data?: any;
+}
+
+interface StructureItem {
+  type: 'workbook' | 'document';
+  title?: string;
+  content?: string;
 }
 
 // Acquire VS Code API
 const vscode = acquireVsCodeApi();
 
-@customElement("my-editor")
+@customElement("md-spreadsheet-editor")
 export class MyEditor extends LitElement {
   static styles = css`
     :host {
@@ -82,6 +103,7 @@ export class MyEditor extends LitElement {
       align-items: center;
       justify-content: center;
       min-width: 60px;
+      gap: 6px;
     }
 
     .tab-item:hover {
@@ -120,7 +142,10 @@ export class MyEditor extends LitElement {
   workbook: WorkbookJSON | null = null;
 
   @state()
-  activeSheetIndex: number = 0;
+  tabs: TabDefinition[] = [];
+
+  @state()
+  activeTabIndex: number = 0;
 
   async firstUpdated() {
     try {
@@ -140,16 +165,55 @@ export class MyEditor extends LitElement {
       const wheelUri = (window as any).wheelUri;
       await micropip.install(wheelUri);
 
-      // Define Python helper functions
+
+      // ... Python Helper Functions
       await this.pyodide.runPythonAsync(`
 import json
+from dataclasses import replace
 from md_spreadsheet_parser import parse_workbook, MultiTableParsingSchema, generate_table_markdown
 
 workbook = None
 schema = None
+# ... (existing extract_structure)
+
+def extract_structure(md_text, root_marker):
+    sections = []
+    lines = md_text.split('\\n')
+    current_type = None
+    current_title = None
+    current_lines = []
+    
+    for line in lines:
+        if line.startswith('# ') and not line.startswith('##'):
+            if current_title and current_type == 'document':
+                 sections.append({"type": "document", "title": current_title, "content": "\\n".join(current_lines)})
+            
+            stripped = line.strip()
+            if stripped == root_marker:
+                sections.append({"type": "workbook"})
+                current_title = None
+                current_type = 'workbook'
+            else:
+                current_title = line[2:].strip()
+                current_type = 'document'
+            
+            current_lines = []
+        else:
+            if current_type == 'document':
+                current_lines.append(line)
+                
+    if current_title and current_type == 'document':
+        sections.append({"type": "document", "title": current_title, "content": "\\n".join(current_lines)})
+        
+    return json.dumps(sections)
 
 def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
-    global workbook, schema
+    # Wrapper for single cell update using range logic for consistency?
+    # Or keep separate. Let's keep separate or call generic update.
+    return delete_range(sheet_idx, table_idx, row_idx, row_idx, col_idx, col_idx, new_value)
+
+def delete_range(sheet_idx, table_idx, start_row, end_row, start_col, end_col, value):
+    global workbook, schema, md_text
     if workbook is None:
         return json.dumps({"error": "No workbook loaded"})
     
@@ -157,57 +221,88 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
         sheet = workbook.sheets[sheet_idx]
         table = sheet.tables[table_idx]
         
-        if row_idx < 0:
-            # Update Header
-            if table.headers is not None and 0 <= col_idx < len(table.headers):
-                table.headers[col_idx] = new_value
-            else:
-                 return json.dumps({"error": "Header column index out of range or headers missing"})
-        elif row_idx == len(table.rows):
-            # Add New Row
-            width = 0
-            if table.headers:
-                width = len(table.headers)
-            elif len(table.rows) > 0:
-                width = len(table.rows[0])
-            else:
-                return json.dumps({"error": "Cannot determine table width for new row"})
-            
-            if col_idx >= width:
-                 return json.dumps({"error": "Column index out of range for new row"})
+        # Validate table dimensions
+        row_count = len(table.rows)
+        col_count = len(table.headers) if table.headers else (len(table.rows[0]) if row_count > 0 else 0)
 
-            new_row = [""] * width
-            new_row[col_idx] = new_value
-            table.rows.append(new_row)
-        elif 0 <= row_idx < len(table.rows):
-            # Update Body Row
-            row = table.rows[row_idx]
-            if 0 <= col_idx < len(row):
-                row[col_idx] = new_value
-            else:
-                 # Handle column expansion if needed, but for now strict
-                 return json.dumps({"error": "Column index out of range"})
+        # Bounds clamping
+        r_start = max(-1, start_row)
+        r_end = min(row_count - 1, end_row) # inclusive
+        body_r_start = max(0, start_row)
+        body_r_end = min(row_count - 1, end_row)
+        
+        # Check for Last Row Deletion (Special Case)
+        is_full_row = (start_col <= 0 and end_col >= col_count - 1)
+        # Logic: If deleting last row(s) fully -> Remove rows. Else -> Clear content.
+        
+        # Robust check for full row selection (UI sends MAX_SAFE_INTEGER or starts at 0 and covers all)
+        is_full_row_selection = (end_col >= 1000000) or (start_col <= 0 and end_col >= col_count - 1)
+        is_targeting_last_row = (body_r_end == row_count - 1)
+        
+        if is_full_row_selection and is_targeting_last_row and r_start >= 0:
+             # Case 1: Delete/Slice Last Row(s)
+             # Table is frozen dataclass, so we must mutate list in place
+             del table.rows[body_r_start:]
+             
+        elif start_row == row_count:
+             # Case 2: Append New Row (Ghost Row)
+             # Ensure we have width
+             width = len(table.headers) if table.headers else (len(table.rows[0]) if len(table.rows) > 0 else 0)
+             if width == 0: width = 1 
+                 
+             if start_col < width:
+                 new_row = [""] * width
+                 new_row[start_col] = value
+                 table.rows.append(new_row)
+                 
         else:
-             return json.dumps({"error": "Row index out of range"})
+             # Case 3: Clear Content (Standard Delete / Middle Rows / Partial)
+             # This block must run for ANY non-slicing, non-appending update.
+             
+             # Headers
+             if r_start == -1:
+                 c_start = max(0, start_col)
+                 c_end = min(col_count - 1, end_col)
+                 if table.headers:
+                     for c in range(c_start, c_end + 1):
+                         table.headers[c] = value
+             
+             # Body
+             if body_r_start <= body_r_end:
+                for r in range(body_r_start, body_r_end + 1):
+                    # Safety check for row existence not needed due to bounds clamping, but good hygiene
+                    if r < len(table.rows):
+                        row = table.rows[r]
+                        c_start = max(0, start_col)
+                        c_end = min(len(row) - 1, end_col)
+                        for c in range(c_start, c_end + 1):
+                            row[c] = value
 
         # Generate new markdown for the table
-        # We assume the schema is still valid
-        new_md = generate_table_markdown(table, schema) + "\\n"
+        grid_schema = replace(schema, table_header_level=None, capture_description=False)
+        new_md = generate_table_markdown(table, grid_schema) + "\\n"
+        
+        # Ensure empty line after table
+        lines = md_text.split('\\n')
+        has_spacing = False
+        if table.end_line < len(lines):
+             if not lines[table.end_line].strip():
+                 has_spacing = True
+        
+        if not has_spacing:
+             new_md += "\\n"
         
         return json.dumps({
             "start_line": table.start_line,
             "end_line": table.end_line,
-            "markdown": new_md
+            "markdown": new_md,
+            "debug": f"rc={row_count} full_sel={is_full_row_selection} last_row={is_targeting_last_row}"
         })
     except Exception as e:
         return json.dumps({"error": str(e)})
       `);
 
-      if (this.markdownInput) {
-        await this._parseWorkbook();
-      } else {
-        this.output = "Ready. No content to parse.";
-      }
+      await this._parseWorkbook();
 
       window.addEventListener('message', async (event) => {
         const message = event.data;
@@ -229,71 +324,114 @@ def update_cell(sheet_idx, table_idx, row_idx, col_idx, new_value):
   }
 
   render() {
-    if (!this.workbook) {
+    if (!this.tabs.length && !this.output) {
+      return html`<div class="output">Loading...</div>`;
+    }
+
+    return this._renderContent();
+  }
+
+  private _renderContent() {
+    if (this.tabs.length === 0) {
       return html`
             <div class="output">${this.output}</div>
         `;
     }
 
-    return html`
-      ${this._renderWorkbook(this.workbook)}
-    `;
-  }
+    let activeTab = this.tabs[this.activeTabIndex];
+    if (!activeTab) {
+      this.activeTabIndex = 0;
+      activeTab = this.tabs[0];
+    }
 
-  private _renderWorkbook(workbook: WorkbookJSON) {
-    if (workbook.sheets.length === 0) return html`<p>No sheets found.</p>`;
+    if (!activeTab) return html``;
 
     return html`
         <div class="content-area">
-            ${this.workbook && this.workbook.sheets.length > 0 ? html`
+            ${activeTab.type === 'sheet' ? html`
                  <div class="sheet-container">
-                    ${this.workbook.sheets[this.activeSheetIndex].tables.map((table, tableIndex) => html`
+                    ${activeTab.data.tables.map((table: any, tableIndex: number) => html`
                         <spreadsheet-table 
                             .table="${table}" 
-                            .sheetIndex="${this.activeSheetIndex}" 
+                            .sheetIndex="${activeTab.sheetIndex}" 
                             .tableIndex="${tableIndex}"
                             @cell-edit="${this._onCellEdit}"
+                            @range-edit="${this._onRangeEdit}"
                         ></spreadsheet-table>
                     `)}
                  </div>
             ` : html``}
+            
+            ${activeTab.type === 'document' ? html`
+                <spreadsheet-document-view
+                    .title="${activeTab.title}"
+                    .content="${activeTab.data.content}"
+                ></spreadsheet-document-view>
+            ` : html``}
+            
+            ${activeTab.type === 'onboarding' ? html`
+                <spreadsheet-onboarding @create-spreadsheet="${this._onCreateSpreadsheet}"></spreadsheet-onboarding>
+            ` : html``}
         </div>
 
         <div class="bottom-tabs">
-            ${workbook.sheets.map((sheet, index) => html`
+            ${this.tabs.map((tab, index) => html`
                 <div 
-                    class="tab-item ${this.activeSheetIndex === index ? 'active' : ''}"
-                    @click="${() => this.activeSheetIndex = index}"
+                    class="tab-item ${this.activeTabIndex === index ? 'active' : ''}"
+                    @click="${() => this.activeTabIndex = index}"
                 >
-                    ${sheet.name || `Sheet ${index + 1}`}
+                     ${this._renderTabIcon(tab)}
+                    ${tab.title}
                 </div>
             `)}
         </div>
     `;
   }
 
-  private async _onCellEdit(e: CustomEvent) {
-    const { sheetIndex, tableIndex, rowIndex, colIndex, newValue } = e.detail;
-    await this._handleCellEdit(sheetIndex, tableIndex, rowIndex, colIndex, newValue);
+  private _renderTabIcon(tab: TabDefinition) {
+    if (tab.type === 'sheet') {
+      return html`<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M3 3h10v10H3V3zm1 1v3h3V4H4zm4 0v3h3V4H8zm-4 4v3h3V8H4zm4 0v3h3V8H4zm4 0v3h3V8H8z"/></svg>`;
+    } else if (tab.type === 'document') {
+      return html``;
+    } else {
+      return html`<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M14 7H9V2H7v5H2v2h5v5h2V9h5V7z"/></svg>`;
+    }
   }
 
-  private async _handleCellEdit(sheetIdx: number, tableIdx: number, rowIdx: number, colIdx: number, newValue: string) {
-    // Optimistic update? Or wait for python?
-    // Let's call python
+  private _onCreateSpreadsheet() {
+    vscode.postMessage({ type: 'createSpreadsheet' });
+  }
+
+  private async _onCellEdit(e: CustomEvent) {
+    const { sheetIndex, tableIndex, rowIndex, colIndex, newValue } = e.detail;
+    // Redirect to Range Edit for consistency?
+    // Or just wrap
+    await this._handleRangeEdit(sheetIndex, tableIndex, rowIndex, rowIndex, colIndex, colIndex, newValue);
+  }
+
+  private async _onRangeEdit(e: CustomEvent) {
+    const { sheetIndex, tableIndex, startRow, endRow, startCol, endCol, newValue } = e.detail;
+    await this._handleRangeEdit(sheetIndex, tableIndex, startRow, endRow, startCol, endCol, newValue);
+  }
+
+  private async _handleRangeEdit(sheetIdx: number, tableIdx: number, startRow: number, endRow: number, startCol: number, endCol: number, newValue: string) {
     if (!this.pyodide) return;
 
     try {
       const resultJson = await this.pyodide.runPythonAsync(`
-update_cell(${sheetIdx}, ${tableIdx}, ${rowIdx}, ${colIdx}, ${JSON.stringify(newValue)})
+delete_range(${sheetIdx}, ${tableIdx}, ${startRow}, ${endRow}, ${startCol}, ${endCol}, ${JSON.stringify(newValue)})
   `);
       const result = JSON.parse(resultJson);
 
       if (result.error) {
-        console.error("Error updating cell:", result.error);
+        console.error("Error updating range:", result.error);
         return;
       }
 
+      // console.log("Delete Range Debug:", result.debug);
+
       if (result.start_line !== null && result.end_line !== null) {
+        // console.log("Sending updateRange:", result.start_line, result.end_line, result.markdown);
         vscode.postMessage({
           type: 'updateRange',
           startLine: result.start_line,
@@ -303,9 +441,8 @@ update_cell(${sheetIdx}, ${tableIdx}, ${rowIdx}, ${colIdx}, ${JSON.stringify(new
       } else {
         console.warn("Cannot update: missing source mapping for table.");
       }
-
     } catch (err) {
-      console.error("Failed to update cell", err);
+      console.error("Failed to update range", err);
     }
   }
 
@@ -314,7 +451,7 @@ update_cell(${sheetIdx}, ${tableIdx}, ${rowIdx}, ${colIdx}, ${JSON.stringify(new
     try {
       this.pyodide.globals.set("md_text", this.markdownInput);
       this.pyodide.globals.set("config", JSON.stringify(this.config));
-      const result = await this.pyodide.runPythonAsync(`
+      const resultJson = await this.pyodide.runPythonAsync(`
 config_dict = json.loads(config)
 schema = MultiTableParsingSchema(
   root_marker = config_dict.get("rootMarker", "# Tables"),
@@ -328,13 +465,66 @@ schema = MultiTableParsingSchema(
 )
 
 workbook = parse_workbook(md_text, schema)
-json.dumps(workbook.json, indent = 2)
-          `);
+structure_json = extract_structure(md_text, config_dict.get("rootMarker", "# Tables"))
+
+json.dumps({
+    "workbook": workbook.json,
+    "structure": json.loads(structure_json)
+})
+      `);
       this.output = "Parsed successfully!";
-      this.workbook = JSON.parse(result);
+      const result = JSON.parse(resultJson);
+      this.workbook = result.workbook;
+
+      const structure: StructureItem[] = result.structure;
+      const newTabs: TabDefinition[] = [];
+      let workbookFound = false;
+
+      for (const section of structure) {
+        if (section.type === 'document') {
+          newTabs.push({
+            type: 'document',
+            title: section.title!,
+            index: newTabs.length,
+            data: section
+          });
+        } else if (section.type === 'workbook') {
+          workbookFound = true;
+          if (this.workbook && this.workbook.sheets.length > 0) {
+            this.workbook.sheets.forEach((sheet, shIdx) => {
+              newTabs.push({
+                type: 'sheet',
+                title: sheet.name || `Sheet ${shIdx + 1}`,
+                index: newTabs.length,
+                sheetIndex: shIdx,
+                data: sheet
+              });
+            });
+          } else {
+            // Empty workbook section
+            newTabs.push({
+              type: 'onboarding',
+              title: 'New Spreadsheet',
+              index: newTabs.length
+            });
+          }
+        }
+      }
+
+      if (!workbookFound) {
+        newTabs.push({
+          type: 'onboarding',
+          title: 'New Spreadsheet',
+          index: newTabs.length
+        });
+      }
+
+      this.tabs = newTabs;
+
     } catch (e: any) {
       this.output = `Error parsing: ${e.message} `;
       this.workbook = null;
+      this.tabs = [];
     }
   }
 }

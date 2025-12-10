@@ -56,10 +56,10 @@ This document defines the "Excel-like" user experience targeted for `vscode-md-s
 *   **Edit Mode**: Entered via `Enter`, `F2`, or `Double Click`. Typing inserts at cursor position.
 
 ### 4.2. Entering Edit Mode
-*   `Typing (Nav Mode)`: Clears existing content, starts entering new text.
+*   `Typing (Nav Mode)`: **Excel-like Behavior**: Immediately enters Edit Mode and *overwrites* existing cell content with the typed character.
 *   `F2`: Enters Edit Mode, cursor at end of text.
 *   `Double Click`: Enters Edit Mode, cursor at clicked position (or select word).
-*   `Enter`: Enters Edit Mode (Excel behavior varies, sometimes moves down. Configurable: "Enter moves down" vs "Enter edits"). *Standard Excel: Enter moves down. F2 edits.*
+*   `Enter`: Moves focus down (Navigation). *Standard Excel behavior.*
 
 ### 4.3. While in Edit Mode
 *   `Arrow Keys`: Move cursor within text.
@@ -67,7 +67,9 @@ This document defines the "Excel-like" user experience targeted for `vscode-md-s
 *   `Enter`: Commit changes and move down.
 *   `Tab`: Commit changes and move right.
 *   `Esc`: Cancel changes and revert to Navigation Mode.
-*   `Alt + Enter`: Insert newline (Markdown `<br>` or literal newline depending on config).
+*   `Alt + Enter`: Insert newline.
+    *   **Persistence**: Converted to `<br>` tag in Markdown table cells to preserve structure.
+    *   **Display**: Rendered as a line break within the cell.
 
 ## 5. Structural Manipulation
 ### 5.1. Rows & Columns
@@ -89,15 +91,15 @@ This document defines the "Excel-like" user experience targeted for `vscode-md-s
 ## 6. Clipboard Operations
 *   **Copy (`Ctrl/Cmd + C`)**:
     *   Copy selected cells.
-    *   Format: Tab-separated values (TSV) for pasting into Excel/Sheets.
-    *   Internal Format: JSON/Object for smart internal pasting.
+    *   **Row/Column Copy**: If a row/column is selected via header, copy the entire row/column data.
+    *   Format: Tab-separated values (TSV) for compatibility.
 *   **Cut (`Ctrl/Cmd + X`)**:
     *   Copy and clear content.
 *   **Paste (`Ctrl/Cmd + V`)**:
     *   Paste starting at active cell.
-    *   **Smart Expansion**: If clipboard has 2x2 data and 1 cell is selected, expand to 2x2.
+    *   **Auto-Expansion**: Automatically adds rows/columns if pasted data exceeds current grid dimensions.
     *   **Range Match**: If clipboard has 1 cell and 3x3 range is selected, fill all 3x3 with that value.
-    *   **External Data**: Parse TSV/CSV from clipboard (e.g., from Excel) and populate cells.
+    *   **External Data**: TSV/CSV parsing.
 
 ## 7. Undo / Redo
 *   **Global History**:
@@ -175,24 +177,26 @@ Excel has a vast array of formatting options. Since Markdown is plain text, we c
 
 ### 13.2. Implementation Roadmap
 
-#### Phase 1: Core Editing & Native Markdown (MVP)
-*   **Basic Editing**: Cell value editing with real-time Markdown updates.
-*   **Navigation**: Arrow keys, Tab/Enter navigation.
-*   **Native Formatting**:
-    *   **Alignment**: Column alignment (Left/Center/Right) mapped to Markdown syntax.
-    *   **Text Style**: Bold, Italic, Strikethrough, Links (rendered and editable).
+#### Phase 1: Core Editing & Native Markdown - [Completed]
+*   [x] **Hybrid Structure**: Support for Document Tabs (read-only text views) alongside Sheet Tabs.
+*   [x] **Onboarding**: Home Screen for creating the initial Workbook structure.
+*   [x] **Basic Editing**: Cell value editing with real-time Markdown updates (In-place persistence).
+*   [x] **Navigation**: Arrow keys, Tab/Enter navigation.
+*   [x] **Line Breaks**: Support for in-cell newlines (persisted as `<br>`).
+*   [ ] **Native Formatting UI**:
+    *   **Alignment**: Column alignment (Left/Center/Right).
+    *   **Text Style**: Bold, Italic, Strikethrough, Links.
 
-#### Phase 2: Structural Operations (The "Excel" Feel)
+#### Phase 2 (MVP): Structural Operations & Excel Feel (Current Focus)
+*   **Editing**:
+    *   **Excel-like Typing**: Overwrite on type.
 *   **Row/Column Management**:
-    *   **Insert/Delete**: Context menu AND Keyboard shortcuts (`Ctrl/Cmd + +/-`).
+    *   **Selection**: Click headers to select entire row/col.
+    *   **Insert/Delete**: Context menu AND shortcuts. Support inserting multiple rows if multiple selected.
     *   **Move**: Drag and drop rows/columns.
-*   **Selection Model**:
-    *   Range selection (Shift + Click/Arrow).
-    *   Row/Column selection (Click headers).
 *   **Clipboard Operations**:
-    *   Copy/Paste ranges (internal JSON format).
-    *   Copy/Paste rows (smart insertion).
-    *   External Paste (TSV/CSV parsing from Excel).
+    *   Copy/Paste ranges (TSV).
+    *   **Paste to Add**: Pasting data that overflows grid adds new rows/cols.
 
 #### Phase 3: Layout & Metadata Persistence
 *   **Table Metadata**: UI for Table Name and Description.
@@ -214,3 +218,24 @@ Excel has a vast array of formatting options. Since Markdown is plain text, we c
 *   **Merge Cells**: Fundamentally incompatible with Markdown tables.
 *   **Arbitrary Cell Styling**: Ad-hoc background colors (cell-by-cell painting) are discouraged in favor of rule-based Conditional Formatting to keep Markdown clean.
 
+## 14. App & File Structure Integration
+### 14.1. Hybrid Document Model (Sheets + Docs)
+The application treats a Markdown file as a collection of "Tabs".
+*   **Workbook Section**: A specific top-level header (default `# Tables`) acts as the container for Spreadsheet Sheets.
+    *   Sub-headers (default `## SheetName`) within this section are parsed as individual **Sheet Tabs**.
+*   **Document Sections**: All *other* top-level headers (e.g., `# Introduction`, `# Appendix`) are treated as **Document Tabs**.
+    *   These tabs display the Markdown text content effectively as a "Text Sheet".
+    *   Users can switch between Sheet Tabs and Document Tabs seamlessly in the same bottom tab bar.
+    *   **Visual Distinction**: Tabs have icons indicating their type (e.g., Grid icon for Sheets, Document icon for Text).
+
+### 14.2. Empty State (Onboarding)
+*   **Condition**: If the Markdown file does not contain the Workbook Section (`# Tables`).
+*   **UI**: specific "Home" view is displayed instead of a blank grid.
+*   **Actions**:
+    *   "Create Spreadsheet": Appends the Workbook Section (`# Tables`) and an initial Sheet (`## Sheet 1`) to the file.
+
+### 14.3. Flexible Persistence
+*   **Reading**: The parser identifies tables regardless of their location in the file (scanning for Workbook Section).
+*   **Writing**:
+    *   **In-Place Update**: If a table already exists, edits update the corresponding lines in the file, preserving the table's location relative to other content.
+    *   **Append**: New tables are typically appended to the Workbook Section.
