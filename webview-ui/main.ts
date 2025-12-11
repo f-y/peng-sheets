@@ -15,6 +15,7 @@ declare const loadPyodide: any;
 
 interface SheetJSON {
   name: string;
+  header_line?: number;
   tables: TableJSON[];
 }
 
@@ -29,7 +30,7 @@ interface WorkbookJSON {
 }
 
 interface TabDefinition {
-  type: 'sheet' | 'document' | 'onboarding';
+  type: 'sheet' | 'document' | 'onboarding' | 'add-sheet';
   title: string;
   index: number;
   sheetIndex?: number;
@@ -116,6 +117,26 @@ export class MyEditor extends LitElement {
       font-weight: bold;
     }
 
+    .tab-item.add-sheet-tab {
+      min-width: 30px;
+      padding: 5px;
+      justify-content: center;
+    }
+
+    }
+
+    .tab-input {
+        font-family: inherit;
+        font-size: inherit;
+        color: inherit;
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border: 1px solid var(--vscode-input-border);
+        padding: 2px 4px;
+        border-radius: 2px;
+        width: 100px;
+    }
+
     .output {
         margin: 1rem;
         white-space: pre-wrap;
@@ -145,7 +166,10 @@ export class MyEditor extends LitElement {
   tabs: TabDefinition[] = [];
 
   @state()
-  activeTabIndex: number = 0;
+  activeTabIndex = 0;
+
+  @state()
+  editingTabIndex: number | null = null;
 
   async firstUpdated() {
     try {
@@ -160,10 +184,19 @@ export class MyEditor extends LitElement {
       }
 
       this.pyodide = await loadPyodide();
+      console.log("Loading micropip...");
       await this.pyodide.loadPackage("micropip");
+      console.log("Micropip loaded.");
       const micropip = this.pyodide.pyimport("micropip");
       const wheelUri = (window as any).wheelUri;
-      await micropip.install(wheelUri);
+      console.log("Installing wheel from:", wheelUri);
+      try {
+        await micropip.install(wheelUri);
+        console.log("Wheel installed successfully.");
+      } catch (err) {
+        console.error("Micropip install failed:", err);
+        throw err;
+      }
 
 
       // ... Python Helper Functions
@@ -299,11 +332,14 @@ def delete_range(sheet_idx, table_idx, start_row, end_row, start_col, end_col, v
             "debug": f"rc={row_count} full_sel={is_full_row_selection} last_row={is_targeting_last_row}"
         })
     except Exception as e:
-        return json.dumps({"error": str(e)})
+        return json.dumps({ "error": str(e) })
       `);
 
-      await this._parseWorkbook();
+      window.addEventListener('cell-edit', (e: any) => this._onCellEdit(e.detail));
+      window.addEventListener('range-edit', (e: any) => this._onRangeEdit(e.detail));
+      window.addEventListener('metadata-edit', (e: any) => this._handleMetadataEdit(e.detail));
 
+      // Handle messages from the extension
       window.addEventListener('message', async (event) => {
         const message = event.data;
         switch (message.type) {
@@ -317,15 +353,21 @@ def delete_range(sheet_idx, table_idx, start_row, end_row, start_col, end_col, v
             break;
         }
       });
+
+
+      // Valid initialization - Parsing initial content
+      console.log("Pyodide initialized. Parsing initial content...");
+      await this._parseWorkbook();
+
     } catch (e: any) {
-      this.output = `Error initializing Pyodide: ${e.message}`;
+      this.output = `Error initializing Pyodide: ${e.message} `;
       console.error(e);
     }
   }
 
   render() {
     if (!this.tabs.length && !this.output) {
-      return html`<div class="output">Loading...</div>`;
+      return html`< div class="output" > Loading...</div>`;
     }
 
     return this._renderContent();
@@ -377,11 +419,24 @@ def delete_range(sheet_idx, table_idx, start_row, end_row, start_col, end_col, v
         <div class="bottom-tabs">
             ${this.tabs.map((tab, index) => html`
                 <div 
-                    class="tab-item ${this.activeTabIndex === index ? 'active' : ''}"
-                    @click="${() => this.activeTabIndex = index}"
+                    class="tab-item ${this.activeTabIndex === index ? 'active' : ''} ${tab.type === 'add-sheet' ? 'add-sheet-tab' : ''}"
+                    @click="${() => tab.type === 'add-sheet' ? this._handleAddSheet() : this.activeTabIndex = index}"
+                    @dblclick="${() => this._handleTabDoubleClick(index, tab)}"
+                    title="${tab.type === 'add-sheet' ? 'Add New Sheet' : ''}"
                 >
                      ${this._renderTabIcon(tab)}
-                    ${tab.title}
+                     ${this.editingTabIndex === index ? html`
+                        <input 
+                            class="tab-input" 
+                            .value="${tab.title}" 
+                            @click="${(e: Event) => e.stopPropagation()}"
+                            @dblclick="${(e: Event) => e.stopPropagation()}"
+                            @keydown="${(e: KeyboardEvent) => this._handleTabInputKey(e, index, tab)}"
+                            @blur="${(e: Event) => this._handleTabRename(index, tab, (e.target as HTMLInputElement).value)}"
+                        />
+                     ` : html`
+                        ${tab.type !== 'add-sheet' ? tab.title : ''}
+                     `}
                 </div>
             `)}
         </div>
@@ -393,13 +448,159 @@ def delete_range(sheet_idx, table_idx, start_row, end_row, start_col, end_col, v
       return html`<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M3 3h10v10H3V3zm1 1v3h3V4H4zm4 0v3h3V4H8zm-4 4v3h3V8H4zm4 0v3h3V8H4zm4 0v3h3V8H8z"/></svg>`;
     } else if (tab.type === 'document') {
       return html``;
+    } else if (tab.type === 'add-sheet') {
+      // Using the text content '+' in render loop, so maybe no icon needed? 
+      // Or return a plus icon SVG. Title is '+' in definition.
+      // Let's use SVG for better look.
+      return html`<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/></svg>`;
     } else {
       return html`<svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M14 7H9V2H7v5H2v2h5v5h2V9h5V7z"/></svg>`;
     }
   }
 
+
+
+  private _handleTabDoubleClick(index: number, tab: TabDefinition) {
+    if (tab.type === 'sheet') {
+      this.editingTabIndex = index;
+      // Focus input after render? Lit handles it if we use ref, or simple timeout
+      setTimeout(() => {
+        const input = this.shadowRoot?.querySelector('.tab-input') as HTMLInputElement;
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }, 0);
+    }
+  }
+
+  private _handleTabInputKey(e: KeyboardEvent, index: number, tab: TabDefinition) {
+    if (e.key === 'Enter') {
+      (e.target as HTMLInputElement).blur(); // Trigger blur handler
+    } else if (e.key === 'Escape') {
+      this.editingTabIndex = null;
+    }
+  }
+
+  private _handleTabRename(index: number, tab: TabDefinition, newName: string) {
+    if (this.editingTabIndex !== index) return;
+    this.editingTabIndex = null; // Exit edit mode
+
+    if (!newName || newName === tab.title) return;
+
+    // Commit change
+    if (tab.type === 'sheet' && tab.data && typeof tab.data.header_line === 'number') {
+      const headerLevel = (this.config as any)?.sheetHeaderLevel || 2;
+      const headerHashes = '#'.repeat(headerLevel);
+      const newHeader = `${headerHashes} ${newName}`;
+
+      vscode.postMessage({
+        type: 'updateRange',
+        startLine: tab.data.header_line,
+        endLine: tab.data.header_line,
+        content: newHeader
+      });
+    }
+  }
+
+  private _handleAddSheet() {
+    if (!this.workbook) return; // Should not happen if add-sheet is visible? Actually it can if workbook structure exists but empty.
+
+    // Determine where to insert.
+    // We want to insert after the last table in the workbook.
+    // If no tables, we insert after the workbook header marker? 
+    // How do we know the specific line?
+    // Our parser returns `start_line` and `end_line` for each table.
+
+    let insertLine = -1;
+    let newSheetName = "Sheet 1";
+
+    if (this.workbook.sheets && this.workbook.sheets.length > 0) {
+      const lastSheet = this.workbook.sheets[this.workbook.sheets.length - 1];
+      // Assuming lastSheet corresponds to last table in file? 
+      // Not necessarily if tables are interspersed with text, but in "Workbook" mode they are usually contiguous.
+      // However, the `workbook` object aggregates ALL tables found in the workbook section.
+      // So the "last sheet" in the list generally corresponds to the last table in that section.
+
+      // Last sheet has tables
+      if (lastSheet.tables && lastSheet.tables.length > 0) {
+        const lastTable = lastSheet.tables[lastSheet.tables.length - 1];
+        if (lastTable.end_line !== null) {
+          insertLine = lastTable.end_line + 1;
+        }
+      } else {
+        // Fallback if sheet has no tables? (Empty sheet?)
+        // Not sure if end_line exists on sheet itself.
+      }
+      newSheetName = `Sheet ${this.workbook.sheets.length + 1}`;
+    } else {
+      // No sheets. We need to find the line of the Root Marker.
+      // We don't have that easily available in `this.workbook`.
+      // But `extract_structure` found it. 
+      // Maybe we can append to End of File if workbook section is the only thing or last thing?
+      // For safety, let's append to the end of document if we can't find a better place.
+      // Or search for the marker in `this.markdownInput`?
+
+      insertLine = this.markdownInput.split('\n').length;
+    }
+
+    // Construct Empty Table Markdown
+    // Name: newSheetName
+    // Header: A | B | C
+    // Row 1: | | |
+
+    // Get sheet header level from config (default to 2)
+    const headerLevel = (this.config as any)?.sheetHeaderLevel || 2;
+    const headerHashes = '#'.repeat(headerLevel);
+
+    // We create a new Sheet section.
+    // The table follows immediately. Explicit table header is omitted (anonymous table in sheet).
+    const newTableMd = `\n\n${headerHashes} ${newSheetName}\n\n| A | B | C |\n|---|---|---|\n|   |   |   |\n`;
+
+    // Use updateRange with startLine = insertLine, endLine = insertLine (Insert)
+    vscode.postMessage({
+      type: 'updateRange',
+      startLine: insertLine,
+      endLine: insertLine,
+      content: newTableMd
+    });
+  }
+
   private _onCreateSpreadsheet() {
     vscode.postMessage({ type: 'createSpreadsheet' });
+  }
+
+
+  private async _handleMetadataEdit(detail: any) {
+    if (!this.pyodide || !this.workbook) return;
+
+    const { sheetIndex, tableIndex, name, description } = detail;
+
+    // Calculate update range using Python
+    const result = await this.pyodide.runPythonAsync(`
+        import json
+        res = calculate_metadata_update(
+            ${sheetIndex}, 
+            ${tableIndex}, 
+            ${JSON.stringify(name)}, 
+            ${JSON.stringify(description)}, 
+            workbook_json, 
+            md_text, 
+            config_dict.get("tableHeaderLevel", 3)
+        )
+        json.dumps(res) if res else "null"
+      `);
+
+    const updateSpec = JSON.parse(result);
+
+    if (updateSpec) {
+      vscode.postMessage({
+        type: 'updateRange',
+        startLine: updateSpec.startLine,
+        endLine: updateSpec.endLine, // Python calculated exclusive end (start_line of table)
+        content: updateSpec.content
+      });
+    }
   }
 
   private async _onCellEdit(e: CustomEvent) {
@@ -427,6 +628,8 @@ delete_range(${sheetIdx}, ${tableIdx}, ${startRow}, ${endRow}, ${startCol}, ${en
         console.error("Error updating range:", result.error);
         return;
       }
+
+
 
       // console.log("Delete Range Debug:", result.debug);
 
@@ -464,11 +667,108 @@ schema = MultiTableParsingSchema(
   strip_whitespace = config_dict.get("stripWhitespace", True)
 )
 
+
+def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_level):
+    lines = md_text.split('\\n')
+    
+    # Find root marker first to replicate parse_workbook skip logic
+    start_index = 0
+    if root_marker:
+        for i, line in enumerate(lines):
+            if line.strip() == root_marker:
+                start_index = i + 1
+                break
+                
+    header_prefix = "#" * sheet_header_level + " "
+    
+    current_sheet_idx = 0
+    
+    # Simple scan for sheet headers
+    # We assume parse_workbook found them in order.
+    for idx, line in enumerate(lines[start_index:], start=start_index):
+        stripped = line.strip()
+        
+        # Check for higher-level headers that would break workbook parsing
+        if stripped.startswith("#"):
+             level = 0
+             for char in stripped:
+                 if char == "#":
+                     level += 1
+                 else:
+                     break
+             if level < sheet_header_level:
+                 break
+
+        if stripped.startswith(header_prefix):
+            if current_sheet_idx < len(workbook_dict['sheets']):
+                workbook_dict['sheets'][current_sheet_idx]['header_line'] = idx
+                current_sheet_idx += 1
+            else:
+                break
+                
+    return workbook_dict
+
+def calculate_metadata_update(sheet_idx, table_idx, new_name, new_desc, workbook_dict, md_text, header_level):
+    try:
+        sheet = workbook_dict['sheets'][sheet_idx]
+        table = sheet['tables'][table_idx]
+        start_line = table['start_line']
+    except Exception as e:
+        return None
+        
+    lines = md_text.split('\\n')
+    current_idx = start_line - 1
+    metadata_start = start_line
+    
+    header_prefix = '#' * header_level + ' '
+    
+    # 1. Has Name? Search for header
+    if table.get('name'):
+        for i in range(current_idx, -1, -1):
+            line = lines[i].strip()
+            if line.startswith(header_prefix) and table['name'] in line:
+               metadata_start = i
+               break
+            if line.startswith('#') and not line.startswith(header_prefix):
+               break
+    # 2. No Name? Search for description start if exists
+    elif table.get('description'):
+        for i in range(current_idx, -1, -1):
+            if not lines[i].strip():
+                metadata_start = i + 1
+                break
+            if lines[i].startswith('#'):
+                metadata_start = i + 1
+                break
+        else:
+            metadata_start = 0
+
+    new_content_lines = []
+    if new_name:
+        new_content_lines.append(f"{header_prefix}{new_name}")
+    if new_desc:
+        new_content_lines.append(new_desc)
+    
+    # Always ensure a newline if we have content, so it sits on its own lines
+    new_content = '\\n'.join(new_content_lines)
+    if new_content:
+        new_content += '\\n'
+
+    return {
+        'startLine': metadata_start,
+        'endLine': start_line, 
+        'content': new_content
+    }
+
+
 workbook = parse_workbook(md_text, schema)
+workbook_json = workbook.json
+augment_workbook_metadata(workbook_json, md_text, config_dict.get("rootMarker", "# Tables"), config_dict.get("sheetHeaderLevel", 2))
+
 structure_json = extract_structure(md_text, config_dict.get("rootMarker", "# Tables"))
 
 json.dumps({
-    "workbook": workbook.json,
+    "workbook": workbook_json,
     "structure": json.loads(structure_json)
 })
       `);
@@ -499,6 +799,12 @@ json.dumps({
                 sheetIndex: shIdx,
                 data: sheet
               });
+            });
+            // Add "Add Sheet" button at the end of the sheets
+            newTabs.push({
+              type: 'add-sheet',
+              title: '+',
+              index: newTabs.length
             });
           } else {
             // Empty workbook section

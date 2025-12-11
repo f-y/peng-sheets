@@ -159,4 +159,132 @@ describe('SpreadsheetTable Deletion Logic', () => {
         expect(eventDetail).not.toBeNull();
         expect(eventDetail.endCol).toBe(Number.MAX_SAFE_INTEGER);
     });
+
+    it('Navigation: Shift+Enter moves selection UP', async () => {
+        // Start at Row 1, Col 0
+        el.selectedRow = 1;
+        el.selectedCol = 0;
+        await el.updateComplete;
+
+        (el as any)._handleNavigationKey(new KeyboardEvent('keydown', {
+            key: 'Enter',
+            shiftKey: true
+        }));
+        await el.updateComplete;
+
+        expect(el.selectedRow).toBe(0);
+        expect(el.selectedCol).toBe(0);
+    });
+
+    it('Navigation: Edit Mode Shift+Enter commits and moves UP', async () => {
+        // Start at Row 1, Col 0
+        el.selectedRow = 1;
+        el.selectedCol = 0;
+        await el.updateComplete;
+
+        // Enter Edit Mode
+        (el as any)._startEditing('Old Value');
+        await el.updateComplete;
+
+        // Verify editing state physically
+        const editingCell = el.shadowRoot?.querySelector('.cell.editing');
+        expect(editingCell).not.toBeNull();
+
+        // Dispatch Shift+Enter on the input element inside the cell?
+        // _handleEditModeKey is attached to window/document or cell?
+        // In render: @keydown=${(e) => this._handleKeyDown(e)} on the cell div.
+        // So we should dispatch on the editing cell.
+
+        editingCell?.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter',
+            shiftKey: true,
+            bubbles: true,
+            composed: true
+        }));
+        await el.updateComplete;
+
+        expect(el.selectedRow).toBe(0);
+        expect(el.selectedCol).toBe(0);
+        expect((el as any).isEditing).toBe(false);
+    });
+
+    it('Navigation: Shift+Tab moves selection LEFT', async () => {
+        // Start at Row 0, Col 1
+        el.selectedRow = 0;
+        el.selectedCol = 1;
+        await el.updateComplete;
+
+        (el as any)._handleKeyDown(new KeyboardEvent('keydown', {
+            key: 'Tab',
+            shiftKey: true
+        }));
+        await el.updateComplete;
+        expect(el.selectedRow).toBe(0);
+        expect(el.selectedCol).toBe(0);
+    });
+
+
+
+    it('Regression: Ghost Row Edit - Click Away Interaction (Commit & Selection)', async () => {
+        // Setup: 2 rows. Ghost Row index = 2.
+        el.table = {
+            rows: [['A1', 'B1'], ['A2', 'B2']],
+            headers: ['H1', 'H2'],
+            name: 'Test',
+            description: '',
+            metadata: {},
+            start_line: 0,
+            end_line: 0
+        };
+        await el.updateComplete;
+
+        // 1. Enter Edit Mode on Ghost Row
+        el.selectedRow = 2;
+        el.selectedCol = 0;
+        await el.updateComplete;
+        (el as any)._startEditing('Old');
+        await el.updateComplete;
+
+        const editingCell = el.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
+        expect(editingCell).not.toBeNull();
+
+        // 2. User Types 'New'
+        // Crucial: We must update innerText AND fire input (like real user)
+        editingCell.innerText = 'New Content';
+        editingCell.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+
+        // 3. User clicks away (Mousedown on Row 0)
+        // THIS IS THE MOMENT.
+        // The mousedown handler runs. It updates selectedRow = 0.
+        // This triggers requestUpdate().
+        const cell00 = el.shadowRoot?.querySelector('div[data-row="0"][data-col="0"]');
+        cell00?.dispatchEvent(new MouseEvent('mousedown', {
+            bubbles: true,
+            composed: true,
+            buttons: 1
+        }));
+
+        // 4. Force Update (Simulate Render BEFORE Blur)
+        // In the buggy scenario, Lit updates the DOM, wiping the Ghost Row (because selectedRow != 2 anymore).
+        // The Ghost Row becomes empty text.
+        await el.updateComplete;
+
+        // 5. Blur happens LATE (after Render)
+        editingCell.dispatchEvent(new FocusEvent('blur', {
+            bubbles: false,
+            composed: false
+        }));
+
+        await el.updateComplete;
+
+        // 6. Verify Data Safely Saved
+        expect(el.table?.rows.length).toBe(3);
+        if (el.table?.rows.length === 3) {
+            expect(el.table.rows[2][0]).toBe('New Content');
+        }
+
+        // 7. Verify Selection Moved
+        expect(el.selectedRow).toBe(0);
+        expect(el.selectedCol).toBe(0);
+    });
 });

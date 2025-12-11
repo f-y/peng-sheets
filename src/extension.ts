@@ -69,6 +69,7 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.ViewColumn.Beside,
             {
                 enableScripts: true,
+                retainContextWhenHidden: true, // Keep Pyodide alive when switching tabs
                 localResourceRoots: [
                     vscode.Uri.joinPath(context.extensionUri, 'out', 'webview'),
                     vscode.Uri.joinPath(context.extensionUri, 'resources')

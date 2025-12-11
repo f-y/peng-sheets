@@ -158,17 +158,46 @@ export class SpreadsheetTable extends LitElement {
     /* Corner Cell */
     .header-corner {
         background-color: var(--header-bg);
+        z-index: 20; /* Higher than headers */
         position: sticky;
         top: 0;
         left: 0;
-        color: var(--header-bg);
-        z-index: 20;
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
-        padding: 0 0.6rem;
+        text-align: center;
+        color: var(--vscode-descriptionForeground);
+        user-select: none;
+        outline-offset: -2px;
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+    .metadata-input-title {
+        font-size: 1.17em; /* h3 size */
+        font-weight: bold;
+        width: 100%;
+        margin: 1rem 0 0.5rem 0;
+        box-sizing: border-box;
+        border: 1px solid var(--border-color); /* Transparent? */
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        padding: 4px;
+    }
+    
+    .metadata-input-desc {
+        width: 100%;
+        margin: 0 0 1rem 0;
+        box-sizing: border-box;
+        border: 1px solid var(--border-color);
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        font-family: inherit;
+        padding: 4px;
+    }
+    
+    .metadata-container {
+        margin-bottom: 0.5rem;
     }
   `;
 
@@ -189,6 +218,15 @@ export class SpreadsheetTable extends LitElement {
 
     @state()
     isEditing: boolean = false;
+
+    @state()
+    editingMetadata: boolean = false;
+
+    @state()
+    pendingTitle: string = "";
+
+    @state()
+    pendingDescription: string = "";
 
     // To track if we should focus the element after update
     private _shouldFocusCell: boolean = false;
@@ -248,10 +286,23 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _handleCellClick(e: MouseEvent, rowIndex: number, colIndex: number) {
-        if (this.isEditing) return; // Don't change selection if editing (unless clicked outside? handled by blur)
+        // Explicitly commit if we were editing to ensure we capture value BEFORE selection changes/re-render.
+        if (this.isEditing) {
+            this._commitEdit(new Event('manual-commit'));
+        }
+
         this.selectedRow = rowIndex;
         this.selectedCol = colIndex;
-        this._shouldFocusCell = true; // Focus handled naturally by click usually, but good to enforce
+
+        // If we are clicking, we probably want to focus the cell.
+        // If we were editing, blur happens, commit happens.
+        // Then focus moves to new selection.
+        this._shouldFocusCell = true;
+    }
+
+    private _handleInput(e: Event) {
+        const target = e.target as HTMLElement;
+        this._pendingEditValue = target.innerText;
     }
 
     private _handleCellDblClick(e: MouseEvent, rowIndex: number, colIndex: number) {
@@ -293,25 +344,32 @@ export class SpreadsheetTable extends LitElement {
         if (e.key === 'Enter') {
             e.preventDefault();
             this._commitEdit(e);
-            // Move down? Standards say Enter commits and usually moves down
-            if (this.selectedRow < (this.table?.rows.length || 0)) {
-                this._moveSelection(1, 0);
-            }
+            // Move down (or up if Shift)
+            const dRow = e.shiftKey ? -1 : 1;
+            // Ensure we don't move out of bounds excessively (logic in _moveSelection handles clamping but we can check basic bounds)
+            this._moveSelection(dRow, 0);
         } else if (e.key === 'Tab') {
             e.preventDefault();
             this._commitEdit(e);
 
-            // Tab Logic: Move Right. If last col, move to next row first col.
             const colCount = this.table?.headers ? this.table.headers.length : (this.table?.rows[0]?.length || 0);
 
-            if (this.selectedCol === colCount - 1) {
-                // Wrap to next row
-                // User said "move to the cell below" (Next line). 
-                // Implicitly this usually means first cell of next line in text editors, 
-                // but in Excel selection wrap it is A(n+1).
-                this._moveSelection(1, -this.selectedCol); // +1 Row, Reset Col to 0 (delta = -current)
+            if (e.shiftKey) {
+                // Shift+Tab: Move Left
+                if (this.selectedCol === 0) {
+                    // Wrap to previous row (Last Col)
+                    this._moveSelection(-1, colCount - 1 - this.selectedCol); // -1 Row, Target Col (colCount-1) - Current(0) = colCount-1
+                } else {
+                    this._moveSelection(0, -1);
+                }
             } else {
-                this._moveSelection(0, 1);
+                // Tab: Move Right
+                if (this.selectedCol === colCount - 1) {
+                    // Wrap to next row (First Col)
+                    this._moveSelection(1, -this.selectedCol); // +1 Row, Reset Col to 0
+                } else {
+                    this._moveSelection(0, 1);
+                }
             }
         } else if (e.key === 'Escape') {
             e.preventDefault();
@@ -339,7 +397,39 @@ export class SpreadsheetTable extends LitElement {
                 return;
             case 'Enter':
                 e.preventDefault();
-                dRow = 1;
+                if (this.isEditing) {
+                    // Logic handled in EditModeKey usually, but just in case
+                }
+                dRow = e.shiftKey ? -1 : 1;
+                break;
+            case 'Tab':
+                e.preventDefault();
+                // Logic same as Edit Mode but no commit needed (already saved or not editing)
+                // Actually if we were editing, handleEditModeKey would catch it.
+                // So this is purely Navigation Mode.
+
+                const colCount = this.table?.headers ? this.table.headers.length : (this.table?.rows[0]?.length || 0);
+                if (e.shiftKey) {
+                    // Shift+Tab: Move Left
+                    if (this.selectedCol === 0) {
+                        // Wrap to previous row
+                        // We can't use dRow/dCol simple accumulation for wrapping easily unless we custom handle
+                        // So we call _moveSelection directly and return
+                        this._moveSelection(-1, colCount - 1 - this.selectedCol);
+                        return;
+                    } else {
+                        dCol = -1;
+                    }
+                } else {
+                    // Tab: Move Right
+                    if (this.selectedCol === colCount - 1) {
+                        // Wrap to next row
+                        this._moveSelection(1, -this.selectedCol);
+                        return;
+                    } else {
+                        dCol = 1;
+                    }
+                }
                 break;
             default:
                 return;
@@ -430,69 +520,83 @@ export class SpreadsheetTable extends LitElement {
         this._isCommitting = true;
 
         try {
-            const target = e.target as HTMLElement;
-            // Safety check
-            let cell = target;
-            if (!cell.classList.contains('cell')) {
-                const found = this.shadowRoot?.querySelector('.cell.editing');
-                if (found) cell = found as HTMLElement;
-                else return;
-            }
 
-            let newValue = cell.innerText;
-            if (newValue === '\n') {
-                newValue = "";
-            }
+            try {
+                const target = e.target as HTMLElement;
+                // Safety check
+                let cell = target;
+                if (!cell || !cell.classList || !cell.classList.contains('cell')) {
+                    const found = this.shadowRoot?.querySelector('.cell.editing');
+                    if (found) cell = found as HTMLElement;
+                    else return; // If no editing cell found, nothing to commit
+                }
 
-            // Remove manual clear to prevent Lit dirty-check failure (Fixes Disappearing Text)
-            // if (cell) cell.textContent = "";
+                let newValue = this._pendingEditValue !== null ? this._pendingEditValue : cell.innerText;
+                if (newValue === '\n') {
+                    newValue = "";
+                }
 
-            // Optimistic Update
-            if (this.table && this.selectedCol >= 0) { // Row can be -1 (Header) or length (Ghost)
+                // Remove manual clear to prevent Lit dirty-check failure (Fixes Disappearing Text)
+                // if (cell) cell.textContent = "";
 
-                // Header Update
-                if (this.selectedRow === -1) {
-                    if (this.table.headers && this.selectedCol < this.table.headers.length) {
-                        this.table.headers[this.selectedCol] = newValue;
+                // Parse coordinates from the cell element
+                let editRow = parseInt(cell.dataset.row || "-10"); // -10 as invalid sentinel
+                let editCol = parseInt(cell.dataset.col || "-10");
+
+                // Fallback to selected if parsing fails (should not happen)
+                if (isNaN(editRow)) editRow = this.selectedRow;
+                if (isNaN(editCol)) editCol = this.selectedCol;
+
+                // Optimistic Update
+                if (this.table && editCol >= 0) {
+
+                    // Header Update
+                    if (editRow === -1) {
+                        if (this.table.headers && editCol < this.table.headers.length) {
+                            this.table.headers[editCol] = newValue;
+                        }
                     }
-                }
-                // Body Update
-                else if (this.selectedRow >= 0 && this.selectedRow < this.table.rows.length) {
-                    if (this.selectedCol < this.table.rows[this.selectedRow].length) {
-                        this.table.rows[this.selectedRow][this.selectedCol] = newValue;
+                    // Body Update
+                    else if (editRow >= 0 && editRow < this.table.rows.length) {
+                        if (editCol < this.table.rows[editRow].length) {
+                            this.table.rows[editRow][editCol] = newValue;
+                        }
                     }
-                }
-                // Ghost Row Update (Add Row)
-                else if (this.selectedRow === this.table.rows.length) {
-                    // Create new row
-                    const width = this.table.headers ? this.table.headers.length : (this.table.rows[0]?.length || 0);
-                    const newRow = new Array(width).fill("");
-                    if (this.selectedCol < width) newRow[this.selectedCol] = newValue;
-                    this.table.rows.push(newRow);
+                    // Ghost Row Update (Add Row)
+                    else if (editRow === this.table.rows.length) {
+                        // Create new row
+                        const width = this.table.headers ? this.table.headers.length : (this.table.rows[0]?.length || 0);
+                        const newRow = new Array(width).fill("");
+                        if (editCol < width) newRow[editCol] = newValue;
+                        this.table.rows.push(newRow);
+                    }
+
+                    this.requestUpdate();
                 }
 
-                this.requestUpdate();
+                // Dispatch update
+                this.dispatchEvent(new CustomEvent('cell-edit', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        rowIndex: editRow,
+                        colIndex: editCol,
+                        newValue: newValue
+                    },
+                    bubbles: true,
+                    composed: true
+                }));
+
+                this.isEditing = false;
+                this._shouldFocusCell = true; // Focus back to item
+            } finally {
+                // Short delay to prevent blur from triggering immediately after?
+                // Or just reset.
+                this._isCommitting = false;
+                this._pendingEditValue = null;
             }
-
-            // Dispatch update
-            this.dispatchEvent(new CustomEvent('cell-edit', {
-                detail: {
-                    sheetIndex: this.sheetIndex,
-                    tableIndex: this.tableIndex,
-                    rowIndex: this.selectedRow,
-                    colIndex: this.selectedCol,
-                    newValue: newValue
-                },
-                bubbles: true,
-                composed: true
-            }));
-
-            this.isEditing = false;
-            this._shouldFocusCell = true; // Focus back to item
-        } finally {
-            // Short delay to prevent blur from triggering immediately after?
-            // Or just reset.
-            this._isCommitting = false;
+        } catch (err) {
+            // Ignore error or log unobtrusively if needed
         }
     }
 
@@ -623,6 +727,44 @@ export class SpreadsheetTable extends LitElement {
         }));
     }
 
+    private _handleMetadataDblClick() {
+        if (!this.table) return;
+        this.pendingTitle = this.table.name || "";
+        this.pendingDescription = this.table.description || "";
+        this.editingMetadata = true;
+        setTimeout(() => {
+            const input = this.shadowRoot?.querySelector('.metadata-input-title') as HTMLInputElement;
+            if (input) input.focus();
+        }, 0);
+    }
+
+    private _handleMetadataKeydown(e: KeyboardEvent) {
+        if (e.key === 'Escape') {
+            this.editingMetadata = false;
+        } else if (e.key === 'Enter' && e.ctrlKey) {
+            // Ctrl+Enter to commit? Or just blur.
+            this._commitMetadata();
+        }
+    }
+
+    private _commitMetadata() {
+        if (!this.editingMetadata) return;
+        this.editingMetadata = false;
+
+        if (this.pendingTitle !== (this.table?.name || "") || this.pendingDescription !== (this.table?.description || "")) {
+            this.dispatchEvent(new CustomEvent('metadata-edit', {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    name: this.pendingTitle,
+                    description: this.pendingDescription
+                },
+                bubbles: true,
+                composed: true
+            }));
+        }
+    }
+
     private _handleRowHeaderClick(e: MouseEvent, rowIndex: number) {
         this.selectedRow = rowIndex;
         this.selectedCol = -2;
@@ -650,11 +792,38 @@ export class SpreadsheetTable extends LitElement {
 
         return html`
         <div>
-            ${table.name
-                ? html`<h3 style="margin: 1rem 0 0.5rem 0; color: var(--vscode-foreground);">${table.name}</h3>`
-                : html`<h3 style="margin: 1rem 0 0.5rem 0; color: var(--vscode-disabledForeground); font-style: italic;">(Untitled Table)</h3>`
+            ${this.editingMetadata
+                ? html`
+                  <div class="metadata-container">
+                      <input 
+                          class="metadata-input-title" 
+                          .value="${this.pendingTitle}"
+                          @input="${(e: Event) => this.pendingTitle = (e.target as HTMLInputElement).value}"
+                          @keydown="${(e: KeyboardEvent) => this._handleMetadataKeydown(e)}"
+                          placeholder="Table Name"
+                      />
+                      <input 
+                          class="metadata-input-desc" 
+                          .value="${this.pendingDescription}"
+                          @input="${(e: Event) => this.pendingDescription = (e.target as HTMLInputElement).value}"
+                          @keydown="${(e: KeyboardEvent) => { if (e.key === 'Enter') this._commitMetadata(); else this._handleMetadataKeydown(e); }}"
+                          @blur="${() => { setTimeout(() => { if (!this.shadowRoot?.activeElement?.classList.contains('metadata-input-title')) this._commitMetadata(); }, 200); }}"
+                          placeholder="Description (Optional)"
+                      />
+                  </div>
+              `
+                : html`
+                <div @dblclick="${() => this._handleMetadataDblClick()}">
+                    ${table.name
+                        ? html`<h3 style="margin: 1rem 0 0.5rem 0; color: var(--vscode-foreground);">${table.name}</h3>`
+                        : html`<h3 style="margin: 1rem 0 0.5rem 0; color: var(--vscode-disabledForeground); font-style: italic;">(Untitled Table)</h3>`
+                    }
+                    ${table.description
+                        ? html`<p style="margin: 0 0 1rem 0; color: var(--vscode-descriptionForeground);">${table.description}</p>`
+                        : (this.isEditing ? html`<p style="margin: 0 0 1rem 0; color: var(--vscode-disabledForeground); font-style: italic; opacity: 0.7;">Double-click to add description</p>` : '')}
+                </div>
+              `
             }
-            ${table.description ? html`<p style="margin: 0 0 1rem 0; color: var(--vscode-descriptionForeground);">${table.description}</p>` : ''}
             
             <div class="table-container">
                 <div class="grid" style="${gridStyle}">
@@ -668,7 +837,7 @@ export class SpreadsheetTable extends LitElement {
                         @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e, true)}"
                     >${table.rows.length}</div>
 
-                    <!-- Column Headers (Integrated) -->
+                    <!-- Column Headers -->
                     ${Array.from({ length: colCount }).map((_, i) => html`
                         <div 
                             class="cell header-col ${this.selectedCol === i && this.selectedRow === -2 ? 'selected' : ''} ${isHeaderEditable(i) ? 'editing' : ''}"
@@ -677,7 +846,7 @@ export class SpreadsheetTable extends LitElement {
                             data-col="${i}"
                             tabindex="${this.selectedCol === i && this.selectedRow === -2 ? '0' : '-1'}"
                             contenteditable="${isHeaderEditable(i) ? 'true' : 'false'}"
-                            @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
+                            @mousedown="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
                             @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
                             @blur="${(e: FocusEvent) => this._handleBlur(e)}"
                             @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e, true)}"
@@ -694,7 +863,7 @@ export class SpreadsheetTable extends LitElement {
                             data-row="${rowIndex}"
                             data-col="-2"
                             tabindex="${this.selectedRow === rowIndex && this.selectedCol === -2 ? '0' : '-1'}"
-                            @click="${(e: MouseEvent) => this._handleRowHeaderClick(e, rowIndex)}"
+                            @mousedown="${(e: MouseEvent) => this._handleRowHeaderClick(e, rowIndex)}"
                             @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e, true)}"
                         >${rowIndex + 1}</div>
                         
@@ -720,24 +889,25 @@ export class SpreadsheetTable extends LitElement {
                 }
 
                 const isEditableFunc = () => {
-                    // Only exact cell match allows editing
                     return this.isEditing && this.selectedRow === rowIndex && this.selectedCol === colIndex;
                 };
 
                 return html`
-                            <div 
-                                class="cell ${selectionClass} ${isEditableFunc() ? 'editing' : ''}"
-                                data-row="${rowIndex}"
-                                data-col="${colIndex}"
-                                tabindex="${this.selectedRow === rowIndex && this.selectedCol === colIndex ? '0' : '-1'}"
-                                contenteditable="${isEditableFunc() ? 'true' : 'false'}"
-                                @click="${(e: MouseEvent) => this._handleCellClick(e, rowIndex, colIndex)}"
-                                @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, rowIndex, colIndex)}"
-                                @blur="${(e: FocusEvent) => this._handleBlur(e)}"
-                                @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e)}"
-                                .textContent=${cell}
-                            ></div>
-                        `;
+                                <div 
+                                    class="cell ${selectionClass} ${isEditableFunc() ? 'editing' : ''}"
+                                    data-row="${rowIndex}"
+                                    data-col="${colIndex}"
+                                    tabindex="${this.selectedRow === rowIndex && this.selectedCol === colIndex ? '0' : '-1'}"
+                                    contenteditable="${isEditableFunc() ? 'true' : 'false'}"
+                                    @click="${(e: MouseEvent) => { }}" 
+                                    @mousedown="${(e: MouseEvent) => this._handleCellClick(e, rowIndex, colIndex)}"
+                                    @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, rowIndex, colIndex)}"
+                                    @blur="${(e: FocusEvent) => this._handleBlur(e)}"
+                                    @input="${(e: Event) => this._handleInput(e)}"
+                                    @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e)}"
+                                    .textContent=${cell}
+                                ></div>
+                            `;
             })}
                     `)}
 
@@ -750,9 +920,10 @@ export class SpreadsheetTable extends LitElement {
                             data-col="${colIndex}"
                             tabindex="${this.selectedRow === table.rows.length && this.selectedCol === colIndex ? '0' : '-1'}"
                             contenteditable="${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'true' : 'false'}"
-                            @click="${(e: MouseEvent) => this._handleCellClick(e, table.rows.length, colIndex)}"
+                            @mousedown="${(e: MouseEvent) => this._handleCellClick(e, table.rows.length, colIndex)}"
                             @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, table.rows.length, colIndex)}"
                             @blur="${(e: FocusEvent) => this._handleBlur(e)}"
+                            @input="${(e: Event) => this._handleInput(e)}"
                             @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e)}"
                             .textContent=${live("")}
                         ></div>
@@ -760,6 +931,6 @@ export class SpreadsheetTable extends LitElement {
                 </div>
             </div>
         </div>
-    `;
+        `;
     }
 }
