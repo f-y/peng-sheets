@@ -1,4 +1,4 @@
-import { html, css, LitElement, PropertyValues } from "lit";
+import { html, css, LitElement, PropertyValues, noChange } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { live } from "lit/directives/live.js";
 import { provideVSCodeDesignSystem, vsCodeButton } from "@vscode/webview-ui-toolkit";
@@ -199,6 +199,34 @@ export class SpreadsheetTable extends LitElement {
     .metadata-container {
         margin-bottom: 0.5rem;
     }
+
+    .metadata-desc {
+        min-height: 1.5em; /* Ensure clickable even if empty */
+        margin: 0 0 1rem 0;
+    }
+
+    .context-menu {
+        position: fixed;
+        background: var(--vscode-editor-background);
+        border: 1px solid var(--vscode-widget-border);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        min-width: 150px;
+        padding: 4px 0;
+    }
+
+    .context-menu-item {
+        padding: 6px 12px;
+        cursor: pointer;
+        font-family: var(--vscode-font-family);
+        font-size: 13px;
+        color: var(--vscode-foreground);
+    }
+
+    .context-menu-item:hover {
+        background: var(--vscode-list-hoverBackground);
+        color: var(--vscode-list-hoverForeground);
+    }
   `;
 
     @property({ type: Object })
@@ -228,6 +256,10 @@ export class SpreadsheetTable extends LitElement {
     @state()
     pendingDescription: string = "";
 
+    @state()
+    contextMenu: { x: number, y: number, type: 'row' | 'col', index: number } | null = null;
+
+
     // To track if we should focus the element after update
     private _shouldFocusCell: boolean = false;
     private _pendingEditValue: string | null = null; // New state for immediate edit
@@ -240,7 +272,7 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _focusSelectedCell() {
-        if (this.selectedRow >= -1 && this.selectedCol !== -1) {
+        if (this.selectedRow >= -2 && this.selectedCol >= -2) {
             // Find the cell element or header
             let selector = `.cell[data-row="${this.selectedRow}"][data-col="${this.selectedCol}"]`;
 
@@ -447,6 +479,13 @@ export class SpreadsheetTable extends LitElement {
         this.isEditing = true;
         this._pendingEditValue = initialValue;
         this._shouldFocusCell = true;
+
+        if (initialValue !== null) {
+            const cell = this.shadowRoot?.querySelector(`.cell[data-row="${this.selectedRow}"][data-col="${this.selectedCol}"]`) as HTMLElement;
+            if (cell) {
+                cell.innerText = initialValue;
+            }
+        }
     }
 
     private _moveSelection(dRow: number, dCol: number) {
@@ -664,15 +703,14 @@ export class SpreadsheetTable extends LitElement {
         }
         // Column Selection
         else if (this.selectedRow === -2 && this.selectedCol >= 0) {
-            // Content Clear Logic (User Request: Keep Headers)
+            // Content Clear Logic (Reverted to original behavior)
             // Optimistic update locally
+            const rowCount = this.table.rows.length;
             for (let r = 0; r < rowCount; r++) {
                 if (this.selectedCol < this.table.rows[r].length) {
                     this.table.rows[r][this.selectedCol] = "";
                 }
             }
-            // Do NOT clear header locally (or maybe I should? User said "Header as is")
-            // So header remains touched.
 
             triggerUpdate();
 
@@ -755,15 +793,25 @@ export class SpreadsheetTable extends LitElement {
     private _handleMetadataKeydown(e: KeyboardEvent) {
         if (e.isComposing) return;
         if (e.key === 'Escape') {
+            e.preventDefault();
             this.editingMetadata = false;
-        } else if (e.key === 'Enter' && e.ctrlKey) {
-            // Ctrl+Enter to commit? Or just blur.
+        } else if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
             this._commitMetadata();
         }
     }
 
-    private _commitMetadata() {
+    private _commitMetadata(e?: FocusEvent) {
         if (!this.editingMetadata) return;
+
+        // If blurring to another metadata field, do not close
+        if (e && e.relatedTarget) {
+            const target = e.relatedTarget as HTMLElement;
+            if (target.classList.contains('metadata-input-title') || target.classList.contains('metadata-input-desc')) {
+                return;
+            }
+        }
+
         this.editingMetadata = false;
 
         if (this.pendingTitle !== (this.table?.name || "") || this.pendingDescription !== (this.table?.description || "")) {
@@ -792,138 +840,179 @@ export class SpreadsheetTable extends LitElement {
         this._shouldFocusCell = true; // Focus the header
     }
 
+    private _handleContextMenu(e: MouseEvent, type: 'row' | 'col', index: number) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.contextMenu = {
+            x: e.clientX,
+            y: e.clientY,
+            type: type,
+            index: index
+        };
+        // Also select the item
+        if (type === 'row') {
+            this.selectedRow = index;
+            this.selectedCol = -2;
+        } else {
+            this.selectedRow = -2;
+            this.selectedCol = index;
+        }
+    }
+
+    private _closeContextMenu() {
+        this.contextMenu = null;
+    }
+
+    private _dispatchAction(action: string, detail: any) {
+        this.dispatchEvent(new CustomEvent(action, {
+            detail: {
+                sheetIndex: this.sheetIndex,
+                tableIndex: this.tableIndex,
+                ...detail
+            },
+            bubbles: true,
+            composed: true
+        }));
+        this._closeContextMenu();
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        window.addEventListener('click', this._handleGlobalClick);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('click', this._handleGlobalClick);
+    }
+
+    private _handleGlobalClick = (e: MouseEvent) => {
+        // If click is outside menu, close it
+        if (this.contextMenu) {
+            this._closeContextMenu();
+        }
+    }
+
     render() {
         if (!this.table) return html``;
 
         const table = this.table;
         const colCount = table.headers ? table.headers.length : (table.rows.length > 0 ? table.rows[0].length : 0);
 
-        // Grid Template: RowHeader (max-content) + Columns (1fr each)
-        const gridStyle = `grid-template-columns: max-content repeat(${colCount}, minmax(100px, 1fr));`;
-
-        const isHeaderEditable = (colIndex: number) => {
-            return this.isEditing && this.selectedRow === -1 && this.selectedCol === colIndex;
-        };
-
         return html`
-        <div>
-            ${this.editingMetadata
-                ? html`
-                  <div class="metadata-container">
-                      <input 
-                          class="metadata-input-title" 
-                          .value="${this.pendingTitle}"
-                          @input="${(e: Event) => this.pendingTitle = (e.target as HTMLInputElement).value}"
-                          @keydown="${(e: KeyboardEvent) => { if (e.key === 'Enter' && !e.isComposing) this._commitMetadata(); else this._handleMetadataKeydown(e); }}"
-                          placeholder="Table Name"
-                      />
-                      <input 
-                          class="metadata-input-desc" 
-                          .value="${this.pendingDescription}"
-                          @input="${(e: Event) => this.pendingDescription = (e.target as HTMLInputElement).value}"
-                          @keydown="${(e: KeyboardEvent) => { if (e.key === 'Enter' && !e.isComposing) this._commitMetadata(); else this._handleMetadataKeydown(e); }}"
-                          @blur="${() => { setTimeout(() => { if (!this.shadowRoot?.activeElement?.classList.contains('metadata-input-title')) this._commitMetadata(); }, 200); }}"
-                          placeholder="Description (Optional)"
-                      />
-                  </div>
-              `
-                : html`
-                <div @dblclick="${() => this._handleMetadataDblClick()}">
-                    ${table.name
-                        ? html`<h3 style="margin: 1rem 0 0.5rem 0; color: var(--vscode-foreground);">${table.name}</h3>`
-                        : html`<h3 style="margin: 1rem 0 0.5rem 0; color: var(--vscode-disabledForeground); font-style: italic;">(Untitled Table)</h3>`
-                    }
-                    ${table.description
-                        ? html`<p style="margin: 0 0 1rem 0; color: var(--vscode-descriptionForeground);">${table.description}</p>`
-                        : (this.isEditing ? html`<p style="margin: 0 0 1rem 0; color: var(--vscode-disabledForeground); font-style: italic; opacity: 0.7;">Double-click to add description</p>` : '')}
-                </div>
-              `
-            }
-            
+            <div class="metadata-container">
+               ${this.editingMetadata ? html`
+                    <input 
+                        class="metadata-input-title" 
+                        .value="${table.name || ""}" 
+                        placeholder="Table Name"
+                        @input="${(e: Event) => this.pendingTitle = (e.target as HTMLInputElement).value}"
+                        @keydown="${this._handleMetadataKeydown}"
+                        @blur="${this._commitMetadata}"
+                    />
+                    <textarea 
+                        class="metadata-input-desc" 
+                        .value="${table.description || ""}" 
+                        placeholder="Description"
+                        @input="${(e: Event) => this.pendingDescription = (e.target as HTMLInputElement).value}"
+                        @keydown="${this._handleMetadataKeydown}"
+                        @blur="${this._commitMetadata}"
+                        rows="2"
+                    ></textarea>
+               ` : html`
+                     <h3 @dblclick="${this._handleMetadataDblClick}">${table.name || "Table " + (this.tableIndex + 1)}</h3>
+                     ${table.description ? html`
+                        <p class="metadata-desc" @dblclick="${this._handleMetadataDblClick}" style="color: var(--vscode-descriptionForeground);">
+                            ${table.description}
+                        </p>
+                     ` : ''}
+                `}
+            </div>
+
             <div class="table-container">
-                <div class="grid" style="${gridStyle}">
-                    <!-- Corner Cell -->
-                    <div 
-                        class="cell header-corner" 
-                        @click="${() => { this.selectedRow = -2; this.selectedCol = -2; this._shouldFocusCell = true; }}"
-                        style="cursor: pointer;"
-                        title="Select All"
-                        tabindex="${this.selectedRow === -2 && this.selectedCol === -2 ? '0' : '-1'}"
-                        @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e, true)}"
-                    >${table.rows.length}</div>
+                <div class="grid" style="grid-template-columns: 40px repeat(${colCount}, minmax(100px, 1fr));">
+                    <!-- Corner -->
+                    <div class="cell header-corner" @click="${() => { this.selectedRow = -2; this.selectedCol = -2; }}"></div>
 
                     <!-- Column Headers -->
-                    ${Array.from({ length: colCount }).map((_, i) => html`
+                    ${table.headers ? table.headers.map((header, i) => html`
                         <div 
-                            class="cell header-col ${this.selectedCol === i && this.selectedRow === -2 ? 'selected' : ''} ${isHeaderEditable(i) ? 'editing' : ''}"
-                            style="font-weight: bold; cursor: pointer;"
-                            data-row="-1"
+                            class="cell header-col ${this.selectedCol === i || (this.selectedCol === -2 && this.selectedRow === -2) ? 'selected' : ''} ${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'editing' : ''}"
                             data-col="${i}"
-                            tabindex="${this.selectedCol === i && this.selectedRow === -2 ? '0' : '-1'}"
-                            contenteditable="${isHeaderEditable(i) ? 'true' : 'false'}"
-                            @mousedown="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
+                            data-row="-1"
+                            tabindex="0"
+                            contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}"
+                            @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
                             @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
-                            @blur="${(e: FocusEvent) => this._handleBlur(e)}"
-                            @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e, true)}"
-                            .textContent=${table.headers && table.headers[i] ? table.headers[i] : ''}
-                        ></div>
+                            @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
+                            @input="${this._handleInput}"
+                            @blur="${this._handleBlur}"
+                            @keydown="${this._handleKeyDown}"
+                        >
+                            ${header}
+                        </div>
+                    `) : Array.from({ length: colCount }).map((_, i) => html`
+                         <div 
+                            class="cell header-col ${this.selectedCol === i || (this.selectedCol === -2 && this.selectedRow === -2) ? 'selected' : ''} ${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'editing' : ''}"
+                            data-col="${i}"
+                            data-row="-1"
+                            tabindex="0"
+                            contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}"
+                            @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
+                            @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
+                            @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
+                            @input="${this._handleInput}"
+                            @blur="${this._handleBlur}"
+                            @keydown="${this._handleKeyDown}"
+                         >
+                            ${i + 1}
+                         </div>
                     `)}
 
-                    <!-- Data Rows -->
-                    ${table.rows.map((row, rowIndex) => html`
+                    <!-- Rows -->
+                    ${table.rows.map((row, r) => html`
                         <!-- Row Header -->
                         <div 
-                            class="cell header-row ${this.selectedRow === rowIndex && this.selectedCol === -2 ? 'selected' : ''}"
-                            style="cursor: pointer;"
-                            data-row="${rowIndex}"
-                            data-col="-2"
-                            tabindex="${this.selectedRow === rowIndex && this.selectedCol === -2 ? '0' : '-1'}"
-                            @mousedown="${(e: MouseEvent) => this._handleRowHeaderClick(e, rowIndex)}"
-                            @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e, true)}"
-                        >${rowIndex + 1}</div>
-                        
-                        ${row.map((cell, colIndex) => {
-                // Determine selection class
-                let selectionClass = '';
-                if (this.selectedRow === rowIndex && this.selectedCol === colIndex) {
-                    selectionClass = 'selected';
-                } else if (this.selectedRow === rowIndex && this.selectedCol === -2) {
-                    selectionClass = 'selected-row-cell';
-                    if (colIndex === 0) selectionClass += ' first';
-                    if (colIndex === colCount - 1) selectionClass += ' last';
-                } else if (this.selectedRow === -2 && this.selectedCol === colIndex) {
-                    selectionClass = 'selected-col-cell';
-                    if (rowIndex === 0) selectionClass += ' first';
-                    if (rowIndex === table.rows.length - 1) selectionClass += ' last';
-                } else if (this.selectedRow === -2 && this.selectedCol === -2) {
-                    selectionClass = 'selected-all-cell';
-                    if (rowIndex === 0) selectionClass += ' first-row';
-                    if (rowIndex === table.rows.length - 1) selectionClass += ' last-row';
-                    if (colIndex === 0) selectionClass += ' first-col';
-                    if (colIndex === colCount - 1) selectionClass += ' last-col';
-                }
+                            class="cell header-row ${this.selectedRow === r || (this.selectedRow === -2 && this.selectedCol === -2) ? 'selected' : ''}"
+                            data-row="${r}"
+                            tabindex="0"
+                            @click="${(e: MouseEvent) => this._handleRowHeaderClick(e, r)}"
+                            @keydown="${this._handleKeyDown}"
+                            @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
+                        >${r + 1}</div>
 
-                const isEditableFunc = () => {
-                    return this.isEditing && this.selectedRow === rowIndex && this.selectedCol === colIndex;
-                };
+                        <!-- Cells -->
+                        ${row.map((cell, c) => {
+            const isSelected = this.selectedRow === r && this.selectedCol === c;
+            const isRowSelected = this.selectedRow === r && this.selectedCol === -2;
+            const isColSelected = this.selectedRow === -2 && this.selectedCol === c;
+            const isAllSelected = this.selectedRow === -2 && this.selectedCol === -2;
 
-                return html`
+            const classes = [
+                'cell',
+                isSelected ? 'selected' : '',
+                isRowSelected ? 'selected-row-cell' : '',
+                isColSelected ? 'selected-col-cell' : '',
+                isAllSelected ? 'selected-all-cell' : '',
+                this.isEditing && isSelected ? 'editing' : ''
+            ].filter(Boolean).join(' ');
+
+            return html`
                                 <div 
-                                    class="cell ${selectionClass} ${isEditableFunc() ? 'editing' : ''}"
-                                    data-row="${rowIndex}"
-                                    data-col="${colIndex}"
-                                    tabindex="${this.selectedRow === rowIndex && this.selectedCol === colIndex ? '0' : '-1'}"
-                                    contenteditable="${isEditableFunc() ? 'true' : 'false'}"
-                                    @click="${(e: MouseEvent) => { }}" 
-                                    @mousedown="${(e: MouseEvent) => this._handleCellClick(e, rowIndex, colIndex)}"
-                                    @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, rowIndex, colIndex)}"
-                                    @blur="${(e: FocusEvent) => this._handleBlur(e)}"
-                                    @input="${(e: Event) => this._handleInput(e)}"
-                                    @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e)}"
-                                    .textContent=${cell}
+                                    class="${classes}"
+                                    tabindex="${isSelected ? 0 : -1}"
+                                    data-row="${r}" 
+                                    data-col="${c}"
+                                    contenteditable="${this.isEditing && isSelected ? 'true' : 'false'}"
+                                    .textContent="${this.isEditing && isSelected ? noChange : live(cell)}"
+                                    @click="${(e: MouseEvent) => this._handleCellClick(e, r, c)}"
+                                    @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, r, c)}"
+                                    @keydown="${this._handleKeyDown}"
+                                    @input="${this._handleInput}"
+                                    @blur="${this._handleBlur}"
                                 ></div>
-                            `;
-            })}
+                             `;
+        })}
                     `)}
 
                     <!-- Ghost Row (Add Row) -->
@@ -935,15 +1024,28 @@ export class SpreadsheetTable extends LitElement {
                             data-col="${colIndex}"
                             tabindex="${this.selectedRow === table.rows.length && this.selectedCol === colIndex ? '0' : '-1'}"
                             contenteditable="${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'true' : 'false'}"
-                            @mousedown="${(e: MouseEvent) => this._handleCellClick(e, table.rows.length, colIndex)}"
+                            .textContent="${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? noChange : live('')}"
+                            @click="${(e: MouseEvent) => this._handleCellClick(e, table.rows.length, colIndex)}"
                             @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, table.rows.length, colIndex)}"
                             @blur="${(e: FocusEvent) => this._handleBlur(e)}"
                             @input="${(e: Event) => this._handleInput(e)}"
                             @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e)}"
-                            .textContent=${live("")}
                         ></div>
                     `)}
                 </div>
+                
+                ${this.contextMenu ? html`
+                    <div class="context-menu" style="top: ${this.contextMenu.y}px; left: ${this.contextMenu.x}px;">
+                        ${this.contextMenu.type === 'row' ? html`
+                            <div class="context-menu-item" @click="${() => this._dispatchAction('row-insert', { rowIndex: this.contextMenu?.index })}">Insert Row Above</div>
+                            <div class="context-menu-item" @click="${() => this._dispatchAction('row-delete', { rowIndex: this.contextMenu?.index })}">Delete Row</div>
+                        ` : html`
+                            <div class="context-menu-item" @click="${() => this._dispatchAction('column-insert', { colIndex: this.contextMenu!.index + 1 })}">Add Column Right</div>
+                            <div class="context-menu-item" @click="${() => this._dispatchAction('column-delete', { colIndex: this.contextMenu?.index })}">Delete Column</div>
+                            <div class="context-menu-item" @click="${() => this._dispatchAction('column-clear', { colIndex: this.contextMenu?.index })}">Clear Column Content</div>
+                        `}
+                    </div>
+                ` : ''}
             </div>
         </div>
         `;

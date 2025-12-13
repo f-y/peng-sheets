@@ -4,7 +4,6 @@ from dataclasses import replace
 from md_spreadsheet_parser import (
     MultiTableParsingSchema,
     Workbook,
-    generate_table_markdown,
     generate_workbook_markdown,
     parse_workbook,
 )
@@ -157,9 +156,24 @@ def delete_column(sheet_idx, table_idx, col_idx):
 
 
 def clear_column(sheet_idx, table_idx, col_idx):
-    return apply_table_update(
-        sheet_idx, table_idx, lambda t: t.clear_column_data(col_idx)
-    )
+    def _clear_logic(t):
+        new_rows = []
+        for row in t.rows:
+            new_r = list(row)
+            if 0 <= col_idx < len(new_r):
+                new_r[col_idx] = ""
+            new_rows.append(new_r)
+        return replace(t, rows=new_rows)
+
+    return apply_table_update(sheet_idx, table_idx, _clear_logic)
+
+
+def insert_row(sheet_idx, table_idx, row_idx):
+    return apply_table_update(sheet_idx, table_idx, lambda t: t.insert_row(row_idx))
+
+
+def insert_column(sheet_idx, table_idx, col_idx):
+    return apply_table_update(sheet_idx, table_idx, lambda t: t.insert_column(col_idx))
 
 
 def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_level):

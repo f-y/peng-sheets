@@ -174,6 +174,198 @@ export class MyEditor extends LitElement {
   @state()
   editingTabIndex: number | null = null;
 
+  @state()
+  tabContextMenu: { x: number, y: number, index: number } | null = null;
+  @state()
+  private _isSyncing = false;
+  private _requestQueue: Array<() => Promise<void>> = [];
+
+  private _debounceTimer: any = null;
+  private _isBatching = false;
+  private _pendingUpdateSpec: any = null;
+
+  private _enqueueRequest(task: () => Promise<void>) {
+    this._requestQueue.push(task);
+    if (!this._isSyncing) {
+      this._scheduleProcessQueue();
+    }
+  }
+
+  private _scheduleProcessQueue() {
+    if (this._debounceTimer) clearTimeout(this._debounceTimer);
+    this._debounceTimer = setTimeout(() => {
+      this._processQueue();
+    }, 300);
+  }
+
+  private async _processQueue() {
+    this._debounceTimer = null;
+    if (this._isSyncing || this._requestQueue.length === 0) return;
+
+    this._isSyncing = true;
+    this._isBatching = true;
+    this._pendingUpdateSpec = null;
+
+    // Process ALL pending tasks to batch updates
+    const tasks = [...this._requestQueue];
+    this._requestQueue = [];
+
+    for (const task of tasks) {
+      try {
+        await task();
+      } catch (e) {
+        console.error("Queue task failed", e);
+      }
+    }
+
+    this._isBatching = false;
+
+    if (this._pendingUpdateSpec) {
+      vscode.postMessage(this._pendingUpdateSpec);
+      this._pendingUpdateSpec = null;
+    } else {
+      // No valid updates produced (or all failed)
+      this._isSyncing = false;
+      // Check if new items arrived while processing
+      if (this._requestQueue.length > 0) {
+        this._scheduleProcessQueue();
+      }
+    }
+  }
+
+  private async _handleMetadataEdit(detail: any) {
+    if (!this.pyodide || !this.workbook) return;
+    const { sheetIndex, tableIndex, name, description } = detail;
+
+    this._enqueueRequest(async () => {
+      const result = await this.pyodide.runPythonAsync(`
+            import json
+            res = update_table_metadata(
+                ${sheetIndex}, 
+                ${tableIndex}, 
+                ${JSON.stringify(name)}, 
+                ${JSON.stringify(description)}
+            )
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(result));
+    });
+  }
+
+  private async _onCellEdit(e: CustomEvent) {
+    const { sheetIndex, tableIndex, rowIndex, colIndex, newValue } = e.detail;
+    await this._handleRangeEdit(sheetIndex, tableIndex, rowIndex, rowIndex, colIndex, colIndex, newValue);
+  }
+
+  private async _onRangeEdit(e: CustomEvent) {
+    const { sheetIndex, tableIndex, startRow, endRow, startCol, endCol, newValue } = e.detail;
+    await this._handleRangeEdit(sheetIndex, tableIndex, startRow, endRow, startCol, endCol, newValue);
+  }
+
+  private async _handleRangeEdit(sheetIdx: number, tableIdx: number, startRow: number, endRow: number, startCol: number, endCol: number, newValue: string) {
+    if (!this.pyodide) return;
+    if (startRow !== endRow || startCol !== endCol) {
+      console.warn("Multi-cell update not fully supported in managed block refactor yet, using first cell.");
+    }
+
+    this._enqueueRequest(async () => {
+      const resultJson = await this.pyodide.runPythonAsync(`
+            import json
+            res = update_cell(${sheetIdx}, ${tableIdx}, ${startRow}, ${startCol}, ${JSON.stringify(newValue)})
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(resultJson));
+    });
+  }
+
+  private async _handleDeleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
+    if (!this.pyodide) return;
+    this._enqueueRequest(async () => {
+      const resultJson = await this.pyodide.runPythonAsync(`
+            import json
+            res = delete_row(${sheetIdx}, ${tableIdx}, ${rowIndex})
+            json.dumps(res) if res else "null"
+       `);
+      this._postUpdateMessage(JSON.parse(resultJson));
+    });
+  }
+
+  private async _handleDeleteColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
+    if (!this.pyodide) return;
+    this._enqueueRequest(async () => {
+      const resultJson = await this.pyodide.runPythonAsync(`
+            import json
+            res = delete_column(${sheetIdx}, ${tableIdx}, ${colIndex})
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(resultJson));
+    });
+  }
+
+  private async _handleInsertRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
+    if (!this.pyodide) return;
+    this._enqueueRequest(async () => {
+      const resultJson = await this.pyodide.runPythonAsync(`
+            import json
+            res = insert_row(${sheetIdx}, ${tableIdx}, ${rowIndex})
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(resultJson));
+    });
+  }
+
+  private async _handleInsertColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
+    if (!this.pyodide) return;
+    this._enqueueRequest(async () => {
+      const resultJson = await this.pyodide.runPythonAsync(`
+            import json
+            res = insert_column(${sheetIdx}, ${tableIdx}, ${colIndex})
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(resultJson));
+    });
+  }
+
+  private async _handleClearColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
+    if (!this.pyodide) return;
+    this._enqueueRequest(async () => {
+      const resultJson = await this.pyodide.runPythonAsync(`
+            import json
+            res = clear_column(${sheetIdx}, ${tableIdx}, ${colIndex})
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(resultJson));
+    });
+  }
+
+  private _postUpdateMessage(updateSpec: any) {
+    if (this._isBatching) {
+      if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
+        this._pendingUpdateSpec = {
+          type: 'updateRange',
+          startLine: updateSpec.startLine,
+          endLine: updateSpec.endLine,
+          content: updateSpec.content
+        };
+      }
+      return;
+    }
+
+    if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
+      vscode.postMessage({
+        type: 'updateRange',
+        startLine: updateSpec.startLine,
+        endLine: updateSpec.endLine,
+        content: updateSpec.content
+      });
+      // _isSyncing remains true until Extension sends 'update'
+    } else {
+      console.error("Operation failed: ", updateSpec?.error);
+      this._isSyncing = false; // Reset if we didn't send
+      this._scheduleProcessQueue();
+    }
+  }
+
   async firstUpdated() {
     try {
       const initialContent = (window as any).initialContent;
@@ -235,6 +427,22 @@ export class MyEditor extends LitElement {
         );
       });
 
+      window.addEventListener('row-insert', (e: any) => {
+        this._handleInsertRow(
+          e.detail.sheetIndex,
+          e.detail.tableIndex,
+          e.detail.rowIndex
+        );
+      });
+
+      window.addEventListener('column-insert', (e: any) => {
+        this._handleInsertColumn(
+          e.detail.sheetIndex,
+          e.detail.tableIndex,
+          e.detail.colIndex
+        );
+      });
+
       window.addEventListener('column-clear', (e: any) => {
         this._handleClearColumn(
           e.detail.sheetIndex,
@@ -263,10 +471,18 @@ export class MyEditor extends LitElement {
           case 'update':
             this.markdownInput = message.content;
             await this._parseWorkbook();
+            this._isSyncing = false;
+            this._processQueue();
             break;
           case 'configUpdate':
             this.config = message.config;
             await this._parseWorkbook();
+            break;
+          case 'sync-failed':
+            // Error recovery
+            console.warn("Sync failed, resetting queue state.");
+            this._isSyncing = false;
+            this._processQueue(); // Try next? or clear?
             break;
         }
       });
@@ -339,6 +555,7 @@ export class MyEditor extends LitElement {
                     class="tab-item ${this.activeTabIndex === index ? 'active' : ''} ${tab.type === 'add-sheet' ? 'add-sheet-tab' : ''}"
                     @click="${() => tab.type === 'add-sheet' ? this._handleAddSheet() : this.activeTabIndex = index}"
                     @dblclick="${() => this._handleTabDoubleClick(index, tab)}"
+                    @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, index, tab)}"
                     title="${tab.type === 'add-sheet' ? 'Add New Sheet' : ''}"
                 >
                      ${this._renderTabIcon(tab)}
@@ -357,6 +574,27 @@ export class MyEditor extends LitElement {
                 </div>
             `)}
         </div>
+
+        ${this.tabContextMenu ? html`
+            <div 
+                style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu.x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
+            >
+                <div 
+                    style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
+                    @mouseover="${(e: MouseEvent) => (e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)'}"
+                    @mouseout="${(e: MouseEvent) => (e.target as HTMLElement).style.background = 'transparent'}"
+                    @click="${() => this._renameSheet(this.tabContextMenu!.index)}"
+                >Rename Sheet</div>
+                <div 
+                    style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
+                    @mouseover="${(e: MouseEvent) => (e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)'}"
+                    @mouseout="${(e: MouseEvent) => (e.target as HTMLElement).style.background = 'transparent'}"
+                    @click="${() => this._deleteSheet(this.tabContextMenu!.index)}"
+                >Delete Sheet</div>
+            </div>
+            <!-- Overlay to close menu on click outside -->
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999;" @click="${() => this.tabContextMenu = null}"></div>
+        ` : ''}
     `;
   }
 
@@ -396,6 +634,49 @@ export class MyEditor extends LitElement {
       (e.target as HTMLInputElement).blur(); // Trigger blur handler
     } else if (e.key === 'Escape') {
       this.editingTabIndex = null;
+    }
+  }
+
+  private _handleTabContextMenu(e: MouseEvent, index: number, tab: TabDefinition) {
+    if (tab.type !== 'sheet') return;
+    e.preventDefault();
+    this.tabContextMenu = { x: e.clientX, y: e.clientY - 80, index: index }; // Simple offset or just clientY
+    // Adjust Y if too low?
+  }
+
+  private _renameSheet(index: number) {
+    this.tabContextMenu = null;
+    const tab = this.tabs[index];
+    if (tab) this._handleTabDoubleClick(index, tab);
+  }
+
+  private async _deleteSheet(index: number) {
+    this.tabContextMenu = null;
+    const tab = this.tabs[index];
+    if (tab && tab.type === 'sheet' && typeof tab.sheetIndex === 'number') {
+      if (!confirm(`Are you sure you want to delete sheet "${tab.title}"?`)) return;
+
+      if (!this.pyodide) return;
+      try {
+        const result = await this.pyodide.runPythonAsync(`
+                    import json
+                    res = delete_sheet(${tab.sheetIndex})
+                    json.dumps(res) if res else "null"
+                `);
+        const updateSpec = JSON.parse(result);
+        if (updateSpec && !updateSpec.error) {
+          vscode.postMessage({
+            type: 'updateRange',
+            startLine: updateSpec.startLine,
+            endLine: updateSpec.endLine,
+            content: updateSpec.content
+          });
+        } else if (updateSpec.error) {
+          console.error("Delete failed:", updateSpec.error);
+        }
+      } catch (e) {
+        console.error(e);
+      }
     }
   }
 
@@ -470,164 +751,7 @@ export class MyEditor extends LitElement {
   }
 
 
-  private async _handleMetadataEdit(detail: any) {
-    if (!this.pyodide || !this.workbook) return;
 
-    const { sheetIndex, tableIndex, name, description } = detail;
-
-    // Calculate update range using Python
-    const result = await this.pyodide.runPythonAsync(`
-        import json
-        res = update_table_metadata(
-            ${sheetIndex}, 
-            ${tableIndex}, 
-            ${JSON.stringify(name)}, 
-            ${JSON.stringify(description)}
-        )
-        json.dumps(res) if res else "null"
-      `);
-
-    const updateSpec = JSON.parse(result);
-
-    if (updateSpec) {
-      if (updateSpec.error) {
-        console.error("Metadata update failed:", updateSpec.error);
-        return;
-      }
-
-      vscode.postMessage({
-        type: 'updateRange',
-        startLine: updateSpec.startLine,
-        endLine: updateSpec.endLine,
-        content: updateSpec.content
-      });
-    }
-  }
-
-  private async _onCellEdit(e: CustomEvent) {
-    const { sheetIndex, tableIndex, rowIndex, colIndex, newValue } = e.detail;
-    // Redirect to Range Edit for consistency?
-    // Or just wrap
-    await this._handleRangeEdit(sheetIndex, tableIndex, rowIndex, rowIndex, colIndex, colIndex, newValue);
-  }
-
-  private async _onRangeEdit(e: CustomEvent) {
-    const { sheetIndex, tableIndex, startRow, endRow, startCol, endCol, newValue } = e.detail;
-    await this._handleRangeEdit(sheetIndex, tableIndex, startRow, endRow, startCol, endCol, newValue);
-  }
-
-  private async _handleRangeEdit(sheetIdx: number, tableIdx: number, startRow: number, endRow: number, startCol: number, endCol: number, newValue: string) {
-    if (!this.pyodide) return;
-
-    // For now, simpler support: only single cell update.
-    // Range delete/update logic in managed block pattern is simpler if we just iterate.
-    // But since we are moving to standard "update_cell", let's assume we are updating one cell or range.
-    // The previous `delete_range` supported clearing multiple. 
-    // Ideally we should implement `clear_range` or similar in models.py later.
-    // For this refactor, let's stick to single cell update if start==end.
-
-    if (startRow !== endRow || startCol !== endCol) {
-      // TODO: Support multi-cell update in models.py
-      console.warn("Multi-cell update not fully supported in managed block refactor yet, using first cell.");
-    }
-
-    try {
-      const resultJson = await this.pyodide.runPythonAsync(`
-        import json
-        res = update_cell(${sheetIdx}, ${tableIdx}, ${startRow}, ${startCol}, ${JSON.stringify(newValue)})
-        json.dumps(res) if res else "null"
-      `);
-      const result = JSON.parse(resultJson);
-
-      if (result.error) {
-        console.error("Error updating range:", result.error);
-        return;
-      }
-
-      if (result.startLine !== undefined && result.endLine !== undefined) {
-        vscode.postMessage({
-          type: 'updateRange',
-          startLine: result.startLine,
-          endLine: result.endLine,
-          content: result.content
-        });
-      }
-    } catch (err) {
-      console.error("Failed to update range", err);
-    }
-  }
-
-  private async _handleDeleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
-    if (!this.pyodide) return;
-    try {
-      const resultJson = await this.pyodide.runPythonAsync(`
-            import json
-            res = delete_row(${sheetIdx}, ${tableIdx}, ${rowIndex})
-            json.dumps(res) if res else "null"
-          `);
-      const result = JSON.parse(resultJson);
-      if (result && !result.error && result.startLine !== undefined) {
-        vscode.postMessage({
-          type: 'updateRange',
-          startLine: result.startLine,
-          endLine: result.endLine,
-          content: result.content
-        });
-      } else {
-        console.error("Delete row failed: ", result.error);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  private async _handleDeleteColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
-    if (!this.pyodide) return;
-    try {
-      const resultJson = await this.pyodide.runPythonAsync(`
-            import json
-            res = delete_column(${sheetIdx}, ${tableIdx}, ${colIndex})
-            json.dumps(res) if res else "null"
-          `);
-      const result = JSON.parse(resultJson);
-      if (result && !result.error && result.startLine !== undefined) {
-        vscode.postMessage({
-          type: 'updateRange',
-          startLine: result.startLine,
-          endLine: result.endLine,
-          content: result.content
-        });
-      } else {
-        console.error("Delete column failed: ", result.error);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
-  private async _handleClearColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
-    if (!this.pyodide) return;
-    try {
-      const resultJson = await this.pyodide.runPythonAsync(`
-            import json
-            res = clear_column(${sheetIdx}, ${tableIdx}, ${colIndex})
-            json.dumps(res) if res else "null"
-          `);
-      const result = JSON.parse(resultJson);
-      if (result && !result.error && result.startLine !== undefined) {
-        vscode.postMessage({
-          type: 'updateRange',
-          startLine: result.startLine,
-          endLine: result.endLine,
-          content: result.content
-        });
-      } else {
-        console.error("Clear column failed: ", result.error);
-      }
-    } catch (err) {
-      console.error(err);
-    }
-  }
 
   private async _parseWorkbook() {
     if (!this.pyodide) return;

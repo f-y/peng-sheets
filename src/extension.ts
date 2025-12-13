@@ -93,14 +93,49 @@ export function activate(context: vscode.ExtensionContext) {
                 // console.log("Received message from webview:", message);
                 switch (message.type) {
                     case 'updateRange':
-                        // console.log("Handling updateRange");
-                        const edit = new vscode.WorkspaceEdit();
                         const startPosition = new vscode.Position(message.startLine, 0);
                         const endPosition = new vscode.Position(message.endLine, 0);
                         const range = new vscode.Range(startPosition, endPosition);
 
-                        edit.replace(activeDocument.uri, range, message.content);
-                        vscode.workspace.applyEdit(edit);
+                        // Find editor
+                        const editor = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === activeDocument?.uri.toString());
+
+                        // Internal validation
+                        if (activeDocument) {
+                            const validatedRange = activeDocument.validateRange(range);
+                            if (!validatedRange.isEqual(range)) {
+                                console.warn(`Adjusting invalid range: ${range.start.line}-${range.end.line} -> ${validatedRange.start.line}-${validatedRange.end.line}`);
+                            }
+                        }
+
+                        if (editor) {
+                            editor.edit(editBuilder => {
+                                editBuilder.replace(range, message.content);
+                            }).then(success => {
+                                if (!success) {
+                                    console.warn("TextEditor.edit failed. Retrying with WorkspaceEdit...");
+                                    const edit = new vscode.WorkspaceEdit();
+                                    edit.replace(activeDocument!.uri, range, message.content);
+                                    vscode.workspace.applyEdit(edit).then(wsSuccess => {
+                                        if (!wsSuccess) {
+                                            console.error("Fallback WorkspaceEdit failed.");
+                                            vscode.window.showErrorMessage("Failed to update spreadsheet: Sync error.");
+                                        }
+                                    });
+                                }
+                            });
+                        } else if (activeDocument) {
+                            // Fallback to WorkspaceEdit
+                            const edit = new vscode.WorkspaceEdit();
+                            edit.replace(activeDocument.uri, range, message.content);
+                            vscode.workspace.applyEdit(edit).then(success => {
+                                if (!success) {
+                                    // This often fails if file changed "in the meantime" (version mismatch implicit)
+                                    console.error("Workspace edit failed");
+                                    vscode.window.showErrorMessage("Failed to update spreadsheet: Document version conflict.");
+                                }
+                            });
+                        }
                         return;
                     case 'createSpreadsheet':
                         const wsEdit = new vscode.WorkspaceEdit();
