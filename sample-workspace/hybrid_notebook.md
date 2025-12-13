@@ -13,9 +13,9 @@ We are building a new application.
 ### Q1 Budget
 
 | Category | Amount |
-| -------- | ------ |
-| Server   | $500   |
-| Design   | $300   |
+| --- | --- |
+| Server | $500 |
+| Design | $300 |
 
 # Appendix
 

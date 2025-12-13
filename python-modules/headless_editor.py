@@ -1,0 +1,286 @@
+import json
+from dataclasses import replace
+
+from md_spreadsheet_parser import (
+    MultiTableParsingSchema,
+    Workbook,
+    generate_table_markdown,
+    generate_workbook_markdown,
+    parse_workbook,
+)
+
+# Global State (managed by the runtime)
+workbook = None
+schema = None
+md_text = ""
+config = ""
+
+
+def apply_workbook_update(transform_func):
+    global workbook
+    if workbook is None:
+        return {"error": "No workbook"}
+    try:
+        workbook = transform_func(workbook)
+        return generate_and_get_range()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def apply_sheet_update(sheet_idx, transform_func):
+    def wb_transform(wb):
+        new_sheets = list(wb.sheets)
+        if sheet_idx < 0 or sheet_idx >= len(new_sheets):
+            raise IndexError("Invalid sheet index")
+
+        target_sheet = new_sheets[sheet_idx]
+        new_sheet = transform_func(target_sheet)
+        new_sheets[sheet_idx] = new_sheet
+        return replace(wb, sheets=new_sheets)
+
+    return apply_workbook_update(wb_transform)
+
+
+def apply_table_update(sheet_idx, table_idx, transform_func):
+    def sheet_transform(sheet):
+        new_tables = list(sheet.tables)
+        if table_idx < 0 or table_idx >= len(new_tables):
+            raise IndexError("Invalid table index")
+
+        target_table = new_tables[table_idx]
+        new_table = transform_func(target_table)
+        new_tables[table_idx] = new_table
+        return replace(sheet, tables=new_tables)
+
+    return apply_sheet_update(sheet_idx, sheet_transform)
+
+
+def get_workbook_range(md_text, root_marker, sheet_header_level):
+    lines = md_text.split("\n")
+    start_line = 0
+    found = False
+
+    if root_marker:
+        for i, line in enumerate(lines):
+            if line.strip() == root_marker:
+                start_line = i
+                found = True
+                break
+
+        if not found:
+            start_line = len(lines)
+
+    end_line = len(lines)
+
+    def get_level(s):
+        lvl = 0
+        for c in s:
+            if c == "#":
+                lvl += 1
+            else:
+                break
+        return lvl
+
+    for i in range(start_line + 1, len(lines)):
+        line = lines[i].strip()
+        if line.startswith("#"):
+            lvl = get_level(line)
+            if lvl < sheet_header_level:
+                end_line = i
+                break
+
+    return start_line, end_line
+
+
+def generate_and_get_range():
+    global workbook, schema, md_text, config
+
+    # Generate Markdown (Full Workbook)
+    new_md = generate_workbook_markdown(workbook, schema)
+
+    # Determine replacement range
+    config_dict = json.loads(config) if config else {}
+    root_marker = config_dict.get("rootMarker", "# Tables")
+    sheet_header_level = config_dict.get("sheetHeaderLevel", 2)
+
+    start_line, end_line = get_workbook_range(md_text, root_marker, sheet_header_level)
+
+    # Ensure newline at end if we are appending to EOF
+    if start_line == len(md_text.split("\n")):
+        if md_text and not md_text.endswith("\n"):
+            new_md = "\n" + new_md
+    elif end_line == len(md_text.split("\n")):
+        # Replacement at EOF
+        pass
+
+    return {"startLine": start_line, "endLine": end_line, "content": new_md + "\n\n"}
+
+
+def add_sheet(new_name):
+    # Handle add_sheet separately as it handles None workbook
+    global workbook
+    if workbook is None:
+        workbook = Workbook(sheets=[])
+    try:
+        workbook = workbook.add_sheet(new_name)
+        return generate_and_get_range()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+def delete_sheet(sheet_idx):
+    return apply_workbook_update(lambda wb: wb.delete_sheet(sheet_idx))
+
+
+def rename_sheet(sheet_idx, new_name):
+    return apply_sheet_update(sheet_idx, lambda s: replace(s, name=new_name))
+
+
+def update_table_metadata(sheet_idx, table_idx, new_name, new_desc):
+    return apply_table_update(
+        sheet_idx, table_idx, lambda t: replace(t, name=new_name, description=new_desc)
+    )
+
+
+def update_cell(sheet_idx, table_idx, row_idx, col_idx, value):
+    return apply_table_update(
+        sheet_idx, table_idx, lambda t: t.update_cell(row_idx, col_idx, value)
+    )
+
+
+def delete_row(sheet_idx, table_idx, row_idx):
+    return apply_table_update(sheet_idx, table_idx, lambda t: t.delete_row(row_idx))
+
+
+def delete_column(sheet_idx, table_idx, col_idx):
+    return apply_table_update(sheet_idx, table_idx, lambda t: t.delete_column(col_idx))
+
+
+def clear_column(sheet_idx, table_idx, col_idx):
+    return apply_table_update(
+        sheet_idx, table_idx, lambda t: t.clear_column_data(col_idx)
+    )
+
+
+def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_level):
+    lines = md_text.split("\n")
+
+    # Find root marker first to replicate parse_workbook skip logic
+    start_index = 0
+    if root_marker:
+        for i, line in enumerate(lines):
+            if line.strip() == root_marker:
+                start_index = i + 1
+                break
+
+    header_prefix = "#" * sheet_header_level + " "
+
+    current_sheet_idx = 0
+
+    # Simple scan for sheet headers
+    # We assume parse_workbook found them in order.
+    for idx, line in enumerate(lines[start_index:], start=start_index):
+        stripped = line.strip()
+
+        # Check for higher-level headers that would break workbook parsing
+        if stripped.startswith("#"):
+            level = 0
+            for char in stripped:
+                if char == "#":
+                    level += 1
+                else:
+                    break
+            if level < sheet_header_level:
+                break
+
+        if stripped.startswith(header_prefix):
+            if current_sheet_idx < len(workbook_dict["sheets"]):
+                workbook_dict["sheets"][current_sheet_idx]["header_line"] = idx
+                current_sheet_idx += 1
+            else:
+                break
+
+    return workbook_dict
+
+
+def extract_structure(md_text, root_marker):
+    sections = []
+    lines = md_text.split("\n")
+    current_type = None
+    current_title = None
+    current_lines = []
+
+    for line in lines:
+        if line.startswith("# ") and not line.startswith("##"):
+            if current_title and current_type == "document":
+                sections.append(
+                    {
+                        "type": "document",
+                        "title": current_title,
+                        "content": "\n".join(current_lines),
+                    }
+                )
+
+            stripped = line.strip()
+            if stripped == root_marker:
+                sections.append({"type": "workbook"})
+                current_title = None
+                current_type = "workbook"
+            else:
+                current_title = line[2:].strip()
+                current_type = "document"
+
+            current_lines = []
+        else:
+            if current_type == "document":
+                current_lines.append(line)
+
+    if current_title and current_type == "document":
+        sections.append(
+            {
+                "type": "document",
+                "title": current_title,
+                "content": "\n".join(current_lines),
+            }
+        )
+
+    return json.dumps(sections)
+
+
+def initialize_workbook(md_text_input, config_json):
+    global workbook, schema, md_text, config
+    md_text = md_text_input
+    config = config_json
+    config_dict = json.loads(config)
+
+    schema = MultiTableParsingSchema(
+        root_marker=config_dict.get("rootMarker", "# Tables"),
+        sheet_header_level=config_dict.get("sheetHeaderLevel", 2),
+        table_header_level=config_dict.get("tableHeaderLevel", 3),
+        capture_description=config_dict.get("captureDescription", True),
+        column_separator=config_dict.get("columnSeparator", "|"),
+        header_separator_char=config_dict.get("headerSeparatorChar", "-"),
+        require_outer_pipes=config_dict.get("requireOuterPipes", True),
+        strip_whitespace=config_dict.get("stripWhitespace", True),
+    )
+
+    workbook = parse_workbook(md_text, schema)
+
+
+def get_state():
+    global workbook, md_text, config
+    if workbook is None:
+        return json.dumps({"error": "No workbook"})
+
+    config_dict = json.loads(config) if config else {}
+    root_marker = config_dict.get("rootMarker", "# Tables")
+    sheet_header_level = config_dict.get("sheetHeaderLevel", 2)
+
+    workbook_json = workbook.json
+    augment_workbook_metadata(workbook_json, md_text, root_marker, sheet_header_level)
+
+    structure_json = extract_structure(md_text, root_marker)
+
+    return json.dumps(
+        {"workbook": workbook_json, "structure": json.loads(structure_json)}
+    )

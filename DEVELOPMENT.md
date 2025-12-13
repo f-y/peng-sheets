@@ -12,7 +12,19 @@ This extension uses a hybrid architecture with a VS Code extension host (TypeScr
 
 - Node.js (v20+)
 - Python (3.12+)
-- `hatch` or `pip` (for building the Python package)
+- `uv` (for dependency management and running commands)
+
+## Development Rules
+
+### Tool Usage
+- **Python**: Always use `uv` to run Python commands (e.g., `uv run python script.py`, `uv run pytest`).
+
+### Test-First Development (UI/Regression)
+
+Given the complexity of the UI, manual regression testing is not feasible.
+- **Rule**: All UI feature development and bug fixes must be accompanied by automated tests (Vitest).
+- **Process**: Write the test case *before* or *alongside* the implementation. Ensure it fails before the fix/feature, and passes after.
+- **Scope**: Covers Webview components (Lit) and logic (`webview-ui/`).
 
 ## Setup
 

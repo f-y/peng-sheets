@@ -106,7 +106,7 @@ export function activate(context: vscode.ExtensionContext) {
                         const wsEdit = new vscode.WorkspaceEdit();
                         const docText = activeDocument.getText();
                         const prefix = docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : '\n';
-                        const template = `# Tables\n\n## Sheet 1\n\n### Table 1\n\n|   |   |\n| - | - |\n|   |   |\n`;
+                        const template = `# Tables\n\n## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
                         const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
                         wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
                         vscode.workspace.applyEdit(wsEdit);
@@ -132,7 +132,7 @@ function getWebviewContent(webview: vscode.Webview, context: vscode.ExtensionCon
             vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js')
         );
         wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.1.3-py3-none-any.whl')
+            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.2.4-py3-none-any.whl')
         );
         cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net ${webview.cspSource}`;
         cspConnectSrc = `https://cdn.jsdelivr.net ${webview.cspSource}`;
@@ -140,7 +140,7 @@ function getWebviewContent(webview: vscode.Webview, context: vscode.ExtensionCon
         scriptUri = "http://localhost:5173/webview-ui/main.ts";
         // Use local resource for wheel even in dev mode to bypass Vite 404/MIME issues
         wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.1.3-py3-none-any.whl')
+            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.2.4-py3-none-any.whl')
         );
         cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net http://localhost:5173`;
         cspConnectSrc = `https://cdn.jsdelivr.net http://localhost:5173 ws://localhost:5173 ${webview.cspSource}`;

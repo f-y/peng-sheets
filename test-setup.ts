@@ -14,3 +14,20 @@ Object.defineProperty(window, 'matchMedia', {
         dispatchEvent: vi.fn(),
     })),
 });
+
+// Mock VS Code API
+const vscode = {
+    postMessage: vi.fn(),
+    getState: vi.fn(),
+    setState: vi.fn(),
+};
+(global as any).acquireVsCodeApi = () => vscode;
+(global as any).vscode = vscode; // Expose for assertions
+
+// Mock Pyodide
+(global as any).loadPyodide = vi.fn().mockResolvedValue({
+    loadPackage: vi.fn(),
+    pyimport: vi.fn().mockReturnValue({ install: vi.fn() }),
+    runPythonAsync: vi.fn().mockResolvedValue('{}'),
+    globals: new Map()
+});

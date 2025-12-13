@@ -165,7 +165,7 @@ export class SpreadsheetTable extends LitElement {
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
         text-align: center;
-        color: var(--vscode-descriptionForeground);
+        color: var(--header-bg);
         user-select: none;
         outline-offset: -2px;
         display: flex;
@@ -313,6 +313,8 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _handleKeyDown(e: KeyboardEvent, isHeader: boolean = false) {
+        if (e.isComposing) return;
+
         if (this.isEditing) {
             this._handleEditModeKey(e);
             return;
@@ -636,44 +638,56 @@ export class SpreadsheetTable extends LitElement {
         }
         // Row Selection
         else if (this.selectedRow >= 0 && this.selectedCol === -2) {
-            // Optimistic
+            // Structural Deletion Logic
+            // Optimistic update locally
             if (this.selectedRow < rowCount) {
-                // If last row -> Delete?
-                // Logic in main.ts matches this: if selectedRow == rowCount - 1 (Last Row) -> Delete.
-                if (this.selectedRow === rowCount - 1) {
-                    this.table.rows.splice(this.selectedRow, 1);
-                } else {
-                    // Just clear content
-                    const row = this.table.rows[this.selectedRow];
-                    for (let c = 0; c < row.length; c++) row[c] = "";
-                }
+                this.table.rows.splice(this.selectedRow, 1);
                 triggerUpdate();
             }
 
-            this._updateRange(
-                this.selectedRow, this.selectedRow,
-                0, Number.MAX_SAFE_INTEGER, // Ensure backend sees this as "All Columns"
-                ""
-            );
+            // Emit explicit row-delete event
+            this.dispatchEvent(new CustomEvent('row-delete', {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    rowIndex: this.selectedRow
+                },
+                bubbles: true,
+                composed: true
+            }));
+
+            // Adjust selection after delete?
+            // If we deleted last row, move up.
+            if (this.selectedRow >= this.table.rows.length) {
+                this.selectedRow = Math.max(-1, this.table.rows.length - 1);
+            }
         }
         // Column Selection
         else if (this.selectedRow === -2 && this.selectedCol >= 0) {
-            // Optimistic
+            // Content Clear Logic (User Request: Keep Headers)
+            // Optimistic update locally
             for (let r = 0; r < rowCount; r++) {
                 if (this.selectedCol < this.table.rows[r].length) {
                     this.table.rows[r][this.selectedCol] = "";
                 }
             }
-            if (this.table.headers && this.selectedCol < this.table.headers.length) {
-                this.table.headers[this.selectedCol] = "";
-            }
+            // Do NOT clear header locally (or maybe I should? User said "Header as is")
+            // So header remains touched.
+
             triggerUpdate();
 
-            this._updateRange(
-                0, rowCount - 1,
-                this.selectedCol, this.selectedCol,
-                ""
-            );
+            // Emit explicit column-clear event
+            this.dispatchEvent(new CustomEvent('column-clear', {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    colIndex: this.selectedCol
+                },
+                bubbles: true,
+                composed: true
+            }));
+
+            // Selection stays
         }
         // Select All (Optional, but safe now)
         else if (this.selectedRow === -2 && this.selectedCol === -2) {
@@ -739,6 +753,7 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _handleMetadataKeydown(e: KeyboardEvent) {
+        if (e.isComposing) return;
         if (e.key === 'Escape') {
             this.editingMetadata = false;
         } else if (e.key === 'Enter' && e.ctrlKey) {
@@ -799,14 +814,14 @@ export class SpreadsheetTable extends LitElement {
                           class="metadata-input-title" 
                           .value="${this.pendingTitle}"
                           @input="${(e: Event) => this.pendingTitle = (e.target as HTMLInputElement).value}"
-                          @keydown="${(e: KeyboardEvent) => this._handleMetadataKeydown(e)}"
+                          @keydown="${(e: KeyboardEvent) => { if (e.key === 'Enter' && !e.isComposing) this._commitMetadata(); else this._handleMetadataKeydown(e); }}"
                           placeholder="Table Name"
                       />
                       <input 
                           class="metadata-input-desc" 
                           .value="${this.pendingDescription}"
                           @input="${(e: Event) => this.pendingDescription = (e.target as HTMLInputElement).value}"
-                          @keydown="${(e: KeyboardEvent) => { if (e.key === 'Enter') this._commitMetadata(); else this._handleMetadataKeydown(e); }}"
+                          @keydown="${(e: KeyboardEvent) => { if (e.key === 'Enter' && !e.isComposing) this._commitMetadata(); else this._handleMetadataKeydown(e); }}"
                           @blur="${() => { setTimeout(() => { if (!this.shadowRoot?.activeElement?.classList.contains('metadata-input-title')) this._commitMetadata(); }, 200); }}"
                           placeholder="Description (Optional)"
                       />
