@@ -101,21 +101,23 @@ export function activate(context: vscode.ExtensionContext) {
                         const editor = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === activeDocument?.uri.toString());
 
                         // Internal validation
+                        let targetRange = range;
                         if (activeDocument) {
                             const validatedRange = activeDocument.validateRange(range);
                             if (!validatedRange.isEqual(range)) {
                                 console.warn(`Adjusting invalid range: ${range.start.line}-${range.end.line} -> ${validatedRange.start.line}-${validatedRange.end.line}`);
                             }
+                            targetRange = validatedRange;
                         }
 
                         if (editor) {
                             editor.edit(editBuilder => {
-                                editBuilder.replace(range, message.content);
+                                editBuilder.replace(targetRange, message.content);
                             }).then(success => {
                                 if (!success) {
                                     console.warn("TextEditor.edit failed. Retrying with WorkspaceEdit...");
                                     const edit = new vscode.WorkspaceEdit();
-                                    edit.replace(activeDocument!.uri, range, message.content);
+                                    edit.replace(activeDocument!.uri, targetRange, message.content);
                                     vscode.workspace.applyEdit(edit).then(wsSuccess => {
                                         if (!wsSuccess) {
                                             console.error("Fallback WorkspaceEdit failed.");
@@ -127,7 +129,7 @@ export function activate(context: vscode.ExtensionContext) {
                         } else if (activeDocument) {
                             // Fallback to WorkspaceEdit
                             const edit = new vscode.WorkspaceEdit();
-                            edit.replace(activeDocument.uri, range, message.content);
+                            edit.replace(activeDocument.uri, targetRange, message.content);
                             vscode.workspace.applyEdit(edit).then(success => {
                                 if (!success) {
                                     // This often fails if file changed "in the meantime" (version mismatch implicit)
