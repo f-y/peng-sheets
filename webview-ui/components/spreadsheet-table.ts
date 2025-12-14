@@ -1003,6 +1003,7 @@ export class SpreadsheetTable extends LitElement {
         }
 
         this.editingMetadata = false;
+        this.requestUpdate(); // Force render sync
 
         if (this.pendingTitle !== (this.table?.name || "") || this.pendingDescription !== (this.table?.description || "")) {
             this.dispatchEvent(new CustomEvent('metadata-edit', {
