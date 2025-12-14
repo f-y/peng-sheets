@@ -85,7 +85,7 @@ export function activate(context: vscode.ExtensionContext) {
         }, null, context.subscriptions);
 
         currentPanel.webview.onDidReceiveMessage(
-            message => {
+            async message => {
                 if (!activeDocument) {
                     console.error("No active document!");
                     return;
@@ -137,6 +137,23 @@ export function activate(context: vscode.ExtensionContext) {
                                     vscode.window.showErrorMessage("Failed to update spreadsheet: Document version conflict.");
                                 }
                             });
+                        }
+                        return;
+                    case 'undo':
+                        const editorForUndo = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === activeDocument?.uri.toString());
+                        if (editorForUndo) {
+                            await vscode.window.showTextDocument(editorForUndo.document, { viewColumn: editorForUndo.viewColumn, preserveFocus: false });
+                            await vscode.commands.executeCommand('undo');
+                            // Optional: Return focus to webview? 
+                            // currentPanel?.reveal(vscode.ViewColumn.Beside, true); 
+                            // But maybe syncing focus is confusing. Let's start with just executing it.
+                        }
+                        return;
+                    case 'redo':
+                        const editorForRedo = vscode.window.visibleTextEditors.find(e => e.document.uri.toString() === activeDocument?.uri.toString());
+                        if (editorForRedo) {
+                            await vscode.window.showTextDocument(editorForRedo.document, { viewColumn: editorForRedo.viewColumn, preserveFocus: false });
+                            await vscode.commands.executeCommand('redo');
                         }
                         return;
                     case 'createSpreadsheet':

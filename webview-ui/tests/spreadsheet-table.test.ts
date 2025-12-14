@@ -173,9 +173,11 @@ describe('SpreadsheetTable', () => {
     });
 
     it('should emit range-edit (clear) when deleting single cell', () => {
-        const spy = vi.fn();
+        const cellSpy = vi.fn();
+        const rangeSpy = vi.fn();
         const rowSpy = vi.fn();
-        element.addEventListener('cell-edit', spy);
+        element.addEventListener('cell-edit', cellSpy);
+        element.addEventListener('range-edit', rangeSpy);
         element.addEventListener('row-delete', rowSpy);
 
         element.selectedRow = 0;
@@ -184,7 +186,14 @@ describe('SpreadsheetTable', () => {
         (element as any)._deleteSelection();
 
         expect(rowSpy).not.toHaveBeenCalled();
-        expect(spy).toHaveBeenCalled();
-        expect(spy.mock.calls[0][0].detail.newValue).toBe("");
+        expect(cellSpy).not.toHaveBeenCalled();
+        expect(rangeSpy).toHaveBeenCalled();
+
+        const detail = rangeSpy.mock.calls[0][0].detail;
+        expect(detail.newValue).toBe("");
+        expect(detail.startRow).toBe(0);
+        expect(detail.endRow).toBe(0);
+        expect(detail.startCol).toBe(0);
+        expect(detail.endCol).toBe(0);
     });
 });

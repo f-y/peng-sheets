@@ -514,6 +514,14 @@ export class MyEditor extends LitElement {
     });
   }
 
+  private _handleUndo() {
+    vscode.postMessage({ type: 'undo' });
+  }
+
+  private _handleRedo() {
+    vscode.postMessage({ type: 'redo' });
+  }
+
   private _postUpdateMessage(updateSpec: any) {
     if (this._isBatching) {
       if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
@@ -558,6 +566,32 @@ export class MyEditor extends LitElement {
     } catch (e) {
       console.error("Error loading initial content:", e);
     }
+    window.addEventListener('keydown', this._boundHandleKeyDown);
+  }
+
+  disconnectedCallback() {
+    super.disconnectedCallback();
+    window.removeEventListener('keydown', this._boundHandleKeyDown);
+  }
+
+  private _boundHandleKeyDown = this._handleGlobalKeyDown.bind(this);
+
+  private _handleGlobalKeyDown(e: KeyboardEvent) {
+    // Debug Log
+    // console.log("Keydown:", e.key, "Ctrl:", e.ctrlKey, "Meta:", e.metaKey, "Shift:", e.shiftKey);
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+      console.log("Likely Undo detected");
+      e.preventDefault();
+      this._handleUndo();
+    } else if (
+      ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && e.shiftKey) ||
+      ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y')
+    ) {
+      console.log("Likely Redo detected");
+      e.preventDefault();
+      this._handleRedo();
+    }
   }
 
   async firstUpdated() {
@@ -566,9 +600,11 @@ export class MyEditor extends LitElement {
       console.log("Loading micropip...");
       await this.pyodide.loadPackage("micropip");
       console.log("Micropip loaded.");
+
       const micropip = this.pyodide.pyimport("micropip");
       const wheelUri = (window as any).wheelUri;
       console.log("Installing wheel from:", wheelUri);
+
       try {
         await micropip.install(wheelUri);
         console.log("Wheel installed successfully.");
@@ -577,8 +613,6 @@ export class MyEditor extends LitElement {
         throw err;
       }
 
-
-      // ... Python Helper Functions
       console.log("Loading Python Core...");
       await this.pyodide.runPythonAsync(pythonCore);
       console.log("Python Core loaded.");
@@ -595,8 +629,28 @@ export class MyEditor extends LitElement {
         );
       });
 
+      window.addEventListener('range-edit', (e: any) => {
+        this._handleRangeEdit(
+          e.detail.sheetIndex,
+          e.detail.tableIndex,
+          e.detail.startRow,
+          e.detail.endRow,
+          e.detail.startCol,
+          e.detail.endCol,
+          e.detail.newValue
+        );
+      });
+
       window.addEventListener('row-delete', (e: any) => {
         this._handleDeleteRow(
+          e.detail.sheetIndex,
+          e.detail.tableIndex,
+          e.detail.rowIndex
+        );
+      });
+
+      window.addEventListener('row-insert', (e: any) => {
+        this._handleInsertRow(
           e.detail.sheetIndex,
           e.detail.tableIndex,
           e.detail.rowIndex
@@ -608,14 +662,6 @@ export class MyEditor extends LitElement {
           e.detail.sheetIndex,
           e.detail.tableIndex,
           e.detail.colIndex
-        );
-      });
-
-      window.addEventListener('row-insert', (e: any) => {
-        this._handleInsertRow(
-          e.detail.sheetIndex,
-          e.detail.tableIndex,
-          e.detail.rowIndex
         );
       });
 
@@ -635,17 +681,7 @@ export class MyEditor extends LitElement {
         );
       });
 
-      window.addEventListener('range-edit', (e: any) => {
-        this._handleRangeEdit(
-          e.detail.sheetIndex,
-          e.detail.tableIndex,
-          e.detail.startRow,
-          e.detail.endRow,
-          e.detail.startCol,
-          e.detail.endCol,
-          e.detail.newValue
-        );
-      });
+      window.addEventListener('column-resize', (e: any) => this._handleColumnResize(e.detail));
       window.addEventListener('metadata-edit', (e: any) => this._handleMetadataEdit(e.detail));
       window.addEventListener('request-add-table', (e: any) => this._handleRequestAddTable(e.detail));
       window.addEventListener('request-rename-table', (e: any) => this._handleRequestRenameTable(e.detail));
@@ -654,7 +690,6 @@ export class MyEditor extends LitElement {
       window.addEventListener('sheet-metadata-update', (e: any) => this._handleSheetMetadataUpdate(e.detail));
       window.addEventListener('paste-cells', (e: any) => this._handlePasteCells(e.detail));
 
-      // Handle messages from the extension
       window.addEventListener('message', async (event) => {
         const message = event.data;
         switch (message.type) {
@@ -677,14 +712,12 @@ export class MyEditor extends LitElement {
         }
       });
 
-
-      // Valid initialization - Parsing initial content
       console.log("Pyodide initialized. Parsing initial content...");
       await this._parseWorkbook();
 
     } catch (e: any) {
-      this.output = `Error initializing Pyodide: ${e.message} `;
-      console.error(e);
+      console.error("Error initializing Pyodide:", e);
+      this.output = `Error initializing Pyodide: ${e}`;
     }
   }
 

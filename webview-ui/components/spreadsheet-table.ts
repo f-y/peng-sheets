@@ -489,7 +489,7 @@ export class SpreadsheetTable extends LitElement {
                         // Range selection on text node
                         const range = document.createRange();
                         range.selectNodeContents(contentSpan);
-                        range.collapse(false);
+                        // range.collapse(false); // Removed to keep full selection
                         const selection = window.getSelection();
                         selection?.removeAllRanges();
                         selection?.addRange(range);
@@ -501,8 +501,20 @@ export class SpreadsheetTable extends LitElement {
                         return;
                     }
                 }
-
                 cell.focus();
+                // If editing, select all text?
+                // User requested specifically for Header DblClick.
+                // But generally good UX for Excel-like edit start (F2 or double click should select all? Usually F2 puts cursor at end, DblClick might select word or all).
+                // "列ヘッダのダブルクリックでの編集モード時には既存のヘッダ全体を選択状態にしてください" -> Explicitly header.
+                // Check if header row (-1)
+                if (this.isEditing) {
+                    // For contenteditable, Select All
+                    const range = document.createRange();
+                    range.selectNodeContents(cell);
+                    const sel = window.getSelection();
+                    sel?.removeAllRanges();
+                    sel?.addRange(range);
+                }
 
                 // Standard Cell Logic (Body)
                 // If we have a pending edit value, applying it now ensures it overrides the default content
@@ -627,8 +639,17 @@ export class SpreadsheetTable extends LitElement {
             this._commitEdit(new Event('manual-commit'));
         }
 
-        this.selectedRow = rowIndex;
-        this.selectedCol = colIndex;
+        // Fix for Range Selection bug: Update Anchor if not extending
+        if (e.shiftKey && this.selectionAnchorRow !== -1) {
+            // Extend selection (handled by mousedown usually, but duplicate here for safety)
+            this.selectedRow = rowIndex;
+            this.selectedCol = colIndex;
+        } else {
+            this.selectionAnchorRow = rowIndex;
+            this.selectionAnchorCol = colIndex;
+            this.selectedRow = rowIndex;
+            this.selectedCol = colIndex;
+        }
 
         // If we are clicking, we probably want to focus the cell.
         // If we were editing, blur happens, commit happens.
@@ -827,13 +848,34 @@ export class SpreadsheetTable extends LitElement {
         if (e.key === 'Enter') {
             e.preventDefault();
             this._commitEdit(e);
+
+            // Explicitly Reset Anchor to avoid Range Selection extension
+            if (!e.shiftKey) {
+                this.selectionAnchorRow = -1;
+                this.selectionAnchorCol = -1;
+            }
+
             // Move down (or up if Shift)
             const dRow = e.shiftKey ? -1 : 1;
             // Ensure we don't move out of bounds excessively (logic in _moveSelection handles clamping but we can check basic bounds)
             this._moveSelection(dRow, 0);
+
+            // Sync Anchor after move if not Shift (Actually _moveSelection usually handles selection update, need to verify if it sets anchor)
+            // _moveSelection sets selectedRow/Col. If we want to reset anchor, we should do it.
+            if (!e.shiftKey) {
+                this.selectionAnchorRow = this.selectedRow;
+                this.selectionAnchorCol = this.selectedCol;
+            }
+
         } else if (e.key === 'Tab') {
             e.preventDefault();
             this._commitEdit(e);
+
+            // Explicitly Reset Anchor
+            if (!e.shiftKey) {
+                this.selectionAnchorRow = -1;
+                this.selectionAnchorCol = -1;
+            }
 
             const colCount = this.table?.headers ? this.table.headers.length : (this.table?.rows[0]?.length || 0);
 
@@ -841,7 +883,7 @@ export class SpreadsheetTable extends LitElement {
                 // Shift+Tab: Move Left
                 if (this.selectedCol === 0) {
                     // Wrap to previous row (Last Col)
-                    this._moveSelection(-1, colCount - 1 - this.selectedCol); // -1 Row, Target Col (colCount-1) - Current(0) = colCount-1
+                    this._moveSelection(-1, colCount - 1 - this.selectedCol);
                 } else {
                     this._moveSelection(0, -1);
                 }
@@ -849,11 +891,17 @@ export class SpreadsheetTable extends LitElement {
                 // Tab: Move Right
                 if (this.selectedCol === colCount - 1) {
                     // Wrap to next row (First Col)
-                    this._moveSelection(1, -this.selectedCol); // +1 Row, Reset Col to 0
+                    this._moveSelection(1, -this.selectedCol);
                 } else {
                     this._moveSelection(0, 1);
                 }
             }
+
+            if (!e.shiftKey) {
+                this.selectionAnchorRow = this.selectedRow;
+                this.selectionAnchorCol = this.selectedCol;
+            }
+
         } else if (e.key === 'Escape') {
             e.preventDefault();
             this._cancelEdit();
@@ -888,17 +936,18 @@ export class SpreadsheetTable extends LitElement {
             case 'Tab':
                 e.preventDefault();
                 // Logic same as Edit Mode but no commit needed (already saved or not editing)
-                // Actually if we were editing, handleEditModeKey would catch it.
-                // So this is purely Navigation Mode.
+                // Tab is always Navigation, never Range Selection (even with Shift)
+                this.selectionAnchorRow = -1;
+                this.selectionAnchorCol = -1;
 
                 const colCount = this.table?.headers ? this.table.headers.length : (this.table?.rows[0]?.length || 0);
                 if (e.shiftKey) {
                     // Shift+Tab: Move Left
                     if (this.selectedCol === 0) {
                         // Wrap to previous row
-                        // We can't use dRow/dCol simple accumulation for wrapping easily unless we custom handle
-                        // So we call _moveSelection directly and return
                         this._moveSelection(-1, colCount - 1 - this.selectedCol);
+                        this.selectionAnchorRow = this.selectedRow;
+                        this.selectionAnchorCol = this.selectedCol;
                         return;
                     } else {
                         dCol = -1;
@@ -908,6 +957,8 @@ export class SpreadsheetTable extends LitElement {
                     if (this.selectedCol === colCount - 1) {
                         // Wrap to next row
                         this._moveSelection(1, -this.selectedCol);
+                        this.selectionAnchorRow = this.selectedRow;
+                        this.selectionAnchorCol = this.selectedCol;
                         return;
                     } else {
                         dCol = 1;
@@ -920,11 +971,46 @@ export class SpreadsheetTable extends LitElement {
 
         if (dRow !== 0 || dCol !== 0) {
             e.preventDefault();
+
+            // Reset Anchor if not extending selection (OR if it is Tab, which never extends)
+            if (!e.shiftKey || e.key === 'Tab') {
+                this.selectionAnchorRow = -1;
+                this.selectionAnchorCol = -1;
+            }
+
             this._moveSelection(dRow, dCol);
+
+            // Sync Anchor to new start
+            if (!e.shiftKey || e.key === 'Tab') {
+                this.selectionAnchorRow = this.selectedRow;
+                this.selectionAnchorCol = this.selectedCol;
+            }
         }
     }
 
+    private _originalValue: string = "";
+
     private _startEditing(initialValue: string | null) {
+        // Capture Original for change detection
+        this._originalValue = "";
+        if (this.table) {
+            if (this.selectedRow === -1 && this.selectedCol >= 0) {
+                // Header
+                if (this.table.headers && this.selectedCol < this.table.headers.length) {
+                    this._originalValue = this.table.headers[this.selectedCol];
+                } else {
+                    // Empty/Default header logic if needed? 
+                    // Usually headers exist if not empty array. If empty, "" is fine.
+                }
+            } else if (this.selectedRow >= 0 && this.selectedRow < this.table.rows.length) {
+                // Body
+                const row = this.table.rows[this.selectedRow];
+                if (row && this.selectedCol >= 0 && this.selectedCol < row.length) {
+                    this._originalValue = row[this.selectedCol] || "";
+                }
+            }
+        }
+
         this.isEditing = true;
         this._pendingEditValue = initialValue;
         this._shouldFocusCell = true;
@@ -1137,69 +1223,118 @@ export class SpreadsheetTable extends LitElement {
         const rowCount = this.table.rows.length;
         const colCount = this.table.headers ? this.table.headers.length : (this.table.rows[0]?.length || 0);
 
+        // Calculate Range
+        let minR = this.selectedRow;
+        let maxR = this.selectedRow;
+        let minC = this.selectedCol;
+        let maxC = this.selectedCol;
+
+        if (this.selectionAnchorRow !== -1 && this.selectionAnchorCol !== -1) {
+            if (this.selectedCol === -2 || this.selectionAnchorCol === -2) {
+                // Row Mode
+                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
+                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
+            } else if (this.selectedRow === -2 || this.selectionAnchorRow === -2) {
+                // Col Mode
+                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
+                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+            } else {
+                // Range
+                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
+                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
+                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
+                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+            }
+        }
+
         // Optimistic Update Helper
         const triggerUpdate = () => this.requestUpdate();
 
-        // Single Cell
-        if (this.selectedRow >= 0 && this.selectedCol >= 0) {
-            // Optimistic
-            if (this.selectedRow < rowCount && this.selectedCol < (this.table.rows[this.selectedRow].length)) {
-                this.table.rows[this.selectedRow][this.selectedCol] = "";
-                triggerUpdate();
-            }
-            this._updateCell(this.selectedRow, this.selectedCol, "");
-        }
-        // Row Selection
-        else if (this.selectedRow >= 0 && this.selectedCol === -2) {
-            // Structural Deletion Logic
-            // Optimistic update locally
-            if (this.selectedRow < rowCount) {
-                this.table.rows.splice(this.selectedRow, 1);
-                triggerUpdate();
-            }
+        // 1. Row Selection Mode
+        if (this.selectedCol === -2) {
+            // Delete Rows from Bottom to Top to preserve indices during specific deletes
+            // Skip ghost row if included in range? Ghost row index = rowCount.
+            // If maxR >= rowCount, cap it.
+            const effectiveMaxR = Math.min(maxR, rowCount - 1);
 
-            // Emit explicit row-delete event
-            this.dispatchEvent(new CustomEvent('row-delete', {
-                detail: {
-                    sheetIndex: this.sheetIndex,
-                    tableIndex: this.tableIndex,
-                    rowIndex: this.selectedRow
-                },
-                bubbles: true,
-                composed: true
-            }));
+            // If nothing to delete (e.g. only ghost row selected)
+            if (effectiveMaxR < minR) return;
 
-            // Adjust selection after delete?
-            // If we deleted last row, move up.
-            if (this.selectedRow >= this.table.rows.length) {
-                this.selectedRow = Math.max(-1, this.table.rows.length - 1);
+            // Optimistic Slice
+            // We can splice multiple if contiguous?
+            // this.table.rows.splice(minR, effectiveMaxR - minR + 1);
+            // But we need to dispatch events.
+            // Dispatching multiple 'row-delete' events might be spammy but safe for now.
+            // Ideally backend supports 'delete-rows'.
+            // For now, loop descending.
+            for (let r = effectiveMaxR; r >= minR; r--) {
+                this.table.rows.splice(r, 1);
+                this.dispatchEvent(new CustomEvent('row-delete', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        rowIndex: r
+                    },
+                    bubbles: true,
+                    composed: true
+                }));
             }
-        }
-        // Column Selection
-        else if (this.selectedRow === -2 && this.selectedCol >= 0) {
-            // Content Clear Logic (Reverted to original behavior)
-            // Optimistic update locally
-            const rowCount = this.table.rows.length;
-            for (let r = 0; r < rowCount; r++) {
-                if (this.selectedCol < this.table.rows[r].length) {
-                    this.table.rows[r][this.selectedCol] = "";
-                }
-            }
-
             triggerUpdate();
 
-            // Emit explicit column-clear event
-            this.dispatchEvent(new CustomEvent('column-clear', {
-                detail: {
-                    sheetIndex: this.sheetIndex,
-                    tableIndex: this.tableIndex,
-                    colIndex: this.selectedCol
-                },
-                bubbles: true,
-                composed: true
-            }));
+            // Adjust selection
+            // If we deleted everything, select new last row?
+            // If we have rows left, select minR (now occupied by next row) or last row.
+            const newCount = this.table.rows.length;
+            if (newCount > 0) {
+                this.selectedRow = Math.min(minR, newCount - 1);
+            } else {
+                this.selectedRow = 0; // Empty table / Ghost row
+            }
+        }
+        // 2. Column Selection Mode
+        else if (this.selectedRow === -2) {
+            // Clear content for each column in range
+            for (let c = minC; c <= maxC; c++) {
+                // Optimistic clear
+                for (let r = 0; r < rowCount; r++) {
+                    if (c < this.table.rows[r].length) {
+                        this.table.rows[r][c] = "";
+                    }
+                }
+                // Dispatch
+                this.dispatchEvent(new CustomEvent('column-clear', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        colIndex: c
+                    },
+                    bubbles: true,
+                    composed: true
+                }));
+            }
+            triggerUpdate();
+        }
+        // 3. Cell/Range Mode
+        else if (minR >= 0 && minC >= 0) {
+            // Optimistic
+            for (let r = minR; r <= maxR; r++) {
+                if (r < rowCount) {
+                    for (let c = minC; c <= maxC; c++) {
+                        if (c < this.table.rows[r].length) {
+                            this.table.rows[r][c] = "";
+                        }
+                    }
+                }
+            }
+            triggerUpdate();
 
-            // Selection stays
+            // Batch update or single updates?
+            // _updateRange is single event?
+            // this._updateCell for each?
+            // We have _updateRange(startRow, endRow, startCol, endCol, val)
+            // But val is single string.
+            // If we want to clear range, val="" is correct.
+            this._updateRange(minR, maxR, minC, maxC, "");
         }
         // Select All (Optional, but safe now)
         else if (this.selectedRow === -2 && this.selectedCol === -2) {
@@ -1493,7 +1628,7 @@ export class SpreadsheetTable extends LitElement {
             const showActiveOutline = isActive && minC === maxC;
             return html`
                             <div 
-                                class="cell header-col ${this.selectedCol === i || (this.selectedCol === -2 && this.selectedRow === -2) ? 'selected' : ''} ${this.isEditing && isActive ? 'editing' : ''} ${showActiveOutline ? 'active-cell' : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                class="cell header-col ${(this.selectedRow === -2 && (this.selectedCol === i || isInRange)) || (this.selectedRow === -1 && this.selectedCol === i) ? 'selected' : ''} ${this.isEditing && isActive ? 'editing' : ''} ${showActiveOutline ? 'active-cell' : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
                                 data-col="${i}"
                                 data-row="-1"
                                 tabindex="0"
@@ -1517,7 +1652,7 @@ export class SpreadsheetTable extends LitElement {
             const showActiveOutline = isActive && minC === maxC;
             return html`
                             <div 
-                                class="cell header-col ${this.selectedCol === i || (this.selectedCol === -2 && this.selectedRow === -2) ? 'selected' : ''} ${this.isEditing && isActive ? 'editing' : ''} ${showActiveOutline ? 'active-cell' : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                class="cell header-col ${(this.selectedRow === -2 && (this.selectedCol === i || isInRange)) || (this.selectedRow === -1 && this.selectedCol === i) ? 'selected' : ''} ${this.isEditing && isActive ? 'editing' : ''} ${showActiveOutline ? 'active-cell' : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
                                 data-col="${i}"
                                 data-row="-1"
                                 tabindex="0"
@@ -1540,7 +1675,7 @@ export class SpreadsheetTable extends LitElement {
                     ${table.rows.map((row, r) => html`
                         <!-- Row Header -->
                         <div 
-                            class="cell header-row ${this.selectedRow === r || (this.selectedRow === -2 && this.selectedCol === -2) ? 'selected' : ''} ${(minC === -1 || this.selectedCol === -2) && r >= minR && r <= maxR ? 'selected-range' : ''}"
+                            class="cell header-row ${(this.selectedCol === -2 && (this.selectedRow === r || ((minC === -1 || this.selectedCol === -2) && r >= minR && r <= maxR))) || (this.selectedCol === -1 && this.selectedRow === r) ? 'selected' : ''} ${(minC === -1 || this.selectedCol === -2) && r >= minR && r <= maxR ? 'selected-range' : ''}"
                             data-row="${r}"
                             tabindex="0"
                             @click="${(e: MouseEvent) => this._handleRowHeaderClick(e, r)}"
