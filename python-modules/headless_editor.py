@@ -180,6 +180,10 @@ def rename_sheet(sheet_idx, new_name):
     return apply_sheet_update(sheet_idx, lambda s: replace(s, name=new_name))
 
 
+def update_sheet_metadata(sheet_idx, metadata):
+    return apply_sheet_update(sheet_idx, lambda s: replace(s, metadata=metadata))
+
+
 def update_table_metadata(sheet_idx, table_idx, new_name, new_desc):
     return apply_table_update(
         sheet_idx, table_idx, lambda t: replace(t, name=new_name, description=new_desc)

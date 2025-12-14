@@ -7,6 +7,7 @@ import "./components/spreadsheet-table";
 import "./components/spreadsheet-onboarding";
 import "./components/spreadsheet-document-view";
 import "./components/confirmation-modal";
+import "./components/layout-container";
 import { TableJSON } from "./components/spreadsheet-table";
 
 // Register the VS Code Design System components
@@ -18,6 +19,7 @@ interface SheetJSON {
   name: string;
   header_line?: number;
   tables: TableJSON[];
+  metadata?: any;
 }
 
 interface DocumentJSON {
@@ -317,6 +319,32 @@ export class MyEditor extends LitElement {
     });
   }
 
+  private async _handleSheetMetadataUpdate(detail: any) {
+    if (!this.pyodide) return;
+    const { sheetIndex, metadata } = detail;
+    // Optimistic Update: Update local state immediately
+    const targetTab = this.tabs.find(t => t.type === 'sheet' && t.sheetIndex === sheetIndex);
+    if (targetTab && targetTab.data) {
+      targetTab.data.metadata = {
+        ...(targetTab.data.metadata || {}),
+        ...metadata
+      };
+      this.requestUpdate();
+    }
+
+    this._enqueueRequest(async () => {
+      const result = await this.pyodide.runPythonAsync(`
+            import json
+            res = update_sheet_metadata(
+                ${sheetIndex},
+                ${JSON.stringify(metadata)}
+            )
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(result));
+    });
+  }
+
   private _onMetadataChange(e: CustomEvent) {
     this._handleVisualMetadataUpdate(e.detail);
   }
@@ -541,6 +569,7 @@ export class MyEditor extends LitElement {
       });
       window.addEventListener('metadata-edit', (e: any) => this._handleMetadataEdit(e.detail));
       window.addEventListener('metadata-change', (e: any) => this._handleVisualMetadataUpdate(e.detail));
+      window.addEventListener('sheet-metadata-update', (e: any) => this._handleSheetMetadataUpdate(e.detail));
 
       // Handle messages from the extension
       window.addEventListener('message', async (event) => {
@@ -638,21 +667,14 @@ export class MyEditor extends LitElement {
     return html`
         <div class="content-area">
             ${activeTab.type === 'sheet' ? html`
-                 <div class="sheet-container">
-                    ${activeTab.data.tables.map((table: any, tableIndex: number) => html`
-                        <spreadsheet-table 
-                            .table="${table}" 
-                            .sheetIndex="${activeTab.sheetIndex}" 
-                            .tableIndex="${tableIndex}"
-                            @cell-edit="${this._onCellEdit}"
-                            @range-edit="${this._onRangeEdit}"
-                            @metadata-change="${this._onMetadataChange}"
-                        ></spreadsheet-table>
-                    `)}
+                 <div class="sheet-container" style="height: 100%">
+                    <layout-container
+                        .layout="${activeTab.data.metadata?.layout}"
+                        .tables="${activeTab.data.tables}"
+                        .sheetIndex="${activeTab.sheetIndex}"
+                    ></layout-container>
                  </div>
-            ` : html``}
-            
-            ${activeTab.type === 'document' ? html`
+            ` : activeTab.type === 'document' ? html`
                 <spreadsheet-document-view
                     .title="${activeTab.title}"
                     .content="${activeTab.data.content}"
