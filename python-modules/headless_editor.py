@@ -176,6 +176,21 @@ def insert_column(sheet_idx, table_idx, col_idx):
     return apply_table_update(sheet_idx, table_idx, lambda t: t.insert_column(col_idx))
 
 
+def update_visual_metadata(sheet_idx, table_idx, visual_metadata):
+    def _update_logic(t):
+        current_md = t.metadata or {}
+        new_md = current_md.copy()
+
+        current_visual = new_md.get("visual", {})
+        updated_visual = current_visual.copy()
+        updated_visual.update(visual_metadata)
+
+        new_md["visual"] = updated_visual
+        return replace(t, metadata=new_md)
+
+    return apply_table_update(sheet_idx, table_idx, _update_logic)
+
+
 def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_level):
     lines = md_text.split("\n")
 

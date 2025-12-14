@@ -252,6 +252,27 @@ export class MyEditor extends LitElement {
     });
   }
 
+  private async _handleVisualMetadataUpdate(detail: any) {
+    if (!this.pyodide) return;
+    const { sheetIndex, tableIndex, metadata } = detail;
+    this._enqueueRequest(async () => {
+      const result = await this.pyodide.runPythonAsync(`
+            import json
+            res = update_visual_metadata(
+                ${sheetIndex}, 
+                ${tableIndex}, 
+                ${JSON.stringify(metadata)}
+            )
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(result));
+    });
+  }
+
+  private _onMetadataChange(e: CustomEvent) {
+    this._handleVisualMetadataUpdate(e.detail);
+  }
+
   private async _onCellEdit(e: CustomEvent) {
     const { sheetIndex, tableIndex, rowIndex, colIndex, newValue } = e.detail;
     await this._handleRangeEdit(sheetIndex, tableIndex, rowIndex, rowIndex, colIndex, colIndex, newValue);
@@ -463,6 +484,7 @@ export class MyEditor extends LitElement {
         );
       });
       window.addEventListener('metadata-edit', (e: any) => this._handleMetadataEdit(e.detail));
+      window.addEventListener('metadata-change', (e: any) => this._handleVisualMetadataUpdate(e.detail));
 
       // Handle messages from the extension
       window.addEventListener('message', async (event) => {
@@ -532,6 +554,7 @@ export class MyEditor extends LitElement {
                             .tableIndex="${tableIndex}"
                             @cell-edit="${this._onCellEdit}"
                             @range-edit="${this._onRangeEdit}"
+                            @metadata-change="${this._onMetadataChange}"
                         ></spreadsheet-table>
                     `)}
                  </div>

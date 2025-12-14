@@ -1,6 +1,6 @@
 
 import { describe, it, expect } from 'vitest';
-import { SpreadsheetTable } from './spreadsheet-table';
+import { SpreadsheetTable } from '../components/spreadsheet-table';
 import { fixture, html } from '@open-wc/testing';
 
 describe('SpreadsheetTable Delete Operations', () => {

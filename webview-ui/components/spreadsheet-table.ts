@@ -37,6 +37,7 @@ export class SpreadsheetTable extends LitElement {
         max-height: 80vh;
         border: 1px solid var(--border-color);
         position: relative;
+        width: fit-content;
     }
 
     .grid {
@@ -227,6 +228,18 @@ export class SpreadsheetTable extends LitElement {
         background: var(--vscode-list-hoverBackground);
         color: var(--vscode-list-hoverForeground);
     }
+    .col-resize-handle {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 5px;
+        height: 100%;
+        cursor: col-resize;
+        z-index: 20;
+    }
+    .col-resize-handle:hover {
+        background-color: var(--selection-color);
+    }
   `;
 
     @property({ type: Object })
@@ -245,9 +258,17 @@ export class SpreadsheetTable extends LitElement {
     selectedCol: number = -1;
 
     @state()
+    @state()
     isEditing: boolean = false;
 
     @state()
+    colWidths: { [key: number]: number } = {};
+
+    @state()
+    resizingCol: number = -1;
+
+    resizeStartX: number = 0;
+    resizeStartWidth: number = 0;
     editingMetadata: boolean = false;
 
     @state()
@@ -262,7 +283,88 @@ export class SpreadsheetTable extends LitElement {
 
     // To track if we should focus the element after update
     private _shouldFocusCell: boolean = false;
+
     private _pendingEditValue: string | null = null; // New state for immediate edit
+
+    willUpdate(changedProperties: PropertyValues) {
+        if (changedProperties.has("table") && this.table) {
+            const visual = this.table.metadata && this.table.metadata.visual;
+            if (visual && visual.columnWidths) {
+                if (Array.isArray(visual.columnWidths)) {
+                    this.colWidths = {};
+                    visual.columnWidths.forEach((w: number, i: number) => this.colWidths[i] = w);
+                } else {
+                    this.colWidths = { ...visual.columnWidths };
+                }
+            } else {
+                this.colWidths = {};
+            }
+        }
+    }
+
+    private _getColumnTemplate(colCount: number) {
+        let template = "40px"; // Row Header
+        for (let i = 0; i < colCount; i++) {
+            const width = this.colWidths[i];
+            template += width ? ` ${width}px` : " 100px";
+        }
+        return template;
+    }
+
+    private _startColResize(e: MouseEvent, index: number) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.resizingCol = index;
+        this.resizeStartX = e.clientX;
+
+        // Use current DOM width if not explicitly set in state
+        let currentWidth = this.colWidths[index];
+        if (!currentWidth) {
+            const headerCell = this.shadowRoot?.querySelector(`.header-col[data-col="${index}"]`);
+            if (headerCell) {
+                currentWidth = headerCell.getBoundingClientRect().width;
+            } else {
+                currentWidth = 100;
+            }
+        }
+        this.resizeStartWidth = currentWidth;
+
+        // Listen globally
+        document.addEventListener('mousemove', this._handleColResizeMove);
+        document.addEventListener('mouseup', this._endColResize);
+    }
+
+    private _handleColResizeMove = (e: MouseEvent) => {
+        if (this.resizingCol === -1) return;
+        const diff = e.clientX - this.resizeStartX;
+        const newWidth = Math.max(30, this.resizeStartWidth + diff); // Min width 30
+
+        // Optimistic update
+        this.colWidths = { ...this.colWidths, [this.resizingCol]: newWidth };
+    }
+
+    private _endColResize = (e: MouseEvent) => {
+        if (this.resizingCol === -1) return;
+
+        // Dispatch change
+        const finalWidth = this.colWidths[this.resizingCol];
+
+        this.dispatchEvent(new CustomEvent('metadata-change', {
+            detail: {
+                sheetIndex: this.sheetIndex,
+                tableIndex: this.tableIndex,
+                metadata: {
+                    columnWidths: { ...this.colWidths }
+                }
+            },
+            bubbles: true,
+            composed: true
+        }));
+
+        this.resizingCol = -1;
+        document.removeEventListener('mousemove', this._handleColResizeMove);
+        document.removeEventListener('mouseup', this._endColResize);
+    }
 
     updated(changedProperties: PropertyValues) {
         if (this._shouldFocusCell) {
@@ -930,7 +1032,7 @@ export class SpreadsheetTable extends LitElement {
             </div>
 
             <div class="table-container">
-                <div class="grid" style="grid-template-columns: 40px repeat(${colCount}, minmax(100px, 1fr));">
+                <div class="grid" style="grid-template-columns: ${this._getColumnTemplate(colCount)};">
                     <!-- Corner -->
                     <div class="cell header-corner" @click="${() => { this.selectedRow = -2; this.selectedCol = -2; }}"></div>
 
@@ -950,6 +1052,7 @@ export class SpreadsheetTable extends LitElement {
                             @keydown="${this._handleKeyDown}"
                         >
                             ${header}
+                            <div class="col-resize-handle" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}"></div>
                         </div>
                     `) : Array.from({ length: colCount }).map((_, i) => html`
                          <div 
@@ -966,6 +1069,7 @@ export class SpreadsheetTable extends LitElement {
                             @keydown="${this._handleKeyDown}"
                          >
                             ${i + 1}
+                            <div class="col-resize-handle" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}"></div>
                          </div>
                     `)}
 
