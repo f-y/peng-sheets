@@ -6,6 +6,7 @@ import "./components/spreadsheet-toolbar";
 import "./components/spreadsheet-table";
 import "./components/spreadsheet-onboarding";
 import "./components/spreadsheet-document-view";
+import "./components/confirmation-modal";
 import { TableJSON } from "./components/spreadsheet-table";
 
 // Register the VS Code Design System components
@@ -140,6 +141,33 @@ export class MyEditor extends LitElement {
         width: 100px;
     }
 
+    /* Context Menu */
+    .context-menu {
+      position: fixed;
+      background: var(--vscode-menu-background);
+      color: var(--vscode-menu-foreground);
+      border: 1px solid var(--vscode-menu-border);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      z-index: 1000;
+      min-width: 150px;
+      padding: 4px 0;
+    }
+
+    .context-menu-item {
+      padding: 6px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .context-menu-item:hover {
+      background: var(--vscode-menu-selectionBackground);
+      color: var(--vscode-menu-selectionForeground);
+    }
+    
+    /* Modal styles removed (moved to component) */
+
     .output {
         margin: 1rem;
         white-space: pre-wrap;
@@ -173,6 +201,12 @@ export class MyEditor extends LitElement {
 
   @state()
   editingTabIndex: number | null = null;
+
+  @state()
+  pendingAddSheet = false;
+
+  @state()
+  confirmDeleteIndex: number | null = null;
 
   @state()
   tabContextMenu: { x: number, y: number, index: number } | null = null;
@@ -388,7 +422,8 @@ export class MyEditor extends LitElement {
     }
   }
 
-  async firstUpdated() {
+  connectedCallback() {
+    super.connectedCallback();
     try {
       const initialContent = (window as any).initialContent;
       if (initialContent) {
@@ -399,7 +434,13 @@ export class MyEditor extends LitElement {
       if (initialConfig) {
         this.config = initialConfig;
       }
+    } catch (e) {
+      console.error("Error loading initial content:", e);
+    }
+  }
 
+  async firstUpdated() {
+    try {
       this.pyodide = await loadPyodide();
       console.log("Loading micropip...");
       await this.pyodide.loadPackage("micropip");
@@ -521,6 +562,43 @@ export class MyEditor extends LitElement {
     }
   }
 
+  willUpdate(changedProperties: Map<string, any>) {
+    if (changedProperties.has('tabs')) {
+      const tabs = this.tabs;
+
+      // Handle Add Sheet Selection
+      if (this.pendingAddSheet) {
+        // Select last sheet (before 'add-sheet' button if present)
+        let targetIndex = tabs.length - 1;
+        if (tabs.length > 0 && tabs[tabs.length - 1].type === 'add-sheet') {
+          targetIndex = tabs.length - 2;
+        }
+
+        if (targetIndex >= 0) {
+          this.activeTabIndex = targetIndex;
+        }
+        this.pendingAddSheet = false;
+      }
+      // Sanitize activeTabIndex (fallback)
+      else if (this.activeTabIndex >= tabs.length) {
+        if (tabs.length > 0) {
+          this.activeTabIndex = tabs.length - 1;
+        } else {
+          this.activeTabIndex = 0;
+        }
+      }
+
+      // If active tab is "add-sheet" (+), try to select previous one
+      // (This handles deletion case where index points to +)
+      const activeTab = tabs[this.activeTabIndex];
+      if (activeTab && activeTab.type === 'add-sheet') {
+        if (this.activeTabIndex > 0) {
+          this.activeTabIndex = this.activeTabIndex - 1;
+        }
+      }
+    }
+  }
+
   render() {
     if (!this.tabs.length && !this.output) {
       return html`< div class="output" > Loading...</div>`;
@@ -537,8 +615,7 @@ export class MyEditor extends LitElement {
     }
 
     let activeTab = this.tabs[this.activeTabIndex];
-    if (!activeTab) {
-      this.activeTabIndex = 0;
+    if (!activeTab && this.tabs.length > 0) {
       activeTab = this.tabs[0];
     }
 
@@ -619,6 +696,19 @@ export class MyEditor extends LitElement {
             <!-- Overlay to close menu on click outside -->
             <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999;" @click="${() => this.tabContextMenu = null}"></div>
         ` : ''}
+
+        <!-- Delete Confirmation Modal -->
+        <confirmation-modal 
+            .open="${this.confirmDeleteIndex !== null}"
+            title="Delete Sheet" 
+            confirmLabel="Delete" 
+            cancelLabel="Cancel"
+            @confirm="${this._performDelete}"
+            @cancel="${this._cancelDelete}"
+        >
+             Are you sure you want to delete sheet "<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null ? this.tabs[this.confirmDeleteIndex]?.title : ''}</span>"?
+             <br>This action cannot be undone.
+        </confirmation-modal>
     `;
   }
 
@@ -674,12 +764,28 @@ export class MyEditor extends LitElement {
     if (tab) this._handleTabDoubleClick(index, tab);
   }
 
-  private async _deleteSheet(index: number) {
+  private _deleteSheet(index: number) {
     this.tabContextMenu = null;
     const tab = this.tabs[index];
     if (tab && tab.type === 'sheet' && typeof tab.sheetIndex === 'number') {
-      if (!confirm(`Are you sure you want to delete sheet "${tab.title}"?`)) return;
+      // Trigger modal instead of confirm()
+      this.confirmDeleteIndex = index;
+    }
+  }
 
+  private _cancelDelete() {
+    this.confirmDeleteIndex = null;
+  }
+
+  private async _performDelete() {
+    const index = this.confirmDeleteIndex;
+    if (index === null) return;
+
+    // Close modal immediately
+    this.confirmDeleteIndex = null;
+
+    const tab = this.tabs[index];
+    if (tab && tab.type === 'sheet' && typeof tab.sheetIndex === 'number') {
       if (!this.pyodide) return;
       try {
         const result = await this.pyodide.runPythonAsync(`
@@ -699,7 +805,7 @@ export class MyEditor extends LitElement {
           console.error("Delete failed:", updateSpec.error);
         }
       } catch (e) {
-        console.error(e);
+        console.error("Python error:", e);
       }
     }
   }
@@ -737,6 +843,8 @@ export class MyEditor extends LitElement {
 
   private async _handleAddSheet() {
     if (!this.pyodide) return;
+
+    this.pendingAddSheet = true;
 
     let newSheetName = "Sheet 1";
     if (this.workbook && this.workbook.sheets) {
