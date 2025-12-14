@@ -954,15 +954,20 @@ export class SpreadsheetTable extends LitElement {
         }));
     }
 
-    private _handleMetadataDblClick() {
+    private async _handleMetadataDblClick(e: MouseEvent) {
+        e.preventDefault();
+        e.stopPropagation();
         if (!this.table) return;
         this.pendingTitle = this.table.name || "";
         this.pendingDescription = this.table.description || "";
         this.editingMetadata = true;
-        setTimeout(() => {
-            const input = this.shadowRoot?.querySelector('.metadata-input-title') as HTMLInputElement;
-            if (input) input.focus();
-        }, 0);
+
+        await this.updateComplete;
+        const input = this.shadowRoot?.querySelector('.metadata-input-title') as HTMLInputElement;
+        if (input) {
+            input.focus();
+            input.select();
+        }
     }
 
     private _handleMetadataKeydown(e: KeyboardEvent) {
