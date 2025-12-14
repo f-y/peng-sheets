@@ -271,6 +271,20 @@ export class MyEditor extends LitElement {
     if (!this.pyodide || !this.workbook) return;
     const { sheetIndex, tableIndex, name, description } = detail;
 
+    // Optimistic Update: Update local state immediately to avoid UI flicker
+    const targetTab = this.tabs.find(t => t.type === 'sheet' && t.sheetIndex === sheetIndex);
+    if (targetTab && targetTab.data && targetTab.data.tables) {
+      const table = targetTab.data.tables[tableIndex];
+      if (table) {
+        // Update values directly
+        table.name = name;
+        table.description = description;
+
+        // Force Lit to re-render with new values
+        this.requestUpdate();
+      }
+    }
+
     this._enqueueRequest(async () => {
       const result = await this.pyodide.runPythonAsync(`
             import json
