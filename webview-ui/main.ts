@@ -333,12 +333,78 @@ export class MyEditor extends LitElement {
     }
 
     this._enqueueRequest(async () => {
+      try {
+        const metadataJson = JSON.stringify(metadata);
+        // Escape backslashes and single quotes/newlines for Python string literal
+        const escapedJson = metadataJson
+          .replace(/\\/g, '\\\\')
+          .replace(/'/g, "\\'")
+          .replace(/\n/g, '\\n');
+
+        const result = await this.pyodide.runPythonAsync(`
+            import json
+            output_json = "null"
+            try:
+                data = json.loads('${escapedJson}')
+                res = update_sheet_metadata(${sheetIndex}, data)
+                output_json = json.dumps(res) if res else "null"
+            except Exception as e:
+                output_json = json.dumps({"error": str(e)})
+            output_json
+        `);
+        const parsed = JSON.parse(result);
+        if (parsed && parsed.error) {
+          console.error("Python metadata update error:", parsed.error);
+        } else {
+          this._postUpdateMessage(parsed);
+        }
+      } catch (e) {
+        console.error("Failed to run python metadata update:", e);
+      }
+    });
+  }
+
+  private async _handleRequestAddTable(detail: any) {
+    if (!this.pyodide) return;
+    const { sheetIndex } = detail;
+    this._enqueueRequest(async () => {
       const result = await this.pyodide.runPythonAsync(`
             import json
-            res = update_sheet_metadata(
-                ${sheetIndex},
-                ${JSON.stringify(metadata)}
-            )
+            res = add_table(${sheetIndex})
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(result));
+    });
+  }
+
+  private async _handleRequestRenameTable(detail: any) {
+    if (!this.pyodide || !this.workbook) return;
+    const { sheetIndex, tableIndex, newName } = detail;
+
+    // Find current description from local state
+    let currentDesc = "";
+    const targetTab = this.tabs.find(t => t.type === 'sheet' && t.sheetIndex === sheetIndex);
+    if (targetTab && targetTab.data && targetTab.data.tables) {
+      const table = targetTab.data.tables[tableIndex];
+      if (table) currentDesc = table.description || "";
+    }
+
+    // Reuse existing metadata edit logic which handles optimistic updates
+    this._handleMetadataEdit({
+      sheetIndex,
+      tableIndex,
+      name: newName,
+      description: currentDesc
+    });
+  }
+
+  private async _handleRequestDeleteTable(detail: any) {
+    if (!this.pyodide) return;
+    const { sheetIndex, tableIndex } = detail;
+    this._enqueueRequest(async () => {
+      const result = await this.pyodide.runPythonAsync(`
+            import json
+            res = delete_table(${sheetIndex}, ${tableIndex})
             json.dumps(res) if res else "null"
         `);
       this._postUpdateMessage(JSON.parse(result));
@@ -568,6 +634,9 @@ export class MyEditor extends LitElement {
         );
       });
       window.addEventListener('metadata-edit', (e: any) => this._handleMetadataEdit(e.detail));
+      window.addEventListener('request-add-table', (e: any) => this._handleRequestAddTable(e.detail));
+      window.addEventListener('request-rename-table', (e: any) => this._handleRequestRenameTable(e.detail));
+      window.addEventListener('request-delete-table', (e: any) => this._handleRequestDeleteTable(e.detail));
       window.addEventListener('metadata-change', (e: any) => this._handleVisualMetadataUpdate(e.detail));
       window.addEventListener('sheet-metadata-update', (e: any) => this._handleSheetMetadataUpdate(e.detail));
 

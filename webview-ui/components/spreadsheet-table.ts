@@ -51,8 +51,8 @@ export class SpreadsheetTable extends LitElement {
         border-bottom: 1px solid var(--border-color);
         white-space: nowrap;
         overflow: hidden;
-        min-height: 24px;
-        line-height: 24px;
+        min-height: 20px;
+        line-height: 20px;
         outline: none;
         background-color: var(--vscode-editor-background);
         cursor: default;
@@ -122,7 +122,7 @@ export class SpreadsheetTable extends LitElement {
         z-index: 10;
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
-        padding: 0.1rem; /* Reduced padding */
+        padding: 0; /* Minimal padding */
         outline-offset: -2px; /* Ensure outline doesn't overflow */
     }
     
@@ -143,7 +143,7 @@ export class SpreadsheetTable extends LitElement {
         user-select: none;
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
-        padding: 0 0.6rem;
+        padding: 0;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -204,6 +204,17 @@ export class SpreadsheetTable extends LitElement {
     .metadata-desc {
         min-height: 1.5em; /* Ensure clickable even if empty */
         margin: 0 0 1rem 0;
+        transition: margin 0.2s, min-height 0.2s;
+    }
+    
+    .metadata-desc.empty {
+        margin: 0 0 0.25rem 0;
+        min-height: 1em;
+        opacity: 0.7;
+    }
+    .metadata-desc.empty:hover {
+        opacity: 1;
+        background: rgba(0,0,0,0.02);
     }
 
     .context-menu {
@@ -325,7 +336,7 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _getColumnTemplate(colCount: number) {
-        let template = "40px"; // Row Header
+        let template = "30px"; // Row Header
         for (let i = 0; i < colCount; i++) {
             const width = this.colWidths[i];
             template += width ? ` ${width}px` : " 100px";
@@ -964,13 +975,13 @@ export class SpreadsheetTable extends LitElement {
         }));
     }
 
-    private async _handleMetadataDblClick(e: MouseEvent) {
+    private async _handleMetadataClick(e: MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
         if (!this.table) {
             return;
         }
-        this.pendingTitle = this.table.name || "";
+        // pendingTitle removed, only description
         this.pendingDescription = this.table.description || "";
         this.editingMetadata = true;
 
@@ -982,7 +993,7 @@ export class SpreadsheetTable extends LitElement {
         await new Promise(r => requestAnimationFrame(r));
         await this.updateComplete;
 
-        const input = this.shadowRoot?.querySelector('.metadata-input-title') as HTMLInputElement;
+        const input = this.shadowRoot?.querySelector('.metadata-input-desc') as HTMLTextAreaElement;
         if (input) {
             input.focus();
             input.select();
@@ -1005,9 +1016,10 @@ export class SpreadsheetTable extends LitElement {
         if (!this.editingMetadata) return;
 
         // If blurring to another metadata field, do not close
+        // (Only description field now, so simpler check or none)
         if (e && e.relatedTarget) {
             const target = e.relatedTarget as HTMLElement;
-            if (target.classList.contains('metadata-input-title') || target.classList.contains('metadata-input-desc')) {
+            if (target.classList.contains('metadata-input-desc')) {
                 return;
             }
         }
@@ -1015,12 +1027,14 @@ export class SpreadsheetTable extends LitElement {
         this.editingMetadata = false;
         this.requestUpdate(); // Force render sync
 
-        if (this.pendingTitle !== (this.table?.name || "") || this.pendingDescription !== (this.table?.description || "")) {
+        // Check if description changed
+        const currentDesc = this.table?.description || "";
+        if (this.pendingDescription !== currentDesc) {
             this.dispatchEvent(new CustomEvent('metadata-edit', {
                 detail: {
                     sheetIndex: this.sheetIndex,
                     tableIndex: this.tableIndex,
-                    name: this.pendingTitle,
+                    name: this.table?.name || "", // Keep current name
                     description: this.pendingDescription
                 },
                 bubbles: true,
@@ -1103,14 +1117,6 @@ export class SpreadsheetTable extends LitElement {
         return html`
             <div class="metadata-container">
                ${this.editingMetadata ? html`
-                    <input 
-                        class="metadata-input-title" 
-                        .value="${table.name || ""}" 
-                        placeholder="Table Name"
-                        @input="${(e: Event) => this.pendingTitle = (e.target as HTMLInputElement).value}"
-                        @keydown="${this._handleMetadataKeydown}"
-                        @blur="${this._commitMetadata}"
-                    />
                     <textarea 
                         class="metadata-input-desc" 
                         .value="${table.description || ""}" 
@@ -1121,12 +1127,12 @@ export class SpreadsheetTable extends LitElement {
                         rows="2"
                     ></textarea>
                ` : html`
-                     <h3 @dblclick="${this._handleMetadataDblClick}">${table.name || "Table " + (this.tableIndex + 1)}</h3>
-                     ${table.description ? html`
-                        <p class="metadata-desc" @dblclick="${this._handleMetadataDblClick}" style="color: var(--vscode-descriptionForeground);">
-                            ${table.description}
-                        </p>
-                     ` : ''}
+                     <p class="metadata-desc ${!table.description ? 'empty' : ''}" 
+                        @click="${this._handleMetadataClick}" 
+                        title="Click to edit description"
+                        style="color: var(--vscode-descriptionForeground); cursor: pointer; border: 1px dashed transparent;">
+                        ${table.description || html`<span style="opacity: 0.5; font-size: 0.9em;">Add description...</span>`}
+                     </p>
                 `}
             </div>
 

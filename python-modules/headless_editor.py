@@ -7,6 +7,7 @@ from md_spreadsheet_parser import (
     generate_workbook_markdown,
     parse_workbook,
 )
+from md_spreadsheet_parser.models import Table
 
 # Global State (managed by the runtime)
 workbook = None
@@ -170,6 +171,34 @@ def add_sheet(new_name):
         return generate_and_get_range()
     except Exception as e:
         return {"error": str(e)}
+
+
+def add_table(sheet_idx):
+    def sheet_transform(sheet):
+        new_tables = list(sheet.tables)
+        new_table = Table(
+            name=f"New Table {len(new_tables) + 1}",
+            description="",
+            headers=["A", "B", "C"],
+            rows=[["", "", ""]],
+            metadata={},
+        )
+        new_tables.append(new_table)
+        return replace(sheet, tables=new_tables)
+
+    return apply_sheet_update(sheet_idx, sheet_transform)
+
+
+def delete_table(sheet_idx, table_idx):
+    def sheet_transform(sheet):
+        new_tables = list(sheet.tables)
+        if table_idx < 0 or table_idx >= len(new_tables):
+            raise IndexError("Invalid table index")
+
+        del new_tables[table_idx]
+        return replace(sheet, tables=new_tables)
+
+    return apply_sheet_update(sheet_idx, sheet_transform)
 
 
 def delete_sheet(sheet_idx):

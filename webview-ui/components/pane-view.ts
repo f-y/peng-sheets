@@ -1,5 +1,5 @@
 import { html, css, LitElement } from "lit";
-import { customElement, property } from "lit/decorators.js";
+import { customElement, property, state } from "lit/decorators.js";
 import { LeafNode } from "../types";
 import { TableJSON } from "./spreadsheet-table";
 import "./spreadsheet-table";
@@ -14,6 +14,7 @@ export class PaneView extends LitElement {
             height: 100%;
             overflow: hidden;
             background-color: var(--vscode-editor-background);
+            position: relative;
         }
         .tab-bar {
             display: flex;
@@ -21,6 +22,9 @@ export class PaneView extends LitElement {
             border-bottom: 1px solid var(--vscode-editorGroup-border);
             overflow-x: auto;
             min-height: 35px; /* VS Code tab height */
+        }
+        .tab-bar.drag-over {
+            background-color: var(--vscode-editorGroup-dropBackground);
         }
         .tab {
             padding: 8px 12px;
@@ -41,10 +45,67 @@ export class PaneView extends LitElement {
         .tab:hover {
             background-color: var(--vscode-tab-hoverBackground);
         }
+        .tab-add {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            cursor: pointer;
+            color: var(--vscode-foreground);
+            font-size: 16px;
+            border-right: 1px solid var(--vscode-tab-border);
+        }
+        .tab-add:hover {
+            background-color: var(--vscode-toolbar-hoverBackground);
+        }
+        .tab-input {
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            border: 1px solid var(--vscode-input-border);
+            outline: none;
+            font-family: inherit;
+            font-size: inherit;
+            padding: 2px 4px;
+            width: 100px;
+        }
         .content {
             flex: 1;
             overflow: auto;
             position: relative;
+        }
+        /* Drop Overlays for Splitting */
+        .drop-overlay {
+            position: absolute;
+            background-color: var(--vscode-editorGroup-dropBackground);
+            pointer-events: none; /* Let events pass through to trigger drop on container */
+            z-index: 10;
+            display: none;
+        }
+        .drop-overlay.active {
+            display: block;
+        }
+        /* Context Menu */
+        .context-menu {
+            position: fixed;
+            background: var(--vscode-menu-background);
+            color: var(--vscode-menu-foreground);
+            border: 1px solid var(--vscode-menu-border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 150px;
+            padding: 4px 0;
+            font-family: var(--vscode-font-family);
+        }
+        .context-menu-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+        }
+        .context-menu-item:hover {
+            background: var(--vscode-menu-selectionBackground);
+            color: var(--vscode-menu-selectionForeground);
         }
     `;
 
@@ -57,6 +118,18 @@ export class PaneView extends LitElement {
     @property({ type: Number })
     sheetIndex: number = 0;
 
+    @property({ type: String })
+    activeDropZone: 'top' | 'bottom' | 'left' | 'right' | 'center' | null = null;
+
+    @state()
+    private _editingTabGlobalIndex: number | null = null;
+
+    @state()
+    private _editingName: string = '';
+
+    @state()
+    private _tabContextMenu: { x: number, y: number, index: number, globalIndex: number } | null = null;
+
     render() {
         if (!this.node || !this.tables.length) return html``;
 
@@ -66,19 +139,41 @@ export class PaneView extends LitElement {
         const activeTable = this.tables[activeGlobalIndex];
 
         return html`
-            <div class="tab-bar">
+            <div class="tab-bar" 
+                 @dragover="${this._handleTabBarDragOver}"
+                 @drop="${this._handleTabBarDrop}"
+                 @dragleave="${this._handleTabBarDragLeave}">
                 ${this.node.tables.map((globalIdx, i) => {
             const table = this.tables[globalIdx];
             const isActive = i === activeLocalIndex;
+            const isEditing = this._editingTabGlobalIndex === globalIdx;
+
             return html`
                         <div class="tab ${isActive ? 'active' : ''}" 
-                             @click="${() => this._switchTab(i)}">
-                            ${table.name || `Table ${globalIdx + 1}`}
+                             draggable="${!isEditing}"
+                             @dragstart="${(e: DragEvent) => this._handleDragStart(e, i, globalIdx)}"
+                             @click="${() => this._switchTab(i)}"
+                             @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, i, globalIdx)}"
+                             @dblclick="${() => this._startRenaming(globalIdx, table.name || undefined)}">
+                            ${isEditing ? html`
+                                <input class="tab-input" 
+                                       .value="${this._editingName}" 
+                                       @input="${this._handleRenameInput}"
+                                       @keydown="${this._handleRenameKeydown}"
+                                       @blur="${this._handleRenameBlur}"
+                                       @click="${(e: Event) => e.stopPropagation()}" 
+                                       @dblclick="${(e: Event) => e.stopPropagation()}"
+                                />
+                            ` : (table.name || `Table ${globalIdx + 1}`)}
                         </div>
                     `;
         })}
+                <div class="tab-add" @click="${this._handleAddTable}" title="Add Table">+</div>
             </div>
-            <div class="content">
+            <div class="content"
+                 @dragover="${this._handleContentDragOver}"
+                 @dragleave="${this._handleContentDragLeave}"
+                 @drop="${this._handleContentDrop}">
                 ${activeTable ? html`
                     <spreadsheet-table 
                         .table="${activeTable}"
@@ -86,8 +181,247 @@ export class PaneView extends LitElement {
                         .tableIndex="${activeGlobalIndex}"
                     ></spreadsheet-table>
                 ` : html`<div>No Table Selected</div>`}
+                
+                ${this._renderDropOverlay()}
             </div>
+            ${this._renderContextMenu()}
         `;
+    }
+
+    connectedCallback() {
+        super.connectedCallback();
+        window.addEventListener('click', this._handleGlobalClick);
+        window.addEventListener('contextmenu', this._handleGlobalClick); // Close on right click elsewhere
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('click', this._handleGlobalClick);
+        window.removeEventListener('contextmenu', this._handleGlobalClick);
+    }
+
+    private _handleGlobalClick = (e: Event) => {
+        // If sticky menu behavior is desired, check target. But standard is click-outside closes.
+        if (this._tabContextMenu) {
+            this._tabContextMenu = null;
+            this.requestUpdate();
+        }
+    }
+
+    // ... existing overlay methods ...
+
+    private _startRenaming(globalIndex: number, currentName: string | undefined) {
+        this._editingTabGlobalIndex = globalIndex;
+        this._editingName = currentName || `Table ${globalIndex + 1}`;
+        setTimeout(() => {
+            const input = this.shadowRoot?.querySelector('.tab-input') as HTMLInputElement;
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 0);
+    }
+
+    private _handleRenameInput(e: Event) {
+        this._editingName = (e.target as HTMLInputElement).value;
+    }
+
+    private _handleRenameKeydown(e: KeyboardEvent) {
+        if (e.key === 'Enter') {
+            this._finishRenaming();
+        } else if (e.key === 'Escape') {
+            this._cancelRenaming();
+        }
+    }
+
+    private _handleRenameBlur() {
+        this._finishRenaming();
+    }
+
+    private _finishRenaming() {
+        if (this._editingTabGlobalIndex !== null) {
+            this.dispatchEvent(new CustomEvent('pane-action', {
+                detail: {
+                    type: 'rename-table',
+                    tableIndex: this._editingTabGlobalIndex,
+                    newName: this._editingName
+                },
+                bubbles: true,
+                composed: true
+            }));
+        }
+        this._editingTabGlobalIndex = null;
+        this._editingName = '';
+    }
+
+    private _cancelRenaming() {
+        this._editingTabGlobalIndex = null;
+        this._editingName = '';
+    }
+
+    private _handleAddTable(e: Event) {
+        e.stopPropagation();
+        this.dispatchEvent(new CustomEvent('pane-action', {
+            detail: {
+                type: 'add-table',
+                paneId: this.node.id
+            },
+            bubbles: true,
+            composed: true
+        }));
+    }
+    private _renderDropOverlay() {
+        if (!this.activeDropZone) return html``;
+
+        let style = '';
+        switch (this.activeDropZone) {
+            case 'top': style = 'top: 0; left: 0; right: 0; height: 50%;'; break;
+            case 'bottom': style = 'bottom: 0; left: 0; right: 0; height: 50%;'; break;
+            case 'left': style = 'top: 0; left: 0; bottom: 0; width: 50%;'; break;
+            case 'right': style = 'top: 0; right: 0; bottom: 0; width: 50%;'; break;
+            case 'center': style = 'inset: 0;'; break; // Could be used for full pane drop? But tab bar handles that usually.
+        }
+        return html`<div class="drop-overlay active" style="${style}"></div>`;
+    }
+
+    private _handleDragStart(e: DragEvent, localIndex: number, globalIndex: number) {
+        if (!e.dataTransfer) return;
+
+        const data = {
+            type: 'tab-drag',
+            paneId: this.node.id,
+            tableIndex: globalIndex, // Use global index for identification
+            localIndex: localIndex
+        };
+        e.dataTransfer.setData('application/json', JSON.stringify(data));
+        e.dataTransfer.effectAllowed = 'move';
+    }
+
+    private _handleTabBarDragOver(e: DragEvent) {
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = 'move';
+        (e.currentTarget as HTMLElement).classList.add('drag-over');
+
+        // Optional: show insertion marker?
+        // For now, minimal change to enable functionality.
+    }
+
+    private _handleTabBarDragLeave(e: DragEvent) {
+        (e.currentTarget as HTMLElement).classList.remove('drag-over');
+    }
+
+    private _handleTabBarDrop(e: DragEvent) {
+        e.preventDefault();
+        (e.currentTarget as HTMLElement).classList.remove('drag-over');
+
+        const data = this._parseDragData(e);
+        if (!data || data.type !== 'tab-drag') return;
+
+        // Calculate target index
+        let targetIndex = this.node.tables.length; // Default to append
+
+        const tabs = this.shadowRoot?.querySelectorAll('.tab');
+        if (tabs) {
+            // Find which tab is hovered
+            let found = false;
+            tabs.forEach((tab, i) => {
+                if (found) return;
+                const rect = tab.getBoundingClientRect();
+                if (e.clientX >= rect.left && e.clientX <= rect.right) {
+                    // Inside this tab horizontally.
+                    // Check if left or right half
+                    const mid = rect.left + rect.width / 2;
+                    if (e.clientX < mid) {
+                        targetIndex = i; // Insert before
+                    } else {
+                        targetIndex = i + 1; // Insert after
+                    }
+                    found = true;
+                }
+            });
+
+            // If not found (e.g. empty space), append.
+        }
+
+        this.dispatchEvent(new CustomEvent('pane-action', {
+            detail: {
+                type: 'move-tab',
+                targetPaneId: this.node.id,
+                sourcePaneId: data.paneId,
+                tableIndex: data.tableIndex,
+                index: targetIndex
+            },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    private _handleContentDragOver(e: DragEvent) {
+        e.preventDefault();
+        e.dataTransfer!.dropEffect = 'move';
+
+        // Calculate drop zone
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const width = rect.width;
+        const height = rect.height;
+
+        // Revised logic: 40% threshold to match user expectation "halfway"
+        // 40% leaves a 20% center deadzone, which reduces accidental splits.
+        // User requested even looser. 45% leaves 10% center deadzone.
+        const thresholdX = width * 0.45;
+        const thresholdY = height * 0.45;
+
+        if (y < thresholdY) this.activeDropZone = 'top';
+        else if (y > height - thresholdY) this.activeDropZone = 'bottom';
+        else if (x < thresholdX) this.activeDropZone = 'left';
+        else if (x > width - thresholdX) this.activeDropZone = 'right';
+        else this.activeDropZone = null;
+
+        this.requestUpdate();
+    }
+
+    private _handleContentDragLeave(e: DragEvent) {
+        // Only clear if leaving the component, not entering a child?
+        // Since overlay is pointer-events: none, it shouldn't trigger leave.
+        this.activeDropZone = null;
+        this.requestUpdate();
+    }
+
+    private _handleContentDrop(e: DragEvent) {
+        e.preventDefault();
+        const zone = this.activeDropZone;
+        this.activeDropZone = null;
+        this.requestUpdate();
+
+        const data = this._parseDragData(e);
+        if (!data || data.type !== 'tab-drag') return;
+
+        if (!zone) return;
+
+        this.dispatchEvent(new CustomEvent('pane-action', {
+            detail: {
+                type: 'split-pane',
+                targetPaneId: this.node.id,
+                sourcePaneId: data.paneId,
+                tableIndex: data.tableIndex,
+                direction: (zone === 'left' || zone === 'right') ? 'horizontal' : 'vertical', // Horizontal split means side-by-side (left/right)
+                placement: (zone === 'left' || zone === 'top') ? 'before' : 'after'
+            },
+            bubbles: true,
+            composed: true
+        }));
+    }
+
+    private _parseDragData(e: DragEvent) {
+        try {
+            const raw = e.dataTransfer?.getData('application/json');
+            if (!raw) return null;
+            return JSON.parse(raw);
+        } catch {
+            return null;
+        }
     }
 
     private _switchTab(localIndex: number) {
@@ -120,5 +454,52 @@ export class PaneView extends LitElement {
             bubbles: true,
             composed: true
         }));
+    }
+
+    private _handleTabContextMenu(e: MouseEvent, index: number, globalIndex: number) {
+        e.preventDefault();
+        e.stopPropagation();
+        this._tabContextMenu = {
+            x: e.clientX,
+            y: e.clientY,
+            index: index,
+            globalIndex: globalIndex
+        };
+    }
+
+    private _renderContextMenu() {
+        if (!this._tabContextMenu) return html``;
+        return html`
+            <div class="context-menu" style="top: ${this._tabContextMenu.y}px; left: ${this._tabContextMenu.x}px;">
+                <div class="context-menu-item" @click="${this._triggerRenameFromMenu}">Rename Table</div>
+                <div class="context-menu-item" @click="${this._triggerDeleteFromMenu}">Delete Table</div>
+            </div>
+        `;
+    }
+
+    private _triggerRenameFromMenu(e: Event) {
+        e.stopPropagation();
+        if (this._tabContextMenu) {
+            const globalIndex = this._tabContextMenu.globalIndex;
+            const table = this.tables[globalIndex];
+            this._startRenaming(globalIndex, table?.name || undefined);
+            this._tabContextMenu = null;
+        }
+    }
+
+    private _triggerDeleteFromMenu(e: Event) {
+        e.stopPropagation();
+        if (this._tabContextMenu) {
+            this.dispatchEvent(new CustomEvent('pane-action', {
+                detail: {
+                    type: 'delete-table',
+                    paneId: this.node.id,
+                    tableIndex: this._tabContextMenu.globalIndex
+                },
+                bubbles: true,
+                composed: true
+            }));
+            this._tabContextMenu = null;
+        }
     }
 }

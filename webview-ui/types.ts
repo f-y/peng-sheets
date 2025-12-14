@@ -4,6 +4,7 @@ export type LayoutNode = SplitNode | LeafNode;
 
 export interface SplitNode {
     type: 'split';
+    id: string; // Unique ID
     direction: 'horizontal' | 'vertical';
     sizes: number[]; // Percentage of available space, e.g. [50, 50]
     children: LayoutNode[];
