@@ -10,53 +10,47 @@ describe("SpreadsheetTable State Persistence", () => {
             <spreadsheet-table></spreadsheet-table>
         `)) as SpreadsheetTable;
 
-        const tableA = { name: "Table A", rows: [] };
-        const tableB = { name: "Table B", rows: [] };
+        const tableA = { name: "Table A", description: "Desc A", rows: [] };
+        const tableB = { name: "Table B", description: "Desc B", rows: [] };
 
-        // 1. Initial State (Sheet 1)
+        // 1. Initial State
         el.sheetIndex = 0;
         el.table = tableA as any;
         await el.updateComplete;
 
         // 2. Start Editing Metadata
-        const h3 = el.shadowRoot!.querySelector('h3');
-        h3!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, composed: true }));
+        const descEl = el.shadowRoot!.querySelector('.metadata-desc');
+        descEl!.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
         await el.updateComplete;
 
         expect(el.editingMetadata).toBe(true);
-        expect((el.shadowRoot!.querySelector('.metadata-input-title') as HTMLInputElement).value).toBe("Table A");
+        expect((el.shadowRoot!.querySelector('.metadata-input-desc') as HTMLTextAreaElement).value).toBe("Desc A");
 
-        // 3. Switch Sheet (Sheet 3) - Update props
+        // 3. Switch Sheet
         el.sheetIndex = 2;
         el.table = tableB as any;
-        // Lit update happens
         await el.updateComplete;
 
-        // 4. Expectation: Editing should be cancelled/reset
+        // 4. Expectation: Editing reset, display updated
         expect(el.editingMetadata).toBe(false);
-        // AND pending title should not leak
-        expect(el.shadowRoot!.querySelector('.metadata-input-title')).toBeNull();
-        expect(el.shadowRoot!.querySelector('h3')!.textContent).toBe("Table B");
+        expect(el.shadowRoot!.querySelector('.metadata-input-desc')).toBeNull();
+        expect(el.shadowRoot!.querySelector('.metadata-desc')!.textContent).toContain("Desc B");
     });
 
     it("Commits metadata edit on blur to external element", async () => {
         const el = (await fixture(html`
             <spreadsheet-table></spreadsheet-table>
         `)) as SpreadsheetTable;
-        el.table = { name: "Table A", rows: [] } as any;
+        el.table = { name: "Table A", description: "Desc A", rows: [] } as any;
         await el.updateComplete;
 
         // Start edit
-        const h3 = el.shadowRoot!.querySelector('h3');
-        h3!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, composed: true }));
+        const descEl = el.shadowRoot!.querySelector('.metadata-desc');
+        descEl!.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
         await el.updateComplete;
         expect(el.editingMetadata).toBe(true);
 
-        const input = el.shadowRoot!.querySelector('.metadata-input-title') as HTMLInputElement;
-
-        // Blur to... something outside.
-        // In JSDOM, simulating blur to document.body or a sibling div.
-        // dispatching 'blur' with relatedTarget as null (or body).
+        const input = el.shadowRoot!.querySelector('.metadata-input-desc') as HTMLTextAreaElement;
 
         input.dispatchEvent(new FocusEvent('blur', {
             bubbles: true, composed: true, relatedTarget: null

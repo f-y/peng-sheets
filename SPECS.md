@@ -89,17 +89,49 @@ This document defines the "Excel-like" user experience targeted for `vscode-md-s
 *   Clicking a sort icon in the column header (Toggle: Asc -> Desc -> Off).
 
 ## 6. Clipboard Operations
-*   **Copy (`Ctrl/Cmd + C`)**:
-    *   Copy selected cells.
-    *   **Row/Column Copy**: If a row/column is selected via header, copy the entire row/column data.
-    *   Format: Tab-separated values (TSV) for compatibility.
-*   **Cut (`Ctrl/Cmd + X`)**:
-    *   Copy and clear content.
-*   **Paste (`Ctrl/Cmd + V`)**:
-    *   Paste starting at active cell.
-    *   **Auto-Expansion**: Automatically adds rows/columns if pasted data exceeds current grid dimensions.
-    *   **Range Match**: If clipboard has 1 cell and 3x3 range is selected, fill all 3x3 with that value.
-    *   **External Data**: TSV/CSV parsing.
+
+### 6.1. Standard Copy (`Ctrl/Cmd + C`)
+*   **Source**:
+    *   **Range**: Copies TSV data of selected cells.
+    *   **Row/Column**: If Headers are selected, copies the entire row/column data.
+*   **Format**: Text/Plain (TSV) for maximum compatibility.
+
+### 6.2. Standard Paste (`Ctrl/Cmd + V`)
+*   **Behavior**: Overwrites existing content starting from the active cell (Top-Left of selection).
+*   **Scenarios**:
+    *   **Single Cell Source -> Single Cell Target**: Overwrites target.
+    *   **Single Cell Source -> Range Target**: Fills the entire target range with the source value.
+    *   **Range Source (NxM) -> Single Cell Target**: Pastes the NxM grid starting at Target. Overwrites existing data. **Expands Selection** to match the pasted range.
+    *   **Range Source -> Range Target**:
+        *   If Source Size same as Target: 1:1 Paste.
+        *   If Source is smaller: Tiles/Repeats source to fill target? (Excel behavior). *MVP: Just paste top-left.*
+    *   **Row Source -> Row Target**: Overwrites the target row(s).
+    *   **External Table (Excel/Web)**: Parsed as TSV.
+*   **Grid Expansion**:
+    *   **Rows**: If pasting N rows exceeds current table height, **automatically add new rows**.
+    *   **Columns**: If pasting M columns exceeds current table width:
+        *   **Automatically add new columns**.
+        *   **Header Generation**: New columns need headers. Auto-generate (e.g., `Column 4`, `Column 5` or empty).
+        *   **Constraint**: Cannot paste if it breaks valid table structure (rare in Markdown, mostly just expansion).
+
+### 6.3. Insert Paste ("Insert Copied Cells")
+*   **Concept**: Analogous to Excel's `Ctrl/Cmd + +` (Insert) when clipboard has content.
+*   **Trigger**: Context Menu -> "Insert Copied Cells" or Shortcut (if implemented).
+*   **Behavior**:
+    *   **Row Mode** (Clipboard is full rows): Inserts N rows *at* the current selection index. Existing rows shift down. Pastes data into new rows.
+    *   **Column Mode** (Clipboard is full cols): Inserts N cols *at* current selection. Shift right.
+    *   **Range Mode**:
+        *   Shift Cells Right vs Shift Cells Down (Dialog or default based on shape).
+        *   *MVP*: Only support "Insert Copied Rows" default if full rows copied.
+
+### 6.4. Special Cases
+*   **Pasting Full Table into Editor**:
+    *   If user copies an entire table (headers + data) from Excel:
+    *   **Action**: Paste at cursor.
+    *   **Handling**:
+        *   If pasted inside existing table: Treat headers as just another data row? Or try to "smart match"?
+        *   **Rule**: `Ctrl+V` is raw data paste. If source has headers, they become data in the destination.
+    *   **Future**: "Paste as New Table" command (creates new Markdown table structure).
 
 ## 7. Undo / Redo
 *   **Global History**:

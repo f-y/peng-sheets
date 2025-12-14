@@ -5,7 +5,7 @@ import { SpreadsheetTable } from "../components/spreadsheet-table";
 import "../components/spreadsheet-table";
 
 describe("SpreadsheetTable Metadata Edit", () => {
-    it("Enters metadata edit mode on double click", async () => {
+    it("Enters metadata edit mode on description click", async () => {
         const el = (await fixture(html`
             <spreadsheet-table></spreadsheet-table>
         `)) as SpreadsheetTable;
@@ -23,28 +23,24 @@ describe("SpreadsheetTable Metadata Edit", () => {
         el.table = tableData;
         await el.updateComplete;
 
-        // Verify initial state
-        const titleEl = el.shadowRoot!.querySelector('h3');
-        expect(titleEl).toBeTruthy();
-        expect(titleEl?.textContent).toBe("Test Table");
+        // Verify initial state: Check for description element
+        const descEl = el.shadowRoot!.querySelector('.metadata-desc');
+        expect(descEl).toBeTruthy();
+        expect(descEl?.textContent).toContain("Desc");
 
-        // Double Click
-        titleEl!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, composed: true }));
+        // Click to edit
+        descEl!.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
         await el.updateComplete;
 
         // Check state
         expect(el.editingMetadata).toBe(true);
 
         // Check UI (input should be visible)
-        // Wait for potential re-render if it wasn't synchronous
         await new Promise(r => setTimeout(r, 10)); // Allow timeout(0) to run if any
         await el.updateComplete;
 
-        const input = el.shadowRoot!.querySelector('.metadata-input-title') as HTMLInputElement;
+        const input = el.shadowRoot!.querySelector('.metadata-input-desc') as HTMLTextAreaElement;
         expect(input).toBeTruthy();
-        expect(input.value).toBe("Test Table");
-
-        // Cannot easily check document.activeElement inside shadow dom across boundaries in JSDOM easily without care,
-        // but ensuring input exists is step 1.
+        expect(input.value).toBe("Desc");
     });
 });

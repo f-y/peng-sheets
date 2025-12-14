@@ -96,7 +96,11 @@ def generate_and_get_range():
     global workbook, schema, md_text, config
 
     # Generate Markdown (Full Workbook)
-    new_md = generate_workbook_markdown(workbook, schema)
+    # Fix: If no sheets, remove the section entirely (including root marker)
+    if not workbook or not workbook.sheets:
+        new_md = ""
+    else:
+        new_md = generate_workbook_markdown(workbook, schema)
 
     # Determine replacement range
     config_dict = json.loads(config) if config else {}
@@ -267,6 +271,66 @@ def update_visual_metadata(sheet_idx, table_idx, visual_metadata):
         return replace(t, metadata=new_md)
 
     return apply_table_update(sheet_idx, table_idx, _update_logic)
+
+
+def paste_cells(sheet_idx, table_idx, start_row, start_col, new_data):
+    def _paste_logic(t):
+        current_rows = [list(r) for r in t.rows]
+        rows_to_paste = len(new_data)
+        if rows_to_paste == 0:
+            return t
+
+        # Max columns in pasted data
+        cols_to_paste = 0
+        for row in new_data:
+            cols_to_paste = max(cols_to_paste, len(row))
+
+        # 1. Expand Rows
+        needed_rows = start_row + rows_to_paste
+        # Determine width for new empty rows
+        base_width = len(t.headers) if t.headers else 0
+        if current_rows:
+            base_width = max(base_width, len(current_rows[0]))
+
+        while len(current_rows) < needed_rows:
+            current_rows.append([""] * base_width)
+
+        # 2. Update Data & Expand Columns if needed
+        max_cols_needed = start_col + cols_to_paste
+
+        for r_offset, row_data in enumerate(new_data):
+            target_r = start_row + r_offset
+
+            # Expand this row's columns
+            while len(current_rows[target_r]) < max_cols_needed:
+                current_rows[target_r].append("")
+
+            for c_offset, val in enumerate(row_data):
+                target_c = start_col + c_offset
+                current_rows[target_r][target_c] = val
+
+        # 3. Homogenize row lengths and headers
+        global_max_width = 0
+        for r in current_rows:
+            global_max_width = max(global_max_width, len(r))
+
+        if t.headers:
+            global_max_width = max(global_max_width, len(t.headers))
+
+        # Pad all rows
+        for r in current_rows:
+            while len(r) < global_max_width:
+                r.append("")
+
+        # Pad headers
+        new_headers = list(t.headers) if t.headers else []
+        if new_headers:
+            while len(new_headers) < global_max_width:
+                new_headers.append(f"Col {len(new_headers) + 1}")
+
+        return replace(t, rows=current_rows, headers=new_headers)
+
+    return apply_table_update(sheet_idx, table_idx, _paste_logic)
 
 
 def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_level):

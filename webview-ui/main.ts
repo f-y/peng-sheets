@@ -501,6 +501,19 @@ export class MyEditor extends LitElement {
     });
   }
 
+  private async _handlePasteCells(detail: any) {
+    if (!this.pyodide) return;
+    const { sheetIndex, tableIndex, startRow, startCol, data } = detail;
+    this._enqueueRequest(async () => {
+      const resultJson = await this.pyodide.runPythonAsync(`
+            import json
+            res = paste_cells(${sheetIndex}, ${tableIndex}, ${startRow}, ${startCol}, ${JSON.stringify(data)})
+            json.dumps(res) if res else "null"
+        `);
+      this._postUpdateMessage(JSON.parse(resultJson));
+    });
+  }
+
   private _postUpdateMessage(updateSpec: any) {
     if (this._isBatching) {
       if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
@@ -639,6 +652,7 @@ export class MyEditor extends LitElement {
       window.addEventListener('request-delete-table', (e: any) => this._handleRequestDeleteTable(e.detail));
       window.addEventListener('metadata-change', (e: any) => this._handleVisualMetadataUpdate(e.detail));
       window.addEventListener('sheet-metadata-update', (e: any) => this._handleSheetMetadataUpdate(e.detail));
+      window.addEventListener('paste-cells', (e: any) => this._handlePasteCells(e.detail));
 
       // Handle messages from the extension
       window.addEventListener('message', async (event) => {

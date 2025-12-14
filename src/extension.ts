@@ -142,10 +142,43 @@ export function activate(context: vscode.ExtensionContext) {
                     case 'createSpreadsheet':
                         const wsEdit = new vscode.WorkspaceEdit();
                         const docText = activeDocument.getText();
-                        const prefix = docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : '\n';
-                        const template = `# Tables\n\n## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
-                        const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
-                        wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
+                        const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
+                        const rootMarker = config.get<string>('rootMarker') || '# Tables';
+
+                        // Robust check: allow flexible whitespace in matched marker
+                        // Escape regex characters
+                        const escapedRoot = rootMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        // Allow one or more spaces where single spaces exist
+                        const pattern = escapedRoot.replace(/\\ /g, '\\s+').replace(/\s+/g, '\\s+');
+                        const rootRegex = new RegExp(pattern);
+
+                        const hasRoot = rootRegex.test(docText);
+                        const isZombie = docText.trim().match(new RegExp(`^${pattern}$`));
+
+                        // Case 1: Document is effectively just the root marker (Zombie State) -> Replace All
+                        if (isZombie) {
+                            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
+                            const fullRange = new vscode.Range(
+                                activeDocument.positionAt(0),
+                                activeDocument.positionAt(docText.length)
+                            );
+                            wsEdit.replace(activeDocument.uri, fullRange, template);
+                        }
+                        // Case 2: Document contains root marker -> Append Sheet
+                        else if (hasRoot) {
+                            const template = `## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
+                            const prefix = docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : (docText.length > 0 ? '\n' : '');
+                            const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
+                            wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
+                        }
+                        // Case 3: No root marker -> Append Full Structure
+                        else {
+                            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
+                            const prefix = docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : (docText.length > 0 ? '\n' : '');
+                            const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
+                            wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
+                        }
+
                         vscode.workspace.applyEdit(wsEdit);
                         return;
                 }

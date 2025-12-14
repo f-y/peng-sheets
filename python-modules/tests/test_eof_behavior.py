@@ -1,6 +1,5 @@
 import json
 
-import headless_editor
 from headless_editor import initialize_workbook, update_cell
 
 MOCK_CONFIG = json.dumps(

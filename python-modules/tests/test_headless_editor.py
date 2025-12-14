@@ -1,19 +1,13 @@
 import json
 
 import headless_editor
-import md_spreadsheet_parser
-import pytest
 from headless_editor import (
     add_sheet,
     clear_column,
     delete_row,
-    delete_sheet,
     initialize_workbook,
-    rename_sheet,
     update_cell,
-    workbook,
 )
-from md_spreadsheet_parser import Sheet, Table, Workbook
 
 # Mock Config
 MOCK_CONFIG = json.dumps(

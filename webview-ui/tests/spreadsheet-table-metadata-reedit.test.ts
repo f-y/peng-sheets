@@ -12,7 +12,7 @@ describe("SpreadsheetTable Metadata Re-Edit", () => {
 
         el.table = {
             name: "Table A",
-            description: null,
+            description: "Desc A",
             headers: ["A"],
             rows: [["1"]],
             metadata: {},
@@ -22,13 +22,13 @@ describe("SpreadsheetTable Metadata Re-Edit", () => {
         await el.updateComplete;
 
         // 1. Enter Edit Mode
-        const h3 = el.shadowRoot!.querySelector('h3');
-        h3!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, composed: true }));
+        const descEl = el.shadowRoot!.querySelector('.metadata-desc');
+        descEl!.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
         await el.updateComplete;
         expect(el.editingMetadata).toBe(true);
 
         // 2. Commit (Blur)
-        const input = el.shadowRoot!.querySelector('.metadata-input-title') as HTMLInputElement;
+        const input = el.shadowRoot!.querySelector('.metadata-input-desc') as HTMLTextAreaElement;
         input.dispatchEvent(new FocusEvent('blur', { bubbles: true, composed: true }));
         await el.updateComplete;
         // Extra wait for potential async rendering
@@ -36,15 +36,11 @@ describe("SpreadsheetTable Metadata Re-Edit", () => {
         await el.updateComplete;
 
         expect(el.editingMetadata).toBe(false);
-        // Debug: Check what's in the DOM
-        const metadataContainer = el.shadowRoot!.querySelector('.metadata-container');
-        console.log("Metadata Container HTML:", metadataContainer?.innerHTML);
-        console.log("editingMetadata:", el.editingMetadata);
 
         // 3. Re-Enter Edit Mode
-        const h3Again = el.shadowRoot!.querySelector('h3');
-        expect(h3Again).not.toBeNull(); // Add explicit check
-        h3Again!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, composed: true }));
+        const descElAgain = el.shadowRoot!.querySelector('.metadata-desc');
+        expect(descElAgain).not.toBeNull();
+        descElAgain!.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
         await el.updateComplete;
 
         // 4. Expectation: Editing is true again
@@ -58,7 +54,7 @@ describe("SpreadsheetTable Metadata Re-Edit", () => {
 
         el.table = {
             name: "Table A",
-            description: null,
+            description: "Desc A",
             headers: ["A"],
             rows: [["1"]],
             metadata: {},
@@ -68,25 +64,24 @@ describe("SpreadsheetTable Metadata Re-Edit", () => {
         await el.updateComplete;
 
         // 1. Enter Edit Mode
-        const h3 = el.shadowRoot!.querySelector('h3');
-        h3!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, composed: true }));
+        const descEl = el.shadowRoot!.querySelector('.metadata-desc');
+        descEl!.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
         await el.updateComplete;
         expect(el.editingMetadata).toBe(true);
 
         // 2. Modify and Commit via Enter
-        const input = el.shadowRoot!.querySelector('.metadata-input-title') as HTMLInputElement;
-        input.value = "Table B";
+        const input = el.shadowRoot!.querySelector('.metadata-input-desc') as HTMLTextAreaElement;
+        input.value = "Desc B";
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
         await el.updateComplete;
 
         expect(el.editingMetadata).toBe(false);
-        console.log("[TEST] After Enter commit, editingMetadata:", el.editingMetadata);
 
-        // 3. CRITICAL: Simulate main.ts updating table prop after Python/extension round-trip
+        // 3. Simulate prop update
         el.table = {
-            name: "Table B",  // Updated name
-            description: null,
+            name: "Table A",
+            description: "Desc B",
             headers: ["A"],
             rows: [["1"]],
             metadata: {},
@@ -95,19 +90,15 @@ describe("SpreadsheetTable Metadata Re-Edit", () => {
         } as any;
         await el.updateComplete;
 
-        console.log("[TEST] After table prop update, editingMetadata:", el.editingMetadata);
-        console.log("[TEST] DOM h3:", el.shadowRoot!.querySelector('h3')?.textContent);
-
         // 4. Re-Enter Edit Mode
-        const h3Again = el.shadowRoot!.querySelector('h3');
-        expect(h3Again).not.toBeNull();
-        expect(h3Again!.textContent?.trim()).toBe("Table B");
+        const descElAgain = el.shadowRoot!.querySelector('.metadata-desc');
+        expect(descElAgain).not.toBeNull();
+        expect(descElAgain!.textContent).toContain("Desc B");
 
-        h3Again!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, composed: true }));
+        descElAgain!.dispatchEvent(new MouseEvent("click", { bubbles: true, composed: true }));
         await el.updateComplete;
 
         // 5. Expectation: Editing is true again
-        console.log("[TEST] After second dblclick, editingMetadata:", el.editingMetadata);
         expect(el.editingMetadata).toBe(true);
     });
 });

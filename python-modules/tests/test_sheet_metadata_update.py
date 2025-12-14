@@ -1,8 +1,6 @@
 import json
 
-import pytest
 from headless_editor import (
-    config,
     get_state,
     initialize_workbook,
     update_sheet_metadata,

@@ -131,6 +131,19 @@ export class SpreadsheetTable extends LitElement {
         color: var(--vscode-editor-selectionForeground);
         outline: none;
     }
+    .cell.header-row.selected {
+        background-color: var(--vscode-editor-selectionBackground);
+        color: var(--vscode-editor-selectionForeground);
+        outline: none;
+    }
+    .cell.header-row.selected-range {
+        background-color: var(--vscode-editor-selectionBackground);
+        color: var(--vscode-editor-selectionForeground);
+    }
+    .cell.header-col.selected-range {
+        background-color: var(--vscode-editor-selectionBackground);
+        color: var(--vscode-editor-selectionForeground);
+    }
 
     .header-row {
         background-color: var(--header-bg);
@@ -251,6 +264,39 @@ export class SpreadsheetTable extends LitElement {
     .col-resize-handle:hover {
         background-color: var(--selection-color);
     }
+    .cell.selected-range {
+        background-color: rgba(0, 120, 215, 0.1);
+    }
+    /* Perimeter Borders for Selection Range */
+    .cell.range-top {
+        border-top: 2px solid var(--selection-color);
+    }
+    .cell.range-bottom {
+        border-bottom: 2px solid var(--selection-color);
+    }
+    .cell.range-left {
+        border-left: 2px solid var(--selection-color);
+    }
+    .cell.range-right {
+        border-right: 2px solid var(--selection-color);
+    }
+    
+    .cell.active-cell {
+        /* Active cell is inside the range usually. 
+           In Excel, active cell is highlight, selection is border. 
+           We keep active cell outline but z-index it? 
+           User complains active cell has the only outline.
+           Let's keep active cell distinct but ensure range has border via above classes.
+        */
+        outline: 2px solid var(--selection-color);
+        outline-offset: -2px;
+        z-index: 101; /* Above range borders if overlap? */
+    }
+
+    .cell.active-cell-no-outline {
+        outline: none !important;
+        z-index: 101;
+    }
   `;
 
     @property({ type: Object })
@@ -267,6 +313,15 @@ export class SpreadsheetTable extends LitElement {
 
     @state()
     selectedCol: number = -1;
+
+    @state()
+    selectionAnchorRow: number = -1;
+
+    @state()
+    selectionAnchorCol: number = -1;
+
+    @state()
+    isSelecting: boolean = false;
 
     @state()
     @state()
@@ -486,7 +541,87 @@ export class SpreadsheetTable extends LitElement {
         }
     }
 
+    private _handleCellMouseDown(e: MouseEvent, rowIndex: number, colIndex: number) {
+        if (e.button !== 0) return; // Only Left Click
+        if (this.isEditing) return; // Do not start drag if editing
+
+        // If Shift is held, extend selection from existing anchor
+        if (e.shiftKey && this.selectionAnchorRow !== -1) {
+            this.selectedRow = rowIndex;
+            this.selectedCol = colIndex;
+            // Anchor remains same
+        } else {
+            // New Selection
+            this.selectionAnchorRow = rowIndex;
+            this.selectionAnchorCol = colIndex;
+            this.selectedRow = rowIndex;
+            this.selectedCol = colIndex;
+            this.isSelecting = true;
+        }
+
+        // Focus this cell
+        this._shouldFocusCell = true;
+        this.requestUpdate();
+
+        // Listen for drag
+        window.addEventListener('mousemove', this._handleGlobalMouseMove);
+        window.addEventListener('mouseup', this._handleGlobalMouseUp);
+    }
+
+    private _handleGlobalMouseMove = (e: MouseEvent) => {
+        if (!this.isSelecting) return;
+
+        // Find cell under mouse using composedPath to handle ShadowDOM
+        const path = e.composedPath();
+        const element = path.find(el => (el as HTMLElement).classList?.contains('cell')) as HTMLElement;
+
+        if (element) {
+            const r = parseInt(element.getAttribute('data-row') || '-100');
+            const c = parseInt(element.getAttribute('data-col') || '-100');
+
+            if (r !== -100) {
+                // Logic for Header Dragging
+                if (this.selectionAnchorCol === -2) {
+                    // Row Mode: Update selectedRow
+                    if (r !== -1 && r !== this.selectedRow) {
+                        this.selectedRow = r;
+                    }
+                } else if (this.selectionAnchorRow === -2) {
+                    // Col Mode: Update selectedCol
+                    // Note: Column headers have data-row="-1"
+                    if (c !== -1 && c !== this.selectedCol && r === -1) {
+                        this.selectedCol = c;
+                    } else if (c !== -1 && c !== this.selectedCol) {
+                        // Dragging over body cells while in Col Mode -> update Col
+                        this.selectedCol = c;
+                    }
+                } else {
+                    // Normal Range Mode
+                    if (r !== -1 && c !== -1) { // Ignore headers
+                        if (r !== this.selectedRow || c !== this.selectedCol) {
+                            this.selectedRow = r;
+                            this.selectedCol = c;
+                        }
+                    }
+                }
+            }
+        }
+        // Handle auto-scroll if needed? (MVP: No)
+    }
+
+    private _handleGlobalMouseUp = (e: MouseEvent) => {
+        this.isSelecting = false;
+        window.removeEventListener('mousemove', this._handleGlobalMouseMove);
+        window.removeEventListener('mouseup', this._handleGlobalMouseUp);
+        // Ensure focus on the active cell (end of selection)
+        this._shouldFocusCell = true;
+        this.requestUpdate();
+    }
+
     private _handleCellClick(e: MouseEvent, rowIndex: number, colIndex: number) {
+        // Redundant with MouseDown for selection, but needed slightly for Edit commit timing?
+        // Actually MouseDown handles selection. Click handled "Commit" logic previously.
+
         // Explicitly commit if we were editing to ensure we capture value BEFORE selection changes/re-render.
         if (this.isEditing) {
             this._commitEdit(new Event('manual-commit'));
@@ -542,9 +677,152 @@ export class SpreadsheetTable extends LitElement {
             return;
         }
 
+        // Copy: Ctrl+C
+        if (isControl && (e.key === 'c' || e.key === 'C')) {
+            e.preventDefault();
+            this._copyToClipboard();
+            return;
+        }
+
+        // Paste: Ctrl+V
+        if (isControl && (e.key === 'v' || e.key === 'V')) {
+            e.preventDefault();
+            this._handlePaste();
+            return;
+        }
+
         this._handleNavigationKey(e);
     }
 
+    private async _handlePaste() {
+        if (!this.table) return;
+        try {
+            const text = await navigator.clipboard.readText();
+            if (!text) return;
+
+            // Parse TSV (basic)
+            const rows = text.split(/\r?\n/).map(line => line.split('\t'));
+
+            // Determine start row/col
+            let startRow = this.selectedRow;
+            let startCol = this.selectedCol;
+
+            if (this.selectedRow === -1 || this.selectedCol === -1) {
+                // Header selected: ignore for now
+                return;
+            }
+
+            // Handle row/col selection modes
+            if (this.selectedRow === -2) {
+                startRow = 0;
+            }
+            if (this.selectedCol === -2) {
+                startRow = this.selectedRow;
+                startCol = 0;
+            }
+            // Normalize if range selected
+            if (this.selectionAnchorRow !== -1 && this.selectedRow !== -2 && this.selectedCol !== -2) {
+                startRow = Math.min(this.selectionAnchorRow, this.selectedRow);
+                startCol = Math.min(this.selectionAnchorCol, this.selectedCol);
+            }
+
+            // Ghost Row Case: If startRow is beyond existing rows (table.rows.length), it's a new row paste
+            if (this.selectedRow >= (this.table?.rows.length || 0)) {
+                startRow = this.table?.rows.length || 0;
+                startCol = 0; // Paste from A column if ghost row selected
+            }
+
+            // Dispatch event
+            this._dispatchAction('paste-cells', {
+                startRow: startRow,
+                startCol: startCol,
+                data: rows
+            });
+
+        } catch (err) {
+            console.error('Paste failed', err);
+        }
+    }
+
+    private async _copyToClipboard() {
+        if (!this.table) return;
+
+        let minR = -100, maxR = -100, minC = -100, maxC = -100;
+
+        const numCols = this.table?.headers?.length || 0;
+        const numRows = this.table.rows.length;
+
+        // Determine Range (Logic duplicated/shared from render, maybe refactor later)
+        if (this.selectionAnchorRow !== -1 && this.selectionAnchorCol !== -1) {
+            // Check for Row Selection Mode
+            if (this.selectedCol === -2 || this.selectionAnchorCol === -2) {
+                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
+                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
+                minC = 0;
+                maxC = numCols - 1;
+            }
+            // Check for Column Selection Mode
+            else if (this.selectedRow === -2 || this.selectionAnchorRow === -2) {
+                minR = 0;
+                maxR = numRows - 1;
+                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
+                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+            }
+            else {
+                // Normal Range
+                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
+                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
+                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
+                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+            }
+        }
+        else if (this.selectedRow !== -2 && this.selectedCol !== -2) {
+            // Single Cell (Active Only)
+            minR = maxR = this.selectedRow;
+            minC = maxC = this.selectedCol;
+        }
+
+        // Validate bounds
+        if (minR < -1 || minC < -1) return; // Nothing valid selected (-2 handled above)
+
+        // Handle Header Selection?
+        // If minR aka range includes -1, we might want to copy headers? 
+        // Excel: Copying full column copies data. Headers? Conventionally yes if full table select.
+        // For now, let's copy DATA only unless explicitly header is selected?
+        // User Spec: "Insert Copied Cells" implies data.
+        // Let's stick to TSV of the cells in range.
+        // If minR is -1 (header), treat as 0? Or include header text?
+        // If user selects Column Header, they usually expect data column.
+
+        // Clamp to data bounds for now, ignore header text copy for simpler MVP unless requested.
+        const effectiveMinR = Math.max(0, minR);
+        const effectiveMaxR = Math.min(numRows - 1, maxR);
+        const effectiveMinC = Math.max(0, minC);
+        const effectiveMaxC = Math.min(numCols - 1, maxC);
+
+        const rows: string[] = [];
+        for (let r = effectiveMinR; r <= effectiveMaxR; r++) {
+            const rowData: string[] = [];
+            for (let c = effectiveMinC; c <= effectiveMaxC; c++) {
+                const cellVal = this.table.rows[r][c] || "";
+                // Escape tabs/newlines? Quotes?
+                // Minimal CSV/TSV escaping:
+                // If contains \t or \n, wrap in quotes?
+                // Standard TSV doesn't always escape, but good practice.
+                // Re-using simple string for now.
+                rowData.push(cellVal);
+            }
+            rows.push(rowData.join('\t'));
+        }
+
+        const text = rows.join('\n');
+        try {
+            await navigator.clipboard.writeText(text);
+            console.log('Copied to clipboard');
+        } catch (err) {
+            console.error('Failed to copy', err);
+        }
+    }
     private _handleEditModeKey(e: KeyboardEvent) {
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -1043,16 +1321,49 @@ export class SpreadsheetTable extends LitElement {
         }
     }
 
-    private _handleRowHeaderClick(e: MouseEvent, rowIndex: number) {
+    private _handleRowHeaderMouseDown(e: MouseEvent, rowIndex: number) {
+        if (e.button !== 0) return;
+
+        // Start Row Selection Mode
+        this.selectionAnchorRow = rowIndex;
+        this.selectionAnchorCol = -2; // Special flag for full row
         this.selectedRow = rowIndex;
         this.selectedCol = -2;
-        this._shouldFocusCell = true; // Focus the header
+        this.isSelecting = true;
+        this._shouldFocusCell = true;
+
+        window.addEventListener('mousemove', this._handleGlobalMouseMove);
+        window.addEventListener('mouseup', this._handleGlobalMouseUp);
+        this.requestUpdate();
+    }
+
+    private _handleRowHeaderClick(e: MouseEvent, rowIndex: number) {
+        // Redundant with MouseDown mostly, but keeps focus logic simple
+        this.selectedRow = rowIndex;
+        this.selectedCol = -2;
+        this._shouldFocusCell = true;
+    }
+
+    private _handleColumnHeaderMouseDown(e: MouseEvent, colIndex: number) {
+        if (e.button !== 0) return;
+
+        // Start Column Selection Mode
+        this.selectionAnchorRow = -2; // Special flag for full col
+        this.selectionAnchorCol = colIndex;
+        this.selectedRow = -2;
+        this.selectedCol = colIndex;
+        this.isSelecting = true;
+        this._shouldFocusCell = true;
+
+        window.addEventListener('mousemove', this._handleGlobalMouseMove);
+        window.addEventListener('mouseup', this._handleGlobalMouseUp);
+        this.requestUpdate();
     }
 
     private _handleColumnHeaderClick(e: MouseEvent, colIndex: number) {
         this.selectedRow = -2;
         this.selectedCol = colIndex;
-        this._shouldFocusCell = true; // Focus the header
+        this._shouldFocusCell = true;
     }
 
     private _handleContextMenu(e: MouseEvent, type: 'row' | 'col', index: number) {
@@ -1099,6 +1410,8 @@ export class SpreadsheetTable extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('click', this._handleGlobalClick);
+        window.removeEventListener('mousemove', this._handleGlobalMouseMove);
+        window.removeEventListener('mouseup', this._handleGlobalMouseUp);
     }
 
     private _handleGlobalClick = (e: MouseEvent) => {
@@ -1112,11 +1425,42 @@ export class SpreadsheetTable extends LitElement {
         if (!this.table) return html``;
 
         const table = this.table;
+        if (!table) return html`<div>No table data</div>`;
+
+        const numCols = table.headers ? table.headers.length : (table.rows.length > 0 ? table.rows[0].length : 0);
+
+        // Calculate Selection Bounds
+        let minR = -1, maxR = -1, minC = -1, maxC = -1;
+
+        if (this.selectionAnchorRow !== -1 && this.selectionAnchorCol !== -1) {
+            // Check for Row Selection Mode (AnchorCol = -2 or SelectedCol = -2)
+            if (this.selectedCol === -2 || this.selectionAnchorCol === -2) {
+                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
+                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
+                minC = 0;
+                maxC = numCols - 1; // Full width
+            }
+            // Check for Column Selection Mode (AnchorRow = -2 or SelectedRow = -2)
+            else if (this.selectedRow === -2 || this.selectionAnchorRow === -2) {
+                minR = 0;
+                maxR = (table.rows.length || 1) - 1; // Full height
+                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
+                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+            }
+            else {
+                // Normal Range
+                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
+                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
+                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
+                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+            }
+        }
+
         const colCount = table.headers ? table.headers.length : (table.rows.length > 0 ? table.rows[0].length : 0);
 
         return html`
             <div class="metadata-container">
-               ${this.editingMetadata ? html`
+                ${this.editingMetadata ? html`
                     <textarea 
                         class="metadata-input-desc" 
                         .value="${table.description || ""}" 
@@ -1129,7 +1473,6 @@ export class SpreadsheetTable extends LitElement {
                ` : html`
                      <p class="metadata-desc ${!table.description ? 'empty' : ''}" 
                         @click="${this._handleMetadataClick}" 
-                        title="Click to edit description"
                         style="color: var(--vscode-descriptionForeground); cursor: pointer; border: 1px dashed transparent;">
                         ${table.description || html`<span style="opacity: 0.5; font-size: 0.9em;">Add description...</span>`}
                      </p>
@@ -1142,50 +1485,66 @@ export class SpreadsheetTable extends LitElement {
                     <div class="cell header-corner" @click="${() => { this.selectedRow = -2; this.selectedCol = -2; }}"></div>
 
                     <!-- Column Headers -->
-                    ${table.headers ? table.headers.map((header, i) => html`
-                        <div 
-                            class="cell header-col ${this.selectedCol === i || (this.selectedCol === -2 && this.selectedRow === -2) ? 'selected' : ''} ${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'editing' : ''}"
-                            data-col="${i}"
-                            data-row="-1"
-                            tabindex="0"
-                            contenteditable="false"
-                            @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
-                            @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
-                            @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
-                            @input="${this._handleInput}"
-                            @blur="${this._handleBlur}"
-                            @keydown="${this._handleKeyDown}"
-                        >
-                            <span class="cell-content" contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;" @blur="${this._handleBlur}" .textContent="${live(header)}"></span>
-                            <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
-                        </div>
-                    `) : Array.from({ length: colCount }).map((_, i) => html`
-                         <div 
-                            class="cell header-col ${this.selectedCol === i || (this.selectedCol === -2 && this.selectedRow === -2) ? 'selected' : ''} ${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'editing' : ''}"
-                            data-col="${i}"
-                            data-row="-1"
-                            tabindex="0"
-                            contenteditable="false"
-                            @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
-                            @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
-                            @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
-                            @input="${this._handleInput}"
-                            @blur="${this._handleBlur}"
-                            @keydown="${this._handleKeyDown}"
-                         >
-                            <span class="cell-content" contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;" @blur="${this._handleBlur}" .textContent="${live(i + 1 + "")}"></span>
-                            <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
-                         </div>
-                    `)}
+                    ${table.headers ? table.headers.map((header, i) => {
+            const isActive = this.selectedRow === -1 && this.selectedCol === i;
+            // Highlight if direct column selection (minR=-1) or Column Mode (Row=-2)
+            const isColMode = this.selectedRow === -2;
+            const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+            const showActiveOutline = isActive && minC === maxC;
+            return html`
+                            <div 
+                                class="cell header-col ${this.selectedCol === i || (this.selectedCol === -2 && this.selectedRow === -2) ? 'selected' : ''} ${this.isEditing && isActive ? 'editing' : ''} ${showActiveOutline ? 'active-cell' : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                data-col="${i}"
+                                data-row="-1"
+                                tabindex="0"
+                                contenteditable="false"
+                                @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
+                                @mousedown="${(e: MouseEvent) => this._handleColumnHeaderMouseDown(e, i)}"
+                                @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
+                                @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
+                                @input="${this._handleInput}"
+                                @blur="${this._handleBlur}"
+                                @keydown="${this._handleKeyDown}"
+                            >
+                                <span class="cell-content" contenteditable="${this.isEditing && isActive ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;" @blur="${this._handleBlur}" .textContent="${live(header)}"></span>
+                                <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
+                            </div>
+                        `;
+        }) : Array.from({ length: colCount }).map((_, i) => {
+            const isActive = this.selectedRow === -1 && this.selectedCol === i;
+            const isColMode = this.selectedRow === -2;
+            const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+            const showActiveOutline = isActive && minC === maxC;
+            return html`
+                            <div 
+                                class="cell header-col ${this.selectedCol === i || (this.selectedCol === -2 && this.selectedRow === -2) ? 'selected' : ''} ${this.isEditing && isActive ? 'editing' : ''} ${showActiveOutline ? 'active-cell' : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                data-col="${i}"
+                                data-row="-1"
+                                tabindex="0"
+                                contenteditable="false"
+                                @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
+                                @mousedown="${(e: MouseEvent) => this._handleColumnHeaderMouseDown(e, i)}"
+                                @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
+                                @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
+                                @input="${this._handleInput}"
+                                @blur="${this._handleBlur}"
+                                @keydown="${this._handleKeyDown}"
+                            >
+                                <span class="cell-content" contenteditable="${this.isEditing && isActive ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;" @blur="${this._handleBlur}" .textContent="${live(i + 1 + "")}"></span>
+                                <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
+                            </div>
+                        `;
+        })}
 
                     <!-- Rows -->
                     ${table.rows.map((row, r) => html`
                         <!-- Row Header -->
                         <div 
-                            class="cell header-row ${this.selectedRow === r || (this.selectedRow === -2 && this.selectedCol === -2) ? 'selected' : ''}"
+                            class="cell header-row ${this.selectedRow === r || (this.selectedRow === -2 && this.selectedCol === -2) ? 'selected' : ''} ${(minC === -1 || this.selectedCol === -2) && r >= minR && r <= maxR ? 'selected-range' : ''}"
                             data-row="${r}"
                             tabindex="0"
                             @click="${(e: MouseEvent) => this._handleRowHeaderClick(e, r)}"
+                            @mousedown="${(e: MouseEvent) => this._handleRowHeaderMouseDown(e, r)}"
                             @keydown="${this._handleKeyDown}"
                             @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
                         >${r + 1}</div>
@@ -1198,13 +1557,30 @@ export class SpreadsheetTable extends LitElement {
             const isColSelected = this.selectedRow === -2 && this.selectedCol === c;
             const isAllSelected = this.selectedRow === -2 && this.selectedCol === -2;
 
+            const isActive = r === this.selectedRow && c === this.selectedCol;
+            const isInRange = r >= minR && r <= maxR && c >= minC && c <= maxC;
+
+            // Determine perimeter classes
+            const isTop = isInRange && r === minR;
+            const isBottom = isInRange && r === maxR;
+            const isLeft = isInRange && c === minC;
+            const isRight = isInRange && c === maxC;
+
+            const isRangeSelection = (maxR - minR > 0) || (maxC - minC > 0);
+            const showActiveOutline = isActive && !isRangeSelection;
+
             const classes = [
                 'cell',
                 isSelected ? 'selected' : '',
-                isRowSelected ? 'selected-row-cell' : '',
-                isColSelected ? 'selected-col-cell' : '',
-                isAllSelected ? 'selected-all-cell' : '',
-                this.isEditing && isSelected ? 'editing' : ''
+                this.isEditing && isSelected ? 'editing' : '',
+                isColSelected ? 'col-selected' : '',
+                isAllSelected ? 'all-selected' : '',
+                isInRange ? 'selected-range' : '',
+                showActiveOutline ? 'active-cell' : 'active-cell-no-outline',
+                isTop ? 'range-top' : '',
+                isBottom ? 'range-bottom' : '',
+                isLeft ? 'range-left' : '',
+                isRight ? 'range-right' : ''
             ].filter(Boolean).join(' ');
 
             return html`
@@ -1215,6 +1591,7 @@ export class SpreadsheetTable extends LitElement {
                                     data-col="${c}"
                                     contenteditable="${this.isEditing && isSelected ? 'true' : 'false'}"
                                     .textContent="${this.isEditing && isSelected ? noChange : live(cell)}"
+                                    @mousedown="${(e: MouseEvent) => this._handleCellMouseDown(e, r, c)}"
                                     @click="${(e: MouseEvent) => this._handleCellClick(e, r, c)}"
                                     @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, r, c)}"
                                     @keydown="${this._handleKeyDown}"
@@ -1226,15 +1603,30 @@ export class SpreadsheetTable extends LitElement {
                     `)}
 
                     <!-- Ghost Row (Add Row) -->
-                    <div class="cell header-row" style="color: var(--vscode-disabledForeground);">${table.rows.length + 1}</div>
+                    <div 
+                        class="cell header-row ${this.selectedRow === table.rows.length ? 'selected' : ''}" 
+                        style="color: var(--vscode-disabledForeground);"
+                        data-row="${table.rows.length}"
+                        tabindex="0"
+                        @click="${(e: MouseEvent) => {
+                this.selectedRow = table.rows.length;
+                this.selectedCol = -2;
+                this._handleRowHeaderClick(e, table.rows.length);
+            }}"
+                        @keydown="${this._handleKeyDown}"
+                        @mousedown="${(e: MouseEvent) => this._handleRowHeaderMouseDown(e, table.rows.length)}"
+                        @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', table.rows.length)}"
+                    >${table.rows.length + 1}</div>
                     ${Array.from({ length: colCount }).map((_, colIndex) => html`
                          <div 
-                            class="cell ${this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'selected' : ''} ${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'editing' : ''}"
+                         <div 
+                            class="cell ${(this.selectedRow === table.rows.length && this.selectedCol === colIndex) ? 'selected' : ''} ${(this.selectedRow === table.rows.length && this.selectedCol === -2) ? 'selected-range range-top range-bottom ' + (colIndex === 0 ? 'range-left ' : '') + (colIndex === colCount - 1 ? 'range-right' : '') : ''} ${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'editing' : ''}"
                             data-row="${table.rows.length}"
                             data-col="${colIndex}"
                             tabindex="${this.selectedRow === table.rows.length && this.selectedCol === colIndex ? '0' : '-1'}"
                             contenteditable="${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'true' : 'false'}"
                             .textContent="${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? noChange : live('')}"
+                            @mousedown="${(e: MouseEvent) => this._handleCellMouseDown(e, table.rows.length, colIndex)}"
                             @click="${(e: MouseEvent) => this._handleCellClick(e, table.rows.length, colIndex)}"
                             @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, table.rows.length, colIndex)}"
                             @blur="${(e: FocusEvent) => this._handleBlur(e)}"
