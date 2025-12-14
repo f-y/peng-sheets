@@ -291,8 +291,8 @@ export class SpreadsheetTable extends LitElement {
         if (changedProperties.has("sheetIndex") || changedProperties.has("tableIndex")) {
             this.editingMetadata = false;
             this.isEditing = false;
-            this.selectedRow = -2; // Reset selection
-            this.selectedCol = -2;
+            this.selectedRow = 0; // Select first cell
+            this.selectedCol = 0;
             this._shouldFocusCell = false;
             this._closeContextMenu();
         }
