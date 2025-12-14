@@ -1052,7 +1052,7 @@ export class SpreadsheetTable extends LitElement {
                             @keydown="${this._handleKeyDown}"
                         >
                             ${header}
-                            <div class="col-resize-handle" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}"></div>
+                            <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
                         </div>
                     `) : Array.from({ length: colCount }).map((_, i) => html`
                          <div 
@@ -1069,7 +1069,7 @@ export class SpreadsheetTable extends LitElement {
                             @keydown="${this._handleKeyDown}"
                          >
                             ${i + 1}
-                            <div class="col-resize-handle" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}"></div>
+                            <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
                          </div>
                     `)}
 
