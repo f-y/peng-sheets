@@ -967,12 +967,21 @@ export class SpreadsheetTable extends LitElement {
     private async _handleMetadataDblClick(e: MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
-        if (!this.table) return;
+        if (!this.table) {
+            return;
+        }
         this.pendingTitle = this.table.name || "";
         this.pendingDescription = this.table.description || "";
         this.editingMetadata = true;
 
+        // Force update scheduling and wait
+        this.requestUpdate();
         await this.updateComplete;
+
+        // Wait for next animation frame to ensure DOM is painted
+        await new Promise(r => requestAnimationFrame(r));
+        await this.updateComplete;
+
         const input = this.shadowRoot?.querySelector('.metadata-input-title') as HTMLInputElement;
         if (input) {
             input.focus();

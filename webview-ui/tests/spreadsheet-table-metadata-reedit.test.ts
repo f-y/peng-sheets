@@ -79,18 +79,35 @@ describe("SpreadsheetTable Metadata Re-Edit", () => {
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
         await el.updateComplete;
-        await new Promise(r => setTimeout(r, 50));
-        await el.updateComplete;
 
         expect(el.editingMetadata).toBe(false);
+        console.log("[TEST] After Enter commit, editingMetadata:", el.editingMetadata);
 
-        // 3. Re-Enter Edit Mode
+        // 3. CRITICAL: Simulate main.ts updating table prop after Python/extension round-trip
+        el.table = {
+            name: "Table B",  // Updated name
+            description: null,
+            headers: ["A"],
+            rows: [["1"]],
+            metadata: {},
+            start_line: 0,
+            end_line: 5
+        } as any;
+        await el.updateComplete;
+
+        console.log("[TEST] After table prop update, editingMetadata:", el.editingMetadata);
+        console.log("[TEST] DOM h3:", el.shadowRoot!.querySelector('h3')?.textContent);
+
+        // 4. Re-Enter Edit Mode
         const h3Again = el.shadowRoot!.querySelector('h3');
         expect(h3Again).not.toBeNull();
+        expect(h3Again!.textContent?.trim()).toBe("Table B");
+
         h3Again!.dispatchEvent(new MouseEvent("dblclick", { bubbles: true, composed: true }));
         await el.updateComplete;
 
-        // 4. Expectation: Editing is true again
+        // 5. Expectation: Editing is true again
+        console.log("[TEST] After second dblclick, editingMetadata:", el.editingMetadata);
         expect(el.editingMetadata).toBe(true);
     });
 });
