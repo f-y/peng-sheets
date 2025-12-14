@@ -1,74 +1,52 @@
 # Development Guide
 
-This extension uses a hybrid architecture with a VS Code extension host (TypeScript) and a Webview UI (Lit + Vite), powered by a Python library (`md-spreadsheet-parser`) running in the browser via Pyodide.
+This document outlines the development practices, directory structure, and testing philosophy for the `vscode-md-spreadsheet` extension.
 
-## Architecture
+## Directory Structure
 
-- **Extension Host (`src/extension.ts`)**: Handles commands, file events, and Webview creation.
-- **Webview UI (`webview-ui/`)**: A Single Page Application built with Lit and Vite.
-- **Parser (`md-spreadsheet-parser`)**: A Python library that parses Markdown into a Workbook structure. It is built as a Wheel and loaded by Pyodide in the Webview.
+*   **`src/`**: Extension Host Code (Node.js). Handles VS Code API interactions, file system operations, and communication with the webview.
+    *   `extension.ts`: Main entry point.
+    *   `test/`: Extension integration tests (using `@vscode/test-electron`).
+*   **`webview-ui/`**: Webview Frontend Code (Lit, Vite). Runs inside the webview iframe.
+    *   `components/`: UI components (e.g., `spreadsheet-table.ts`).
+    *   `tests/`: Unit and Component tests for the webview (using Vitest).
+    *   `main.ts`: Webview entry point.
 
-## Prerequisites
+## Development Philosophy
 
-- Node.js (v20+)
-- Python (3.12+)
-- `uv` (for dependency management and running commands)
+### 1. Test-First Development
+We adhere to a Test-Driven Development (TDD) or Test-First approach, especially for bug fixes and complex logic.
 
-## Development Rules
+*   **Before fixing a bug**: Create a reproduction test case in `webview-ui/tests/` that demonstrates the failure.
+*   **Verify failure**: Run the test to confirm it fails as expected.
+*   **Implement fix**: Modify the code to pass the test.
+*   **Verify success**: Run the test again to ensure the fix works and no regressions are introduced.
 
-### Tool Usage
-- **Python**: Always use `uv` to run Python commands (e.g., `uv run python script.py`, `uv run pytest`).
+### 2. Component Isolation
+UI components should be designed to be testable in isolation. Use `webview-ui/tests/` to mount components (using `@open-wc/testing` fixture) and interact with them programmatically.
 
-### Test-First Development (UI/Regression)
+## Testing
 
-Given the complexity of the UI, manual regression testing is not feasible.
-- **Rule**: All UI feature development and bug fixes must be accompanied by automated tests (Vitest).
-- **Process**: Write the test case *before* or *alongside* the implementation. Ensure it fails before the fix/feature, and passes after.
-- **Scope**: Covers Webview components (Lit) and logic (`webview-ui/`).
-
-## Setup
-
-1.  Install Node.js dependencies:
-    ```bash
-    npm install
-    ```
-
-2.  Build the Python parser wheel:
-    ```bash
-    cd ../md-spreadsheet-parser
-    # Ensure you have a virtual environment and build tools
-    python -m build
-    ```
-
-3.  Copy the built wheel to the extension's public directory:
-    ```bash
-    # From the root of the workspace
-    cp md-spreadsheet-parser/dist/md_spreadsheet_parser-*.whl vscode-md-spreadsheet/public/
-    ```
-
-## Debugging (Hot Module Replacement)
-
-For the best development experience, use Vite's HMR for the Webview UI.
-
-1.  **Start the Vite Dev Server**:
-    Open a terminal in `vscode-md-spreadsheet` and run:
-    ```bash
-    npm run dev
-    ```
-    This starts a local server at `http://localhost:5173`.
-
-2.  **Start VS Code Debugging**:
-    Press `F5` in VS Code.
-
-    The extension detects the dev server and loads the Webview content from `localhost:5173`. Changes to `webview-ui/` files will be reflected immediately.
-
-## Packaging
-
-To build the extension for production (without the dev server dependency):
+### Running Webview Tests (Vitest)
+These tests run in a JSDOM environment and verify the frontend logic without launching VS Code.
 
 ```bash
-npm run compile
-vsce package
+# Run all webview tests
+npm run test:webview
+
+# Run specific test file
+npx vitest run webview-ui/tests/spreadsheet-table-header-edit.test.ts
 ```
 
-This will bundle the Webview assets into `out/webview` and configure the extension to load them from disk.
+### Running Extension Tests
+These integration tests launch a VS Code instance.
+
+```bash
+npm test
+```
+
+## Setup & Commands
+
+*   **Install Dependencies**: `npm install`
+*   **Build**: `npm run compile`
+*   **Watch**: `npm run watch` (for extension), `npm run dev` (for webview HMR)

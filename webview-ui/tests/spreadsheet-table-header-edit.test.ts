@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { fixture, html } from "@open-wc/testing";
-import { SpreadsheetTable } from "./spreadsheet-table";
-import "./spreadsheet-table";
+import { SpreadsheetTable } from "../components/spreadsheet-table";
+import "../components/spreadsheet-table";
 
 describe("SpreadsheetTable Header Edit", () => {
     it("Enters edit mode on empty header double click", async () => {

@@ -120,9 +120,10 @@ describe('SpreadsheetTable', () => {
         expect(el.selectedRow).to.equal(-1);
         expect(el.selectedCol).to.equal(0);
 
-        // Re-query header cell
-        headerCell = el.shadowRoot!.querySelector('.header-col[data-col="0"]') as HTMLElement;
-        expect(headerCell.getAttribute('contenteditable')).to.equal('true');
+        // Re-query header cell content
+        const headerContent = el.shadowRoot!.querySelector('.header-col[data-col="0"] .cell-content') as HTMLElement;
+        expect(headerContent).to.exist;
+        expect(headerContent.getAttribute('contenteditable')).to.equal('true');
     });
 
     it('should match snapshot', () => {
