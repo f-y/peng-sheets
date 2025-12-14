@@ -409,8 +409,18 @@ export class SpreadsheetTable extends LitElement {
                 } else if (this.isEditing) {
                     // Normal edit mode entry (F2/DblClick) - Place cursor at end
                     const range = document.createRange();
-                    range.selectNodeContents(cell);
-                    range.collapse(false); // false = end
+
+                    // Prefer selecting the text node to avoid selecting the resize handle
+                    const textNode = Array.from(cell.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+                    if (textNode) {
+                        range.selectNodeContents(textNode);
+                        range.collapse(false); // End of text
+                    } else {
+                        // Empty cell or no text node: collapse to start
+                        range.selectNodeContents(cell);
+                        range.collapse(true); // Start of cell
+                    }
+
                     const selection = window.getSelection();
                     selection?.removeAllRanges();
                     selection?.addRange(range);
