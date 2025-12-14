@@ -287,6 +287,16 @@ export class SpreadsheetTable extends LitElement {
     private _pendingEditValue: string | null = null; // New state for immediate edit
 
     willUpdate(changedProperties: PropertyValues) {
+        // Reset state if context (sheet/table) changes (Component Reuse)
+        if (changedProperties.has("sheetIndex") || changedProperties.has("tableIndex")) {
+            this.editingMetadata = false;
+            this.isEditing = false;
+            this.selectedRow = -2; // Reset selection
+            this.selectedCol = -2;
+            this._shouldFocusCell = false;
+            this._closeContextMenu();
+        }
+
         if (changedProperties.has("table") && this.table) {
             const visual = this.table.metadata && this.table.metadata.visual;
             if (visual && visual.columnWidths) {
