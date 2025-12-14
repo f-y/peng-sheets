@@ -404,8 +404,31 @@ export class SpreadsheetTable extends LitElement {
 
             const cell = this.shadowRoot?.querySelector(selector) as HTMLElement;
             if (cell) {
+                // If editing headers, focus the .cell-content span inside
+                if (this.isEditing && (this.selectedRow === -1 || this.selectedCol === -2)) { // -2 col/row imply headers too
+                    const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
+                    if (contentSpan) {
+                        contentSpan.focus();
+
+                        // Range selection on text node
+                        const range = document.createRange();
+                        range.selectNodeContents(contentSpan);
+                        range.collapse(false);
+                        const selection = window.getSelection();
+                        selection?.removeAllRanges();
+                        selection?.addRange(range);
+
+                        if (this._pendingEditValue !== null) {
+                            contentSpan.innerText = this._pendingEditValue;
+                            this._pendingEditValue = null;
+                        }
+                        return;
+                    }
+                }
+
                 cell.focus();
 
+                // Standard Cell Logic (Body)
                 // If we have a pending edit value, applying it now ensures it overrides the default content
                 if (this._pendingEditValue !== null && this.isEditing) {
                     cell.innerText = this._pendingEditValue;
@@ -423,6 +446,7 @@ export class SpreadsheetTable extends LitElement {
                     const range = document.createRange();
 
                     // Prefer selecting the text node to avoid selecting the resize handle
+                    // For body cells, this is still valid safety
                     const textNode = Array.from(cell.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
                     if (textNode) {
                         range.selectNodeContents(textNode);
@@ -607,7 +631,13 @@ export class SpreadsheetTable extends LitElement {
         if (initialValue !== null) {
             const cell = this.shadowRoot?.querySelector(`.cell[data-row="${this.selectedRow}"][data-col="${this.selectedCol}"]`) as HTMLElement;
             if (cell) {
-                cell.innerText = initialValue;
+                // If header, target the span
+                const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
+                if (contentSpan) {
+                    contentSpan.innerText = initialValue;
+                } else {
+                    cell.innerText = initialValue;
+                }
             }
         }
     }
@@ -690,13 +720,27 @@ export class SpreadsheetTable extends LitElement {
                 const target = e.target as HTMLElement;
                 // Safety check
                 let cell = target;
+
+                // If target is the .cell-content span, get parent cell for data attributes
+                if (target.classList.contains('cell-content')) {
+                    cell = target.closest('.cell') as HTMLElement;
+                }
+
                 if (!cell || !cell.classList || !cell.classList.contains('cell')) {
                     const found = this.shadowRoot?.querySelector('.cell.editing');
                     if (found) cell = found as HTMLElement;
                     else return; // If no editing cell found, nothing to commit
                 }
 
-                let newValue = this._pendingEditValue !== null ? this._pendingEditValue : cell.innerText;
+                // Get value from cell-content if exists (Header), else cell itself (Body)
+                const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
+                let newValue = "";
+                if (contentSpan) {
+                    newValue = this._pendingEditValue !== null ? this._pendingEditValue : contentSpan.innerText;
+                } else {
+                    newValue = this._pendingEditValue !== null ? this._pendingEditValue : cell.innerText;
+                }
+
                 if (newValue === '\n') {
                     newValue = "";
                 }
@@ -1065,7 +1109,7 @@ export class SpreadsheetTable extends LitElement {
                             data-col="${i}"
                             data-row="-1"
                             tabindex="0"
-                            contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}"
+                            contenteditable="false"
                             @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
                             @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
                             @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
@@ -1073,7 +1117,7 @@ export class SpreadsheetTable extends LitElement {
                             @blur="${this._handleBlur}"
                             @keydown="${this._handleKeyDown}"
                         >
-                            ${header}
+                            <span class="cell-content" contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;">${header}</span>
                             <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
                         </div>
                     `) : Array.from({ length: colCount }).map((_, i) => html`
@@ -1082,7 +1126,7 @@ export class SpreadsheetTable extends LitElement {
                             data-col="${i}"
                             data-row="-1"
                             tabindex="0"
-                            contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}"
+                            contenteditable="false"
                             @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
                             @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
                             @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
@@ -1090,7 +1134,7 @@ export class SpreadsheetTable extends LitElement {
                             @blur="${this._handleBlur}"
                             @keydown="${this._handleKeyDown}"
                          >
-                            ${i + 1}
+                            <span class="cell-content" contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;">${i + 1}</span>
                             <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
                          </div>
                     `)}
