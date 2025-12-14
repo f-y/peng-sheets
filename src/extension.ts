@@ -169,7 +169,7 @@ function getWebviewContent(webview: vscode.Webview, context: vscode.ExtensionCon
             vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js')
         );
         wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.3.1-py3-none-any.whl')
+            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.3.2-py3-none-any.whl')
         );
         cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net ${webview.cspSource}`;
         cspConnectSrc = `https://cdn.jsdelivr.net ${webview.cspSource}`;
@@ -177,7 +177,7 @@ function getWebviewContent(webview: vscode.Webview, context: vscode.ExtensionCon
         scriptUri = "http://localhost:5173/webview-ui/main.ts";
         // Use local resource for wheel even in dev mode to bypass Vite 404/MIME issues
         wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.3.1-py3-none-any.whl')
+            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.3.2-py3-none-any.whl')
         );
         cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net http://localhost:5173`;
         cspConnectSrc = `https://cdn.jsdelivr.net http://localhost:5173 ws://localhost:5173 ${webview.cspSource}`;
