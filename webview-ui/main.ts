@@ -377,6 +377,7 @@ export class MyEditor extends LitElement {
         type: 'updateRange',
         startLine: updateSpec.startLine,
         endLine: updateSpec.endLine,
+        endCol: updateSpec.endCol, // Forward endCol if present
         content: updateSpec.content
       });
       // _isSyncing remains true until Extension sends 'update'

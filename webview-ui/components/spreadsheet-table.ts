@@ -487,6 +487,7 @@ export class SpreadsheetTable extends LitElement {
 
     private _handleCellDblClick(e: MouseEvent, rowIndex: number, colIndex: number) {
         e.preventDefault();
+        e.stopPropagation();
         this.selectedRow = rowIndex;
         this.selectedCol = colIndex;
         this.isEditing = true;
@@ -819,6 +820,11 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _handleBlur(e: FocusEvent) {
+        // Ignore if moving focus to a child element (e.g., cell-content span)
+        if (e.relatedTarget && (e.target as Element).contains(e.relatedTarget as Node)) {
+            return;
+        }
+
         // If editing, commit on blur?
         // Check if we are still editing and not already committing
         if (this.isEditing && !this._isCommitting) {
@@ -1118,7 +1124,7 @@ export class SpreadsheetTable extends LitElement {
                             @blur="${this._handleBlur}"
                             @keydown="${this._handleKeyDown}"
                         >
-                            <span class="cell-content" contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;">${header}</span>
+                            <span class="cell-content" contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;" @blur="${this._handleBlur}" .textContent="${live(header)}"></span>
                             <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
                         </div>
                     `) : Array.from({ length: colCount }).map((_, i) => html`
@@ -1135,7 +1141,7 @@ export class SpreadsheetTable extends LitElement {
                             @blur="${this._handleBlur}"
                             @keydown="${this._handleKeyDown}"
                          >
-                            <span class="cell-content" contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;">${i + 1}</span>
+                            <span class="cell-content" contenteditable="${this.isEditing && this.selectedRow === -1 && this.selectedCol === i ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;" @blur="${this._handleBlur}" .textContent="${live(i + 1 + "")}"></span>
                             <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
                          </div>
                     `)}

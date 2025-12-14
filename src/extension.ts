@@ -94,7 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
                 switch (message.type) {
                     case 'updateRange':
                         const startPosition = new vscode.Position(message.startLine, 0);
-                        const endPosition = new vscode.Position(message.endLine, 0);
+                        const endPosition = new vscode.Position(message.endLine, message.endCol ?? 0);
                         const range = new vscode.Range(startPosition, endPosition);
 
                         // Find editor
@@ -105,7 +105,7 @@ export function activate(context: vscode.ExtensionContext) {
                         if (activeDocument) {
                             const validatedRange = activeDocument.validateRange(range);
                             if (!validatedRange.isEqual(range)) {
-                                console.warn(`Adjusting invalid range: ${range.start.line}-${range.end.line} -> ${validatedRange.start.line}-${validatedRange.end.line}`);
+                                console.log(`Adjusting invalid range: ${range.start.line}-${range.end.line} -> ${validatedRange.start.line}-${validatedRange.end.line}`);
                             }
                             targetRange = validatedRange;
                         }

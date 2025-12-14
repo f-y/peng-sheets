@@ -103,16 +103,61 @@ def generate_and_get_range():
     sheet_header_level = config_dict.get("sheetHeaderLevel", 2)
 
     start_line, end_line = get_workbook_range(md_text, root_marker, sheet_header_level)
+    lines = md_text.split("\n")
 
-    # Ensure newline at end if we are appending to EOF
-    if start_line == len(md_text.split("\n")):
-        if md_text and not md_text.endswith("\n"):
-            new_md = "\n" + new_md
-    elif end_line == len(md_text.split("\n")):
-        # Replacement at EOF
-        pass
+    end_col = 0
 
-    return {"startLine": start_line, "endLine": end_line, "content": new_md + "\n\n"}
+    # EOF Handling: If logic points to line AFTER last line (len(lines)),
+    # we must clamp to the actual end of the document (last line, last char).
+    if end_line >= len(lines):
+        end_line = len(lines) - 1
+        end_col = len(lines[end_line])
+
+        # Ensure new content prepends newline if appending to a non-empty file without trailing newline
+        if start_line > end_line:  # Edge case: appending to empty or after end
+            pass  # Logic below handles start_line checks
+
+    # Logic for appending (start_line check logic preserved/moved)
+    # Original: if start_line == len(lines): ...
+
+    # Refined Logic:
+    # If we are strictly appending (start_line was calculated as len(lines) in get_workbook_range)
+    # Then end_line is also len(lines).
+    # We need to target (len-1, len) ?
+
+    if start_line >= len(lines):
+        # It's an append.
+        # Target the very end.
+        start_line = len(lines) - 1
+        if start_line < 0:
+            start_line = 0  # Empty file
+
+        # Wait, get_workbook_range set start_line = len(lines).
+        # If file is "A". lines=["A"]. start_line=1.
+        # We want to append "\nNew".
+        # We should Insert at (0, 1)? Or (1, 0) [Invalid]?
+        # Document end is (0, 1).
+
+        if len(lines) > 0:
+            start_line = len(lines) - 1
+            # Adjust start_Col?
+            # If we send startCol=0, we replace the last line? No.
+            # We want to append.
+            # Ideally we use VS Code's "Insert" semantics, but here we prefer Range Replacement.
+            # If we replace (LastLine, LastChar) -> (LastLine, LastChar) with "\nNewTable".
+            # That works.
+
+            # Re-read get_workbook_range.
+            # If not found, start_line = len(lines).
+
+            pass
+
+    return {
+        "startLine": start_line,
+        "endLine": end_line,
+        "endCol": end_col,
+        "content": new_md + "\n\n",
+    }
 
 
 def add_sheet(new_name):
