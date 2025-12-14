@@ -985,6 +985,7 @@ export class SpreadsheetTable extends LitElement {
         if (e.key === 'Escape') {
             e.preventDefault();
             this.editingMetadata = false;
+            this.requestUpdate(); // Force render sync
         } else if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             this._commitMetadata();
