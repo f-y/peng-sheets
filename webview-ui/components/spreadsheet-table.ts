@@ -299,6 +299,18 @@ export class SpreadsheetTable extends LitElement {
             } else {
                 this.colWidths = {};
             }
+
+            // Clamp Selection to bounds
+            const colCount = this.table.headers ? this.table.headers.length : (this.table.rows[0]?.length || 0);
+            const rowCount = this.table.rows.length;
+
+            if (this.selectedCol !== -2 && this.selectedCol >= colCount) {
+                this.selectedCol = Math.max(0, colCount - 1);
+            }
+            // Allow rowCount (Ghost Row) but not beyond
+            if (this.selectedRow !== -2 && this.selectedRow !== -1 && this.selectedRow > rowCount) {
+                this.selectedRow = rowCount;
+            }
         }
     }
 
