@@ -486,6 +486,7 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _handleCellDblClick(e: MouseEvent, rowIndex: number, colIndex: number) {
+        e.preventDefault();
         this.selectedRow = rowIndex;
         this.selectedCol = colIndex;
         this.isEditing = true;
@@ -1152,7 +1153,8 @@ export class SpreadsheetTable extends LitElement {
                         >${r + 1}</div>
 
                         <!-- Cells -->
-                        ${row.map((cell, c) => {
+                        ${Array.from({ length: colCount }).map((_, c) => {
+            const cell = row[c] !== undefined ? row[c] : "";
             const isSelected = this.selectedRow === r && this.selectedCol === c;
             const isRowSelected = this.selectedRow === r && this.selectedCol === -2;
             const isColSelected = this.selectedRow === -2 && this.selectedCol === c;
