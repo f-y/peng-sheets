@@ -1,7 +1,11 @@
-import { html, css, LitElement, PropertyValues, noChange } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { live } from "lit/directives/live.js";
-import { provideVSCodeDesignSystem, vsCodeButton } from "@vscode/webview-ui-toolkit";
+import { html, css, LitElement, PropertyValues, noChange } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { live } from 'lit/directives/live.js';
+import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
+import { SelectionController } from '../controllers/selection-controller';
+import { EditController } from '../controllers/edit-controller';
+import { ResizeController } from '../controllers/resize-controller';
+import { NavigationController } from '../controllers/navigation-controller';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
@@ -15,289 +19,328 @@ export interface TableJSON {
     end_line: number | null;
 }
 
-@customElement("spreadsheet-table")
+@customElement('spreadsheet-table')
 export class SpreadsheetTable extends LitElement {
     static styles = css`
-    :host {
-      display: block;
-      margin-bottom: 0; /* Reduced bottom margin */
-      --header-bg: var(--vscode-editor-inactiveSelectionBackground);
-      --border-color: var(--vscode-widget-border);
-      --cell-padding: 0.25rem;
-      --selection-color: #217346; /* Excel-like Dark Green */
-      box-sizing: border-box;
-    }
+        :host {
+            display: flex; /* Changed from block */
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+            margin-bottom: 0;
+            --header-bg: var(--vscode-sideBar-background); /* Strong opaque background */
+            --border-color: var(--vscode-widget-border);
+            --cell-padding: 0.25rem;
+            --selection-color: #217346;
+            box-sizing: border-box;
+            overflow: hidden; /* Prevent host overflow */
+        }
 
-    *, *:before, *:after {
-        box-sizing: inherit;
-    }
-    
-    .table-container {
-        overflow: auto;
-        max-height: 80vh;
-        border: 1px solid var(--border-color);
-        position: relative;
-        width: fit-content;
-    }
+        *,
+        *:before,
+        *:after {
+            box-sizing: inherit;
+        }
 
-    .grid {
-        display: grid;
-        /* Grid columns will be set dynamically in style */
-    }
+        .table-container {
+            flex: 1; /* Fill remaining space below metadata */
+            overflow: auto;
+            width: 100%; /* Fill width */
+            height: 100%; /* Ensure it fills flex item */
+            border: 1px solid var(--border-color);
+            position: relative;
+        }
 
-    .cell {
-        padding: var(--cell-padding);
-        border-right: 1px solid var(--border-color);
-        border-bottom: 1px solid var(--border-color);
-        white-space: nowrap;
-        overflow: hidden;
-        min-height: 20px;
-        line-height: 20px;
-        outline: none;
-        background-color: var(--vscode-editor-background);
-        cursor: default;
-        user-select: none; /* Prevent text selection in nav mode */
-    }
-    
-    .cell.selected {
-        outline: 2px solid var(--selection-color);
-        outline-offset: -2px; /* Draw inside to prevent clipping at edges */
-        z-index: 100;
-    }
+        .grid {
+            display: grid;
+            transform-style: preserve-3d; /* Enable 3D transform context */
+            /* Grid columns will be set dynamically in style */
+        }
 
-    .cell.selected-row-cell {
-        border-top: 2px solid var(--selection-color);
-        border-bottom: 2px solid var(--selection-color);
-        background-color: rgba(33, 115, 70, 0.05);
-        z-index: 90;
-    }
-    .cell.selected-row-cell.first { border-left: 2px solid var(--selection-color); }
-    .cell.selected-row-cell.last { border-right: 2px solid var(--selection-color); }
+        .cell {
+            padding: var(--cell-padding);
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+            overflow: hidden;
+            min-height: 20px;
+            line-height: 20px;
+            outline: none;
+            background-color: var(--vscode-editor-background);
+            cursor: default;
+            user-select: none; /* Prevent text selection in nav mode */
+            position: relative; /* Ensure z-index participation */
+            z-index: 1;
+        }
 
-    .cell.selected-col-cell {
-        border-left: 2px solid var(--selection-color);
-        border-right: 2px solid var(--selection-color);
-        background-color: rgba(33, 115, 70, 0.05);
-        z-index: 90;
-    }
-    .cell.selected-col-cell.first { border-top: 2px solid var(--selection-color); }
-    .cell.selected-col-cell.last { border-bottom: 2px solid var(--selection-color); }
-    .cell.selected-all-cell {
-        background-color: rgba(33, 115, 70, 0.05); /* Just background */
-        z-index: 90;
-    }
-    .cell.selected-all-cell.first-row { border-top: 2px solid var(--selection-color); }
-    .cell.selected-all-cell.last-row { border-bottom: 2px solid var(--selection-color); }
-    .cell.selected-all-cell.first-col { border-left: 2px solid var(--selection-color); }
-    .cell.selected-all-cell.last-col { border-right: 2px solid var(--selection-color); }
-    
-    .cell.selected:focus {
-         outline: 2px solid var(--selection-color);
-         outline-offset: -2px;
-    }
-    
-    .cell.editing {
-        z-index: 101;
-        background-color: var(--vscode-input-background, #fff);
-        color: var(--vscode-input-foreground);
-        outline: 2px solid var(--selection-color);
-        outline-offset: -2px;
-        user-select: text;
-        cursor: text;
-    }
+        .cell.selected {
+            outline: 2px solid var(--selection-color);
+            outline-offset: -2px; /* Draw inside to prevent clipping at edges */
+            z-index: 100;
+        }
 
-    .cell:focus {
-        /* Remove default browser focus ring, use .selected instead manually */
-        outline: none;
-    }
+        .cell.selected-row-cell {
+            border-top: 2px solid var(--selection-color);
+            border-bottom: 2px solid var(--selection-color);
+            background-color: rgba(33, 115, 70, 0.05);
+            z-index: 90;
+        }
+        .cell.selected-row-cell.first {
+            border-left: 2px solid var(--selection-color);
+        }
+        .cell.selected-row-cell.last {
+            border-right: 2px solid var(--selection-color);
+        }
 
-    /* Headers */
-    .cell.header-col {
-        background-color: var(--header-bg);
-        font-weight: normal;
-        color: var(--vscode-descriptionForeground);
-        text-align: center;
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        border-right: 1px solid var(--border-color);
-        border-bottom: 1px solid var(--border-color);
-        padding: 0; /* Minimal padding */
-        outline-offset: -2px; /* Ensure outline doesn't overflow */
-    }
-    
-    .cell.header-col.selected {
-        background-color: var(--vscode-editor-selectionBackground);
-        color: var(--vscode-editor-selectionForeground);
-        outline: none;
-    }
-    .cell.header-row.selected {
-        background-color: var(--vscode-editor-selectionBackground);
-        color: var(--vscode-editor-selectionForeground);
-        outline: none;
-    }
-    .cell.header-row.selected-range {
-        background-color: var(--vscode-editor-selectionBackground);
-        color: var(--vscode-editor-selectionForeground);
-    }
-    .cell.header-col.selected-range {
-        background-color: var(--vscode-editor-selectionBackground);
-        color: var(--vscode-editor-selectionForeground);
-    }
+        .cell.selected-col-cell {
+            border-left: 2px solid var(--selection-color);
+            border-right: 2px solid var(--selection-color);
+            background-color: rgba(33, 115, 70, 0.05);
+            z-index: 90;
+        }
+        .cell.selected-col-cell.first {
+            border-top: 2px solid var(--selection-color);
+        }
+        .cell.selected-col-cell.last {
+            border-bottom: 2px solid var(--selection-color);
+        }
+        .cell.selected-all-cell {
+            background-color: rgba(33, 115, 70, 0.05); /* Just background */
+            z-index: 90;
+        }
+        .cell.selected-all-cell.first-row {
+            border-top: 2px solid var(--selection-color);
+        }
+        .cell.selected-all-cell.last-row {
+            border-bottom: 2px solid var(--selection-color);
+        }
+        .cell.selected-all-cell.first-col {
+            border-left: 2px solid var(--selection-color);
+        }
+        .cell.selected-all-cell.last-col {
+            border-right: 2px solid var(--selection-color);
+        }
 
-    .header-row {
-        background-color: var(--header-bg);
-        text-align: center; 
-        font-weight: normal;
-        color: var(--vscode-descriptionForeground);
-        position: sticky;
-        left: 0;
-        z-index: 10;
-        user-select: none;
-        border-right: 1px solid var(--border-color);
-        border-bottom: 1px solid var(--border-color);
-        padding: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        outline-offset: -2px;
-    }
+        .cell.selected:focus {
+            outline: 2px solid var(--selection-color);
+            outline-offset: -2px;
+        }
 
-    .header-row.selected {
-        background-color: var(--vscode-editor-selectionBackground);
-        color: var(--vscode-editor-selectionForeground);
-        outline: none;
-    }
+        .cell.editing {
+            z-index: 101;
+            background-color: var(--vscode-input-background, #fff);
+            color: var(--vscode-input-foreground);
+            outline: 2px solid var(--selection-color);
+            outline-offset: -2px;
+            user-select: text;
+            cursor: text;
+        }
 
-    /* Corner Cell */
-    .header-corner {
-        background-color: var(--header-bg);
-        z-index: 20; /* Higher than headers */
-        position: sticky;
-        top: 0;
-        left: 0;
-        border-right: 1px solid var(--border-color);
-        border-bottom: 1px solid var(--border-color);
-        text-align: center;
-        color: var(--header-bg);
-        user-select: none;
-        outline-offset: -2px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
+        .cell:focus {
+            /* Remove default browser focus ring, use .selected instead manually */
+            outline: none;
+        }
 
-    .metadata-input-title {
-        font-size: 1.17em; /* h3 size */
-        font-weight: bold;
-        width: 100%;
-        margin: 1rem 0 0.5rem 0;
-        box-sizing: border-box;
-        border: 1px solid var(--border-color); /* Transparent? */
-        background: var(--vscode-input-background);
-        color: var(--vscode-input-foreground);
-        padding: 4px;
-    }
-    
-    .metadata-input-desc {
-        width: 100%;
-        margin: 0 0 1rem 0;
-        box-sizing: border-box;
-        border: 1px solid var(--border-color);
-        background: var(--vscode-input-background);
-        color: var(--vscode-input-foreground);
-        font-family: inherit;
-        padding: 4px;
-    }
-    
-    .metadata-container {
-        margin-bottom: 0.5rem;
-    }
+        /* Headers */
+        .cell.header-col {
+            background-color: var(--header-bg);
+            font-weight: normal;
+            color: var(--vscode-descriptionForeground);
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            transform: translateZ(10px); /* Force GPU layer on top */
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0; /* Minimal padding */
+            outline-offset: -2px; /* Ensure outline doesn't overflow */
+        }
 
-    .metadata-desc {
-        min-height: 1.5em; /* Ensure clickable even if empty */
-        margin: 0 0 1rem 0;
-        transition: margin 0.2s, min-height 0.2s;
-    }
-    
-    .metadata-desc.empty {
-        margin: 0 0 0.25rem 0;
-        min-height: 1em;
-        opacity: 0.7;
-    }
-    .metadata-desc.empty:hover {
-        opacity: 1;
-        background: rgba(0,0,0,0.02);
-    }
+        .cell.header-col.selected {
+            background-color: var(--vscode-editor-selectionBackground);
+            color: var(--vscode-editor-selectionForeground);
+            outline: none;
+        }
+        .cell.header-row.selected {
+            background-color: var(--vscode-editor-selectionBackground);
+            color: var(--vscode-editor-selectionForeground);
+            outline: none;
+        }
+        .cell.header-row.selected-range {
+            background-color: var(--vscode-editor-selectionBackground);
+            color: var(--vscode-editor-selectionForeground);
+        }
+        .cell.header-col.selected-range {
+            background-color: var(--vscode-editor-selectionBackground);
+            color: var(--vscode-editor-selectionForeground);
+        }
 
-    .context-menu {
-        position: fixed;
-        background: var(--vscode-editor-background);
-        border: 1px solid var(--vscode-widget-border);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        z-index: 1000;
-        min-width: 150px;
-        padding: 4px 0;
-    }
+        .header-row {
+            background-color: var(--header-bg);
+            text-align: center;
+            font-weight: normal;
+            color: var(--vscode-descriptionForeground);
+            position: sticky;
+            left: 0;
+            z-index: 1002;
+            transform: translateZ(15px); /* Higher than Col */
+            user-select: none;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline-offset: -2px;
+        }
 
-    .context-menu-item {
-        padding: 6px 12px;
-        cursor: pointer;
-        font-family: var(--vscode-font-family);
-        font-size: 13px;
-        color: var(--vscode-foreground);
-    }
+        .header-row.selected {
+            background-color: var(--vscode-editor-selectionBackground);
+            color: var(--vscode-editor-selectionForeground);
+            outline: none;
+        }
 
-    .context-menu-item:hover {
-        background: var(--vscode-list-hoverBackground);
-        color: var(--vscode-list-hoverForeground);
-    }
-    .col-resize-handle {
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 5px;
-        height: 100%;
-        cursor: col-resize;
-        z-index: 20;
-    }
-    .col-resize-handle:hover {
-        background-color: var(--selection-color);
-    }
-    .cell.selected-range {
-        background-color: rgba(0, 120, 215, 0.1);
-    }
-    /* Perimeter Borders for Selection Range */
-    .cell.range-top {
-        border-top: 2px solid var(--selection-color);
-    }
-    .cell.range-bottom {
-        border-bottom: 2px solid var(--selection-color);
-    }
-    .cell.range-left {
-        border-left: 2px solid var(--selection-color);
-    }
-    .cell.range-right {
-        border-right: 2px solid var(--selection-color);
-    }
-    
-    .cell.active-cell {
-        /* Active cell is inside the range usually. 
-           In Excel, active cell is highlight, selection is border. 
-           We keep active cell outline but z-index it? 
-           User complains active cell has the only outline.
-           Let's keep active cell distinct but ensure range has border via above classes.
-        */
-        outline: 2px solid var(--selection-color);
-        outline-offset: -2px;
-        z-index: 101; /* Above range borders if overlap? */
-    }
+        /* Corner Cell */
+        .header-corner {
+            z-index: 1005;
+            transform: translateZ(20px); /* Highest priority */
+            position: sticky;
+            top: 0;
+            left: 0;
+            border-right: 1px solid var(--border-color);
+            border-bottom: 1px solid var(--border-color);
+            text-align: center;
+            color: var(--header-bg);
+            user-select: none;
+            outline-offset: -2px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
 
-    .cell.active-cell-no-outline {
-        outline: none !important;
-        z-index: 101;
-    }
-  `;
+        .metadata-input-title {
+            font-size: 1.17em; /* h3 size */
+            font-weight: bold;
+            width: 100%;
+            margin: 1rem 0 0.5rem 0;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color); /* Transparent? */
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            padding: 4px;
+        }
+
+        .metadata-input-desc {
+            width: 100%;
+            margin: 0 0 1rem 0;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            font-family: inherit;
+            padding: 4px;
+        }
+
+        .metadata-container {
+            margin-bottom: 0;
+        }
+
+        .metadata-desc {
+            min-height: 1.5em; /* Ensure clickable even if empty */
+            margin: 0;
+            padding: 8px;
+            transition:
+                margin 0.2s,
+                min-height 0.2s;
+        }
+
+        .metadata-desc.empty {
+            margin: 0;
+            padding: 0;
+            height: 0;
+            min-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition:
+                opacity 0.2s,
+                min-height 0.2s,
+                padding 0.2s,
+                margin 0.2s;
+        }
+        .metadata-container:hover .metadata-desc.empty {
+            min-height: 2em;
+            margin: 0;
+            padding: 4px;
+            opacity: 1;
+        }
+        .metadata-desc.empty:hover {
+            opacity: 1;
+            background: rgba(0, 0, 0, 0.02);
+        }
+
+        .context-menu {
+            position: fixed;
+            background: var(--vscode-editor-background);
+            border: 1px solid var(--vscode-widget-border);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            min-width: 150px;
+            padding: 4px 0;
+        }
+
+        .context-menu-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            font-family: var(--vscode-font-family);
+            font-size: 13px;
+            color: var(--vscode-foreground);
+        }
+
+        .context-menu-item:hover {
+            background: var(--vscode-list-hoverBackground);
+            color: var(--vscode-list-hoverForeground);
+        }
+        .col-resize-handle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 5px;
+            height: 100%;
+            cursor: col-resize;
+            z-index: 20;
+        }
+        .col-resize-handle:hover {
+            background-color: var(--selection-color);
+        }
+        .cell.selected-range {
+            background-color: rgba(0, 120, 215, 0.1);
+        }
+        /* Perimeter Borders for Selection Range */
+        .cell.range-top {
+            border-top: 2px solid var(--selection-color);
+        }
+        .cell.range-bottom {
+            border-bottom: 2px solid var(--selection-color);
+        }
+        .cell.range-left {
+            border-left: 2px solid var(--selection-color);
+        }
+        .cell.range-right {
+            border-right: 2px solid var(--selection-color);
+        }
+
+        .cell.active-cell {
+            outline: 2px solid var(--selection-color);
+            outline-offset: -2px;
+            z-index: 101; /* Above range borders if overlap? */
+        }
+
+        .cell.active-cell-no-outline {
+            outline: none !important;
+            z-index: 101;
+        }
+    `;
 
     @property({ type: Object })
     table: TableJSON | null = null;
@@ -308,150 +351,75 @@ export class SpreadsheetTable extends LitElement {
     @property({ type: Number })
     tableIndex: number = 0;
 
-    @state()
-    selectedRow: number = -1;
+    selectionCtrl = new SelectionController(this);
+    editCtrl = new EditController(this);
+    resizeCtrl = new ResizeController(this);
+    navCtrl = new NavigationController(this, this.selectionCtrl);
 
     @state()
-    selectedCol: number = -1;
+    contextMenu: { x: number; y: number; type: 'row' | 'col'; index: number } | null = null;
 
-    @state()
-    selectionAnchorRow: number = -1;
-
-    @state()
-    selectionAnchorCol: number = -1;
-
-    @state()
-    isSelecting: boolean = false;
-
-    @state()
-    @state()
-    isEditing: boolean = false;
-
-    @state()
-    colWidths: { [key: number]: number } = {};
-
-    @state()
-    resizingCol: number = -1;
-
-    resizeStartX: number = 0;
-    resizeStartWidth: number = 0;
-    editingMetadata: boolean = false;
-
-    @state()
-    pendingTitle: string = "";
-
-    @state()
-    pendingDescription: string = "";
-
-    @state()
-    contextMenu: { x: number, y: number, type: 'row' | 'col', index: number } | null = null;
-
-
-    // To track if we should focus the element after update
     private _shouldFocusCell: boolean = false;
+    private _isCommitting: boolean = false; // Kept in host for now as it coordinates editCtrl and Events
 
-    private _pendingEditValue: string | null = null; // New state for immediate edit
+    // Exposed for Controllers
+    public focusCell() {
+        this._shouldFocusCell = true;
+        this.requestUpdate();
+    }
 
     willUpdate(changedProperties: PropertyValues) {
-        // Reset state if context (sheet/table) changes (Component Reuse)
-        if (changedProperties.has("sheetIndex") || changedProperties.has("tableIndex")) {
-            this.editingMetadata = false;
-            this.isEditing = false;
-            this.selectedRow = 0; // Select first cell
-            this.selectedCol = 0;
+        if (changedProperties.has('sheetIndex') || changedProperties.has('tableIndex')) {
+            this.editCtrl.cancelEditing(); // Reset edit
+            this.selectionCtrl.reset();
             this._shouldFocusCell = false;
             this._closeContextMenu();
         }
 
-        if (changedProperties.has("table") && this.table) {
+        if (changedProperties.has('table')) {
+            const oldTable = changedProperties.get('table');
+            if (oldTable) {
+                this._shouldFocusCell = true;
+            }
+        }
+
+        if (changedProperties.has('table') && this.table) {
             const visual = this.table.metadata && this.table.metadata.visual;
             if (visual && visual.columnWidths) {
                 if (Array.isArray(visual.columnWidths)) {
-                    this.colWidths = {};
-                    visual.columnWidths.forEach((w: number, i: number) => this.colWidths[i] = w);
+                    const widths: any = {};
+                    visual.columnWidths.forEach((w: number, i: number) => (widths[i] = w));
+                    this.resizeCtrl.setColumnWidths(widths);
                 } else {
-                    this.colWidths = { ...visual.columnWidths };
+                    this.resizeCtrl.setColumnWidths(visual.columnWidths);
                 }
             } else {
-                this.colWidths = {};
+                this.resizeCtrl.setColumnWidths({});
             }
 
-            // Clamp Selection to bounds
-            const colCount = this.table.headers ? this.table.headers.length : (this.table.rows[0]?.length || 0);
+            const colCount = this.table.headers ? this.table.headers.length : this.table.rows[0]?.length || 0;
             const rowCount = this.table.rows.length;
 
-            if (this.selectedCol !== -2 && this.selectedCol >= colCount) {
-                this.selectedCol = Math.max(0, colCount - 1);
+            if (this.selectionCtrl.selectedCol !== -2 && this.selectionCtrl.selectedCol >= colCount) {
+                this.selectionCtrl.selectedCol = Math.max(0, colCount - 1);
             }
-            // Allow rowCount (Ghost Row) but not beyond
-            if (this.selectedRow !== -2 && this.selectedRow !== -1 && this.selectedRow > rowCount) {
-                this.selectedRow = rowCount;
+            if (
+                this.selectionCtrl.selectedRow !== -2 &&
+                this.selectionCtrl.selectedRow !== -1 &&
+                this.selectionCtrl.selectedRow > rowCount
+            ) {
+                this.selectionCtrl.selectedRow = rowCount;
             }
         }
     }
 
     private _getColumnTemplate(colCount: number) {
-        let template = "30px"; // Row Header
+        let template = '30px';
         for (let i = 0; i < colCount; i++) {
-            const width = this.colWidths[i];
-            template += width ? ` ${width}px` : " 100px";
+            const width = this.resizeCtrl.colWidths[i];
+            template += width ? ` ${width}px` : ' 100px';
         }
         return template;
-    }
-
-    private _startColResize(e: MouseEvent, index: number) {
-        e.preventDefault();
-        e.stopPropagation();
-        this.resizingCol = index;
-        this.resizeStartX = e.clientX;
-
-        // Use current DOM width if not explicitly set in state
-        let currentWidth = this.colWidths[index];
-        if (!currentWidth) {
-            const headerCell = this.shadowRoot?.querySelector(`.header-col[data-col="${index}"]`);
-            if (headerCell) {
-                currentWidth = headerCell.getBoundingClientRect().width;
-            } else {
-                currentWidth = 100;
-            }
-        }
-        this.resizeStartWidth = currentWidth;
-
-        // Listen globally
-        document.addEventListener('mousemove', this._handleColResizeMove);
-        document.addEventListener('mouseup', this._endColResize);
-    }
-
-    private _handleColResizeMove = (e: MouseEvent) => {
-        if (this.resizingCol === -1) return;
-        const diff = e.clientX - this.resizeStartX;
-        const newWidth = Math.max(30, this.resizeStartWidth + diff); // Min width 30
-
-        // Optimistic update
-        this.colWidths = { ...this.colWidths, [this.resizingCol]: newWidth };
-    }
-
-    private _endColResize = (e: MouseEvent) => {
-        if (this.resizingCol === -1) return;
-
-        // Dispatch change
-        const finalWidth = this.colWidths[this.resizingCol];
-
-        this.dispatchEvent(new CustomEvent('metadata-change', {
-            detail: {
-                sheetIndex: this.sheetIndex,
-                tableIndex: this.tableIndex,
-                metadata: {
-                    columnWidths: { ...this.colWidths }
-                }
-            },
-            bubbles: true,
-            composed: true
-        }));
-
-        this.resizingCol = -1;
-        document.removeEventListener('mousemove', this._handleColResizeMove);
-        document.removeEventListener('mouseup', this._endColResize);
     }
 
     updated(changedProperties: PropertyValues) {
@@ -462,257 +430,128 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _focusSelectedCell() {
-        if (this.selectedRow >= -2 && this.selectedCol >= -2) {
-            // Find the cell element or header
-            let selector = `.cell[data-row="${this.selectedRow}"][data-col="${this.selectedCol}"]`;
+        const selRow = this.selectionCtrl.selectedRow;
+        const selCol = this.selectionCtrl.selectedCol;
 
-            // Handle Row/Col Selection cases where we focus the header
-            if (this.selectedCol === -2) {
-                // Row Selection: Focus Row Header
-                selector = `.cell.header-row[data-row="${this.selectedRow}"]`;
-            } else if (this.selectedRow === -2) {
-                // Column Selection: Focus Column Header
-                selector = `.cell.header-col[data-col="${this.selectedCol}"]`;
-            } else if (this.selectedRow === -2 && this.selectedCol === -2) {
-                // Select All: Focus Corner
+        if (selRow >= -2 && selCol >= -2) {
+            let selector = `.cell[data-row="${selRow}"][data-col="${selCol}"]`;
+
+            if (selCol === -2) {
+                selector = `.cell.header-row[data-row="${selRow}"]`;
+            } else if (selRow === -2) {
+                selector = `.cell.header-col[data-col="${selCol}"]`;
+            } else if (selRow === -2 && selCol === -2) {
                 selector = `.cell.header-corner`;
             }
 
             const cell = this.shadowRoot?.querySelector(selector) as HTMLElement;
             if (cell) {
-                // If editing headers, focus the .cell-content span inside
-                if (this.isEditing && (this.selectedRow === -1 || this.selectedCol === -2)) { // -2 col/row imply headers too
+                if (this.editCtrl.isEditing && (selRow === -1 || selCol === -2)) {
                     const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
                     if (contentSpan) {
                         contentSpan.focus();
-
-                        // Range selection on text node
                         const range = document.createRange();
                         range.selectNodeContents(contentSpan);
-                        // range.collapse(false); // Removed to keep full selection
                         const selection = window.getSelection();
                         selection?.removeAllRanges();
                         selection?.addRange(range);
 
-                        if (this._pendingEditValue !== null) {
-                            contentSpan.innerText = this._pendingEditValue;
-                            this._pendingEditValue = null;
+                        if (this.editCtrl.pendingEditValue !== null) {
+                            contentSpan.innerText = this.editCtrl.pendingEditValue;
+                            this.editCtrl.pendingEditValue = null;
                         }
                         return;
                     }
                 }
                 cell.focus();
-                // If editing, select all text?
-                // User requested specifically for Header DblClick.
-                // But generally good UX for Excel-like edit start (F2 or double click should select all? Usually F2 puts cursor at end, DblClick might select word or all).
-                // "列ヘッダのダブルクリックでの編集モード時には既存のヘッダ全体を選択状態にしてください" -> Explicitly header.
-                // Check if header row (-1)
-                if (this.isEditing) {
-                    // For contenteditable, Select All
-                    const range = document.createRange();
-                    range.selectNodeContents(cell);
-                    const sel = window.getSelection();
-                    sel?.removeAllRanges();
-                    sel?.addRange(range);
-                }
 
-                // Standard Cell Logic (Body)
-                // If we have a pending edit value, applying it now ensures it overrides the default content
-                if (this._pendingEditValue !== null && this.isEditing) {
-                    cell.innerText = this._pendingEditValue;
-                    this._pendingEditValue = null;
-
-                    // Place cursor at end
+                if (this.editCtrl.isEditing) {
                     const range = document.createRange();
-                    range.selectNodeContents(cell);
-                    range.collapse(false);
-                    const selection = window.getSelection();
-                    selection?.removeAllRanges();
-                    selection?.addRange(range);
-                } else if (this.isEditing) {
-                    // Normal edit mode entry (F2/DblClick) - Place cursor at end
-                    const range = document.createRange();
-
-                    // Prefer selecting the text node to avoid selecting the resize handle
-                    // For body cells, this is still valid safety
-                    const textNode = Array.from(cell.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
-                    if (textNode) {
-                        range.selectNodeContents(textNode);
-                        range.collapse(false); // End of text
-                    } else {
-                        // Empty cell or no text node: collapse to start
+                    if (this.editCtrl.pendingEditValue !== null && this.editCtrl.isEditing) {
+                        cell.innerText = this.editCtrl.pendingEditValue;
+                        this.editCtrl.pendingEditValue = null;
                         range.selectNodeContents(cell);
-                        range.collapse(true); // Start of cell
-                    }
-
-                    const selection = window.getSelection();
-                    selection?.removeAllRanges();
-                    selection?.addRange(range);
-                }
-            }
-        }
-    }
-
-    private _handleCellMouseDown(e: MouseEvent, rowIndex: number, colIndex: number) {
-        if (e.button !== 0) return; // Only Left Click
-        if (this.isEditing) return; // Do not start drag if editing
-
-        // If Shift is held, extend selection from existing anchor
-        if (e.shiftKey && this.selectionAnchorRow !== -1) {
-            this.selectedRow = rowIndex;
-            this.selectedCol = colIndex;
-            // Anchor remains same
-        } else {
-            // New Selection
-            this.selectionAnchorRow = rowIndex;
-            this.selectionAnchorCol = colIndex;
-            this.selectedRow = rowIndex;
-            this.selectedCol = colIndex;
-            this.isSelecting = true;
-        }
-
-        // Focus this cell
-        this._shouldFocusCell = true;
-        this.requestUpdate();
-
-        // Listen for drag
-        window.addEventListener('mousemove', this._handleGlobalMouseMove);
-        window.addEventListener('mouseup', this._handleGlobalMouseUp);
-    }
-
-    private _handleGlobalMouseMove = (e: MouseEvent) => {
-        if (!this.isSelecting) return;
-
-        // Find cell under mouse using composedPath to handle ShadowDOM
-        const path = e.composedPath();
-        const element = path.find(el => (el as HTMLElement).classList?.contains('cell')) as HTMLElement;
-
-        if (element) {
-            const r = parseInt(element.getAttribute('data-row') || '-100');
-            const c = parseInt(element.getAttribute('data-col') || '-100');
-
-            if (r !== -100) {
-                // Logic for Header Dragging
-                if (this.selectionAnchorCol === -2) {
-                    // Row Mode: Update selectedRow
-                    if (r !== -1 && r !== this.selectedRow) {
-                        this.selectedRow = r;
-                    }
-                } else if (this.selectionAnchorRow === -2) {
-                    // Col Mode: Update selectedCol
-                    // Note: Column headers have data-row="-1"
-                    if (c !== -1 && c !== this.selectedCol && r === -1) {
-                        this.selectedCol = c;
-                    } else if (c !== -1 && c !== this.selectedCol) {
-                        // Dragging over body cells while in Col Mode -> update Col
-                        this.selectedCol = c;
-                    }
-                } else {
-                    // Normal Range Mode
-                    if (r !== -1 && c !== -1) { // Ignore headers
-                        if (r !== this.selectedRow || c !== this.selectedCol) {
-                            this.selectedRow = r;
-                            this.selectedCol = c;
+                        range.collapse(false);
+                    } else {
+                        // Selection logic
+                        const textNode = Array.from(cell.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
+                        if (textNode) {
+                            range.selectNodeContents(textNode);
+                            range.collapse(false);
+                        } else {
+                            range.selectNodeContents(cell);
+                            range.collapse(true);
                         }
                     }
+                    const selection = window.getSelection();
+                    selection?.removeAllRanges();
+                    selection?.addRange(range);
                 }
             }
         }
-        // Handle auto-scroll if needed? (MVP: No)
-    }
-
-    private _handleGlobalMouseUp = (e: MouseEvent) => {
-        this.isSelecting = false;
-        window.removeEventListener('mousemove', this._handleGlobalMouseMove);
-        window.removeEventListener('mouseup', this._handleGlobalMouseUp);
-        // Ensure focus on the active cell (end of selection)
-        this._shouldFocusCell = true;
-        this.requestUpdate();
-    }
-
-    private _handleCellClick(e: MouseEvent, rowIndex: number, colIndex: number) {
-        // Redundant with MouseDown for selection, but needed slightly for Edit commit timing?
-        // Actually MouseDown handles selection. Click handled "Commit" logic previously.
-
-        // Explicitly commit if we were editing to ensure we capture value BEFORE selection changes/re-render.
-        if (this.isEditing) {
-            this._commitEdit(new Event('manual-commit'));
-        }
-
-        // Fix for Range Selection bug: Update Anchor if not extending
-        if (e.shiftKey && this.selectionAnchorRow !== -1) {
-            // Extend selection (handled by mousedown usually, but duplicate here for safety)
-            this.selectedRow = rowIndex;
-            this.selectedCol = colIndex;
-        } else {
-            this.selectionAnchorRow = rowIndex;
-            this.selectionAnchorCol = colIndex;
-            this.selectedRow = rowIndex;
-            this.selectedCol = colIndex;
-        }
-
-        // If we are clicking, we probably want to focus the cell.
-        // If we were editing, blur happens, commit happens.
-        // Then focus moves to new selection.
-        this._shouldFocusCell = true;
     }
 
     private _handleInput(e: Event) {
         const target = e.target as HTMLElement;
-        this._pendingEditValue = target.innerText;
-    }
-
-    private _handleCellDblClick(e: MouseEvent, rowIndex: number, colIndex: number) {
-        e.preventDefault();
-        e.stopPropagation();
-        this.selectedRow = rowIndex;
-        this.selectedCol = colIndex;
-        this.isEditing = true;
-        this._shouldFocusCell = true;
+        this.editCtrl.setPendingValue(target.innerText);
     }
 
     private _handleKeyDown(e: KeyboardEvent, isHeader: boolean = false) {
         if (e.isComposing) return;
 
-        if (this.isEditing) {
+        if (this.editCtrl.isEditing) {
             this._handleEditModeKey(e);
             return;
         }
 
         const isControl = e.ctrlKey || e.metaKey || e.altKey;
 
-        // Range Selection overrides
-        // If Column Selection (selectedRow == -2) AND typing -> Edit Header (Row -1)
-        if (this.selectedRow === -2 && this.selectedCol >= 0 && !isControl && e.key.length === 1) {
+        // Header Edit
+        if (
+            this.selectionCtrl.selectedRow === -2 &&
+            this.selectionCtrl.selectedCol >= 0 &&
+            !isControl &&
+            e.key.length === 1
+        ) {
             e.preventDefault();
-            this.selectedRow = -1; // Switch to header
-            this._startEditing(e.key);
+            this.selectionCtrl.selectedRow = -1;
+            this.editCtrl.startEditing(e.key);
+            this.focusCell();
             return;
         }
 
-        const isRangeSelection = this.selectedCol === -2 || this.selectedRow === -2;
+        const isRangeSelection = this.selectionCtrl.selectedCol === -2 || this.selectionCtrl.selectedRow === -2;
 
         if (!isControl && e.key.length === 1 && !isRangeSelection) {
             e.preventDefault();
-            this._startEditing(e.key);
+            this.editCtrl.startEditing(e.key);
+            this.focusCell();
             return;
         }
 
-        // Copy: Ctrl+C
         if (isControl && (e.key === 'c' || e.key === 'C')) {
             e.preventDefault();
             this._copyToClipboard();
             return;
         }
 
-        // Paste: Ctrl+V
         if (isControl && (e.key === 'v' || e.key === 'V')) {
             e.preventDefault();
             this._handlePaste();
             return;
         }
 
-        this._handleNavigationKey(e);
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            e.preventDefault();
+            this._deleteSelection();
+            return;
+        }
+
+        // Nav
+        const rowCount = this.table?.rows.length || 0;
+        const colCount = this.table?.headers ? this.table.headers.length : this.table?.rows[0]?.length || 0;
+        this.navCtrl.handleKeyDown(e, rowCount + 1, colCount); // +1 because we allow ghost row (rowCount)
+        this.focusCell();
     }
 
     private async _handlePaste() {
@@ -721,45 +560,41 @@ export class SpreadsheetTable extends LitElement {
             const text = await navigator.clipboard.readText();
             if (!text) return;
 
-            // Parse TSV (basic)
-            const rows = text.split(/\r?\n/).map(line => line.split('\t'));
+            const rows = text.split(/\r?\n/).map((line) => line.split('\t'));
 
-            // Determine start row/col
-            let startRow = this.selectedRow;
-            let startCol = this.selectedCol;
+            let startRow = this.selectionCtrl.selectedRow;
+            let startCol = this.selectionCtrl.selectedCol;
 
-            if (this.selectedRow === -1 || this.selectedCol === -1) {
-                // Header selected: ignore for now
+            if (this.selectionCtrl.selectedRow === -1 || this.selectionCtrl.selectedCol === -1) {
                 return;
             }
 
-            // Handle row/col selection modes
-            if (this.selectedRow === -2) {
+            if (this.selectionCtrl.selectedRow === -2) {
                 startRow = 0;
             }
-            if (this.selectedCol === -2) {
-                startRow = this.selectedRow;
+            if (this.selectionCtrl.selectedCol === -2) {
+                startRow = this.selectionCtrl.selectedRow;
                 startCol = 0;
             }
-            // Normalize if range selected
-            if (this.selectionAnchorRow !== -1 && this.selectedRow !== -2 && this.selectedCol !== -2) {
-                startRow = Math.min(this.selectionAnchorRow, this.selectedRow);
-                startCol = Math.min(this.selectionAnchorCol, this.selectedCol);
+            if (
+                this.selectionCtrl.selectionAnchorRow !== -1 &&
+                this.selectionCtrl.selectedRow !== -2 &&
+                this.selectionCtrl.selectedCol !== -2
+            ) {
+                startRow = Math.min(this.selectionCtrl.selectionAnchorRow, this.selectionCtrl.selectedRow);
+                startCol = Math.min(this.selectionCtrl.selectionAnchorCol, this.selectionCtrl.selectedCol);
             }
 
-            // Ghost Row Case: If startRow is beyond existing rows (table.rows.length), it's a new row paste
-            if (this.selectedRow >= (this.table?.rows.length || 0)) {
+            if (this.selectionCtrl.selectedRow >= (this.table?.rows.length || 0)) {
                 startRow = this.table?.rows.length || 0;
-                startCol = 0; // Paste from A column if ghost row selected
+                startCol = 0;
             }
 
-            // Dispatch event
             this._dispatchAction('paste-cells', {
                 startRow: startRow,
                 startCol: startCol,
                 data: rows
             });
-
         } catch (err) {
             console.error('Paste failed', err);
         }
@@ -768,54 +603,42 @@ export class SpreadsheetTable extends LitElement {
     private async _copyToClipboard() {
         if (!this.table) return;
 
-        let minR = -100, maxR = -100, minC = -100, maxC = -100;
-
+        let minR = -100,
+            maxR = -100,
+            minC = -100,
+            maxC = -100;
         const numCols = this.table?.headers?.length || 0;
         const numRows = this.table.rows.length;
 
-        // Determine Range (Logic duplicated/shared from render, maybe refactor later)
-        if (this.selectionAnchorRow !== -1 && this.selectionAnchorCol !== -1) {
-            // Check for Row Selection Mode
-            if (this.selectedCol === -2 || this.selectionAnchorCol === -2) {
-                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
-                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
+        const anchorRow = this.selectionCtrl.selectionAnchorRow;
+        const anchorCol = this.selectionCtrl.selectionAnchorCol;
+        const selRow = this.selectionCtrl.selectedRow;
+        const selCol = this.selectionCtrl.selectedCol;
+
+        if (anchorRow !== -1 && anchorCol !== -1) {
+            if (selCol === -2 || anchorCol === -2) {
+                minR = Math.min(anchorRow, selRow);
+                maxR = Math.max(anchorRow, selRow);
                 minC = 0;
                 maxC = numCols - 1;
-            }
-            // Check for Column Selection Mode
-            else if (this.selectedRow === -2 || this.selectionAnchorRow === -2) {
+            } else if (selRow === -2 || anchorRow === -2) {
                 minR = 0;
                 maxR = numRows - 1;
-                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
-                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+                minC = Math.min(anchorCol, selCol);
+                maxC = Math.max(anchorCol, selCol);
+            } else {
+                minR = Math.min(anchorRow, selRow);
+                maxR = Math.max(anchorRow, selRow);
+                minC = Math.min(anchorCol, selCol);
+                maxC = Math.max(anchorCol, selCol);
             }
-            else {
-                // Normal Range
-                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
-                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
-                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
-                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
-            }
-        }
-        else if (this.selectedRow !== -2 && this.selectedCol !== -2) {
-            // Single Cell (Active Only)
-            minR = maxR = this.selectedRow;
-            minC = maxC = this.selectedCol;
+        } else if (selRow !== -2 && selCol !== -2) {
+            minR = maxR = selRow;
+            minC = maxC = selCol;
         }
 
-        // Validate bounds
-        if (minR < -1 || minC < -1) return; // Nothing valid selected (-2 handled above)
+        if (minR < -1 || minC < -1) return;
 
-        // Handle Header Selection?
-        // If minR aka range includes -1, we might want to copy headers? 
-        // Excel: Copying full column copies data. Headers? Conventionally yes if full table select.
-        // For now, let's copy DATA only unless explicitly header is selected?
-        // User Spec: "Insert Copied Cells" implies data.
-        // Let's stick to TSV of the cells in range.
-        // If minR is -1 (header), treat as 0? Or include header text?
-        // If user selects Column Header, they usually expect data column.
-
-        // Clamp to data bounds for now, ignore header text copy for simpler MVP unless requested.
         const effectiveMinR = Math.max(0, minR);
         const effectiveMaxR = Math.min(numRows - 1, maxR);
         const effectiveMinC = Math.max(0, minC);
@@ -825,12 +648,7 @@ export class SpreadsheetTable extends LitElement {
         for (let r = effectiveMinR; r <= effectiveMaxR; r++) {
             const rowData: string[] = [];
             for (let c = effectiveMinC; c <= effectiveMaxC; c++) {
-                const cellVal = this.table.rows[r][c] || "";
-                // Escape tabs/newlines? Quotes?
-                // Minimal CSV/TSV escaping:
-                // If contains \t or \n, wrap in quotes?
-                // Standard TSV doesn't always escape, but good practice.
-                // Re-using simple string for now.
+                const cellVal = this.table.rows[r][c] || '';
                 rowData.push(cellVal);
             }
             rows.push(rowData.join('\t'));
@@ -839,380 +657,156 @@ export class SpreadsheetTable extends LitElement {
         const text = rows.join('\n');
         try {
             await navigator.clipboard.writeText(text);
-            console.log('Copied to clipboard');
-        } catch (err) {
-            console.error('Failed to copy', err);
-        }
+        } catch (err) {}
     }
+
     private _handleEditModeKey(e: KeyboardEvent) {
         if (e.key === 'Enter') {
             e.preventDefault();
             this._commitEdit(e);
 
-            // Explicitly Reset Anchor to avoid Range Selection extension
             if (!e.shiftKey) {
-                this.selectionAnchorRow = -1;
-                this.selectionAnchorCol = -1;
+                this.selectionCtrl.selectionAnchorRow = -1;
+                this.selectionCtrl.selectionAnchorCol = -1;
             }
+            // Simple logic: controller doesn't handle nav fully inside component yet?
+            // Delegate nav
+            // We can just call navCtrl manually
+            // But we need to check shift for Enter?
+            // NavCtrl.handleKeyDown handles Enter
+            const rowCount = this.table?.rows.length || 0;
+            const colCount = this.table?.headers ? this.table.headers.length : this.table?.rows[0]?.length || 0;
+            this.navCtrl.handleKeyDown(e, rowCount + 1, colCount);
+            this.focusCell(); // Focus new cell
 
-            // Move down (or up if Shift)
-            const dRow = e.shiftKey ? -1 : 1;
-            // Ensure we don't move out of bounds excessively (logic in _moveSelection handles clamping but we can check basic bounds)
-            this._moveSelection(dRow, 0);
-
-            // Sync Anchor after move if not Shift (Actually _moveSelection usually handles selection update, need to verify if it sets anchor)
-            // _moveSelection sets selectedRow/Col. If we want to reset anchor, we should do it.
+            // Sync anchor
             if (!e.shiftKey) {
-                this.selectionAnchorRow = this.selectedRow;
-                this.selectionAnchorCol = this.selectedCol;
+                this.selectionCtrl.selectionAnchorRow = this.selectionCtrl.selectedRow;
+                this.selectionCtrl.selectionAnchorCol = this.selectionCtrl.selectedCol;
             }
-
         } else if (e.key === 'Tab') {
             e.preventDefault();
             this._commitEdit(e);
 
-            // Explicitly Reset Anchor
             if (!e.shiftKey) {
-                this.selectionAnchorRow = -1;
-                this.selectionAnchorCol = -1;
+                this.selectionCtrl.selectionAnchorRow = -1;
+                this.selectionCtrl.selectionAnchorCol = -1;
             }
+            const rowCount = this.table?.rows.length || 0;
+            const colCount = this.table?.headers ? this.table.headers.length : this.table?.rows[0]?.length || 0;
 
-            const colCount = this.table?.headers ? this.table.headers.length : (this.table?.rows[0]?.length || 0);
-
+            // Manual Tab Logic (Wrap)
             if (e.shiftKey) {
-                // Shift+Tab: Move Left
-                if (this.selectedCol === 0) {
-                    // Wrap to previous row (Last Col)
-                    this._moveSelection(-1, colCount - 1 - this.selectedCol);
+                if (this.selectionCtrl.selectedCol === 0) {
+                    // Move to prev row logic
+                    // We can use navCtrl if we teach it wrapping.
+                    // For now keeping local logic using selectionCtrl.selectCell
+                    let r = this.selectionCtrl.selectedRow - 1;
+                    const c = colCount - 1;
+                    // clamp
+                    if (r < -1) r = -1;
+                    this.selectionCtrl.selectCell(r, c);
                 } else {
-                    this._moveSelection(0, -1);
+                    this.selectionCtrl.selectCell(this.selectionCtrl.selectedRow, this.selectionCtrl.selectedCol - 1);
                 }
             } else {
-                // Tab: Move Right
-                if (this.selectedCol === colCount - 1) {
-                    // Wrap to next row (First Col)
-                    this._moveSelection(1, -this.selectedCol);
+                if (this.selectionCtrl.selectedCol === colCount - 1) {
+                    this.selectionCtrl.selectCell(this.selectionCtrl.selectedRow + 1, 0); // Wrap next row
                 } else {
-                    this._moveSelection(0, 1);
+                    this.selectionCtrl.selectCell(this.selectionCtrl.selectedRow, this.selectionCtrl.selectedCol + 1);
                 }
             }
+            this.focusCell();
 
             if (!e.shiftKey) {
-                this.selectionAnchorRow = this.selectedRow;
-                this.selectionAnchorCol = this.selectedCol;
+                this.selectionCtrl.selectionAnchorRow = this.selectionCtrl.selectedRow;
+                this.selectionCtrl.selectionAnchorCol = this.selectionCtrl.selectedCol;
             }
-
         } else if (e.key === 'Escape') {
             e.preventDefault();
-            this._cancelEdit();
+            this.editCtrl.cancelEditing();
+            this.focusCell();
         }
     }
-
-    private _handleNavigationKey(e: KeyboardEvent) {
-        let dRow = 0;
-        let dCol = 0;
-
-        switch (e.key) {
-            case 'ArrowUp': dRow = -1; break;
-            case 'ArrowDown': dRow = 1; break;
-            case 'ArrowLeft': dCol = -1; break;
-            case 'ArrowRight': dCol = 1; break;
-            case 'Delete':
-            case 'Backspace':
-                e.preventDefault();
-                this._deleteSelection();
-                return;
-            case 'F2':
-                e.preventDefault();
-                this._startEditing(null);
-                return;
-            case 'Enter':
-                e.preventDefault();
-                if (this.isEditing) {
-                    // Logic handled in EditModeKey usually, but just in case
-                }
-                dRow = e.shiftKey ? -1 : 1;
-                break;
-            case 'Tab':
-                e.preventDefault();
-                // Logic same as Edit Mode but no commit needed (already saved or not editing)
-                // Tab is always Navigation, never Range Selection (even with Shift)
-                this.selectionAnchorRow = -1;
-                this.selectionAnchorCol = -1;
-
-                const colCount = this.table?.headers ? this.table.headers.length : (this.table?.rows[0]?.length || 0);
-                if (e.shiftKey) {
-                    // Shift+Tab: Move Left
-                    if (this.selectedCol === 0) {
-                        // Wrap to previous row
-                        this._moveSelection(-1, colCount - 1 - this.selectedCol);
-                        this.selectionAnchorRow = this.selectedRow;
-                        this.selectionAnchorCol = this.selectedCol;
-                        return;
-                    } else {
-                        dCol = -1;
-                    }
-                } else {
-                    // Tab: Move Right
-                    if (this.selectedCol === colCount - 1) {
-                        // Wrap to next row
-                        this._moveSelection(1, -this.selectedCol);
-                        this.selectionAnchorRow = this.selectedRow;
-                        this.selectionAnchorCol = this.selectedCol;
-                        return;
-                    } else {
-                        dCol = 1;
-                    }
-                }
-                break;
-            default:
-                return;
-        }
-
-        if (dRow !== 0 || dCol !== 0) {
-            e.preventDefault();
-
-            // Reset Anchor if not extending selection (OR if it is Tab, which never extends)
-            if (!e.shiftKey || e.key === 'Tab') {
-                this.selectionAnchorRow = -1;
-                this.selectionAnchorCol = -1;
-            }
-
-            this._moveSelection(dRow, dCol);
-
-            // Sync Anchor to new start
-            if (!e.shiftKey || e.key === 'Tab') {
-                this.selectionAnchorRow = this.selectedRow;
-                this.selectionAnchorCol = this.selectedCol;
-            }
-        }
-    }
-
-    private _originalValue: string = "";
-
-    private _startEditing(initialValue: string | null) {
-        // Capture Original for change detection
-        this._originalValue = "";
-        if (this.table) {
-            if (this.selectedRow === -1 && this.selectedCol >= 0) {
-                // Header
-                if (this.table.headers && this.selectedCol < this.table.headers.length) {
-                    this._originalValue = this.table.headers[this.selectedCol];
-                } else {
-                    // Empty/Default header logic if needed? 
-                    // Usually headers exist if not empty array. If empty, "" is fine.
-                }
-            } else if (this.selectedRow >= 0 && this.selectedRow < this.table.rows.length) {
-                // Body
-                const row = this.table.rows[this.selectedRow];
-                if (row && this.selectedCol >= 0 && this.selectedCol < row.length) {
-                    this._originalValue = row[this.selectedCol] || "";
-                }
-            }
-        }
-
-        this.isEditing = true;
-        this._pendingEditValue = initialValue;
-        this._shouldFocusCell = true;
-
-        if (initialValue !== null) {
-            const cell = this.shadowRoot?.querySelector(`.cell[data-row="${this.selectedRow}"][data-col="${this.selectedCol}"]`) as HTMLElement;
-            if (cell) {
-                // If header, target the span
-                const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
-                if (contentSpan) {
-                    contentSpan.innerText = initialValue;
-                } else {
-                    cell.innerText = initialValue;
-                }
-            }
-        }
-    }
-
-    private _moveSelection(dRow: number, dCol: number) {
-        if (!this.table) return;
-
-        const rowCount = this.table.rows.length;
-        const colCount = this.table.headers ? this.table.headers.length : (this.table.rows[0]?.length || 0);
-
-        // Current
-        let r = this.selectedRow;
-        let c = this.selectedCol;
-
-        // If in Row/Col selection (sentinel -2), collapse to specific cell?
-        // Excel: Moving arrows from Row selection -> Moves active cell.
-        // Simplified: Reset to 0,0 or clamping?
-        // If I press Down on Row 5 (Selected), go to Row 6 (Selected).
-        // If I press Right on Row 5 (Selected), go to Row 5, Col 0?
-
-        if (c === -2 && dRow !== 0) {
-            // Move Row Selection
-            let newR = r + dRow;
-            if (newR >= 0 && newR <= rowCount) { // Allow ghost row
-                this.selectedRow = newR;
-                this._shouldFocusCell = true;
-            }
-            return;
-        }
-        if (r === -2 && dCol !== 0) {
-            // Move Col Selection
-            let newC = c + dCol;
-            if (newC >= 0 && newC < colCount) {
-                this.selectedCol = newC;
-                this._shouldFocusCell = true;
-            }
-            return;
-        }
-
-        // If escaping selection mode to cell mode
-        if (c === -2 && dCol !== 0) {
-            c = 0; // Default to col 0?
-        }
-        if (r === -2 && dRow !== 0) {
-            r = 0; // Default to row 0?
-        }
-
-
-        let newR = r + dRow;
-        let newC = c + dCol;
-
-        // Clamp
-        // Allow -1 for Header Row if we want navigation to headers? Yes.
-        // But headers handles are separate in render (rowIndex -1).
-
-        // Limits:
-        // Rows: -1 to rowCount - 1
-        // Cols: 0 to colCount - 1
-
-        if (newR < -1) newR = -1;
-        if (newR > rowCount) newR = rowCount; // Allow selecting the ghost row (index = rowCount)
-        if (newC < 0) newC = 0;
-        if (newC >= colCount) newC = colCount - 1;
-
-        // Update
-        this.selectedRow = newR;
-        this.selectedCol = newC;
-        this._shouldFocusCell = true;
-    }
-
-    private _isCommitting: boolean = false;
 
     private async _commitEdit(e: Event) {
         if (this._isCommitting) return;
         this._isCommitting = true;
 
         try {
+            const target = e.target as HTMLElement;
+            let cell = target;
+            if (target.classList.contains('cell-content')) {
+                cell = target.closest('.cell') as HTMLElement;
+            }
 
-            try {
-                const target = e.target as HTMLElement;
-                // Safety check
-                let cell = target;
+            if (!cell || !cell.classList || !cell.classList.contains('cell')) {
+                const found = this.shadowRoot?.querySelector('.cell.editing');
+                if (found) cell = found as HTMLElement;
+                else return;
+            }
 
-                // If target is the .cell-content span, get parent cell for data attributes
-                if (target.classList.contains('cell-content')) {
-                    cell = target.closest('.cell') as HTMLElement;
-                }
+            const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
+            let newValue = '';
+            if (contentSpan) {
+                newValue =
+                    this.editCtrl.pendingEditValue !== null ? this.editCtrl.pendingEditValue : contentSpan.innerText;
+            } else {
+                newValue = this.editCtrl.pendingEditValue !== null ? this.editCtrl.pendingEditValue : cell.innerText;
+            }
 
-                if (!cell || !cell.classList || !cell.classList.contains('cell')) {
-                    const found = this.shadowRoot?.querySelector('.cell.editing');
-                    if (found) cell = found as HTMLElement;
-                    else return; // If no editing cell found, nothing to commit
-                }
+            if (newValue === '\n') newValue = '';
 
-                // Get value from cell-content if exists (Header), else cell itself (Body)
-                const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
-                let newValue = "";
-                if (contentSpan) {
-                    newValue = this._pendingEditValue !== null ? this._pendingEditValue : contentSpan.innerText;
-                } else {
-                    newValue = this._pendingEditValue !== null ? this._pendingEditValue : cell.innerText;
-                }
+            let editRow = parseInt(cell.dataset.row || '-10');
+            let editCol = parseInt(cell.dataset.col || '-10');
+            if (isNaN(editRow)) editRow = this.selectionCtrl.selectedRow;
+            if (isNaN(editCol)) editCol = this.selectionCtrl.selectedCol;
 
-                if (newValue === '\n') {
-                    newValue = "";
-                }
-
-                // Remove manual clear to prevent Lit dirty-check failure (Fixes Disappearing Text)
-                // if (cell) cell.textContent = "";
-
-                // Parse coordinates from the cell element
-                let editRow = parseInt(cell.dataset.row || "-10"); // -10 as invalid sentinel
-                let editCol = parseInt(cell.dataset.col || "-10");
-
-                // Fallback to selected if parsing fails (should not happen)
-                if (isNaN(editRow)) editRow = this.selectedRow;
-                if (isNaN(editCol)) editCol = this.selectedCol;
-
+            if (this.table && editCol >= 0) {
                 // Optimistic Update
-                if (this.table && editCol >= 0) {
-
-                    // Header Update
-                    if (editRow === -1) {
-                        if (this.table.headers && editCol < this.table.headers.length) {
-                            this.table.headers[editCol] = newValue;
-                        }
+                if (editRow === -1) {
+                    if (this.table.headers && editCol < this.table.headers.length) {
+                        this.table.headers[editCol] = newValue;
                     }
-                    // Body Update
-                    else if (editRow >= 0 && editRow < this.table.rows.length) {
-                        if (editCol < this.table.rows[editRow].length) {
-                            this.table.rows[editRow][editCol] = newValue;
-                        }
+                } else if (editRow >= 0 && editRow < this.table.rows.length) {
+                    if (editCol < this.table.rows[editRow].length) {
+                        this.table.rows[editRow][editCol] = newValue;
                     }
-                    // Ghost Row Update (Add Row)
-                    else if (editRow === this.table.rows.length) {
-                        // Create new row
-                        const width = this.table.headers ? this.table.headers.length : (this.table.rows[0]?.length || 0);
-                        const newRow = new Array(width).fill("");
-                        if (editCol < width) newRow[editCol] = newValue;
-                        this.table.rows.push(newRow);
-                    }
-
-                    this.requestUpdate();
+                } else if (editRow === this.table.rows.length) {
+                    const width = this.table.headers ? this.table.headers.length : this.table.rows[0]?.length || 0;
+                    const newRow = new Array(width).fill('');
+                    if (editCol < width) newRow[editCol] = newValue;
+                    this.table.rows.push(newRow);
                 }
+                this.requestUpdate();
 
                 // Dispatch update
-                this.dispatchEvent(new CustomEvent('cell-edit', {
-                    detail: {
-                        sheetIndex: this.sheetIndex,
-                        tableIndex: this.tableIndex,
-                        rowIndex: editRow,
-                        colIndex: editCol,
-                        newValue: newValue
-                    },
-                    bubbles: true,
-                    composed: true
-                }));
-
-                this.isEditing = false;
-                this._shouldFocusCell = true; // Focus back to item
-            } finally {
-                // Short delay to prevent blur from triggering immediately after?
-                // Or just reset.
-                this._isCommitting = false;
-                this._pendingEditValue = null;
+                this.dispatchEvent(
+                    new CustomEvent('cell-edit', {
+                        detail: {
+                            sheetIndex: this.sheetIndex,
+                            tableIndex: this.tableIndex,
+                            rowIndex: editRow,
+                            colIndex: editCol,
+                            newValue: newValue
+                        },
+                        bubbles: true,
+                        composed: true
+                    })
+                );
+                this.editCtrl.cancelEditing(); // Reset state
+                this.focusCell();
             }
-        } catch (err) {
-            // Ignore error or log unobtrusively if needed
+        } finally {
+            this._isCommitting = false;
         }
-    }
-
-    private _cancelEdit() {
-        if (this._isCommitting) return;
-        this.isEditing = false;
-        // Revert content usage? Lit will re-render and revert text if we didn't update state.
-        this.requestUpdate();
-        this._shouldFocusCell = true;
     }
 
     private _handleBlur(e: FocusEvent) {
-        // Ignore if moving focus to a child element (e.g., cell-content span)
         if (e.relatedTarget && (e.target as Element).contains(e.relatedTarget as Node)) {
             return;
         }
-
-        // If editing, commit on blur?
-        // Check if we are still editing and not already committing
-        if (this.isEditing && !this._isCommitting) {
+        if (this.editCtrl.isEditing && !this._isCommitting) {
             this._commitEdit(e);
         }
     }
@@ -1221,191 +815,134 @@ export class SpreadsheetTable extends LitElement {
         if (!this.table) return;
 
         const rowCount = this.table.rows.length;
-        const colCount = this.table.headers ? this.table.headers.length : (this.table.rows[0]?.length || 0);
+        const colCount = this.table.headers ? this.table.headers.length : this.table.rows[0]?.length || 0;
 
-        // Calculate Range
-        let minR = this.selectedRow;
-        let maxR = this.selectedRow;
-        let minC = this.selectedCol;
-        let maxC = this.selectedCol;
+        const anchorRow = this.selectionCtrl.selectionAnchorRow;
+        const anchorCol = this.selectionCtrl.selectionAnchorCol;
+        const selRow = this.selectionCtrl.selectedRow;
+        const selCol = this.selectionCtrl.selectedCol;
 
-        if (this.selectionAnchorRow !== -1 && this.selectionAnchorCol !== -1) {
-            if (this.selectedCol === -2 || this.selectionAnchorCol === -2) {
-                // Row Mode
-                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
-                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
-            } else if (this.selectedRow === -2 || this.selectionAnchorRow === -2) {
-                // Col Mode
-                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
-                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+        let minR = selRow,
+            maxR = selRow,
+            minC = selCol,
+            maxC = selCol;
+
+        if (anchorRow !== -1 && anchorCol !== -1) {
+            if (selCol === -2 || anchorCol === -2) {
+                minR = Math.min(anchorRow, selRow);
+                maxR = Math.max(anchorRow, selRow);
+            } else if (selRow === -2 || anchorRow === -2) {
+                minC = Math.min(anchorCol, selCol);
+                maxC = Math.max(anchorCol, selCol);
             } else {
-                // Range
-                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
-                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
-                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
-                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+                minR = Math.min(anchorRow, selRow);
+                maxR = Math.max(anchorRow, selRow);
+                minC = Math.min(anchorCol, selCol);
+                maxC = Math.max(anchorCol, selCol);
             }
         }
 
-        // Optimistic Update Helper
         const triggerUpdate = () => this.requestUpdate();
 
-        // 1. Row Selection Mode
-        if (this.selectedCol === -2) {
-            // Delete Rows from Bottom to Top to preserve indices during specific deletes
-            // Skip ghost row if included in range? Ghost row index = rowCount.
-            // If maxR >= rowCount, cap it.
+        if (selCol === -2) {
+            // Row Delete
             const effectiveMaxR = Math.min(maxR, rowCount - 1);
-
-            // If nothing to delete (e.g. only ghost row selected)
             if (effectiveMaxR < minR) return;
 
-            // Optimistic Slice
-            // We can splice multiple if contiguous?
-            // this.table.rows.splice(minR, effectiveMaxR - minR + 1);
-            // But we need to dispatch events.
-            // Dispatching multiple 'row-delete' events might be spammy but safe for now.
-            // Ideally backend supports 'delete-rows'.
-            // For now, loop descending.
+            // Optimistic Update: Remove rows from model
+            // Iterate backwards to avoid index shift if we spliced one by one
+            // We are dispatching one by one, so we should slice.
+            // But wait, if we dispatch row-delete for index R, does backend handle it?
+            // If we delete R+1 then R, indices are stable.
+            // Loop is r-- (backwards).
+
             for (let r = effectiveMaxR; r >= minR; r--) {
                 this.table.rows.splice(r, 1);
-                this.dispatchEvent(new CustomEvent('row-delete', {
-                    detail: {
-                        sheetIndex: this.sheetIndex,
-                        tableIndex: this.tableIndex,
-                        rowIndex: r
-                    },
-                    bubbles: true,
-                    composed: true
-                }));
+                this.dispatchEvent(
+                    new CustomEvent('row-delete', {
+                        detail: { sheetIndex: this.sheetIndex, tableIndex: this.tableIndex, rowIndex: r },
+                        bubbles: true,
+                        composed: true
+                    })
+                );
             }
             triggerUpdate();
-
-            // Adjust selection
-            // If we deleted everything, select new last row?
-            // If we have rows left, select minR (now occupied by next row) or last row.
-            const newCount = this.table.rows.length;
-            if (newCount > 0) {
-                this.selectedRow = Math.min(minR, newCount - 1);
-            } else {
-                this.selectedRow = 0; // Empty table / Ghost row
-            }
-        }
-        // 2. Column Selection Mode
-        else if (this.selectedRow === -2) {
-            // Clear content for each column in range
+        } else if (selRow === -2) {
+            // Column Clear
             for (let c = minC; c <= maxC; c++) {
-                // Optimistic clear
-                for (let r = 0; r < rowCount; r++) {
-                    if (c < this.table.rows[r].length) {
-                        this.table.rows[r][c] = "";
-                    }
-                }
-                // Dispatch
-                this.dispatchEvent(new CustomEvent('column-clear', {
-                    detail: {
-                        sheetIndex: this.sheetIndex,
-                        tableIndex: this.tableIndex,
-                        colIndex: c
-                    },
-                    bubbles: true,
-                    composed: true
-                }));
+                // Optimistic: Clear column data
+                this.table.rows.forEach((row) => {
+                    if (c < row.length) row[c] = '';
+                });
+
+                this.dispatchEvent(
+                    new CustomEvent('column-clear', {
+                        detail: { sheetIndex: this.sheetIndex, tableIndex: this.tableIndex, colIndex: c },
+                        bubbles: true,
+                        composed: true
+                    })
+                );
             }
             triggerUpdate();
-        }
-        // 3. Cell/Range Mode
-        else if (minR >= 0 && minC >= 0) {
+        } else if (minR >= 0 && minC >= 0) {
+            // Range Clear
             // Optimistic
             for (let r = minR; r <= maxR; r++) {
-                if (r < rowCount) {
+                if (r < this.table.rows.length) {
                     for (let c = minC; c <= maxC; c++) {
                         if (c < this.table.rows[r].length) {
-                            this.table.rows[r][c] = "";
+                            this.table.rows[r][c] = '';
                         }
                     }
                 }
             }
-            triggerUpdate();
 
-            // Batch update or single updates?
-            // _updateRange is single event?
-            // this._updateCell for each?
-            // We have _updateRange(startRow, endRow, startCol, endCol, val)
-            // But val is single string.
-            // If we want to clear range, val="" is correct.
-            this._updateRange(minR, maxR, minC, maxC, "");
-        }
-        // Select All (Optional, but safe now)
-        else if (this.selectedRow === -2 && this.selectedCol === -2) {
-            // Optimistic: Clear All? Or Delete All? 
-            // Usually Clear All content.
-            for (let r = 0; r < rowCount; r++) {
-                for (let c = 0; c < this.table.rows[r].length; c++) {
-                    this.table.rows[r][c] = "";
-                }
-            }
-            if (this.table.headers) {
-                for (let c = 0; c < this.table.headers.length; c++) this.table.headers[c] = "";
-            }
+            this.dispatchEvent(
+                new CustomEvent('range-edit', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        startRow: minR,
+                        endRow: maxR,
+                        startCol: minC,
+                        endCol: maxC,
+                        newValue: ''
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
             triggerUpdate();
-
-            this._updateRange(
-                0, rowCount - 1,
-                0, colCount - 1,
-                ""
+        } else if (selRow === -2 && selCol === -2) {
+            // Clear All
+            this.dispatchEvent(
+                new CustomEvent('range-edit', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        startRow: 0,
+                        endRow: rowCount - 1,
+                        startCol: 0,
+                        endCol: colCount - 1,
+                        newValue: ''
+                    },
+                    bubbles: true,
+                    composed: true
+                })
             );
         }
-    }
-
-    private _updateRange(startRow: number, endRow: number, startCol: number, endCol: number, val: string) {
-        this.dispatchEvent(new CustomEvent('range-edit', {
-            detail: {
-                sheetIndex: this.sheetIndex,
-                tableIndex: this.tableIndex,
-                startRow: startRow,
-                endRow: endRow,
-                startCol: startCol,
-                endCol: endCol,
-                newValue: val
-            },
-            bubbles: true,
-            composed: true
-        }));
-    }
-
-    private _updateCell(r: number, c: number, val: string) {
-        this.dispatchEvent(new CustomEvent('cell-edit', {
-            detail: {
-                sheetIndex: this.sheetIndex,
-                tableIndex: this.tableIndex,
-                rowIndex: r,
-                colIndex: c,
-                newValue: val
-            },
-            bubbles: true,
-            composed: true
-        }));
     }
 
     private async _handleMetadataClick(e: MouseEvent) {
         e.preventDefault();
         e.stopPropagation();
-        if (!this.table) {
-            return;
-        }
-        // pendingTitle removed, only description
-        this.pendingDescription = this.table.description || "";
-        this.editingMetadata = true;
+        if (!this.table) return;
 
-        // Force update scheduling and wait
+        this.editCtrl.pendingDescription = this.table.description || '';
+        this.editCtrl.editingMetadata = true;
         this.requestUpdate();
         await this.updateComplete;
-
-        // Wait for next animation frame to ensure DOM is painted
-        await new Promise(r => requestAnimationFrame(r));
-        await this.updateComplete;
-
+        await new Promise((r) => requestAnimationFrame(r));
         const input = this.shadowRoot?.querySelector('.metadata-input-desc') as HTMLTextAreaElement;
         if (input) {
             input.focus();
@@ -1417,8 +954,8 @@ export class SpreadsheetTable extends LitElement {
         if (e.isComposing) return;
         if (e.key === 'Escape') {
             e.preventDefault();
-            this.editingMetadata = false;
-            this.requestUpdate(); // Force render sync
+            this.editCtrl.editingMetadata = false;
+            this.requestUpdate();
         } else if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             this._commitMetadata();
@@ -1426,98 +963,43 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _commitMetadata(e?: FocusEvent) {
-        if (!this.editingMetadata) return;
+        if (!this.editCtrl.editingMetadata) return;
 
-        // If blurring to another metadata field, do not close
-        // (Only description field now, so simpler check or none)
         if (e && e.relatedTarget) {
             const target = e.relatedTarget as HTMLElement;
-            if (target.classList.contains('metadata-input-desc')) {
-                return;
-            }
+            if (target.classList.contains('metadata-input-desc')) return;
         }
 
-        this.editingMetadata = false;
-        this.requestUpdate(); // Force render sync
+        this.editCtrl.editingMetadata = false;
+        this.requestUpdate();
 
-        // Check if description changed
-        const currentDesc = this.table?.description || "";
-        if (this.pendingDescription !== currentDesc) {
-            this.dispatchEvent(new CustomEvent('metadata-edit', {
-                detail: {
-                    sheetIndex: this.sheetIndex,
-                    tableIndex: this.tableIndex,
-                    name: this.table?.name || "", // Keep current name
-                    description: this.pendingDescription
-                },
-                bubbles: true,
-                composed: true
-            }));
+        const currentDesc = this.table?.description || '';
+        if (this.editCtrl.pendingDescription !== currentDesc) {
+            this.dispatchEvent(
+                new CustomEvent('metadata-edit', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        name: this.table?.name || '',
+                        description: this.editCtrl.pendingDescription
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
         }
-    }
-
-    private _handleRowHeaderMouseDown(e: MouseEvent, rowIndex: number) {
-        if (e.button !== 0) return;
-
-        // Start Row Selection Mode
-        this.selectionAnchorRow = rowIndex;
-        this.selectionAnchorCol = -2; // Special flag for full row
-        this.selectedRow = rowIndex;
-        this.selectedCol = -2;
-        this.isSelecting = true;
-        this._shouldFocusCell = true;
-
-        window.addEventListener('mousemove', this._handleGlobalMouseMove);
-        window.addEventListener('mouseup', this._handleGlobalMouseUp);
-        this.requestUpdate();
-    }
-
-    private _handleRowHeaderClick(e: MouseEvent, rowIndex: number) {
-        // Redundant with MouseDown mostly, but keeps focus logic simple
-        this.selectedRow = rowIndex;
-        this.selectedCol = -2;
-        this._shouldFocusCell = true;
-    }
-
-    private _handleColumnHeaderMouseDown(e: MouseEvent, colIndex: number) {
-        if (e.button !== 0) return;
-
-        // Start Column Selection Mode
-        this.selectionAnchorRow = -2; // Special flag for full col
-        this.selectionAnchorCol = colIndex;
-        this.selectedRow = -2;
-        this.selectedCol = colIndex;
-        this.isSelecting = true;
-        this._shouldFocusCell = true;
-
-        window.addEventListener('mousemove', this._handleGlobalMouseMove);
-        window.addEventListener('mouseup', this._handleGlobalMouseUp);
-        this.requestUpdate();
-    }
-
-    private _handleColumnHeaderClick(e: MouseEvent, colIndex: number) {
-        this.selectedRow = -2;
-        this.selectedCol = colIndex;
-        this._shouldFocusCell = true;
     }
 
     private _handleContextMenu(e: MouseEvent, type: 'row' | 'col', index: number) {
         e.preventDefault();
         e.stopPropagation();
-        this.contextMenu = {
-            x: e.clientX,
-            y: e.clientY,
-            type: type,
-            index: index
-        };
-        // Also select the item
+        this.contextMenu = { x: e.clientX, y: e.clientY, type: type, index: index };
         if (type === 'row') {
-            this.selectedRow = index;
-            this.selectedCol = -2;
+            this.selectionCtrl.selectCell(index, -2);
         } else {
-            this.selectedRow = -2;
-            this.selectedCol = index;
+            this.selectionCtrl.selectCell(-2, index);
         }
+        this.focusCell();
     }
 
     private _closeContextMenu() {
@@ -1525,266 +1007,490 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _dispatchAction(action: string, detail: any) {
-        this.dispatchEvent(new CustomEvent(action, {
-            detail: {
-                sheetIndex: this.sheetIndex,
-                tableIndex: this.tableIndex,
-                ...detail
-            },
-            bubbles: true,
-            composed: true
-        }));
+        this.dispatchEvent(
+            new CustomEvent(action, {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    ...detail
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
         this._closeContextMenu();
     }
 
     connectedCallback() {
         super.connectedCallback();
         window.addEventListener('click', this._handleGlobalClick);
+        // MouseMove/Up handled by SelectionController
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('click', this._handleGlobalClick);
-        window.removeEventListener('mousemove', this._handleGlobalMouseMove);
-        window.removeEventListener('mouseup', this._handleGlobalMouseUp);
     }
 
     private _handleGlobalClick = (e: MouseEvent) => {
-        // If click is outside menu, close it
         if (this.contextMenu) {
             this._closeContextMenu();
         }
-    }
+    };
 
     render() {
         if (!this.table) return html``;
-
         const table = this.table;
-        if (!table) return html`<div>No table data</div>`;
+        const numCols = table.headers ? table.headers.length : table.rows.length > 0 ? table.rows[0].length : 0;
 
-        const numCols = table.headers ? table.headers.length : (table.rows.length > 0 ? table.rows[0].length : 0);
+        // Calculate ranges for class logic
+        let minR = -1,
+            maxR = -1,
+            minC = -1,
+            maxC = -1;
+        const selRow = this.selectionCtrl.selectedRow;
+        const selCol = this.selectionCtrl.selectedCol;
+        const ancRow = this.selectionCtrl.selectionAnchorRow;
+        const ancCol = this.selectionCtrl.selectionAnchorCol;
 
-        // Calculate Selection Bounds
-        let minR = -1, maxR = -1, minC = -1, maxC = -1;
-
-        if (this.selectionAnchorRow !== -1 && this.selectionAnchorCol !== -1) {
-            // Check for Row Selection Mode (AnchorCol = -2 or SelectedCol = -2)
-            if (this.selectedCol === -2 || this.selectionAnchorCol === -2) {
-                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
-                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
+        if (ancRow !== -1 && ancCol !== -1) {
+            if (selCol === -2 || ancCol === -2) {
+                minR = Math.min(ancRow, selRow);
+                maxR = Math.max(ancRow, selRow);
                 minC = 0;
-                maxC = numCols - 1; // Full width
-            }
-            // Check for Column Selection Mode (AnchorRow = -2 or SelectedRow = -2)
-            else if (this.selectedRow === -2 || this.selectionAnchorRow === -2) {
+                maxC = numCols - 1;
+            } else if (selRow === -2 || ancRow === -2) {
                 minR = 0;
-                maxR = (table.rows.length || 1) - 1; // Full height
-                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
-                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
-            }
-            else {
-                // Normal Range
-                minR = Math.min(this.selectionAnchorRow, this.selectedRow);
-                maxR = Math.max(this.selectionAnchorRow, this.selectedRow);
-                minC = Math.min(this.selectionAnchorCol, this.selectedCol);
-                maxC = Math.max(this.selectionAnchorCol, this.selectedCol);
+                maxR = (table.rows.length || 1) - 1;
+                minC = Math.min(ancCol, selCol);
+                maxC = Math.max(ancCol, selCol);
+            } else {
+                minR = Math.min(ancRow, selRow);
+                maxR = Math.max(ancRow, selRow);
+                minC = Math.min(ancCol, selCol);
+                maxC = Math.max(ancCol, selCol);
             }
         }
 
-        const colCount = table.headers ? table.headers.length : (table.rows.length > 0 ? table.rows[0].length : 0);
+        const colCount = Math.max(table.headers?.length || 0, table.rows[0]?.length || 0);
 
         return html`
             <div class="metadata-container">
-                ${this.editingMetadata ? html`
-                    <textarea 
-                        class="metadata-input-desc" 
-                        .value="${table.description || ""}" 
-                        placeholder="Description"
-                        @input="${(e: Event) => this.pendingDescription = (e.target as HTMLInputElement).value}"
-                        @keydown="${this._handleMetadataKeydown}"
-                        @blur="${this._commitMetadata}"
-                        rows="2"
-                    ></textarea>
-               ` : html`
-                     <p class="metadata-desc ${!table.description ? 'empty' : ''}" 
-                        @click="${this._handleMetadataClick}" 
-                        style="color: var(--vscode-descriptionForeground); cursor: pointer; border: 1px dashed transparent;">
-                        ${table.description || html`<span style="opacity: 0.5; font-size: 0.9em;">Add description...</span>`}
-                     </p>
-                `}
+                ${this.editCtrl.editingMetadata
+                    ? html`
+                          <textarea
+                              class="metadata-input-desc"
+                              .value="${table.description || ''}"
+                              placeholder="Description"
+                              @input="${(e: Event) =>
+                                  (this.editCtrl.pendingDescription = (e.target as HTMLInputElement).value)}"
+                              @keydown="${this._handleMetadataKeydown}"
+                              @blur="${this._commitMetadata}"
+                              rows="2"
+                          ></textarea>
+                      `
+                    : html`
+                          <p
+                              class="metadata-desc ${!table.description ? 'empty' : ''}"
+                              @click="${this._handleMetadataClick}"
+                              style="color: var(--vscode-descriptionForeground); cursor: pointer; border: 1px dashed transparent;"
+                          >
+                              ${table.description ||
+                              html`<span style="opacity: 0.5; font-size: 0.9em;">Add description...</span>`}
+                          </p>
+                      `}
             </div>
 
             <div class="table-container">
                 <div class="grid" style="grid-template-columns: ${this._getColumnTemplate(colCount)};">
                     <!-- Corner -->
-                    <div class="cell header-corner" @click="${() => { this.selectedRow = -2; this.selectedCol = -2; }}"></div>
+                    <div
+                        class="cell header-corner"
+                        @click="${() => {
+                            this.selectionCtrl.selectCell(-2, -2);
+                            this.focusCell();
+                        }}"
+                    ></div>
 
                     <!-- Column Headers -->
-                    ${table.headers ? table.headers.map((header, i) => {
-            const isActive = this.selectedRow === -1 && this.selectedCol === i;
-            // Highlight if direct column selection (minR=-1) or Column Mode (Row=-2)
-            const isColMode = this.selectedRow === -2;
-            const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
-            const showActiveOutline = isActive && minC === maxC;
-            return html`
-                            <div 
-                                class="cell header-col ${(this.selectedRow === -2 && (this.selectedCol === i || isInRange)) || (this.selectedRow === -1 && this.selectedCol === i) ? 'selected' : ''} ${this.isEditing && isActive ? 'editing' : ''} ${showActiveOutline ? 'active-cell' : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
-                                data-col="${i}"
-                                data-row="-1"
-                                tabindex="0"
-                                contenteditable="false"
-                                @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
-                                @mousedown="${(e: MouseEvent) => this._handleColumnHeaderMouseDown(e, i)}"
-                                @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
-                                @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
-                                @input="${this._handleInput}"
-                                @blur="${this._handleBlur}"
-                                @keydown="${this._handleKeyDown}"
-                            >
-                                <span class="cell-content" contenteditable="${this.isEditing && isActive ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;" @blur="${this._handleBlur}" .textContent="${live(header)}"></span>
-                                <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
-                            </div>
-                        `;
-        }) : Array.from({ length: colCount }).map((_, i) => {
-            const isActive = this.selectedRow === -1 && this.selectedCol === i;
-            const isColMode = this.selectedRow === -2;
-            const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
-            const showActiveOutline = isActive && minC === maxC;
-            return html`
-                            <div 
-                                class="cell header-col ${(this.selectedRow === -2 && (this.selectedCol === i || isInRange)) || (this.selectedRow === -1 && this.selectedCol === i) ? 'selected' : ''} ${this.isEditing && isActive ? 'editing' : ''} ${showActiveOutline ? 'active-cell' : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
-                                data-col="${i}"
-                                data-row="-1"
-                                tabindex="0"
-                                contenteditable="false"
-                                @click="${(e: MouseEvent) => this._handleColumnHeaderClick(e, i)}"
-                                @mousedown="${(e: MouseEvent) => this._handleColumnHeaderMouseDown(e, i)}"
-                                @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, -1, i)}"
-                                @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
-                                @input="${this._handleInput}"
-                                @blur="${this._handleBlur}"
-                                @keydown="${this._handleKeyDown}"
-                            >
-                                <span class="cell-content" contenteditable="${this.isEditing && isActive ? 'true' : 'false'}" style="display:inline-block; min-width: 10px; padding: 2px;" @blur="${this._handleBlur}" .textContent="${live(i + 1 + "")}"></span>
-                                <div class="col-resize-handle" contenteditable="false" @mousedown="${(e: MouseEvent) => this._startColResize(e, i)}" @dblclick="${(e: Event) => e.stopPropagation()}"></div>
-                            </div>
-                        `;
-        })}
+                    ${table.headers
+                        ? table.headers.map((header, i) => {
+                              const isActive = selRow === -1 && selCol === i;
+                              const isColMode = selRow === -2;
+                              const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+                              const showActiveOutline = isActive && minC === maxC;
+                              return html`
+                                  <div
+                                      class="cell header-col ${(selRow === -2 && (selCol === i || isInRange)) ||
+                                      (selRow === -1 && selCol === i)
+                                          ? 'selected'
+                                          : ''} ${this.editCtrl.isEditing && isActive
+                                          ? 'editing'
+                                          : ''} ${showActiveOutline
+                                          ? 'active-cell'
+                                          : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                      data-col="${i}"
+                                      data-row="-1"
+                                      tabindex="0"
+                                      contenteditable="false"
+                                      @click="${(e: MouseEvent) => {
+                                          this.selectionCtrl.selectCell(-2, i);
+                                          this.focusCell();
+                                      }}"
+                                      @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(-2, i)}"
+                                      @dblclick="${(e: MouseEvent) => {
+                                          this.selectionCtrl.selectCell(-1, i);
+                                          this.editCtrl.startEditing(null);
+                                          this.focusCell();
+                                      }}"
+                                      @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
+                                      @input="${this._handleInput}"
+                                      @blur="${this._handleBlur}"
+                                      @keydown="${this._handleKeyDown}"
+                                  >
+                                      <span
+                                          class="cell-content"
+                                          contenteditable="${this.editCtrl.isEditing && isActive ? 'true' : 'false'}"
+                                          style="display:inline-block; min-width: 10px; padding: 2px;"
+                                          @blur="${this._handleBlur}"
+                                          .textContent="${live(header)}"
+                                      ></span>
+                                      <div
+                                          class="col-resize-handle"
+                                          contenteditable="false"
+                                          @mousedown="${(e: MouseEvent) =>
+                                              this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
+                                          @dblclick="${(e: Event) => e.stopPropagation()}"
+                                      ></div>
+                                  </div>
+                              `;
+                          })
+                        : Array.from({ length: colCount }).map((_, i) => {
+                              const isActive = selRow === -1 && selCol === i;
+                              const isColMode = selRow === -2;
+                              const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+                              const showActiveOutline = isActive && minC === maxC;
+                              return html`
+                                  <div
+                                      class="cell header-col ${(selRow === -2 && (selCol === i || isInRange)) ||
+                                      (selRow === -1 && selCol === i)
+                                          ? 'selected'
+                                          : ''} ${this.editCtrl.isEditing && isActive
+                                          ? 'editing'
+                                          : ''} ${showActiveOutline
+                                          ? 'active-cell'
+                                          : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                      data-col="${i}"
+                                      data-row="-1"
+                                      tabindex="0"
+                                      contenteditable="false"
+                                      @click="${(e: MouseEvent) => {
+                                          this.selectionCtrl.selectCell(-2, i);
+                                          this.focusCell();
+                                      }}"
+                                      @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(-2, i)}"
+                                      @dblclick="${(e: MouseEvent) => {
+                                          this.selectionCtrl.selectCell(-1, i);
+                                          this.editCtrl.startEditing(null);
+                                          this.focusCell();
+                                      }}"
+                                      @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
+                                      @input="${this._handleInput}"
+                                      @blur="${this._handleBlur}"
+                                      @keydown="${this._handleKeyDown}"
+                                  >
+                                      <span
+                                          class="cell-content"
+                                          contenteditable="${this.editCtrl.isEditing && isActive ? 'true' : 'false'}"
+                                          style="display:inline-block; min-width: 10px; padding: 2px;"
+                                          @blur="${this._handleBlur}"
+                                          .textContent="${live(i + 1 + '')}"
+                                      ></span>
+                                      <div
+                                          class="col-resize-handle"
+                                          contenteditable="false"
+                                          @mousedown="${(e: MouseEvent) =>
+                                              this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
+                                          @dblclick="${(e: Event) => e.stopPropagation()}"
+                                      ></div>
+                                  </div>
+                              `;
+                          })}
 
                     <!-- Rows -->
-                    ${table.rows.map((row, r) => html`
-                        <!-- Row Header -->
-                        <div 
-                            class="cell header-row ${(this.selectedCol === -2 && (this.selectedRow === r || ((minC === -1 || this.selectedCol === -2) && r >= minR && r <= maxR))) || (this.selectedCol === -1 && this.selectedRow === r) ? 'selected' : ''} ${(minC === -1 || this.selectedCol === -2) && r >= minR && r <= maxR ? 'selected-range' : ''}"
-                            data-row="${r}"
-                            tabindex="0"
-                            @click="${(e: MouseEvent) => this._handleRowHeaderClick(e, r)}"
-                            @mousedown="${(e: MouseEvent) => this._handleRowHeaderMouseDown(e, r)}"
-                            @keydown="${this._handleKeyDown}"
-                            @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
-                        >${r + 1}</div>
+                    ${table.rows.map(
+                        (row, r) => html`
+                            <!-- Row Header -->
+                            <div
+                                class="cell header-row ${(selCol === -2 &&
+                                    (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))) ||
+                                (selCol === -1 && selRow === r)
+                                    ? 'selected'
+                                    : ''} ${(minC === -1 || selCol === -2) && r >= minR && r <= maxR
+                                    ? 'selected-range'
+                                    : ''}"
+                                data-row="${r}"
+                                tabindex="0"
+                                @click="${(e: MouseEvent) => {
+                                    this.selectionCtrl.selectCell(r, -2);
+                                    this.focusCell();
+                                }}"
+                                @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(r, -2)}"
+                                @keydown="${this._handleKeyDown}"
+                                @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
+                            >
+                                ${r + 1}
+                            </div>
 
-                        <!-- Cells -->
-                        ${Array.from({ length: colCount }).map((_, c) => {
-            const cell = row[c] !== undefined ? row[c] : "";
-            const isSelected = this.selectedRow === r && this.selectedCol === c;
-            const isRowSelected = this.selectedRow === r && this.selectedCol === -2;
-            const isColSelected = this.selectedRow === -2 && this.selectedCol === c;
-            const isAllSelected = this.selectedRow === -2 && this.selectedCol === -2;
+                            <!-- Cells -->
+                            ${Array.from({ length: colCount }).map((_, c) => {
+                                const cell = row[c] !== undefined ? row[c] : '';
+                                const isSelected = selRow === r && selCol === c;
 
-            const isActive = r === this.selectedRow && c === this.selectedCol;
-            const isInRange = r >= minR && r <= maxR && c >= minC && c <= maxC;
+                                const isActive = r === selRow && c === selCol;
 
-            // Determine perimeter classes
-            const isTop = isInRange && r === minR;
-            const isBottom = isInRange && r === maxR;
-            const isLeft = isInRange && c === minC;
-            const isRight = isInRange && c === maxC;
+                                // Range Logic
+                                let inRange = false;
+                                let leftEdge = false,
+                                    rightEdge = false,
+                                    topEdge = false,
+                                    bottomEdge = false;
 
-            const isRangeSelection = (maxR - minR > 0) || (maxC - minC > 0);
-            const showActiveOutline = isActive && !isRangeSelection;
+                                if (minR !== -1) {
+                                    if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
+                                        inRange = true;
+                                        // Determine edges
+                                        if (r === minR) topEdge = true;
+                                        if (r === maxR) bottomEdge = true;
+                                        if (c === minC) leftEdge = true;
+                                        if (c === maxC) rightEdge = true;
+                                    }
+                                }
 
-            const classes = [
-                'cell',
-                isSelected ? 'selected' : '',
-                this.isEditing && isSelected ? 'editing' : '',
-                isColSelected ? 'col-selected' : '',
-                isAllSelected ? 'all-selected' : '',
-                isInRange ? 'selected-range' : '',
-                showActiveOutline ? 'active-cell' : 'active-cell-no-outline',
-                isTop ? 'range-top' : '',
-                isBottom ? 'range-bottom' : '',
-                isLeft ? 'range-left' : '',
-                isRight ? 'range-right' : ''
-            ].filter(Boolean).join(' ');
+                                const isEditingCell = this.editCtrl.isEditing && isActive;
+                                const isRangeSelection = minR !== maxR || minC !== maxC;
+                                const activeClass = isActive
+                                    ? isRangeSelection
+                                        ? 'active-cell-no-outline'
+                                        : 'active-cell'
+                                    : '';
 
-            return html`
-                                <div 
-                                    class="${classes}"
-                                    tabindex="${isSelected ? 0 : -1}"
-                                    data-row="${r}" 
-                                    data-col="${c}"
-                                    contenteditable="${this.isEditing && isSelected ? 'true' : 'false'}"
-                                    .textContent="${this.isEditing && isSelected ? noChange : live(cell)}"
-                                    @mousedown="${(e: MouseEvent) => this._handleCellMouseDown(e, r, c)}"
-                                    @click="${(e: MouseEvent) => this._handleCellClick(e, r, c)}"
-                                    @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, r, c)}"
-                                    @keydown="${this._handleKeyDown}"
-                                    @input="${this._handleInput}"
-                                    @blur="${this._handleBlur}"
-                                ></div>
-                             `;
-        })}
-                    `)}
+                                return html`
+                                    <div
+                                        class="cell ${isSelected ? 'selected' : ''} ${inRange
+                                            ? 'selected-range'
+                                            : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
+                                            ? 'range-top'
+                                            : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
+                                            ? 'range-left'
+                                            : ''} ${rightEdge ? 'range-right' : ''} ${activeClass}"
+                                        data-row="${r}"
+                                        data-col="${c}"
+                                        tabindex="${isActive ? 0 : -1}"
+                                        contenteditable="${isEditingCell ? 'true' : 'false'}"
+                                        @click="${(e: MouseEvent) => {
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.selectCell(r, c);
+                                            this.focusCell();
+                                        }}"
+                                        @mousedown="${(e: MouseEvent) => {
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.startSelection(r, c);
+                                            this.focusCell();
+                                        }}"
+                                        @dblclick="${(_: MouseEvent) => {
+                                            this.selectionCtrl.selectCell(r, c);
+                                            this.editCtrl.startEditing(null);
+                                            this.focusCell();
+                                        }}"
+                                        @input="${this._handleInput}"
+                                        @blur="${this._handleBlur}"
+                                        @keydown="${this._handleKeyDown}"
+                                        .textContent="${live(
+                                            isEditingCell && this.editCtrl.pendingEditValue !== null
+                                                ? this.editCtrl.pendingEditValue
+                                                : cell
+                                        )}"
+                                    ></div>
+                                `;
+                            })}
+                        `
+                    )}
 
-                    <!-- Ghost Row (Add Row) -->
-                    <div 
-                        class="cell header-row ${this.selectedRow === table.rows.length ? 'selected' : ''}" 
-                        style="color: var(--vscode-disabledForeground);"
-                        data-row="${table.rows.length}"
-                        tabindex="0"
-                        @click="${(e: MouseEvent) => {
-                this.selectedRow = table.rows.length;
-                this.selectedCol = -2;
-                this._handleRowHeaderClick(e, table.rows.length);
-            }}"
-                        @keydown="${this._handleKeyDown}"
-                        @mousedown="${(e: MouseEvent) => this._handleRowHeaderMouseDown(e, table.rows.length)}"
-                        @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', table.rows.length)}"
-                    >${table.rows.length + 1}</div>
-                    ${Array.from({ length: colCount }).map((_, colIndex) => html`
-                         <div 
-                         <div 
-                            class="cell ${(this.selectedRow === table.rows.length && this.selectedCol === colIndex) ? 'selected' : ''} ${(this.selectedRow === table.rows.length && this.selectedCol === -2) ? 'selected-range range-top range-bottom ' + (colIndex === 0 ? 'range-left ' : '') + (colIndex === colCount - 1 ? 'range-right' : '') : ''} ${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'editing' : ''}"
-                            data-row="${table.rows.length}"
-                            data-col="${colIndex}"
-                            tabindex="${this.selectedRow === table.rows.length && this.selectedCol === colIndex ? '0' : '-1'}"
-                            contenteditable="${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? 'true' : 'false'}"
-                            .textContent="${this.isEditing && this.selectedRow === table.rows.length && this.selectedCol === colIndex ? noChange : live('')}"
-                            @mousedown="${(e: MouseEvent) => this._handleCellMouseDown(e, table.rows.length, colIndex)}"
-                            @click="${(e: MouseEvent) => this._handleCellClick(e, table.rows.length, colIndex)}"
-                            @dblclick="${(e: MouseEvent) => this._handleCellDblClick(e, table.rows.length, colIndex)}"
-                            @blur="${(e: FocusEvent) => this._handleBlur(e)}"
-                            @input="${(e: Event) => this._handleInput(e)}"
-                            @keydown="${(e: KeyboardEvent) => this._handleKeyDown(e)}"
-                        ></div>
-                    `)}
+                    <!-- Ghost Row -->
+                    ${(() => {
+                        // Render one extra row
+                        const r = table.rows.length;
+
+                        return html`
+                            <div
+                                class="cell header-row ${selCol === -2 &&
+                                (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))
+                                    ? 'selected'
+                                    : ''}"
+                                data-row="${r}"
+                                tabindex="0"
+                                @click="${(_: MouseEvent) => {
+                                    this.selectionCtrl.selectCell(r, -2);
+                                    this.focusCell();
+                                }}"
+                                @mousedown="${(_: MouseEvent) => this.selectionCtrl.startSelection(r, -2)}"
+                                @keydown="${this._handleKeyDown}"
+                                @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
+                                style="opacity: 0.5;"
+                            >
+                                +
+                            </div>
+
+                            ${Array.from({ length: colCount }).map((_, c) => {
+                                const isActive = r === selRow && c === selCol;
+                                const isEditingCell = this.editCtrl.isEditing && isActive;
+
+                                let inRange = false;
+                                let topEdge = false,
+                                    bottomEdge = false,
+                                    leftEdge = false,
+                                    rightEdge = false;
+                                if (minR !== -1) {
+                                    if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
+                                        inRange = true;
+                                        if (r === minR) topEdge = true;
+                                        if (r === maxR) bottomEdge = true;
+                                        if (r === maxR && r === table.rows.length) bottomEdge = true; // explicitly ghost row is usually last
+                                        if (c === minC) leftEdge = true;
+                                        if (c === maxC) rightEdge = true;
+                                    }
+                                }
+
+                                return html`
+                                    <div
+                                        class="cell ${isActive ? 'selected' : ''} ${inRange
+                                            ? 'selected-range'
+                                            : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
+                                            ? 'range-top'
+                                            : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
+                                            ? 'range-left'
+                                            : ''} ${rightEdge ? 'range-right' : ''} ${isActive ? 'active-cell' : ''}"
+                                        data-row="${r}"
+                                        data-col="${c}"
+                                        tabindex="${isActive ? 0 : -1}"
+                                        contenteditable="${isEditingCell ? 'true' : 'false'}"
+                                        @click="${(e: MouseEvent) => {
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.selectCell(r, c);
+                                            this.focusCell();
+                                        }}"
+                                        @mousedown="${(e: MouseEvent) => {
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.startSelection(r, c);
+                                            this.focusCell();
+                                        }}"
+                                        @dblclick="${(_: MouseEvent) => {
+                                            this.selectionCtrl.selectCell(r, c);
+                                            this.editCtrl.startEditing(null);
+                                            this.focusCell();
+                                        }}"
+                                        @input="${this._handleInput}"
+                                        @blur="${this._handleBlur}"
+                                        @keydown="${this._handleKeyDown}"
+                                        .textContent="${live(
+                                            isEditingCell && this.editCtrl.pendingEditValue !== null
+                                                ? this.editCtrl.pendingEditValue
+                                                : ''
+                                        )}"
+                                        style="opacity: 0.5;"
+                                    ></div>
+                                `;
+                            })}
+                        `;
+                    })()}
                 </div>
-                
-                ${this.contextMenu ? html`
-                    <div class="context-menu" style="top: ${this.contextMenu.y}px; left: ${this.contextMenu.x}px;">
-                        ${this.contextMenu.type === 'row' ? html`
-                            <div class="context-menu-item" @click="${() => this._dispatchAction('row-insert', { rowIndex: this.contextMenu?.index })}">Insert Row Above</div>
-                            <div class="context-menu-item" @click="${() => this._dispatchAction('row-delete', { rowIndex: this.contextMenu?.index })}">Delete Row</div>
-                        ` : html`
-                            <div class="context-menu-item" @click="${() => this._dispatchAction('column-insert', { colIndex: this.contextMenu!.index + 1 })}">Add Column Right</div>
-                            <div class="context-menu-item" @click="${() => this._dispatchAction('column-delete', { colIndex: this.contextMenu?.index })}">Delete Column</div>
-                            <div class="context-menu-item" @click="${() => this._dispatchAction('column-clear', { colIndex: this.contextMenu?.index })}">Clear Column Content</div>
-                        `}
-                    </div>
-                ` : ''}
             </div>
-        </div>
+
+            <!-- Context Menu -->
+            ${this.contextMenu
+                ? html`
+                      <div class="context-menu" style="top: ${this.contextMenu.y}px; left: ${this.contextMenu.x}px">
+                          ${this.contextMenu.type === 'row'
+                              ? html`
+                                    <div
+                                        class="context-menu-item"
+                                        @click="${() => {
+                                            if (this.contextMenu) {
+                                                this._dispatchAction('insert-row', {
+                                                    rowIndex: this.contextMenu.index
+                                                });
+                                            }
+                                        }}"
+                                    >
+                                        Insert Row Above
+                                    </div>
+                                    <div
+                                        class="context-menu-item"
+                                        @click="${() => {
+                                            if (this.contextMenu) {
+                                                this._dispatchAction('insert-row', {
+                                                    rowIndex: this.contextMenu.index + 1
+                                                });
+                                            }
+                                        }}"
+                                    >
+                                        Insert Row Below
+                                    </div>
+                                    <div
+                                        class="context-menu-item"
+                                        @click="${() => {
+                                            if (this.contextMenu) {
+                                                this._dispatchAction('row-delete', {
+                                                    rowIndex: this.contextMenu.index
+                                                });
+                                            }
+                                        }}"
+                                    >
+                                        Delete Row
+                                    </div>
+                                `
+                              : html`
+                                    <div
+                                        class="context-menu-item"
+                                        @click="${() => {
+                                            if (this.contextMenu) {
+                                                this._dispatchAction('insert-column', {
+                                                    colIndex: this.contextMenu.index
+                                                });
+                                            }
+                                        }}"
+                                    >
+                                        Insert Column Left
+                                    </div>
+                                    <div
+                                        class="context-menu-item"
+                                        @click="${() => {
+                                            if (this.contextMenu) {
+                                                this._dispatchAction('insert-column', {
+                                                    colIndex: this.contextMenu.index + 1
+                                                });
+                                            }
+                                        }}"
+                                    >
+                                        Insert Column Right
+                                    </div>
+                                    <div
+                                        class="context-menu-item"
+                                        @click="${() => {
+                                            if (this.contextMenu) {
+                                                this._dispatchAction('column-delete', {
+                                                    colIndex: this.contextMenu.index
+                                                });
+                                            }
+                                        }}"
+                                    >
+                                        Delete Column
+                                    </div>
+                                `}
+                      </div>
+                  `
+                : ''}
         `;
     }
 }

@@ -1,11 +1,11 @@
-import { html, css, LitElement } from "lit";
-import { customElement, property } from "lit/decorators.js";
-import { SplitNode } from "../types";
-import { TableJSON } from "./spreadsheet-table";
-import "./pane-view";
-// Circular dependency: layout-container imports split-view/pane-view. 
+import { html, css, LitElement } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import { SplitNode } from '../types';
+import { TableJSON } from './spreadsheet-table';
+import './pane-view';
+// Circular dependency: layout-container imports split-view/pane-view.
 // split-view imports pane-view (and recursive split-view?).
-// Yes, recursive. 
+// Yes, recursive.
 // Lit handles this if we just use tag names, but we need import for side effects (registration).
 // Since they are registered globally, it should be fine as long as they are imported once.
 // LayoutContainer imports both, so they are registered.
@@ -14,7 +14,7 @@ import "./pane-view";
 // So SplitView renders... `layout-container`'s logic?
 // No, `renderNode` logic needs to be reused or SplitView iterates children.
 
-@customElement("split-view")
+@customElement('split-view')
 export class SplitView extends LitElement {
     static styles = css`
         :host {
@@ -23,10 +23,10 @@ export class SplitView extends LitElement {
             height: 100%;
             overflow: hidden;
         }
-        :host([direction="vertical"]) {
+        :host([direction='vertical']) {
             flex-direction: column;
         }
-        :host([direction="horizontal"]) {
+        :host([direction='horizontal']) {
             flex-direction: row;
         }
         .child-wrapper {
@@ -37,11 +37,11 @@ export class SplitView extends LitElement {
             background-color: var(--vscode-widget-border);
             z-index: 10;
         }
-        :host([direction="horizontal"]) .resizer {
+        :host([direction='horizontal']) .resizer {
             width: 4px;
             cursor: col-resize;
         }
-        :host([direction="vertical"]) .resizer {
+        :host([direction='vertical']) .resizer {
             height: 4px;
             cursor: row-resize;
         }
@@ -80,28 +80,34 @@ export class SplitView extends LitElement {
 
         return html`
             ${this.node.children.map((child, index) => {
-            const size = displaySizes[index];
-            const style = `flex: ${size} 1 0%;`; // simple flex basis
+                const size = displaySizes[index];
+                const style = `flex: ${size} 1 0%;`; // simple flex basis
 
-            // Render Resizer if not first
-            const resizer = index > 0
-                ? html`<div class="resizer" @mousedown="${(e: MouseEvent) => this._startResize(e, index)}"></div>`
-                : html``;
+                // Render Resizer if not first
+                const resizer =
+                    index > 0
+                        ? html`<div
+                              class="resizer"
+                              @mousedown="${(e: MouseEvent) => this._startResize(e, index)}"
+                          ></div>`
+                        : html``;
 
-            const content = child.type === 'split'
-                ? html`<split-view 
-                        .node="${child}" 
-                        .tables="${this.tables}"
-                        .sheetIndex="${this.sheetIndex}"
-                      ></split-view>`
-                : html`<pane-view 
-                        .node="${child}" 
-                        .tables="${this.tables}"
-                        .sheetIndex="${this.sheetIndex}"
-                      ></pane-view>`;
+                const content =
+                    child.type === 'split'
+                        ? html`<split-view
+                              .node="${child}"
+                              .tables="${this.tables}"
+                              .sheetIndex="${this.sheetIndex}"
+                          ></split-view>`
+                        : html`<pane-view
+                              .node="${child}"
+                              .tables="${this.tables}"
+                              .sheetIndex="${this.sheetIndex}"
+                          ></pane-view>`;
 
-            return html`${resizer}<div class="child-wrapper" style="${style}">${content}</div>`;
-        })}
+                return html`${resizer}
+                    <div class="child-wrapper" style="${style}">${content}</div>`;
+            })}
         `;
     }
 
@@ -119,7 +125,10 @@ export class SplitView extends LitElement {
         this._startX = e.clientX;
         this._startY = e.clientY;
 
-        const currentSizes = this._tempSizes || this.node.sizes || Array(this.node.children.length).fill(100 / this.node.children.length);
+        const currentSizes =
+            this._tempSizes ||
+            this.node.sizes ||
+            Array(this.node.children.length).fill(100 / this.node.children.length);
         this._startSizes = [...currentSizes];
 
         window.addEventListener('mousemove', this._handleMouseMove);
@@ -151,13 +160,13 @@ export class SplitView extends LitElement {
             newSizes[leftIndex] = Math.max(5, this._startSizes[leftIndex] + deltaPercent); // Min 5%
             newSizes[rightIndex] = Math.max(5, this._startSizes[rightIndex] - deltaPercent);
 
-            // Re-normalize if clamping happened? 
+            // Re-normalize if clamping happened?
             // Better to simpler clamp delta so neither goes below 5.
 
             this._tempSizes = newSizes;
             this.requestUpdate();
         });
-    }
+    };
 
     private _handleMouseUp = (e: MouseEvent) => {
         if (!this._isResizing) return;
@@ -167,17 +176,19 @@ export class SplitView extends LitElement {
 
         // Dispatch update
         if (finalSizes && this.node.id) {
-            this.dispatchEvent(new CustomEvent('pane-action', {
-                detail: {
-                    type: 'resize-split',
-                    nodeId: this.node.id,
-                    newSizes: finalSizes
-                },
-                bubbles: true,
-                composed: true
-            }));
+            this.dispatchEvent(
+                new CustomEvent('pane-action', {
+                    detail: {
+                        type: 'resize-split',
+                        nodeId: this.node.id,
+                        newSizes: finalSizes
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
         }
-    }
+    };
 
     private _stopResize() {
         this._isResizing = false;
@@ -185,11 +196,11 @@ export class SplitView extends LitElement {
         window.removeEventListener('mousemove', this._handleMouseMove);
         window.removeEventListener('mouseup', this._handleMouseUp);
         document.body.style.cursor = '';
-        // Note: we don't clear _tempSizes immediately to prevent flicker until persist comes back? 
+        // Note: we don't clear _tempSizes immediately to prevent flicker until persist comes back?
         // Actually LayoutContainer will update 'node' prop, which will override _tempSizes if we logic correctly.
         // Or we should clear it?
         // LayoutContainer updates 'node'. render() uses _tempSizes || node.sizes.
-        // We should clear _tempSizes once we finish drag? 
+        // We should clear _tempSizes once we finish drag?
         // If we clear it, it jumps back to old size until parent updates.
         // Optimistic UI means we keep it or rely on parent being fast.
         // LayoutContainer updates _currentLayout immediately, so prop update is immediate.

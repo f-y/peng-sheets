@@ -5,7 +5,7 @@ const postMessageSpy = vi.fn();
 const mockVsCode = {
     postMessage: postMessageSpy,
     getState: () => ({}),
-    setState: () => { }
+    setState: () => {}
 };
 
 // Stub the global function
@@ -41,13 +41,15 @@ describe('Sheet Rename Logic', () => {
     it('Rename Sheet correctly replaces the header line', async () => {
         // Setup State
         // Tab Definition: { type: 'sheet', title: 'OldName', index: 0, sheetIndex: 0, data: { header_line: 10 } }
-        const tabs: any[] = [{
-            type: 'sheet',
-            title: 'OldName',
-            index: 0,
-            sheetIndex: 0,
-            data: { header_line: 10, tables: [] }
-        }];
+        const tabs: any[] = [
+            {
+                type: 'sheet',
+                title: 'OldName',
+                index: 0,
+                sheetIndex: 0,
+                data: { header_line: 10, tables: [] }
+            }
+        ];
         el.tabs = tabs;
         el.editingTabIndex = 0;
 
@@ -56,11 +58,13 @@ describe('Sheet Rename Logic', () => {
 
         // Mock Pyodide and Workbook
         (el as any).pyodide = {
-            runPythonAsync: vi.fn().mockResolvedValue(JSON.stringify({
-                startLine: 10,
-                endLine: 11,
-                content: '## NewName\n'
-            }))
+            runPythonAsync: vi.fn().mockResolvedValue(
+                JSON.stringify({
+                    startLine: 10,
+                    endLine: 11,
+                    content: '## NewName\n'
+                })
+            )
         };
         (el as any).workbook = {}; // Truthy
 
@@ -82,13 +86,15 @@ describe('Sheet Rename Logic', () => {
     });
 
     it('Rename Sheet does nothing if name unchanged', async () => {
-        const tabs: any[] = [{
-            type: 'sheet',
-            title: 'OldName',
-            index: 0,
-            sheetIndex: 0,
-            data: { header_line: 10, tables: [] }
-        }];
+        const tabs: any[] = [
+            {
+                type: 'sheet',
+                title: 'OldName',
+                index: 0,
+                sheetIndex: 0,
+                data: { header_line: 10, tables: [] }
+            }
+        ];
         el.tabs = tabs;
         el.editingTabIndex = 0;
 

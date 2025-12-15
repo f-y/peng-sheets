@@ -1,4 +1,3 @@
-
 import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 
@@ -7,27 +6,34 @@ const postMessage = vi.fn();
 vi.stubGlobal('acquireVsCodeApi', () => ({
     postMessage: postMessage,
     getState: () => ({}),
-    setState: () => { }
+    setState: () => {}
 }));
 
 // Mock Pyodide
 vi.stubGlobal('loadPyodide', async () => ({
-    loadPackage: async () => { },
-    pyimport: () => ({ install: async () => { } }),
+    loadPackage: async () => {},
+    pyimport: () => ({ install: async () => {} }),
     runPythonAsync: async (code: string) => {
         if (code.includes('get_workbook_json')) {
             return JSON.stringify({
-                sheets: [{
-                    name: 'Sheet1',
-                    tables: [{
-                        name: 'Table1',
-                        rows: [['A', 'B'], ['1', '2']],
-                        metadata: {}
-                    }]
-                }]
+                sheets: [
+                    {
+                        name: 'Sheet1',
+                        tables: [
+                            {
+                                name: 'Table1',
+                                rows: [
+                                    ['A', 'B'],
+                                    ['1', '2']
+                                ],
+                                metadata: {}
+                            }
+                        ]
+                    }
+                ]
             });
         }
-        return "null";
+        return 'null';
     }
 }));
 
@@ -49,7 +55,7 @@ describe('Undo/Redo Key Bindings', () => {
         document.body.innerHTML = '';
         element = await fixture(html`<md-spreadsheet-editor></md-spreadsheet-editor>`);
         // Wait for firstUpdated async operations to complete
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 200));
     });
 
     it('should post "undo" message on Ctrl+Z', async () => {

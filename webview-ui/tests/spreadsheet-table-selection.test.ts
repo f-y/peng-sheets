@@ -1,4 +1,3 @@
-
 import { describe, it, expect } from 'vitest';
 import { fixture, html, oneEvent } from '@open-wc/testing';
 import '../components/spreadsheet-table';
@@ -27,14 +26,14 @@ describe('SpreadsheetTable Selection', () => {
         const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
         cell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
 
-        expect(el.selectedRow).to.equal(0);
-        expect(el.selectedCol).to.equal(0);
-        expect(el.selectionAnchorRow).to.equal(0);
-        expect(el.selectionAnchorCol).to.equal(0);
-        expect(el.isSelecting).to.be.true;
+        expect(el.selectionCtrl.selectedRow).to.equal(0);
+        expect(el.selectionCtrl.selectedCol).to.equal(0);
+        expect(el.selectionCtrl.selectionAnchorRow).to.equal(0);
+        expect(el.selectionCtrl.selectionAnchorCol).to.equal(0);
+        expect(el.selectionCtrl.isSelecting).to.be.true;
 
         window.dispatchEvent(new MouseEvent('mouseup'));
-        expect(el.isSelecting).to.be.false;
+        expect(el.selectionCtrl.isSelecting).to.be.false;
     });
 
     it('handles drag selection (range)', async () => {
@@ -45,8 +44,8 @@ describe('SpreadsheetTable Selection', () => {
         const startCell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
         startCell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
 
-        expect(el.selectionAnchorRow).to.equal(0);
-        expect(el.selectionAnchorCol).to.equal(0);
+        expect(el.selectionCtrl.selectionAnchorRow).to.equal(0);
+        expect(el.selectionCtrl.selectionAnchorCol).to.equal(0);
 
         // Move to 1,1
         // We simulate global mousemove. Target needs to be a cell.
@@ -55,7 +54,7 @@ describe('SpreadsheetTable Selection', () => {
         // Dispatch mousemove on window, but with target as the cell (simulated via composedPath if possible, or just checking logic)
         // The handler uses `e.target` which is tricky to mock on window event dispatch in JSDOM if not trusted.
         // But our implementation checks `e.target` of the event.
-        // Let's try dispatching on the cell and letting it bubble? 
+        // Let's try dispatching on the cell and letting it bubble?
         // No, the listener is on `window`.
 
         // We can manually call the private handler for testing logic if needed, but integration is better.
@@ -63,9 +62,9 @@ describe('SpreadsheetTable Selection', () => {
         // Or better: dispatch mousemove on the *targetCell*, and since bubbles:true, it reaches window.
         targetCell.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, composed: true }));
 
-        expect(el.selectedRow).to.equal(1);
-        expect(el.selectedCol).to.equal(1);
-        expect(el.selectionAnchorRow).to.equal(0); // Anchor should not change
+        expect(el.selectionCtrl.selectedRow).to.equal(1);
+        expect(el.selectionCtrl.selectedCol).to.equal(1);
+        expect(el.selectionCtrl.selectionAnchorRow).to.equal(0); // Anchor should not change
 
         // Verify visual classes
         await el.updateComplete;
@@ -95,7 +94,7 @@ describe('SpreadsheetTable Selection', () => {
 
         // Finish
         window.dispatchEvent(new MouseEvent('mouseup'));
-        expect(el.isSelecting).to.be.false;
+        expect(el.selectionCtrl.isSelecting).to.be.false;
     });
 
     it('handles row drag selection', async () => {
@@ -106,15 +105,15 @@ describe('SpreadsheetTable Selection', () => {
         const rowHeader0 = el.shadowRoot!.querySelector('.cell.header-row[data-row="0"]') as HTMLElement;
         rowHeader0.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
 
-        expect(el.selectionAnchorRow).to.equal(0);
-        expect(el.selectionAnchorCol).to.equal(-2);
+        expect(el.selectionCtrl.selectionAnchorRow).to.equal(0);
+        expect(el.selectionCtrl.selectionAnchorCol).to.equal(-2);
 
         // MouseMove to Row Header 1 (Simulated global move)
         const rowHeader1 = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
         rowHeader1.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, composed: true }));
 
-        expect(el.selectedRow).to.equal(1);
-        expect(el.selectedCol).to.equal(-2);
+        expect(el.selectionCtrl.selectedRow).to.equal(1);
+        expect(el.selectionCtrl.selectedCol).to.equal(-2);
 
         // Verify bounds classes
         await el.updateComplete;
@@ -144,15 +143,15 @@ describe('SpreadsheetTable Selection', () => {
         const colHeader0 = el.shadowRoot!.querySelector('.cell.header-col[data-col="0"]') as HTMLElement;
         colHeader0.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
 
-        expect(el.selectionAnchorRow).to.equal(-2);
-        expect(el.selectionAnchorCol).to.equal(0);
+        expect(el.selectionCtrl.selectionAnchorRow).to.equal(-2);
+        expect(el.selectionCtrl.selectionAnchorCol).to.equal(0);
 
         // MouseMove to Col Header 1
         const colHeader1 = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
         colHeader1.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, composed: true }));
 
-        expect(el.selectedRow).to.equal(-2);
-        expect(el.selectedCol).to.equal(1);
+        expect(el.selectionCtrl.selectedRow).to.equal(-2);
+        expect(el.selectionCtrl.selectedCol).to.equal(1);
 
         // Verify bounds classes
         await el.updateComplete;
@@ -179,14 +178,16 @@ describe('SpreadsheetTable Selection', () => {
         await el.updateComplete;
 
         const ghostRowIndex = mockTable.rows.length; // 3
-        const ghostHeader = el.shadowRoot!.querySelector(`.cell.header-row[data-row="${ghostRowIndex}"]`) as HTMLElement;
+        const ghostHeader = el.shadowRoot!.querySelector(
+            `.cell.header-row[data-row="${ghostRowIndex}"]`
+        ) as HTMLElement;
 
         // Click Ghost Row Header
         ghostHeader.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
         await el.updateComplete;
 
-        expect(el.selectedRow).to.equal(ghostRowIndex);
-        expect(el.selectedCol).to.equal(-2); // Full row selection
+        expect(el.selectionCtrl.selectedRow).to.equal(ghostRowIndex);
+        expect(el.selectionCtrl.selectedCol).to.equal(-2); // Full row selection
 
         // Verify Ghost Cells are visually selected (as a range)
         const ghostCell0 = el.shadowRoot!.querySelector(`.cell[data-row="${ghostRowIndex}"][data-col="0"]`);
@@ -197,12 +198,14 @@ describe('SpreadsheetTable Selection', () => {
 
         // Verify Paste Event dispatch
         let pasteEvent: CustomEvent | undefined;
-        el.addEventListener('paste-cells', (e) => { pasteEvent = e as CustomEvent; });
+        el.addEventListener('paste-cells', (e) => {
+            pasteEvent = e as CustomEvent;
+        });
 
         // Mock Clipboard
         Object.defineProperty(navigator, 'clipboard', {
             value: {
-                readText: () => Promise.resolve("New\tRow")
+                readText: () => Promise.resolve('New\tRow')
             },
             configurable: true
         });
@@ -210,14 +213,16 @@ describe('SpreadsheetTable Selection', () => {
         // Trigger Paste
         // Dispatch keydown ON THE HEADER (since it now has tabindex and focus)
         ghostHeader.focus();
-        await ghostHeader.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, bubbles: true, composed: true }));
+        await ghostHeader.dispatchEvent(
+            new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, bubbles: true, composed: true })
+        );
 
         // Wait for async clipboard
-        await new Promise(r => setTimeout(r, 20));
+        await new Promise((r) => setTimeout(r, 20));
 
         expect(pasteEvent).to.exist;
         expect(pasteEvent?.detail.startRow).to.equal(ghostRowIndex);
         expect(pasteEvent?.detail.startCol).to.equal(0);
-        expect(pasteEvent?.detail.data).to.deep.equal([["New", "Row"]]);
+        expect(pasteEvent?.detail.data).to.deep.equal([['New', 'Row']]);
     });
 });

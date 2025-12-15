@@ -1,4 +1,4 @@
-import { TableJSON } from "./components/spreadsheet-table";
+import { TableJSON } from './components/spreadsheet-table';
 
 export type LayoutNode = SplitNode | LeafNode;
 
@@ -17,7 +17,7 @@ export interface LeafNode {
     activeTableIndex: number; // The currently selected table index in this pane (relative to the global table list or pane list?)
     // Note: If 'tables' stores GLOBAL table indices, then activeTableIndex should probably be one of those indices.
     // Let's store the index in the `tables` array for safety, i.e., 0 means tables[0].
-    // Actually, 'activeTableIndex' in LeafNode usually refers to the index within the 'tables' array of that pane. 
+    // Actually, 'activeTableIndex' in LeafNode usually refers to the index within the 'tables' array of that pane.
     // e.g. activeTabIndex=0 means the first tab in this pane is active.
 }
 

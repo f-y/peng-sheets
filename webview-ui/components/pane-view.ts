@@ -1,10 +1,10 @@
-import { html, css, LitElement } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { LeafNode } from "../types";
-import { TableJSON } from "./spreadsheet-table";
-import "./spreadsheet-table";
+import { html, css, LitElement } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { LeafNode } from '../types';
+import { TableJSON } from './spreadsheet-table';
+import './spreadsheet-table';
 
-@customElement("pane-view")
+@customElement('pane-view')
 export class PaneView extends LitElement {
     static styles = css`
         :host {
@@ -70,8 +70,10 @@ export class PaneView extends LitElement {
         }
         .content {
             flex: 1;
-            overflow: auto;
+            overflow: hidden;
             position: relative;
+            display: flex;
+            flex-direction: column;
         }
         /* Drop Overlays for Splitting */
         .drop-overlay {
@@ -90,7 +92,7 @@ export class PaneView extends LitElement {
             background: var(--vscode-menu-background);
             color: var(--vscode-menu-foreground);
             border: 1px solid var(--vscode-menu-border);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
             z-index: 1000;
             min-width: 150px;
             padding: 4px 0;
@@ -128,7 +130,7 @@ export class PaneView extends LitElement {
     private _editingName: string = '';
 
     @state()
-    private _tabContextMenu: { x: number, y: number, index: number, globalIndex: number } | null = null;
+    private _tabContextMenu: { x: number; y: number; index: number; globalIndex: number } | null = null;
 
     render() {
         if (!this.node || !this.tables.length) return html``;
@@ -139,49 +141,60 @@ export class PaneView extends LitElement {
         const activeTable = this.tables[activeGlobalIndex];
 
         return html`
-            <div class="tab-bar" 
-                 @dragover="${this._handleTabBarDragOver}"
-                 @drop="${this._handleTabBarDrop}"
-                 @dragleave="${this._handleTabBarDragLeave}">
+            <div
+                class="tab-bar"
+                @dragover="${this._handleTabBarDragOver}"
+                @drop="${this._handleTabBarDrop}"
+                @dragleave="${this._handleTabBarDragLeave}"
+            >
                 ${this.node.tables.map((globalIdx, i) => {
-            const table = this.tables[globalIdx];
-            const isActive = i === activeLocalIndex;
-            const isEditing = this._editingTabGlobalIndex === globalIdx;
+                    const table = this.tables[globalIdx];
+                    const isActive = i === activeLocalIndex;
+                    const isEditing = this._editingTabGlobalIndex === globalIdx;
 
-            return html`
-                        <div class="tab ${isActive ? 'active' : ''}" 
-                             draggable="${!isEditing}"
-                             @dragstart="${(e: DragEvent) => this._handleDragStart(e, i, globalIdx)}"
-                             @click="${() => this._switchTab(i)}"
-                             @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, i, globalIdx)}"
-                             @dblclick="${() => this._startRenaming(globalIdx, table.name || undefined)}">
-                            ${isEditing ? html`
-                                <input class="tab-input" 
-                                       .value="${this._editingName}" 
-                                       @input="${this._handleRenameInput}"
-                                       @keydown="${this._handleRenameKeydown}"
-                                       @blur="${this._handleRenameBlur}"
-                                       @click="${(e: Event) => e.stopPropagation()}" 
-                                       @dblclick="${(e: Event) => e.stopPropagation()}"
-                                />
-                            ` : (table.name || `Table ${globalIdx + 1}`)}
+                    return html`
+                        <div
+                            class="tab ${isActive ? 'active' : ''}"
+                            draggable="${!isEditing}"
+                            @dragstart="${(e: DragEvent) => this._handleDragStart(e, i, globalIdx)}"
+                            @click="${() => this._switchTab(i)}"
+                            @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, i, globalIdx)}"
+                            @dblclick="${() => this._startRenaming(globalIdx, table.name || undefined)}"
+                        >
+                            ${isEditing
+                                ? html`
+                                      <input
+                                          class="tab-input"
+                                          .value="${this._editingName}"
+                                          @input="${this._handleRenameInput}"
+                                          @keydown="${this._handleRenameKeydown}"
+                                          @blur="${this._handleRenameBlur}"
+                                          @click="${(e: Event) => e.stopPropagation()}"
+                                          @dblclick="${(e: Event) => e.stopPropagation()}"
+                                      />
+                                  `
+                                : table.name || `Table ${globalIdx + 1}`}
                         </div>
                     `;
-        })}
+                })}
                 <div class="tab-add" @click="${this._handleAddTable}" title="Add Table">+</div>
             </div>
-            <div class="content"
-                 @dragover="${this._handleContentDragOver}"
-                 @dragleave="${this._handleContentDragLeave}"
-                 @drop="${this._handleContentDrop}">
-                ${activeTable ? html`
-                    <spreadsheet-table 
-                        .table="${activeTable}"
-                        .sheetIndex="${this.sheetIndex}"
-                        .tableIndex="${activeGlobalIndex}"
-                    ></spreadsheet-table>
-                ` : html`<div>No Table Selected</div>`}
-                
+            <div
+                class="content"
+                @dragover="${this._handleContentDragOver}"
+                @dragleave="${this._handleContentDragLeave}"
+                @drop="${this._handleContentDrop}"
+            >
+                ${activeTable
+                    ? html`
+                          <spreadsheet-table
+                              style="flex: 1; min-height: 0;"
+                              .table="${activeTable}"
+                              .sheetIndex="${this.sheetIndex}"
+                              .tableIndex="${activeGlobalIndex}"
+                          ></spreadsheet-table>
+                      `
+                    : html`<div>No Table Selected</div>`}
                 ${this._renderDropOverlay()}
             </div>
             ${this._renderContextMenu()}
@@ -206,7 +219,7 @@ export class PaneView extends LitElement {
             this._tabContextMenu = null;
             this.requestUpdate();
         }
-    }
+    };
 
     // ... existing overlay methods ...
 
@@ -240,15 +253,17 @@ export class PaneView extends LitElement {
 
     private _finishRenaming() {
         if (this._editingTabGlobalIndex !== null) {
-            this.dispatchEvent(new CustomEvent('pane-action', {
-                detail: {
-                    type: 'rename-table',
-                    tableIndex: this._editingTabGlobalIndex,
-                    newName: this._editingName
-                },
-                bubbles: true,
-                composed: true
-            }));
+            this.dispatchEvent(
+                new CustomEvent('pane-action', {
+                    detail: {
+                        type: 'rename-table',
+                        tableIndex: this._editingTabGlobalIndex,
+                        newName: this._editingName
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
         }
         this._editingTabGlobalIndex = null;
         this._editingName = '';
@@ -261,25 +276,37 @@ export class PaneView extends LitElement {
 
     private _handleAddTable(e: Event) {
         e.stopPropagation();
-        this.dispatchEvent(new CustomEvent('pane-action', {
-            detail: {
-                type: 'add-table',
-                paneId: this.node.id
-            },
-            bubbles: true,
-            composed: true
-        }));
+        this.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'add-table',
+                    paneId: this.node.id
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
     }
     private _renderDropOverlay() {
         if (!this.activeDropZone) return html``;
 
         let style = '';
         switch (this.activeDropZone) {
-            case 'top': style = 'top: 0; left: 0; right: 0; height: 50%;'; break;
-            case 'bottom': style = 'bottom: 0; left: 0; right: 0; height: 50%;'; break;
-            case 'left': style = 'top: 0; left: 0; bottom: 0; width: 50%;'; break;
-            case 'right': style = 'top: 0; right: 0; bottom: 0; width: 50%;'; break;
-            case 'center': style = 'inset: 0;'; break; // Could be used for full pane drop? But tab bar handles that usually.
+            case 'top':
+                style = 'top: 0; left: 0; right: 0; height: 50%;';
+                break;
+            case 'bottom':
+                style = 'bottom: 0; left: 0; right: 0; height: 50%;';
+                break;
+            case 'left':
+                style = 'top: 0; left: 0; bottom: 0; width: 50%;';
+                break;
+            case 'right':
+                style = 'top: 0; right: 0; bottom: 0; width: 50%;';
+                break;
+            case 'center':
+                style = 'inset: 0;';
+                break; // Could be used for full pane drop? But tab bar handles that usually.
         }
         return html`<div class="drop-overlay active" style="${style}"></div>`;
     }
@@ -343,17 +370,19 @@ export class PaneView extends LitElement {
             // If not found (e.g. empty space), append.
         }
 
-        this.dispatchEvent(new CustomEvent('pane-action', {
-            detail: {
-                type: 'move-tab',
-                targetPaneId: this.node.id,
-                sourcePaneId: data.paneId,
-                tableIndex: data.tableIndex,
-                index: targetIndex
-            },
-            bubbles: true,
-            composed: true
-        }));
+        this.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'move-tab',
+                    targetPaneId: this.node.id,
+                    sourcePaneId: data.paneId,
+                    tableIndex: data.tableIndex,
+                    index: targetIndex
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
     }
 
     private _handleContentDragOver(e: DragEvent) {
@@ -400,18 +429,20 @@ export class PaneView extends LitElement {
 
         if (!zone) return;
 
-        this.dispatchEvent(new CustomEvent('pane-action', {
-            detail: {
-                type: 'split-pane',
-                targetPaneId: this.node.id,
-                sourcePaneId: data.paneId,
-                tableIndex: data.tableIndex,
-                direction: (zone === 'left' || zone === 'right') ? 'horizontal' : 'vertical', // Horizontal split means side-by-side (left/right)
-                placement: (zone === 'left' || zone === 'top') ? 'before' : 'after'
-            },
-            bubbles: true,
-            composed: true
-        }));
+        this.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'split-pane',
+                    targetPaneId: this.node.id,
+                    sourcePaneId: data.paneId,
+                    tableIndex: data.tableIndex,
+                    direction: zone === 'left' || zone === 'right' ? 'horizontal' : 'vertical', // Horizontal split means side-by-side (left/right)
+                    placement: zone === 'left' || zone === 'top' ? 'before' : 'after'
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
     }
 
     private _parseDragData(e: DragEvent) {
@@ -433,7 +464,7 @@ export class PaneView extends LitElement {
 
         // Construct new layout state is hard from deep down.
         // Better: Dispatch "pane-update" event with { nodeId, newActiveIndex }
-        // And let LayoutContainer handle it? 
+        // And let LayoutContainer handle it?
         // Or if we mutable update the object tree (be careful) and request update at root.
 
         // For MVP: Dispatch 'layout-action' -> { type: 'switch-tab', paneId: ..., index: ... }
@@ -445,15 +476,17 @@ export class PaneView extends LitElement {
         // Alternative: Pass a callback? No.
 
         // Let's dispatch a custom event 'pane-action'
-        this.dispatchEvent(new CustomEvent('pane-action', {
-            detail: {
-                type: 'switch-tab',
-                paneId: this.node.id,
-                index: localIndex
-            },
-            bubbles: true,
-            composed: true
-        }));
+        this.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'switch-tab',
+                    paneId: this.node.id,
+                    index: localIndex
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
     }
 
     private _handleTabContextMenu(e: MouseEvent, index: number, globalIndex: number) {
@@ -490,15 +523,17 @@ export class PaneView extends LitElement {
     private _triggerDeleteFromMenu(e: Event) {
         e.stopPropagation();
         if (this._tabContextMenu) {
-            this.dispatchEvent(new CustomEvent('pane-action', {
-                detail: {
-                    type: 'delete-table',
-                    paneId: this.node.id,
-                    tableIndex: this._tabContextMenu.globalIndex
-                },
-                bubbles: true,
-                composed: true
-            }));
+            this.dispatchEvent(
+                new CustomEvent('pane-action', {
+                    detail: {
+                        type: 'delete-table',
+                        paneId: this.node.id,
+                        tableIndex: this._tabContextMenu.globalIndex
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
             this._tabContextMenu = null;
         }
     }

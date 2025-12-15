@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { provideVSCodeDesignSystem } from "@vscode/webview-ui-toolkit";
+import { provideVSCodeDesignSystem } from '@vscode/webview-ui-toolkit';
 
 // Ensure toolkit is registered
 provideVSCodeDesignSystem().register();
@@ -11,7 +11,7 @@ export class ConfirmationModal extends LitElement {
         :host {
             display: contents;
         }
-        
+
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -94,8 +94,12 @@ export class ConfirmationModal extends LitElement {
                         <slot></slot>
                     </div>
                     <div class="modal-buttons">
-                        <vscode-button appearance="secondary" @click="${this._handleCancel}">${this.cancelLabel}</vscode-button>
-                        <vscode-button appearance="primary" @click="${this._handleConfirm}">${this.confirmLabel}</vscode-button>
+                        <vscode-button appearance="secondary" @click="${this._handleCancel}"
+                            >${this.cancelLabel}</vscode-button
+                        >
+                        <vscode-button appearance="primary" @click="${this._handleConfirm}"
+                            >${this.confirmLabel}</vscode-button
+                        >
                     </div>
                 </div>
             </div>

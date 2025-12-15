@@ -10,10 +10,10 @@ describe('MyEditor Sheet Deletion', () => {
     beforeEach(async () => {
         // Stub _parseWorkbook to prevent it from resetting tabs
         const originalParse = (MyEditor.prototype as any)._parseWorkbook;
-        (MyEditor.prototype as any)._parseWorkbook = async () => { };
+        (MyEditor.prototype as any)._parseWorkbook = async () => {};
 
         try {
-            el = await fixture(html`<md-spreadsheet-editor></md-spreadsheet-editor>`) as MyEditor;
+            el = (await fixture(html`<md-spreadsheet-editor></md-spreadsheet-editor>`)) as MyEditor;
             // Mock tabs data
             (el as any).tabs = [
                 { type: 'sheet', title: 'Sheet1', index: 0, sheetIndex: 0, data: { tables: [] } },

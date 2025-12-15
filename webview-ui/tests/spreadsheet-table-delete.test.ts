@@ -1,41 +1,47 @@
-
 import { describe, it, expect } from 'vitest';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import { fixture, html } from '@open-wc/testing';
 
 describe('SpreadsheetTable Delete Operations', () => {
-
     it('deletes row when Delete key is pressed on Row Header', async () => {
         const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table></spreadsheet-table>`);
         el.table = {
-            name: 'Test', description: '',
+            name: 'Test',
+            description: '',
             headers: ['A', 'B'],
-            rows: [['1', '2'], ['3', '4']],
-            metadata: {}, start_line: 0, end_line: 0
+            rows: [
+                ['1', '2'],
+                ['3', '4']
+            ],
+            metadata: {},
+            start_line: 0,
+            end_line: 0
         };
         await el.updateComplete;
 
-        console.log("Element:", el);
-        console.log("ShadowRoot:", el.shadowRoot);
-        console.log("RenderRoot:", el.renderRoot);
+        console.log('Element:', el);
+        console.log('ShadowRoot:', el.shadowRoot);
+        console.log('RenderRoot:', el.renderRoot);
 
         let deleteEventFired = false;
-        el.addEventListener('row-delete', () => { deleteEventFired = true; });
+        el.addEventListener('row-delete', () => {
+            deleteEventFired = true;
+        });
 
         // 1. Click Row Header (Row 0)
         let root = el.renderRoot || el.shadowRoot;
-        if (!root) throw new Error("No render root");
+        if (!root) throw new Error('No render root');
 
         let rowHeader = root.querySelector('.cell.header-row[data-row="0"]') as HTMLElement;
-        console.log("RowHeader:", rowHeader);
+        console.log('RowHeader:', rowHeader);
         expect(rowHeader).to.exist;
 
         rowHeader.click();
         rowHeader.focus(); // Explicit focus for test
         await el.updateComplete;
 
-        expect(el.selectedRow).to.equal(0);
-        expect(el.selectedCol).to.equal(-2);
+        expect(el.selectionCtrl.selectedRow).to.equal(0);
+        expect(el.selectionCtrl.selectedCol).to.equal(-2);
 
         // Re-query in case of re-render
         root = el.renderRoot || el.shadowRoot;
@@ -56,22 +62,31 @@ describe('SpreadsheetTable Delete Operations', () => {
         document.body.appendChild(el);
 
         el.table = {
-            name: 'Test', description: '',
+            name: 'Test',
+            description: '',
             headers: ['A', 'B'],
             rows: [['1', '2']],
-            metadata: {}, start_line: 0, end_line: 0
+            metadata: {},
+            start_line: 0,
+            end_line: 0
         };
         await el.updateComplete;
 
         let colDeleteFired = false;
         let colClearFired = false;
-        el.addEventListener('column-delete', () => { colDeleteFired = true; console.log('Fired: column-delete'); });
-        el.addEventListener('column-clear', () => { colClearFired = true; console.log('Fired: column-clear'); });
+        el.addEventListener('column-delete', () => {
+            colDeleteFired = true;
+            console.log('Fired: column-delete');
+        });
+        el.addEventListener('column-clear', () => {
+            colClearFired = true;
+            console.log('Fired: column-clear');
+        });
 
         // 1. Click Column Header (Col 0)
         // Ensure shadowRoot exists (Lit creates it on connectedCallback)
         const root = el.shadowRoot;
-        if (!root) throw new Error("No shadowRoot found");
+        if (!root) throw new Error('No shadowRoot found');
 
         const colHeader = root.querySelector('.cell.header-col[data-col="0"]') as HTMLElement;
         expect(colHeader).to.exist;
@@ -81,8 +96,8 @@ describe('SpreadsheetTable Delete Operations', () => {
         await el.updateComplete;
 
         // Verify selection
-        expect(el.selectedRow).to.equal(-2);
-        expect(el.selectedCol).to.equal(0);
+        expect(el.selectionCtrl.selectedRow).to.equal(-2);
+        expect(el.selectionCtrl.selectedCol).to.equal(0);
 
         // 2. Press Delete on Column Header
         // IMPORTANT: In the bug scenario, the column header does NOT receive focus.
@@ -98,7 +113,7 @@ describe('SpreadsheetTable Delete Operations', () => {
         // If it didn't, we'll dispatch on the document.body as a fallback to simulate a global keydown.
         if (!activeEl) activeEl = document.body;
 
-        console.log("Active Element after click:", activeEl.tagName, activeEl.className);
+        console.log('Active Element after click:', activeEl.tagName, activeEl.className);
 
         // Dispatch keydown on the ACTIVE ELEMENT to simulate real user behavior
         activeEl.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, composed: true }));

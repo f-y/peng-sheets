@@ -1,11 +1,11 @@
-import { html, css, LitElement, PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators.js";
-import { LayoutNode, SplitNode, LeafNode } from "../types";
-import { TableJSON } from "./spreadsheet-table";
-import "./pane-view";
-import "./split-view";
+import { html, css, LitElement, PropertyValues } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
+import { LayoutNode, SplitNode, LeafNode } from '../types';
+import { TableJSON } from './spreadsheet-table';
+import './pane-view';
+import './split-view';
 
-@customElement("layout-container")
+@customElement('layout-container')
 export class LayoutContainer extends LitElement {
     static styles = css`
         :host {
@@ -56,7 +56,7 @@ export class LayoutContainer extends LitElement {
         const referencedIndices = new Set<number>();
         this._traverse(root, (node) => {
             if (node.type === 'pane') {
-                node.tables.forEach(idx => referencedIndices.add(idx));
+                node.tables.forEach((idx) => referencedIndices.add(idx));
             }
         });
 
@@ -87,13 +87,13 @@ export class LayoutContainer extends LitElement {
     private _traverse(node: LayoutNode, callback: (n: LayoutNode) => void) {
         callback(node);
         if (node.type === 'split') {
-            node.children.forEach(c => this._traverse(c, callback));
+            node.children.forEach((c) => this._traverse(c, callback));
         }
     }
 
     private _pruneInvalidIndices(node: LayoutNode, totalTables: number): LayoutNode {
         if (node.type === 'pane') {
-            const validTables = node.tables.filter(idx => idx < totalTables);
+            const validTables = node.tables.filter((idx) => idx < totalTables);
             let activeIndex = node.activeTableIndex;
             if (activeIndex >= validTables.length) activeIndex = validTables.length > 0 ? validTables.length - 1 : 0;
 
@@ -103,7 +103,7 @@ export class LayoutContainer extends LitElement {
             }
             return node;
         } else {
-            const newChildren = node.children.map(c => this._pruneInvalidIndices(c, totalTables));
+            const newChildren = node.children.map((c) => this._pruneInvalidIndices(c, totalTables));
             return { ...node, children: newChildren as LayoutNode[] }; // simple map
         }
     }
@@ -125,7 +125,7 @@ export class LayoutContainer extends LitElement {
             return {
                 ...node,
                 tables: [...node.tables, ...indicesToAdd],
-                // Keep active index same unless it was empty? 
+                // Keep active index same unless it was empty?
                 activeTableIndex: node.tables.length === 0 ? 0 : node.activeTableIndex
             };
         })!;
@@ -157,14 +157,14 @@ export class LayoutContainer extends LitElement {
 
     private _renderNode(node: LayoutNode) {
         if (node.type === 'split') {
-            return html`<split-view 
-                .node="${node}" 
+            return html`<split-view
+                .node="${node}"
                 .tables="${this.tables}"
                 .sheetIndex="${this.sheetIndex}"
             ></split-view>`;
         } else {
-            return html`<pane-view 
-                .node="${node}" 
+            return html`<pane-view
+                .node="${node}"
                 .tables="${this.tables}"
                 .sheetIndex="${this.sheetIndex}"
             ></pane-view>`;
@@ -173,7 +173,8 @@ export class LayoutContainer extends LitElement {
 
     private _handlePaneAction(e: CustomEvent) {
         e.stopPropagation();
-        const { type, paneId, index, targetPaneId, sourcePaneId, tableIndex, direction, placement, nodeId, newSizes } = e.detail;
+        const { type, paneId, index, targetPaneId, sourcePaneId, tableIndex, direction, placement, nodeId, newSizes } =
+            e.detail;
 
         let newLayout = this._currentLayout;
 
@@ -184,7 +185,14 @@ export class LayoutContainer extends LitElement {
         } else if (type === 'move-tab') {
             newLayout = this._moveTab(this._currentLayout!, sourcePaneId, targetPaneId, tableIndex, index);
         } else if (type === 'split-pane') {
-            newLayout = this._splitPane(this._currentLayout!, sourcePaneId, targetPaneId, tableIndex, direction, placement);
+            newLayout = this._splitPane(
+                this._currentLayout!,
+                sourcePaneId,
+                targetPaneId,
+                tableIndex,
+                direction,
+                placement
+            );
         } else if (type === 'resize-split') {
             newLayout = this._resizeSplit(this._currentLayout!, nodeId, newSizes);
         } else if (type === 'add-table') {
@@ -192,33 +200,39 @@ export class LayoutContainer extends LitElement {
             this._pendingNewTableTargetPaneId = paneId;
 
             // Dispatch request to backend
-            this.dispatchEvent(new CustomEvent('request-add-table', {
-                detail: {
-                    sheetIndex: this.sheetIndex
-                },
-                bubbles: true,
-                composed: true
-            }));
+            this.dispatchEvent(
+                new CustomEvent('request-add-table', {
+                    detail: {
+                        sheetIndex: this.sheetIndex
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
             // No layout change yet; wait for backend update -> reconcile
         } else if (type === 'rename-table') {
-            this.dispatchEvent(new CustomEvent('request-rename-table', {
-                detail: {
-                    sheetIndex: this.sheetIndex,
-                    tableIndex: tableIndex,
-                    newName: e.detail.newName
-                },
-                bubbles: true,
-                composed: true
-            }));
+            this.dispatchEvent(
+                new CustomEvent('request-rename-table', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: tableIndex,
+                        newName: e.detail.newName
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
         } else if (type === 'delete-table') {
-            this.dispatchEvent(new CustomEvent('request-delete-table', {
-                detail: {
-                    sheetIndex: this.sheetIndex,
-                    tableIndex: tableIndex
-                },
-                bubbles: true,
-                composed: true
-            }));
+            this.dispatchEvent(
+                new CustomEvent('request-delete-table', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: tableIndex
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
         }
 
         if (newLayout && newLayout !== this._currentLayout) {
@@ -227,7 +241,12 @@ export class LayoutContainer extends LitElement {
         }
     }
 
-    private _addTableToLayout(root: LayoutNode, targetPaneId: string, tableIndex: number, targetIndex?: number): LayoutNode {
+    private _addTableToLayout(
+        root: LayoutNode,
+        targetPaneId: string,
+        tableIndex: number,
+        targetIndex?: number
+    ): LayoutNode {
         return this._updateNode(root, targetPaneId, (node: LeafNode) => {
             if (node.tables.includes(tableIndex)) return node;
 
@@ -253,15 +272,21 @@ export class LayoutContainer extends LitElement {
             }
             return {
                 ...root,
-                children: root.children.map(child => this._resizeSplit(child, splitNodeId, newSizes))
+                children: root.children.map((child) => this._resizeSplit(child, splitNodeId, newSizes))
             };
         }
         return root;
     }
 
-    private _moveTab(root: LayoutNode, sourcePaneId: string, targetPaneId: string, tableIndex: number, targetIndex?: number): LayoutNode | null {
+    private _moveTab(
+        root: LayoutNode,
+        sourcePaneId: string,
+        targetPaneId: string,
+        tableIndex: number,
+        targetIndex?: number
+    ): LayoutNode | null {
         // 1. Remove from source
-        let { layout: layoutAfterRemove, removedTable } = this._removeTableFromLayout(root, sourcePaneId, tableIndex);
+        const { layout: layoutAfterRemove, removedTable } = this._removeTableFromLayout(root, sourcePaneId, tableIndex);
 
         if (!layoutAfterRemove || removedTable === null) return null; // Failed to remove
 
@@ -269,11 +294,18 @@ export class LayoutContainer extends LitElement {
         return this._addTableToLayout(layoutAfterRemove, targetPaneId, tableIndex, targetIndex);
     }
 
-    private _splitPane(root: LayoutNode, sourcePaneId: string, targetPaneId: string, tableIndex: number, direction: 'horizontal' | 'vertical', placement: 'before' | 'after'): LayoutNode | null {
+    private _splitPane(
+        root: LayoutNode,
+        sourcePaneId: string,
+        targetPaneId: string,
+        tableIndex: number,
+        direction: 'horizontal' | 'vertical',
+        placement: 'before' | 'after'
+    ): LayoutNode | null {
         // Guard: If source == target, ensure we are not removing the LAST table to split it contextually (which causes pane removal)
         if (sourcePaneId === targetPaneId) {
             // Find the pane to check table count
-            // Simple traversal check or use existing helper? 
+            // Simple traversal check or use existing helper?
             let paneHasMoreTables = false;
             this._updateNode(root, sourcePaneId, (node) => {
                 if (node.tables.length > 1) paneHasMoreTables = true;
@@ -282,14 +314,14 @@ export class LayoutContainer extends LitElement {
 
             if (!paneHasMoreTables) {
                 // Determine implicit behavior:
-                // If it's the only table, and we split it... we just move it? 
+                // If it's the only table, and we split it... we just move it?
                 // Since it's already there, it's a no-op.
                 return root;
             }
         }
 
         // 1. Remove from source
-        let { layout: layoutAfterRemove, removedTable } = this._removeTableFromLayout(root, sourcePaneId, tableIndex);
+        const { layout: layoutAfterRemove, removedTable } = this._removeTableFromLayout(root, sourcePaneId, tableIndex);
         if (!layoutAfterRemove) return null;
 
         // 2. Create New Pane
@@ -315,14 +347,18 @@ export class LayoutContainer extends LitElement {
         return 'pane-' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
     }
 
-    private _removeTableFromLayout(root: LayoutNode, paneId: string, tableIndex: number): { layout: LayoutNode | null, removedTable: number | null } {
+    private _removeTableFromLayout(
+        root: LayoutNode,
+        paneId: string,
+        tableIndex: number
+    ): { layout: LayoutNode | null; removedTable: number | null } {
         // Recursive removal
         // Returns modified layout and whether table was found/removed.
 
         if (root.type === 'pane') {
             if (root.id === paneId) {
                 if (root.tables.includes(tableIndex)) {
-                    const newTables = root.tables.filter(t => t !== tableIndex);
+                    const newTables = root.tables.filter((t) => t !== tableIndex);
                     // If pane becomes empty, we should ideally signal to parent to remove this pane.
                     // But here we return the modified node.
                     // We need a separate pass or structured return to cleanup empty panes?
@@ -378,8 +414,13 @@ export class LayoutContainer extends LitElement {
         }
     }
 
-
-    private _replaceNodeWithSplit(root: LayoutNode, targetId: string, newPane: LeafNode, direction: 'horizontal' | 'vertical', placement: 'before' | 'after'): LayoutNode {
+    private _replaceNodeWithSplit(
+        root: LayoutNode,
+        targetId: string,
+        newPane: LeafNode,
+        direction: 'horizontal' | 'vertical',
+        placement: 'before' | 'after'
+    ): LayoutNode {
         if (root.type === 'pane') {
             if (root.id === targetId) {
                 // Replace this pane with a SplitNode containing [New, Old] or [Old, New]
@@ -396,7 +437,9 @@ export class LayoutContainer extends LitElement {
         } else {
             return {
                 ...root,
-                children: root.children.map(c => this._replaceNodeWithSplit(c, targetId, newPane, direction, placement))
+                children: root.children.map((c) =>
+                    this._replaceNodeWithSplit(c, targetId, newPane, direction, placement)
+                )
             };
         }
     }
@@ -408,10 +451,10 @@ export class LayoutContainer extends LitElement {
             }
             return root;
         } else {
-            const newChildren = root.children.map(child => this._updateNode(child, targetId, updateFn));
+            const newChildren = root.children.map((child) => this._updateNode(child, targetId, updateFn));
             // Optimization: if no children changed, return root? (Ref equality)
             // For now, mapping always creates new array, so simplistic approach.
-            // But we need to check if ANY child actually changed to handle null returns? 
+            // But we need to check if ANY child actually changed to handle null returns?
             // My helper returns LayoutNode, not null on no-change.
             // If I want to be efficient, I check identity.
 
@@ -423,13 +466,15 @@ export class LayoutContainer extends LitElement {
     }
 
     private _dispatchPersistence() {
-        this.dispatchEvent(new CustomEvent('sheet-metadata-update', {
-            detail: {
-                sheetIndex: this.sheetIndex,
-                metadata: { layout: this._currentLayout }
-            },
-            bubbles: true,
-            composed: true
-        }));
+        this.dispatchEvent(
+            new CustomEvent('sheet-metadata-update', {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    metadata: { layout: this._currentLayout }
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
     }
 }
