@@ -4,6 +4,7 @@ import { LayoutNode, SplitNode, LeafNode } from '../types';
 import { TableJSON } from './spreadsheet-table';
 import './pane-view';
 import './split-view';
+import { nanoid } from 'nanoid';
 
 @customElement('layout-container')
 export class LayoutContainer extends LitElement {
@@ -341,10 +342,7 @@ export class LayoutContainer extends LitElement {
     }
 
     private _generateId(): string {
-        if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-            return crypto.randomUUID();
-        }
-        return 'pane-' + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+        return nanoid();
     }
 
     private _removeTableFromLayout(
