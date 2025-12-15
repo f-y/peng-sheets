@@ -13,7 +13,7 @@ export class ResizeController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
+    hostConnected() { }
     hostDisconnected() {
         this._cleanup();
     }
@@ -48,10 +48,19 @@ export class ResizeController implements ReactiveController {
         if (this.resizingCol === -1) return;
 
         const finalWidth = this.colWidths[this.resizingCol];
+        const host = this.host as any; // Cast to access custom properties
+        const sheetIndex = host.sheetIndex;
+        const tableIndex = host.tableIndex;
+
         // Dispatch event via Host
         (this.host as HTMLElement).dispatchEvent(
             new CustomEvent('column-resize', {
-                detail: { col: this.resizingCol, width: finalWidth },
+                detail: {
+                    col: this.resizingCol,
+                    width: finalWidth,
+                    sheetIndex: sheetIndex,
+                    tableIndex: tableIndex
+                },
                 bubbles: true,
                 composed: true
             })

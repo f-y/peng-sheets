@@ -473,3 +473,24 @@ def get_state():
     return json.dumps(
         {"workbook": workbook_json, "structure": json.loads(structure_json)}
     )
+
+
+def update_column_width(sheet_idx, table_idx, col_idx, width):
+    def _update_logic(t):
+        current_md = t.metadata or {}
+        new_md = current_md.copy()
+
+        current_visual = new_md.get("visual", {})
+        updated_visual = current_visual.copy()
+
+        # Deep merge/update column_widths
+        current_widths = updated_visual.get("column_widths", {})
+        updated_widths = current_widths.copy()
+        updated_widths[str(col_idx)] = width
+
+        updated_visual["column_widths"] = updated_widths
+        new_md["visual"] = updated_visual
+
+        return replace(t, metadata=new_md)
+
+    return apply_table_update(sheet_idx, table_idx, _update_logic)

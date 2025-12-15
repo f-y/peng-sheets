@@ -47,5 +47,7 @@ describe('SpreadsheetTable Column Resize', () => {
         expect(payload.col).to.equal(0);
         // Initial width default 100 + 20 = 120
         expect(payload.width).to.equal(120);
+        expect(payload.sheetIndex).to.equal(0);
+        expect(payload.tableIndex).to.equal(0);
     });
 });

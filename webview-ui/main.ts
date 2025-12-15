@@ -797,7 +797,7 @@ export class MyEditor extends LitElement {
         return html`
             <div class="content-area">
                 ${activeTab.type === 'sheet'
-                    ? html`
+                ? html`
                           <div class="sheet-container" style="height: 100%">
                               <layout-container
                                   .layout="${activeTab.data.metadata?.layout}"
@@ -806,21 +806,21 @@ export class MyEditor extends LitElement {
                               ></layout-container>
                           </div>
                       `
-                    : activeTab.type === 'document'
-                      ? html`
+                : activeTab.type === 'document'
+                    ? html`
                             <spreadsheet-document-view
                                 .title="${activeTab.title}"
                                 .content="${activeTab.data.content}"
                             ></spreadsheet-document-view>
                         `
-                      : html``}
+                    : html``}
                 ${activeTab.type === 'onboarding'
-                    ? html`
+                ? html`
                           <spreadsheet-onboarding
                               @create-spreadsheet="${this._onCreateSpreadsheet}"
                           ></spreadsheet-onboarding>
                       `
-                    : html``}
+                : html``}
             </div>
 
             <div class="bottom-tabs-container">
@@ -832,15 +832,15 @@ export class MyEditor extends LitElement {
                     @dragleave="${this._handleSheetDragLeave}"
                 >
                     ${this.tabs.map(
-                        (tab, index) => html`
+                    (tab, index) => html`
                             <div
                                 class="tab-item ${this.activeTabIndex === index ? 'active' : ''} ${tab.type ===
-                                'add-sheet'
-                                    ? 'add-sheet-tab'
-                                    : ''}"
+                            'add-sheet'
+                            ? 'add-sheet-tab'
+                            : ''}"
                                 draggable="${tab.type !== 'add-sheet' && this.editingTabIndex !== index}"
                                 @click="${() =>
-                                    tab.type === 'add-sheet' ? this._handleAddSheet() : (this.activeTabIndex = index)}"
+                            tab.type === 'add-sheet' ? this._handleAddSheet() : (this.activeTabIndex = index)}"
                                 @dblclick="${() => this._handleTabDoubleClick(index, tab)}"
                                 @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, index, tab)}"
                                 @dragstart="${(e: DragEvent) => this._handleSheetDragStart(e, index)}"
@@ -850,7 +850,7 @@ export class MyEditor extends LitElement {
                             >
                                 ${this._renderTabIcon(tab)}
                                 ${this.editingTabIndex === index
-                                    ? html`
+                            ? html`
                                           <input
                                               class="tab-input"
                                               .value="${tab.title}"
@@ -858,17 +858,17 @@ export class MyEditor extends LitElement {
                                               @dblclick="${(e: Event) => e.stopPropagation()}"
                                               @keydown="${(e: KeyboardEvent) => this._handleTabInputKey(e, index, tab)}"
                                               @blur="${(e: Event) =>
-                                                  this._handleTabRename(
-                                                      index,
-                                                      tab,
-                                                      (e.target as HTMLInputElement).value
-                                                  )}"
+                                    this._handleTabRename(
+                                        index,
+                                        tab,
+                                        (e.target as HTMLInputElement).value
+                                    )}"
                                           />
                                       `
-                                    : html` ${tab.type !== 'add-sheet' ? tab.title : ''} `}
+                            : html` ${tab.type !== 'add-sheet' ? tab.title : ''} `}
                             </div>
                         `
-                    )}
+                )}
                 </div>
                 <div class="scroll-indicator-right ${this.isScrollableRight ? 'visible' : ''}"></div>
             </div>
@@ -877,14 +877,14 @@ export class MyEditor extends LitElement {
                 ? html`
                       <div
                           style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
-                              .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
+                        .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
                       >
                           <div
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
                               @mouseover="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
+                        ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
                               @mouseout="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'transparent')}"
+                        ((e.target as HTMLElement).style.background = 'transparent')}"
                               @click="${() => this._renameSheet(this.tabContextMenu!.index)}"
                           >
                               Rename Sheet
@@ -892,9 +892,9 @@ export class MyEditor extends LitElement {
                           <div
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
                               @mouseover="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
+                        ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
                               @mouseout="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'transparent')}"
+                        ((e.target as HTMLElement).style.background = 'transparent')}"
                               @click="${() => this._deleteSheet(this.tabContextMenu!.index)}"
                           >
                               Delete Sheet
@@ -1330,9 +1330,22 @@ export class MyEditor extends LitElement {
         });
     }
 
-    private _handleColumnResize(detail: any) {
-        // TODO: Implement persistent storage for column widths
-        console.log('Resize column:', detail);
+    private async _handleColumnResize(detail: any) {
+        if (!this.pyodide) return;
+        const { sheetIndex, tableIndex, col, width } = detail;
+        this._enqueueRequest(async () => {
+            const result = await this.pyodide.runPythonAsync(`
+            import json
+            res = update_column_width(
+                ${sheetIndex}, 
+                ${tableIndex}, 
+                ${col}, 
+                ${width}
+            )
+            json.dumps(res) if res else "null"
+        `);
+            this._postUpdateMessage(JSON.parse(result));
+        });
     }
     updated(changedProperties: Map<string, any>) {
         if (changedProperties.has('tabs') || changedProperties.has('activeTabIndex')) {
