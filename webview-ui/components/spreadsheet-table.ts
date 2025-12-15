@@ -6,6 +6,7 @@ import { SelectionController } from '../controllers/selection-controller';
 import { EditController } from '../controllers/edit-controller';
 import { ResizeController } from '../controllers/resize-controller';
 import { NavigationController } from '../controllers/navigation-controller';
+import { t } from '../utils/i18n';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
@@ -1081,7 +1082,7 @@ export class SpreadsheetTable extends LitElement {
                           <textarea
                               class="metadata-input-desc"
                               .value="${table.description || ''}"
-                              placeholder="Description"
+                              placeholder="${t('description')}"
                               @input="${(e: Event) =>
                         (this.editCtrl.pendingDescription = (e.target as HTMLInputElement).value)}"
                               @keydown="${this._handleMetadataKeydown}"
@@ -1096,7 +1097,7 @@ export class SpreadsheetTable extends LitElement {
                               style="color: var(--vscode-descriptionForeground); cursor: pointer; border: 1px dashed transparent;"
                           >
                               ${table.description ||
-                    html`<span style="opacity: 0.5; font-size: 0.9em;">Add description...</span>`}
+                    html`<span style="opacity: 0.5; font-size: 0.9em;">${t('addDescription')}</span>`}
                           </p>
                       `}
             </div>
@@ -1423,7 +1424,7 @@ export class SpreadsheetTable extends LitElement {
                                 }
                             }}"
                                     >
-                                        Insert Row Above
+                                        ${t('insertRowAbove')}
                                     </div>
                                     <div
                                         class="context-menu-item"
@@ -1435,7 +1436,7 @@ export class SpreadsheetTable extends LitElement {
                                 }
                             }}"
                                     >
-                                        Insert Row Below
+                                        ${t('insertRowBelow')}
                                     </div>
                                     <div
                                         class="context-menu-item"
@@ -1447,7 +1448,7 @@ export class SpreadsheetTable extends LitElement {
                                 }
                             }}"
                                     >
-                                        Delete Row
+                                        ${t('deleteRow')}
                                     </div>
                                 `
                         : html`
@@ -1461,7 +1462,7 @@ export class SpreadsheetTable extends LitElement {
                                 }
                             }}"
                                     >
-                                        Insert Column Left
+                                        ${t('insertColLeft')}
                                     </div>
                                     <div
                                         class="context-menu-item"
@@ -1473,7 +1474,7 @@ export class SpreadsheetTable extends LitElement {
                                 }
                             }}"
                                     >
-                                        Insert Column Right
+                                        ${t('insertColRight')}
                                     </div>
                                     <div
                                         class="context-menu-item"
@@ -1485,7 +1486,7 @@ export class SpreadsheetTable extends LitElement {
                                 }
                             }}"
                                     >
-                                        Delete Column
+                                        ${t('deleteCol')}
                                     </div>
                                 `}
                       </div>

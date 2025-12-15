@@ -286,6 +286,7 @@ function getWebviewContent(
         <md-spreadsheet-editor></md-spreadsheet-editor>
         <script>
             window.wheelUri = "${wheelUri}";
+            window.vscodeLanguage = ${JSON.stringify(vscode.env.language)};
             window.initialContent = \`${escapedContent}\`;
             window.initialConfig = ${JSON.stringify(config)};
         </script>
@@ -296,4 +297,4 @@ function getWebviewContent(
     </html>`;
 }
 
-export function deactivate() {}
+export function deactivate() { }

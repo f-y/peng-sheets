@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { LeafNode } from '../types';
 import { TableJSON } from './spreadsheet-table';
 import './spreadsheet-table';
+import { t } from '../utils/i18n';
 
 @customElement('pane-view')
 export class PaneView extends LitElement {
@@ -148,11 +149,11 @@ export class PaneView extends LitElement {
                 @dragleave="${this._handleTabBarDragLeave}"
             >
                 ${this.node.tables.map((globalIdx, i) => {
-                    const table = this.tables[globalIdx];
-                    const isActive = i === activeLocalIndex;
-                    const isEditing = this._editingTabGlobalIndex === globalIdx;
+            const table = this.tables[globalIdx];
+            const isActive = i === activeLocalIndex;
+            const isEditing = this._editingTabGlobalIndex === globalIdx;
 
-                    return html`
+            return html`
                         <div
                             class="tab ${isActive ? 'active' : ''}"
                             draggable="${!isEditing}"
@@ -162,7 +163,7 @@ export class PaneView extends LitElement {
                             @dblclick="${() => this._startRenaming(globalIdx, table.name || undefined)}"
                         >
                             ${isEditing
-                                ? html`
+                    ? html`
                                       <input
                                           class="tab-input"
                                           .value="${this._editingName}"
@@ -173,11 +174,11 @@ export class PaneView extends LitElement {
                                           @dblclick="${(e: Event) => e.stopPropagation()}"
                                       />
                                   `
-                                : table.name || `Table ${globalIdx + 1}`}
+                    : table.name || t('table', (globalIdx + 1).toString())}
                         </div>
                     `;
-                })}
-                <div class="tab-add" @click="${this._handleAddTable}" title="Add Table">+</div>
+        })}
+                <div class="tab-add" @click="${this._handleAddTable}" title="${t('addTable')}">+</div>
             </div>
             <div
                 class="content"
@@ -186,7 +187,7 @@ export class PaneView extends LitElement {
                 @drop="${this._handleContentDrop}"
             >
                 ${activeTable
-                    ? html`
+                ? html`
                           <spreadsheet-table
                               style="flex: 1; min-height: 0;"
                               .table="${activeTable}"
@@ -194,7 +195,7 @@ export class PaneView extends LitElement {
                               .tableIndex="${activeGlobalIndex}"
                           ></spreadsheet-table>
                       `
-                    : html`<div>No Table Selected</div>`}
+                : html`<div>${t('noTableSelected')}</div>`}
                 ${this._renderDropOverlay()}
             </div>
             ${this._renderContextMenu()}
@@ -225,7 +226,7 @@ export class PaneView extends LitElement {
 
     private _startRenaming(globalIndex: number, currentName: string | undefined) {
         this._editingTabGlobalIndex = globalIndex;
-        this._editingName = currentName || `Table ${globalIndex + 1}`;
+        this._editingName = currentName || t('table', (globalIndex + 1).toString());
         setTimeout(() => {
             const input = this.shadowRoot?.querySelector('.tab-input') as HTMLInputElement;
             if (input) {
@@ -504,8 +505,8 @@ export class PaneView extends LitElement {
         if (!this._tabContextMenu) return html``;
         return html`
             <div class="context-menu" style="top: ${this._tabContextMenu.y}px; left: ${this._tabContextMenu.x}px;">
-                <div class="context-menu-item" @click="${this._triggerRenameFromMenu}">Rename Table</div>
-                <div class="context-menu-item" @click="${this._triggerDeleteFromMenu}">Delete Table</div>
+                <div class="context-menu-item" @click="${this._triggerRenameFromMenu}">${t('renameTable')}</div>
+                <div class="context-menu-item" @click="${this._triggerDeleteFromMenu}">${t('deleteTable')}</div>
             </div>
         `;
     }

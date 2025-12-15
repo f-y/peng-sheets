@@ -1,6 +1,8 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem } from '@vscode/webview-ui-toolkit';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
+import { t } from './utils/i18n';
 
 import './components/spreadsheet-toolbar';
 import './components/spreadsheet-table';
@@ -213,7 +215,7 @@ export class MyEditor extends LitElement {
     pyodide: any = null;
 
     @state()
-    output: string = 'Initializing Pyodide...';
+    output: string = t('initializing');
 
     @state()
     markdownInput: string = '';
@@ -776,7 +778,7 @@ export class MyEditor extends LitElement {
 
     render() {
         if (!this.tabs.length && !this.output) {
-            return html`< div class="output" > Loading...</div>`;
+            return html`< div class="output" > ${t('loading')}</div>`;
         }
 
         return this._renderContent();
@@ -887,7 +889,7 @@ export class MyEditor extends LitElement {
                         ((e.target as HTMLElement).style.background = 'transparent')}"
                               @click="${() => this._renameSheet(this.tabContextMenu!.index)}"
                           >
-                              Rename Sheet
+                              ${t('renameSheet')}
                           </div>
                           <div
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
@@ -897,7 +899,7 @@ export class MyEditor extends LitElement {
                         ((e.target as HTMLElement).style.background = 'transparent')}"
                               @click="${() => this._deleteSheet(this.tabContextMenu!.index)}"
                           >
-                              Delete Sheet
+                              ${t('deleteSheet')}
                           </div>
                       </div>
                       <!-- Overlay to close menu on click outside -->
@@ -911,15 +913,21 @@ export class MyEditor extends LitElement {
             <!-- Delete Confirmation Modal -->
             <confirmation-modal
                 .open="${this.confirmDeleteIndex !== null}"
-                title="Delete Sheet"
-                confirmLabel="Delete"
-                cancelLabel="Cancel"
+                title="${t('deleteSheet')}"
+                confirmLabel="${t('delete')}"
+                cancelLabel="${t('cancel')}"
                 @confirm="${this._performDelete}"
                 @cancel="${this._cancelDelete}"
             >
-                Are you sure you want to delete sheet "<span style="color: var(--vscode-textPreformat-foreground);"
-                    >${this.confirmDeleteIndex !== null ? this.tabs[this.confirmDeleteIndex]?.title : ''}</span
-                >"? <br />This action cannot be undone.
+                ${unsafeHTML(
+                    t(
+                        'deleteSheetConfirm',
+                        `<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null
+                            ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
+                            : ''
+                        }</span>`
+                    )
+                )}
             </confirmation-modal>
         `;
     }
