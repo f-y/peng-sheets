@@ -1,6 +1,7 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem } from '@vscode/webview-ui-toolkit';
+import { t } from '../utils/i18n';
 
 provideVSCodeDesignSystem().register();
 
@@ -45,9 +46,9 @@ export class SpreadsheetOnboarding extends LitElement {
                     <path d="M3 3h10v10H3V3zm1 1v3h3V4H4zm4 0v3h3V4H8zm-4 4v3h3V8H4zm4 0v3h3V8H4zm4 0v3h3V8H8z" />
                 </svg>
             </div>
-            <h2>No Spreadsheet Found</h2>
-            <p>This document does not contain a workbook section yet. Create one to start editing tables.</p>
-            <vscode-button @click="${this._handleCreate}"> Create Spreadsheet </vscode-button>
+            <h2>${t('noSpreadsheetFound')}</h2>
+            <p>${t('noSpreadsheetMessage')}</p>
+            <vscode-button @click="${this._handleCreate}"> ${t('createSpreadsheet')} </vscode-button>
         `;
     }
 

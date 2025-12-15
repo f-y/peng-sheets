@@ -22,14 +22,29 @@ const translations = {
         deleteCol: 'Delete Column',
         clearCol: 'Clear Column',
         deleteTable: 'Delete Table',
-        renameTable: 'Rename Table'
+        renameTable: 'Rename Table',
+        noSpreadsheetFound: 'No Spreadsheet Found',
+        noSpreadsheetMessage: 'This document does not contain a workbook section yet. Create one to start editing tables.',
+        createSpreadsheet: 'Create Spreadsheet',
+        toolbarBold: 'Bold',
+        toolbarItalic: 'Italic',
+        toolbarAlignLeft: 'Align Left',
+        toolbarAlignCenter: 'Align Center',
+        toolbarAlignRight: 'Align Right'
     },
     ja: {
+        renameSheet: 'シート名の変更',
         deleteSheet: 'シートを削除',
         deleteSheetConfirm: 'シート "{0}" を削除してもよろしいですか？この操作は取り消せません。',
         cancel: 'キャンセル',
         delete: '削除',
         addDescription: '説明を追加...',
+        description: '説明',
+        addTable: 'テーブルを追加',
+        table: 'テーブル {0}',
+        noTableSelected: 'テーブルが選択されていません',
+        loading: '読み込み中...',
+        initializing: 'Pyodideを初期化中...',
         newTable: '新しいテーブル',
         insertRowAbove: '上に行を挿入',
         insertRowBelow: '下に行を挿入',
@@ -39,7 +54,15 @@ const translations = {
         deleteCol: '列を削除',
         clearCol: '列をクリア',
         deleteTable: 'テーブルを削除',
-        renameTable: 'テーブル名の変更'
+        renameTable: 'テーブル名の変更',
+        noSpreadsheetFound: 'スプレッドシートが見つかりません',
+        noSpreadsheetMessage: 'このドキュメントにはまだワークブックセクションがありません。テーブル編集を開始するには作成してください。',
+        createSpreadsheet: 'スプレッドシートを作成',
+        toolbarBold: '太字',
+        toolbarItalic: '斜体',
+        toolbarAlignLeft: '左揃え',
+        toolbarAlignCenter: '中央揃え',
+        toolbarAlignRight: '右揃え'
     }
 };
 

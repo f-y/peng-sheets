@@ -25,6 +25,14 @@ We adhere to a Test-Driven Development (TDD) or Test-First approach, especially 
 ### 2. Component Isolation
 UI components should be designed to be testable in isolation. Use `webview-ui/tests/` to mount components (using `@open-wc/testing` fixture) and interact with them programmatically.
 
+### 3. Internationalization (i18n)
+All user-facing strings in the Webview MUST be internationalized.
+
+*   **Helper**: Use the `t()` function from `webview-ui/utils/i18n.ts`.
+*   **Keys**: Add new keys to the `translations` object in `webview-ui/utils/i18n.ts`.
+*   **Languages**: Must support at least English (`en`) and Japanese (`ja`). Fallback is English.
+*   **Usage**: `${t('key')}` in Lit templates.
+
 ## Testing
 
 ### Running Webview Tests (Vitest)

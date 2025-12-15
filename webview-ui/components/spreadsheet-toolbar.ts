@@ -1,6 +1,7 @@
 import { html, css, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem, vsCodeButton, vsCodeDivider } from '@vscode/webview-ui-toolkit';
+import { t } from '../utils/i18n';
 
 provideVSCodeDesignSystem().register(vsCodeButton(), vsCodeDivider());
 
@@ -80,11 +81,11 @@ export class SpreadsheetToolbar extends LitElement {
     render() {
         return html`
             <div class="toolbar">
-                <vscode-button appearance="icon" aria-label="Bold"> ${iconBold} </vscode-button>
-                <vscode-button appearance="icon" aria-label="Italic"> ${iconItalic} </vscode-button>
-                <vscode-button appearance="icon" aria-label="Align Left"> ${iconAlignLeft} </vscode-button>
-                <vscode-button appearance="icon" aria-label="Align Center"> ${iconAlignCenter} </vscode-button>
-                <vscode-button appearance="icon" aria-label="Align Right"> ${iconAlignRight} </vscode-button>
+                <vscode-button appearance="icon" aria-label="${t('toolbarBold')}"> ${iconBold} </vscode-button>
+                <vscode-button appearance="icon" aria-label="${t('toolbarItalic')}"> ${iconItalic} </vscode-button>
+                <vscode-button appearance="icon" aria-label="${t('toolbarAlignLeft')}"> ${iconAlignLeft} </vscode-button>
+                <vscode-button appearance="icon" aria-label="${t('toolbarAlignCenter')}"> ${iconAlignCenter} </vscode-button>
+                <vscode-button appearance="icon" aria-label="${t('toolbarAlignRight')}"> ${iconAlignRight} </vscode-button>
             </div>
         `;
     }
