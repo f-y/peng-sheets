@@ -271,6 +271,9 @@ function getWebviewContent(
     }
 
     const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
+    const generalConfig = vscode.workspace.getConfiguration('mdSpreadsheet');
+    const languageSetting = generalConfig.get<string>('language') || 'auto';
+    const extensionLanguage = languageSetting === 'auto' ? vscode.env.language : languageSetting;
     const initialContent = document.getText();
     const escapedContent = initialContent.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$/g, '\\$');
 
@@ -286,7 +289,7 @@ function getWebviewContent(
         <md-spreadsheet-editor></md-spreadsheet-editor>
         <script>
             window.wheelUri = "${wheelUri}";
-            window.vscodeLanguage = ${JSON.stringify(vscode.env.language)};
+            window.vscodeLanguage = ${JSON.stringify(extensionLanguage)};
             window.initialContent = \`${escapedContent}\`;
             window.initialConfig = ${JSON.stringify(config)};
         </script>

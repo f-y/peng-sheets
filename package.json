@@ -78,6 +78,16 @@
                 "type": "boolean",
                 "default": true,
                 "description": "Whether to strip whitespace from cell values."
+            },
+            "mdSpreadsheet.language": {
+                "type": "string",
+                "enum": [
+                    "auto",
+                    "en",
+                    "ja"
+                ],
+                "default": "auto",
+                "description": "Language for the spreadsheet UI."
             }
         }
     },

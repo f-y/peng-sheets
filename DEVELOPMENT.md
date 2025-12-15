@@ -31,6 +31,7 @@ All user-facing strings in the Webview MUST be internationalized.
 *   **Helper**: Use the `t()` function from `webview-ui/utils/i18n.ts`.
 *   **Keys**: Add new keys to the `translations` object in `webview-ui/utils/i18n.ts`.
 *   **Languages**: Must support at least English (`en`) and Japanese (`ja`). Fallback is English.
+*   **Configuration**: The `mdSpreadsheet.language` setting allows users to override the detected language.
 *   **Usage**: `${t('key')}` in Lit templates.
 
 ## Testing
