@@ -90,12 +90,40 @@ export class MyEditor extends LitElement {
     }
 
     /* Bottom Tabs Section */
+    /* Bottom Tabs Section */
+    .bottom-tabs-container {
+        flex: 0 0 auto;
+        position: relative;
+        display: flex;
+        border-top: 1px solid var(--vscode-widget-border);
+        background: var(--vscode-editor-background);
+        overflow: hidden; 
+    }
+
     .bottom-tabs {
-      flex: 0 0 auto;
       display: flex;
-      background: var(--vscode-editor-background); /* Or slightly darker/lighter */
-      border-top: 1px solid var(--vscode-widget-border);
       overflow-x: auto;
+      flex: 1;
+      scrollbar-width: none;
+    }
+    .bottom-tabs::-webkit-scrollbar {
+        display: none;
+    }
+
+    .scroll-indicator-right {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        right: 0;
+        width: 40px;
+        background: linear-gradient(to right, transparent, var(--vscode-editor-background));
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.2s;
+        z-index: 5;
+    }
+    .scroll-indicator-right.visible {
+        opacity: 1;
     }
 
     .tab-item {
@@ -111,6 +139,7 @@ export class MyEditor extends LitElement {
       justify-content: center;
       min-width: 60px;
       gap: 6px;
+      flex-shrink: 0;
     }
 
     .tab-item:hover {
@@ -212,6 +241,9 @@ export class MyEditor extends LitElement {
 
   @state()
   tabContextMenu: { x: number, y: number, index: number } | null = null;
+
+  @state()
+  isScrollableRight = false;
   @state()
   private _isSyncing = false;
   private _requestQueue: Array<() => Promise<void>> = [];
@@ -802,30 +834,42 @@ export class MyEditor extends LitElement {
             ` : html``}
         </div>
 
-        <div class="bottom-tabs">
-            ${this.tabs.map((tab, index) => html`
-                <div 
-                    class="tab-item ${this.activeTabIndex === index ? 'active' : ''} ${tab.type === 'add-sheet' ? 'add-sheet-tab' : ''}"
-                    @click="${() => tab.type === 'add-sheet' ? this._handleAddSheet() : this.activeTabIndex = index}"
-                    @dblclick="${() => this._handleTabDoubleClick(index, tab)}"
-                    @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, index, tab)}"
-                    title="${tab.type === 'add-sheet' ? 'Add New Sheet' : ''}"
-                >
-                     ${this._renderTabIcon(tab)}
-                     ${this.editingTabIndex === index ? html`
-                        <input 
-                            class="tab-input" 
-                            .value="${tab.title}" 
-                            @click="${(e: Event) => e.stopPropagation()}"
-                            @dblclick="${(e: Event) => e.stopPropagation()}"
-                            @keydown="${(e: KeyboardEvent) => this._handleTabInputKey(e, index, tab)}"
-                            @blur="${(e: Event) => this._handleTabRename(index, tab, (e.target as HTMLInputElement).value)}"
-                        />
-                     ` : html`
-                        ${tab.type !== 'add-sheet' ? tab.title : ''}
-                     `}
-                </div>
-            `)}
+        <div class="bottom-tabs-container">
+            <div class="bottom-tabs"
+                 @scroll="${this._handleTabScroll}"
+                 @dragover="${this._handleSheetDragOver}"
+                 @drop="${this._handleSheetDrop}"
+                 @dragleave="${this._handleSheetDragLeave}"
+            >
+                ${this.tabs.map((tab, index) => html`
+                    <div 
+                        class="tab-item ${this.activeTabIndex === index ? 'active' : ''} ${tab.type === 'add-sheet' ? 'add-sheet-tab' : ''}"
+                        draggable="${tab.type !== 'add-sheet' && this.editingTabIndex !== index}"
+                        @click="${() => tab.type === 'add-sheet' ? this._handleAddSheet() : this.activeTabIndex = index}"
+                        @dblclick="${() => this._handleTabDoubleClick(index, tab)}"
+                        @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, index, tab)}"
+                        @dragstart="${(e: DragEvent) => this._handleSheetDragStart(e, index)}"
+                        @dragend="${this._handleSheetDragEnd}"
+                        title="${tab.type === 'add-sheet' ? 'Add New Sheet' : ''}"
+                        data-index="${index}"
+                    >
+                         ${this._renderTabIcon(tab)}
+                         ${this.editingTabIndex === index ? html`
+                            <input 
+                                class="tab-input" 
+                                .value="${tab.title}" 
+                                @click="${(e: Event) => e.stopPropagation()}"
+                                @dblclick="${(e: Event) => e.stopPropagation()}"
+                                @keydown="${(e: KeyboardEvent) => this._handleTabInputKey(e, index, tab)}"
+                                @blur="${(e: Event) => this._handleTabRename(index, tab, (e.target as HTMLInputElement).value)}"
+                            />
+                         ` : html`
+                            ${tab.type !== 'add-sheet' ? tab.title : ''}
+                         `}
+                    </div>
+                `)}
+            </div>
+            <div class="scroll-indicator-right ${this.isScrollableRight ? 'visible' : ''}"></div>
         </div>
 
         ${this.tabContextMenu ? html`
@@ -1127,6 +1171,152 @@ export class MyEditor extends LitElement {
       this.output = `Error parsing: ${err.message}`;
       this.workbook = null;
       this.tabs = [];
+    }
+  }
+
+  private _handleSheetDragStart(e: DragEvent, index: number) {
+    if (!e.dataTransfer) return;
+    e.dataTransfer.setData('text/plain', index.toString());
+    e.dataTransfer.effectAllowed = 'move';
+  }
+
+  private _handleSheetDragOver(e: DragEvent) {
+    e.preventDefault();
+    e.dataTransfer!.dropEffect = 'move';
+
+    const tabs = this.shadowRoot?.querySelectorAll('.tab-item');
+    tabs?.forEach(t => t.classList.remove('drag-over-left', 'drag-over-right'));
+
+    const target = (e.composedPath().find(n => (n as HTMLElement).classList && (n as HTMLElement).classList.contains('tab-item'))) as HTMLElement;
+    if (target && !target.classList.contains('add-sheet-tab')) {
+      const rect = target.getBoundingClientRect();
+      const mid = rect.left + rect.width / 2;
+      if (e.clientX < mid) target.classList.add('drag-over-left');
+      else target.classList.add('drag-over-right');
+    }
+  }
+
+  private _handleSheetDragLeave(e: DragEvent) {
+    // Optional cleanup
+  }
+
+  private _handleSheetDragEnd() {
+    const tabs = this.shadowRoot?.querySelectorAll('.tab-item');
+    tabs?.forEach(t => t.classList.remove('drag-over-left', 'drag-over-right'));
+  }
+
+  private async _handleSheetDrop(e: DragEvent) {
+    e.preventDefault();
+    this._handleSheetDragEnd();
+
+    const fromIndexStr = e.dataTransfer?.getData('text/plain');
+    if (!fromIndexStr) return;
+    const fromIndex = parseInt(fromIndexStr);
+    if (isNaN(fromIndex)) return;
+
+    const target = (e.composedPath().find(n => (n as HTMLElement).classList && (n as HTMLElement).classList.contains('tab-item'))) as HTMLElement;
+    let toIndex = -1;
+
+    if (target) {
+      const indexAttr = target.getAttribute('data-index');
+      if (indexAttr) {
+        const initialIndex = parseInt(indexAttr);
+        if (!isNaN(initialIndex)) {
+          const rect = target.getBoundingClientRect();
+          const mid = rect.left + rect.width / 2;
+          toIndex = (e.clientX < mid) ? initialIndex : initialIndex + 1;
+        }
+      }
+    } else if ((e.target as HTMLElement).classList.contains('bottom-tabs')) {
+      const addTab = this.tabs.find(t => t.type === 'add-sheet');
+      if (addTab) {
+        toIndex = addTab.index;
+      } else {
+        toIndex = this.tabs.length;
+      }
+    }
+
+    if (toIndex !== -1 && fromIndex !== toIndex) {
+      const fromTab = this.tabs[fromIndex];
+
+      if (fromTab.type !== 'sheet') return;
+
+      const fromSheetIndex = fromTab.sheetIndex!;
+      let toSheetIndex = 0;
+
+      if (toIndex < this.tabs.length) {
+        const toTab = this.tabs[toIndex];
+        // Map to sheet indices
+        if (toTab.type === 'sheet') {
+          toSheetIndex = toTab.sheetIndex!;
+        } else if (toTab.type === 'add-sheet') {
+          const sheets = this.tabs.filter(t => t.type === 'sheet');
+          toSheetIndex = sheets.length;
+        } else {
+          toSheetIndex = 0;
+        }
+      } else {
+        const sheets = this.tabs.filter(t => t.type === 'sheet');
+        toSheetIndex = sheets.length;
+      }
+
+      this._moveSheet(fromSheetIndex, toSheetIndex);
+    }
+  }
+
+  private async _moveSheet(from: number, to: number) {
+    if (from === to) return;
+
+    if (from < to) {
+      to -= 1;
+    }
+
+    this._enqueueRequest(async () => {
+      const result = await this.pyodide.runPythonAsync(`
+              res = move_sheet(${from}, ${to})
+              json.dumps(res) if res else "null"
+          `);
+      const updateSpec = JSON.parse(result);
+      if (updateSpec && !updateSpec.error) {
+        vscode.postMessage({
+          type: 'updateRange',
+          startLine: updateSpec.startLine,
+          endLine: updateSpec.endLine,
+          content: updateSpec.content
+        });
+      } else if (updateSpec && updateSpec.error) {
+        console.error("Move Sheet Error:", updateSpec.error);
+      }
+    });
+  }
+
+  private _handleColumnResize(detail: any) {
+    // TODO: Implement persistent storage for column widths
+    console.log("Resize column:", detail);
+  }
+  updated(changedProperties: Map<string, any>) {
+    if (changedProperties.has('tabs') || changedProperties.has('activeTabIndex')) {
+      // Defer to ensure layout is complete
+      setTimeout(() => this._checkScrollOverflow(), 0);
+    }
+  }
+
+  private _handleTabScroll() {
+    this._checkScrollOverflow();
+  }
+
+  private _checkScrollOverflow() {
+    const container = this.shadowRoot?.querySelector('.bottom-tabs') as HTMLElement;
+    if (container) {
+      // Tolerance of 2px
+      const isScrollable = container.scrollWidth > container.clientWidth;
+      const isAtEnd = Math.abs(container.scrollWidth - container.clientWidth - container.scrollLeft) < 2;
+
+      const shouldShow = isScrollable && !isAtEnd;
+
+      if (this.isScrollableRight !== shouldShow) {
+        this.isScrollableRight = shouldShow;
+      }
     }
   }
 }

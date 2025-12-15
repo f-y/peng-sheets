@@ -213,6 +213,24 @@ def rename_sheet(sheet_idx, new_name):
     return apply_sheet_update(sheet_idx, lambda s: replace(s, name=new_name))
 
 
+def move_sheet(from_index, to_index):
+    def wb_transform(wb):
+        new_sheets = list(wb.sheets)
+        if from_index < 0 or from_index >= len(new_sheets):
+            raise IndexError("Invalid source index")
+
+        sheet = new_sheets.pop(from_index)
+
+        # Clamp to_index to valid insertion points [0, len(new_sheets)]
+        # len(new_sheets) here is N-1 (after pop)
+        insert_idx = max(0, min(to_index, len(new_sheets)))
+
+        new_sheets.insert(insert_idx, sheet)
+        return replace(wb, sheets=new_sheets)
+
+    return apply_workbook_update(wb_transform)
+
+
 def update_sheet_metadata(sheet_idx, metadata):
     return apply_sheet_update(sheet_idx, lambda s: replace(s, metadata=metadata))
 
