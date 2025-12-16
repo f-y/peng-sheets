@@ -59,3 +59,17 @@ npm test
 *   **Install Dependencies**: `npm install`
 *   **Build**: `npm run compile`
 *   **Watch**: `npm run watch` (for extension), `npm run dev` (for webview HMR)
+
+### 4. Markdown Rendering in Cells
+Cells support basic markdown rendering for display:
+*   **Bold**: `**text**` -> `<b>text</b>`
+*   **Italic**: `*text*` -> `<i>text</i>`
+*   **Strikethrough**: `~~text~~` -> `<s>text</s>`
+*   **Line Breaks**: `\n` -> `<br>`
+
+Rendering is handled by `_renderMarkdown()` in `spreadsheet-table.ts`.
+Security: Ensure HTML escaping is performed BEFORE markdown replacement to prevent XSS.
+
+### 5. Toolbar Integration
+The `<spreadsheet-toolbar>` component dispatches `toolbar-action` events.
+These are routed by `main.ts` to the active `SpreadsheetTable` instance via `window.activeSpreadsheetTable`.

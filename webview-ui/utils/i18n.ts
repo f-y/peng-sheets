@@ -1,4 +1,3 @@
-
 const translations = {
     en: {
         renameSheet: 'Rename Sheet',
@@ -24,13 +23,15 @@ const translations = {
         deleteTable: 'Delete Table',
         renameTable: 'Rename Table',
         noSpreadsheetFound: 'No Spreadsheet Found',
-        noSpreadsheetMessage: 'This document does not contain a workbook section yet. Create one to start editing tables.',
+        noSpreadsheetMessage:
+            'This document does not contain a workbook section yet. Create one to start editing tables.',
         createSpreadsheet: 'Create Spreadsheet',
         toolbarBold: 'Bold',
         toolbarItalic: 'Italic',
         toolbarAlignLeft: 'Align Left',
         toolbarAlignCenter: 'Align Center',
-        toolbarAlignRight: 'Align Right'
+        toolbarAlignRight: 'Align Right',
+        toolbarStrikethrough: 'Strikethrough'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -56,19 +57,21 @@ const translations = {
         deleteTable: 'テーブルを削除',
         renameTable: 'テーブル名の変更',
         noSpreadsheetFound: 'スプレッドシートが見つかりません',
-        noSpreadsheetMessage: 'このドキュメントにはまだワークブックセクションがありません。テーブル編集を開始するには作成してください。',
+        noSpreadsheetMessage:
+            'このドキュメントにはまだワークブックセクションがありません。テーブル編集を開始するには作成してください。',
         createSpreadsheet: 'スプレッドシートを作成',
         toolbarBold: '太字',
         toolbarItalic: '斜体',
         toolbarAlignLeft: '左揃え',
         toolbarAlignCenter: '中央揃え',
-        toolbarAlignRight: '右揃え'
+        toolbarAlignRight: '右揃え',
+        toolbarStrikethrough: '取り消し線'
     }
 };
 
-// Allow 'en' | 'ja' keys. 
+// Allow 'en' | 'ja' keys.
 // We fallback to 'en' for any non-ja language for now.
-export type I18nKey = keyof typeof translations['en'];
+export type I18nKey = keyof (typeof translations)['en'];
 
 export function t(key: I18nKey, ...args: any[]): string {
     // Expect window.vscodeLanguage to be set by extension

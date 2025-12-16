@@ -1,4 +1,5 @@
-import { html, css, LitElement, PropertyValues, noChange } from 'lit';
+import { marked } from 'marked';
+import { html, css, LitElement, PropertyValues, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { live } from 'lit/directives/live.js';
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
@@ -15,7 +16,7 @@ export interface TableJSON {
     description: string | null;
     headers: string[] | null;
     rows: string[][];
-    metadata: any;
+    metadata: Record<string, unknown>;
     start_line: number | null;
     end_line: number | null;
 }
@@ -135,6 +136,9 @@ export class SpreadsheetTable extends LitElement {
             outline-offset: -2px;
             user-select: text;
             cursor: text;
+            white-space: break-spaces; /* Allow newlines and render trailing breaks */
+            word-break: break-word;
+            overflow: visible; /* Expand to show content */
         }
 
         .cell:focus {
@@ -156,6 +160,9 @@ export class SpreadsheetTable extends LitElement {
             border-bottom: 1px solid var(--border-color);
             padding: 0; /* Minimal padding */
             outline-offset: -2px; /* Ensure outline doesn't overflow */
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .cell.header-col.selected {
@@ -362,6 +369,8 @@ export class SpreadsheetTable extends LitElement {
 
     private _shouldFocusCell: boolean = false;
     private _isCommitting: boolean = false; // Kept in host for now as it coordinates editCtrl and Events
+    private _restoreCaretPos: number | null = null;
+    private _wasFocusedBeforeUpdate: boolean = false;
 
     // Exposed for Controllers
     public focusCell() {
@@ -370,6 +379,17 @@ export class SpreadsheetTable extends LitElement {
     }
 
     willUpdate(changedProperties: PropertyValues) {
+        // Track focus before update to prevent focus stealing/loss across re-renders
+        // If we currently have focus (or a child has focus), we want to try to restore it after update
+        // unless _shouldFocusCell explicitly requested a focus change.
+        const active = this.shadowRoot?.activeElement;
+        this._wasFocusedBeforeUpdate =
+            !!active &&
+            (active.classList.contains('cell') ||
+                active.classList.contains('cell-content') ||
+                active.tagName === 'INPUT' ||
+                active.tagName === 'TEXTAREA');
+
         if (changedProperties.has('sheetIndex') || changedProperties.has('tableIndex')) {
             this.editCtrl.cancelEditing(); // Reset edit
             this.selectionCtrl.reset();
@@ -379,13 +399,16 @@ export class SpreadsheetTable extends LitElement {
 
         if (changedProperties.has('table')) {
             const oldTable = changedProperties.get('table');
-            if (oldTable) {
+            // Only restore focus if we had it before, or if we are the only thing?
+            // Actually, if we are editing, _wasFocusedBeforeUpdate is handled above.
+            // This block forces focus on data reload. We should ONLY do it if we were focused.
+            if (oldTable && this._wasFocusedBeforeUpdate) {
                 this._shouldFocusCell = true;
             }
         }
 
         if (changedProperties.has('table') && this.table) {
-            const visual = (this.table.metadata as any)?.visual;
+            const visual = (this.table.metadata as Record<string, any>)?.visual;
             if (visual && visual.column_widths) {
                 if (Array.isArray(visual.column_widths)) {
                     const widths: any = {};
@@ -423,58 +446,122 @@ export class SpreadsheetTable extends LitElement {
         return template;
     }
 
-    updated(changedProperties: PropertyValues) {
+    private _setCaretPosition(root: Node, offset: number) {
+        const range = document.createRange();
+        const sel = window.getSelection();
+        let currentOffset = 0;
+        let found = false;
+
+        const walk = (node: Node) => {
+            if (found) return;
+            if (node.nodeType === Node.TEXT_NODE) {
+                const len = node.nodeValue?.length || 0;
+                if (currentOffset + len >= offset) {
+                    range.setStart(node, offset - currentOffset);
+                    range.collapse(true);
+                    found = true;
+                    return;
+                }
+                currentOffset += len;
+            } else if (node.nodeName === 'BR') {
+                if (currentOffset === offset) {
+                    range.setStartBefore(node);
+                    range.collapse(true);
+                    found = true;
+                    return;
+                }
+                currentOffset += 1;
+            } else {
+                for (let i = 0; i < node.childNodes.length; i++) {
+                    walk(node.childNodes[i]);
+                    if (found) return;
+                }
+            }
+        };
+
+        walk(root);
+
+        if (!found) {
+            range.selectNodeContents(root);
+            range.collapse(false);
+        }
+
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+    }
+
+    updated(_changedProperties: PropertyValues) {
+        if (this._restoreCaretPos !== null) {
+            const cell = this.shadowRoot?.querySelector('.cell.editing');
+            if (cell) {
+                // Removed firstChild check, _setCaretPosition handles it
+                try {
+                    (cell as HTMLElement).focus(); // Ensure focus
+                    this._setCaretPosition(cell, this._restoreCaretPos);
+                } catch (e) {
+                    console.warn('Failed to restore caret:', e);
+                }
+            }
+            this._restoreCaretPos = null;
+            this._shouldFocusCell = false; // Prevent focus override
+        }
+
+        // Focus Retention Logic
         if (this._shouldFocusCell) {
             this._focusSelectedCell();
             this._shouldFocusCell = false;
+            this._wasFocusedBeforeUpdate = false;
+        } else if (this._wasFocusedBeforeUpdate) {
+            this._focusSelectedCell();
+            this._wasFocusedBeforeUpdate = false;
         }
     }
 
-    private _focusSelectedCell() {
+    private _focusSelectedCell(preserveSelection = false) {
         const selRow = this.selectionCtrl.selectedRow;
         const selCol = this.selectionCtrl.selectedCol;
 
         if (selRow >= -2 && selCol >= -2) {
             let selector = `.cell[data-row="${selRow}"][data-col="${selCol}"]`;
 
-            if (selCol === -2) {
+            if (selRow === -2 && selCol === -2) {
+                selector = `.cell.header-corner`;
+            } else if (selCol === -2) {
                 selector = `.cell.header-row[data-row="${selRow}"]`;
             } else if (selRow === -2) {
                 selector = `.cell.header-col[data-col="${selCol}"]`;
-            } else if (selRow === -2 && selCol === -2) {
-                selector = `.cell.header-corner`;
             }
 
             const cell = this.shadowRoot?.querySelector(selector) as HTMLElement;
             if (cell) {
-                if (this.editCtrl.isEditing && (selRow === -1 || selCol === -2)) {
+                if (this.editCtrl.isEditing && (selRow === -1 || selRow === -2 || selCol === -2)) {
                     const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
                     if (contentSpan) {
+                        // Update text FIRST (so we select the new nodes)
+                        if (this.editCtrl.pendingEditValue !== null) {
+                            contentSpan.innerText = this.editCtrl.pendingEditValue;
+                            this.editCtrl.pendingEditValue = null;
+                        }
+
                         contentSpan.focus();
                         const range = document.createRange();
                         range.selectNodeContents(contentSpan);
                         const selection = window.getSelection();
                         selection?.removeAllRanges();
                         selection?.addRange(range);
-
-                        if (this.editCtrl.pendingEditValue !== null) {
-                            contentSpan.innerText = this.editCtrl.pendingEditValue;
-                            this.editCtrl.pendingEditValue = null;
-                        }
                         return;
                     }
                 }
+
                 cell.focus();
 
-                if (this.editCtrl.isEditing) {
+                if (!preserveSelection) {
                     const range = document.createRange();
-                    if (this.editCtrl.pendingEditValue !== null && this.editCtrl.isEditing) {
-                        cell.innerText = this.editCtrl.pendingEditValue;
-                        this.editCtrl.pendingEditValue = null;
+
+                    if (this.editCtrl.isEditing) {
                         range.selectNodeContents(cell);
                         range.collapse(false);
                     } else {
-                        // Selection logic
                         const textNode = Array.from(cell.childNodes).find((n) => n.nodeType === Node.TEXT_NODE);
                         if (textNode) {
                             range.selectNodeContents(textNode);
@@ -484,6 +571,7 @@ export class SpreadsheetTable extends LitElement {
                             range.collapse(true);
                         }
                     }
+
                     const selection = window.getSelection();
                     selection?.removeAllRanges();
                     selection?.addRange(range);
@@ -497,13 +585,13 @@ export class SpreadsheetTable extends LitElement {
         this.editCtrl.setPendingValue(target.innerText);
     }
 
-    private _handleKeyDown(e: KeyboardEvent, isHeader: boolean = false) {
-        if (e.isComposing) return;
-
+    private _handleKeyDown = (e: KeyboardEvent) => {
         if (this.editCtrl.isEditing) {
             this._handleEditModeKey(e);
             return;
         }
+
+        if (e.isComposing) return;
 
         const isControl = e.ctrlKey || e.metaKey || e.altKey;
 
@@ -522,6 +610,28 @@ export class SpreadsheetTable extends LitElement {
         }
 
         const isRangeSelection = this.selectionCtrl.selectedCol === -2 || this.selectionCtrl.selectedRow === -2;
+
+        // F2 - Start Editing
+        if (e.key === 'F2') {
+            e.preventDefault();
+            if (isRangeSelection) return;
+
+            // Fetch current value
+            let currentVal = '';
+            const r = this.selectionCtrl.selectedRow;
+            const c = this.selectionCtrl.selectedCol;
+
+            // Header logic ?
+            if (r === -1 && c >= 0 && this.table?.headers) {
+                currentVal = this.table.headers[c] || '';
+            } else if (r >= 0 && c >= 0 && this.table?.rows && this.table.rows[r]) {
+                currentVal = this.table.rows[r][c] || '';
+            }
+
+            this.editCtrl.startEditing(currentVal);
+            this.focusCell();
+            return;
+        }
 
         if (!isControl && e.key.length === 1 && !isRangeSelection) {
             e.preventDefault();
@@ -553,7 +663,7 @@ export class SpreadsheetTable extends LitElement {
         const colCount = this.table?.headers ? this.table.headers.length : this.table?.rows[0]?.length || 0;
         this.navCtrl.handleKeyDown(e, rowCount + 1, colCount); // +1 because we allow ghost row (rowCount)
         this.focusCell();
-    }
+    };
 
     private async _handlePaste() {
         if (!this.table) return;
@@ -662,7 +772,71 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _handleEditModeKey(e: KeyboardEvent) {
+        e.stopPropagation();
         if (e.key === 'Enter') {
+            if (e.altKey || e.ctrlKey || e.metaKey) {
+                console.log('Alt+Enter logic triggered'); // Debug log
+                e.stopPropagation();
+                e.stopImmediatePropagation();
+                e.preventDefault();
+
+                // Logic-First Approach:
+                // 1. Calculate caret position
+                // 2. Modify string state
+                // 3. Request Update
+                // 4. Restore caret in updated()
+
+                const root = this.shadowRoot as any;
+                const selection = root && root.getSelection ? root.getSelection() : window.getSelection();
+
+                if (selection && selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    const element = e.target as HTMLElement;
+
+                    try {
+                        // Direct DOM Manipulation for Simplicity (retains focus/caret)
+                        range.deleteContents();
+                        const br = document.createElement('br');
+                        range.insertNode(br);
+
+                        // If we are at the end of the cell, we need a "phantom" BR 
+                        // so that the first BR is considered "real" content by browsers and our strip logic.
+                        // Browsers often ignore a trailing BR in contenteditable.
+                        let isAtEnd = !br.nextSibling;
+                        if (!isAtEnd && br.nextSibling?.nodeType === Node.TEXT_NODE) {
+                            // Check if it's an empty text node (result of split)
+                            const text = br.nextSibling.textContent || '';
+                            if (text.length === 0) {
+                                isAtEnd = true;
+                            }
+                        }
+
+                        if (isAtEnd) {
+                            const phantomBr = document.createElement('br');
+                            // Insert after the first br
+                            br.parentNode?.appendChild(phantomBr);
+                        }
+
+                        // Move caret AFTER the inserted BR (but before the phantom one if it exists)
+                        range.setStartAfter(br);
+                        range.collapse(true);
+
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+
+                        // Sync state but DO NOT re-render (avoids caret jumping)
+                        // We trust the DOM is now the source of truth
+                        const newVal = element.innerText;
+                        this.editCtrl.setPendingValue(newVal);
+                    } catch (err) {
+                        console.warn('Alt+Enter logic failed:', err);
+                    }
+                } else {
+                    // console.warn('Alt+Enter: No selection found');
+                }
+                return;
+            }
+
             e.preventDefault();
             this._commitEdit(e);
 
@@ -693,7 +867,6 @@ export class SpreadsheetTable extends LitElement {
                 this.selectionCtrl.selectionAnchorRow = -1;
                 this.selectionCtrl.selectionAnchorCol = -1;
             }
-            const rowCount = this.table?.rows.length || 0;
             const colCount = this.table?.headers ? this.table.headers.length : this.table?.rows[0]?.length || 0;
 
             // Manual Tab Logic (Wrap)
@@ -749,14 +922,21 @@ export class SpreadsheetTable extends LitElement {
 
             const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
             let newValue = '';
+
+            // PRIORITIZE DOM CONTENT for WYSIWYG correctness during edit
+            // innerText can be inconsistent across browsers or with specific CSS (pre-wrap).
+            // We use a custom extractor to ensure <br> is always \n and text is preserved.
             if (contentSpan) {
-                newValue =
-                    this.editCtrl.pendingEditValue !== null ? this.editCtrl.pendingEditValue : contentSpan.innerText;
+                newValue = this._getDOMText(contentSpan);
             } else {
-                newValue = this.editCtrl.pendingEditValue !== null ? this.editCtrl.pendingEditValue : cell.innerText;
+                newValue = this._getDOMText(cell);
             }
 
-            if (newValue === '\n') newValue = '';
+            // contenteditable often adds a trailing <br> for caret positioning (or _getEditingHtml adds one).
+            // This results in an extra \n when extracting. We strip one trailing \n to match WYSIWYG.
+            if (newValue.endsWith('\n')) {
+                newValue = newValue.slice(0, -1);
+            }
 
             let editRow = parseInt(cell.dataset.row || '-10');
             let editCol = parseInt(cell.dataset.col || '-10');
@@ -845,7 +1025,24 @@ export class SpreadsheetTable extends LitElement {
 
         const triggerUpdate = () => this.requestUpdate();
 
-        if (selCol === -2) {
+        if (selRow === -2 && selCol === -2) {
+            // Clear All
+            this.dispatchEvent(
+                new CustomEvent('range-edit', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        startRow: 0,
+                        endRow: rowCount - 1,
+                        startCol: 0,
+                        endCol: colCount - 1,
+                        newValue: ''
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
+        } else if (selCol === -2) {
             // Row Delete
             const effectiveMaxR = Math.min(maxR, rowCount - 1);
             if (effectiveMaxR < minR) return;
@@ -914,23 +1111,6 @@ export class SpreadsheetTable extends LitElement {
                 })
             );
             triggerUpdate();
-        } else if (selRow === -2 && selCol === -2) {
-            // Clear All
-            this.dispatchEvent(
-                new CustomEvent('range-edit', {
-                    detail: {
-                        sheetIndex: this.sheetIndex,
-                        tableIndex: this.tableIndex,
-                        startRow: 0,
-                        endRow: rowCount - 1,
-                        startCol: 0,
-                        endCol: colCount - 1,
-                        newValue: ''
-                    },
-                    bubbles: true,
-                    composed: true
-                })
-            );
         }
     }
 
@@ -1024,12 +1204,16 @@ export class SpreadsheetTable extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
+        // console.log('SpreadsheetTable connected', this.tableIndex);
         window.addEventListener('click', this._handleGlobalClick);
         // MouseMove/Up handled by SelectionController
+        // Register focus tracker
+        this.addEventListener('focusin', this._handleFocusIn);
     }
 
     disconnectedCallback() {
         super.disconnectedCallback();
+        // console.log('SpreadsheetTable disconnected', this.tableIndex);
         window.removeEventListener('click', this._handleGlobalClick);
     }
 
@@ -1141,7 +1325,7 @@ export class SpreadsheetTable extends LitElement {
                                       @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(-2, i)}"
                                       @dblclick="${(e: MouseEvent) => {
                             this.selectionCtrl.selectCell(-1, i);
-                            this.editCtrl.startEditing(null);
+                            this.editCtrl.startEditing(header);
                             this.focusCell();
                         }}"
                                       @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
@@ -1185,14 +1369,14 @@ export class SpreadsheetTable extends LitElement {
                                       data-row="-1"
                                       tabindex="0"
                                       contenteditable="false"
-                                      @click="${(e: MouseEvent) => {
+                                      @click="${() => {
                             this.selectionCtrl.selectCell(-2, i);
                             this.focusCell();
                         }}"
-                                      @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(-2, i)}"
-                                      @dblclick="${(e: MouseEvent) => {
+                                      @mousedown="${() => this.selectionCtrl.startSelection(-2, i)}"
+                                      @dblclick="${() => {
                             this.selectionCtrl.selectCell(-1, i);
-                            this.editCtrl.startEditing(null);
+                            this.editCtrl.startEditing(i + 1 + '');
                             this.focusCell();
                         }}"
                                       @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
@@ -1232,11 +1416,11 @@ export class SpreadsheetTable extends LitElement {
                                 : ''}"
                                 data-row="${r}"
                                 tabindex="0"
-                                @click="${(e: MouseEvent) => {
+                                @click="${() => {
                             this.selectionCtrl.selectCell(r, -2);
                             this.focusCell();
                         }}"
-                                @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(r, -2)}"
+                                @mousedown="${() => this.selectionCtrl.startSelection(r, -2)}"
                                 @keydown="${this._handleKeyDown}"
                                 @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
                             >
@@ -1301,17 +1485,21 @@ export class SpreadsheetTable extends LitElement {
                                 }}"
                                         @dblclick="${(_: MouseEvent) => {
                                     this.selectionCtrl.selectCell(r, c);
-                                    this.editCtrl.startEditing(null);
+                                    this.editCtrl.startEditing(cell);
                                     this.focusCell();
                                 }}"
                                         @input="${this._handleInput}"
                                         @blur="${this._handleBlur}"
                                         @keydown="${this._handleKeyDown}"
-                                        .textContent="${live(
-                                    isEditingCell && this.editCtrl.pendingEditValue !== null
-                                        ? this.editCtrl.pendingEditValue
-                                        : cell
-                                )}"
+                                        .innerHTML="${isEditingCell
+                                    ? live(
+                                        this._getEditingHtml(
+                                            this.editCtrl.pendingEditValue !== null
+                                                ? this.editCtrl.pendingEditValue
+                                                : cell
+                                        )
+                                    )
+                                    : this._renderMarkdown(cell)}"
                                     ></div>
                                 `;
                         })}
@@ -1388,17 +1576,20 @@ export class SpreadsheetTable extends LitElement {
                             }}"
                                         @dblclick="${(_: MouseEvent) => {
                                 this.selectionCtrl.selectCell(r, c);
-                                this.editCtrl.startEditing(null);
+                                this.editCtrl.startEditing('');
                                 this.focusCell();
                             }}"
                                         @input="${this._handleInput}"
                                         @blur="${this._handleBlur}"
                                         @keydown="${this._handleKeyDown}"
-                                        .textContent="${live(
-                                isEditingCell && this.editCtrl.pendingEditValue !== null
-                                    ? this.editCtrl.pendingEditValue
-                                    : ''
-                            )}"
+                                        .textContent="${isEditingCell
+                                ? live(
+                                    this.editCtrl.pendingEditValue !== null
+                                        ? this.editCtrl.pendingEditValue
+                                        : ''
+                                )
+                                : nothing}"
+                                        .innerHTML="${!isEditingCell ? this._renderMarkdown('') : nothing}"
                                         style="opacity: 0.5;"
                                     ></div>
                                 `;
@@ -1493,5 +1684,125 @@ export class SpreadsheetTable extends LitElement {
                   `
                 : ''}
         `;
+    }
+
+    private _handleFocusIn = () => {
+        (window as any).activeSpreadsheetTable = this;
+    };
+
+    private _getEditingHtml(text: string) {
+        if (!text) return '';
+        const escaped = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+        // Replace all newlines with <br>
+        // And if it ends with newline, append an extra <br> so the cursor can move there.
+        return escaped.split('\n').join('<br>') + (text.endsWith('\n') ? '<br>' : '');
+    }
+
+    private _getDOMText(node: Node): string {
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent || '';
+        }
+        if (node.nodeName === 'BR') {
+            return '\n';
+        }
+        let text = '';
+        node.childNodes.forEach(child => {
+            text += this._getDOMText(child);
+        });
+        return text;
+    }
+
+    private _renderMarkdown(content: string): string {
+        if (!content) return '';
+        // Use parseInline to avoid <p> tags and enable GFM line breaks
+        let html = marked.parseInline(content, { breaks: true }) as string;
+
+        // Browsers collapse literal newlines in innerHTML unless white-space: pre is used.
+        // We enforce <br> for every newline to be safe.
+        // marked with breaks:true handles most, but parseInline might differ.
+        html = html.replace(/\n/g, '<br>');
+
+        // If the content ends with a <br>, browsers often collapse it (visually ignore the last line break).
+        // We append an extra <br> so the previous one renders as a blank line.
+        if (html.endsWith('<br>')) {
+            html += '<br>';
+        }
+        return html;
+    }
+
+    public handleToolbarAction(action: string) {
+        if (!this.editCtrl.isEditing) {
+            // Non-edit mode: Apply to selection
+            const r = this.selectionCtrl.selectedRow;
+            const c = this.selectionCtrl.selectedCol;
+            if (r >= 0 && c >= 0 && this.table && this.table.rows[r]) {
+                const cellValue = this.table.rows[r][c] || '';
+                const newValue = this._applyFormat(cellValue, action);
+                if (newValue !== cellValue) {
+                    this._updateCell(r, c, newValue);
+                }
+            }
+            return;
+        }
+
+        // Edit mode: Apply to active element (contenteditable)
+        const currentVal = this.editCtrl.pendingEditValue || '';
+        const newValue = this._applyFormat(currentVal, action);
+        this.editCtrl.setPendingValue(newValue);
+    }
+
+    private _applyFormat(text: string, action: string): string {
+        // Simple toggle logic (naive)
+        if (action === 'bold') {
+            if (text.startsWith('**') && text.endsWith('**')) {
+                return text.substring(2, text.length - 2);
+            }
+            return `**${text}**`;
+        }
+        if (action === 'italic') {
+            if (text.startsWith('*') && text.endsWith('*')) {
+                return text.substring(1, text.length - 1);
+            }
+            return `*${text}*`;
+        }
+        if (action === 'strikethrough') {
+            if (text.startsWith('~~') && text.endsWith('~~')) {
+                return text.substring(2, text.length - 2);
+            }
+            return `~~${text}~~`;
+        }
+        if (action === 'underline') {
+            if (text.startsWith('<u>') && text.endsWith('</u>')) {
+                return text.substring(3, text.length - 4);
+            }
+            return `<u>${text}</u>`;
+        }
+        return text;
+    }
+
+    private _updateCell(r: number, c: number, value: string) {
+        // Optimistic update
+        if (this.table && this.table.rows[r]) {
+            this.table.rows[r][c] = value;
+            this.requestUpdate();
+            this.dispatchEvent(
+                new CustomEvent('cell-edit', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        rowIndex: r,
+                        colIndex: c,
+                        newValue: value
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
+        }
     }
 }

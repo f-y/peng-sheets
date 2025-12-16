@@ -17,6 +17,8 @@ describe('SpreadsheetTable Header Commit', () => {
             end_line: 5
         };
 
+        // Update DOM directly since we use _getDOMText now, which reads textContent/nodes
+
         el.table = tableData;
         await el.updateComplete;
 
@@ -33,7 +35,7 @@ describe('SpreadsheetTable Header Commit', () => {
         expect(span).toBeTruthy();
 
         // Manually set text (simulating browser edit)
-        span.innerText = 'NewColA';
+        span.textContent = 'NewColA';
         // Dispatch input event to update _pendingEditValue
         span.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
 

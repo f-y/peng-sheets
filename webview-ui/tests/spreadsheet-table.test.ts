@@ -1,5 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
+
+// Helper type to access private members for testing
+type TestableSpreadsheetTable = {
+    editCtrl: {
+        isEditing: boolean;
+        pendingEditValue: string | null;
+        setPendingValue(v: string): void;
+    };
+    selectionCtrl: {
+        selectedRow: number;
+        selectedCol: number;
+    };
+    _commitEdit(e: unknown): void;
+    _deleteSelection(): void;
+    _renderMarkdown(content: string): string;
+    _handleKeyDown(e: KeyboardEvent): void;
+};
 import { fixture, html } from '@open-wc/testing';
 
 describe('SpreadsheetTable', () => {
@@ -85,7 +102,8 @@ describe('SpreadsheetTable', () => {
         // But let's use the one in DOM
         const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
         expect(editingCell).to.exist;
-        editingCell.innerText = 'NewVal';
+        // Update DOM directly for _getDOMText
+        editingCell.textContent = 'NewVal';
         editingCell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
 
         // 4. Commit (Enter)
@@ -160,7 +178,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
         // Trigger commit
-        (element as any)._commitEdit({ target: mockTarget } as any);
+        (element as unknown as TestableSpreadsheetTable)._commitEdit({ target: mockTarget } as unknown as Event);
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
@@ -176,11 +194,37 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = -2; // Sentinel for Row Selection
 
-        (element as any)._deleteSelection();
+        (element as unknown as TestableSpreadsheetTable)._deleteSelection();
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
         expect(detail.rowIndex).toBe(0);
+    });
+
+    it('should emit range-edit (clear) when deleting single cell', () => {
+        const spy = vi.fn();
+        element.addEventListener('range-edit', spy);
+
+        element.selectionCtrl.selectedRow = 0;
+        element.selectionCtrl.selectedCol = 0;
+
+        (element as unknown as TestableSpreadsheetTable)._deleteSelection();
+
+        expect(spy).toHaveBeenCalled();
+        const detail = spy.mock.calls[0][0].detail;
+        expect(detail.newValue).toBe('');
+        // expect(detail.values.length).toBe(1); // values not present for clear
+    });
+
+    it('renders markdown correctly', async () => {
+        const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table></spreadsheet-table>`);
+        const testMarkdown = '<u>test</u> *italic* **bold**\nLine2';
+        const rendered = (el as unknown as TestableSpreadsheetTable)._renderMarkdown(testMarkdown);
+        expect(rendered).to.include('<u>test</u>');
+        expect(rendered).to.include('<em>italic</em>');
+        expect(rendered).to.include('<strong>bold</strong>');
+        // Expect <br> for line break
+        expect(rendered).to.include('<br>');
     });
 
     it('should emit column-clear event when deleting a selected column', () => {
@@ -190,7 +234,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = -2; // Sentinel for Col Selection
         element.selectionCtrl.selectedCol = 1;
 
-        (element as any)._deleteSelection();
+        (element as unknown as TestableSpreadsheetTable)._deleteSelection();
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
@@ -208,7 +252,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
 
-        (element as any)._deleteSelection();
+        (element as unknown as TestableSpreadsheetTable)._deleteSelection();
 
         expect(rowSpy).not.toHaveBeenCalled();
         expect(cellSpy).not.toHaveBeenCalled();
@@ -220,5 +264,92 @@ describe('SpreadsheetTable', () => {
         expect(detail.endRow).toBe(0);
         expect(detail.startCol).toBe(0);
         expect(detail.endCol).toBe(0);
+    });
+
+    it('handles Alt+Enter to insert newline (Manual Insertion)', async () => {
+        const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table></spreadsheet-table>`);
+
+        el.table = {
+            name: 'Test',
+            description: '',
+            metadata: {},
+            start_line: 0,
+            end_line: 0,
+            headers: ['A'],
+            rows: [['Data']]
+        };
+        await el.updateComplete;
+
+        const firstCell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        expect(firstCell).to.exist;
+
+        // Enter edit mode
+        firstCell.dispatchEvent(
+            new MouseEvent('dblclick', {
+                bubbles: true,
+                composed: true,
+                cancelable: true
+            })
+        );
+        await el.updateComplete;
+
+        const cell = el.shadowRoot!.querySelector('.cell.editing')!;
+        expect(cell).to.exist;
+
+        // Force ensure isEditing is true for the purpose of testing key handler logic
+        // (Though it should be true given the cell.editing class)
+        (el as unknown as TestableSpreadsheetTable).editCtrl.isEditing = true;
+
+        // Mock innerText because JSDOM implementation might be flaky or incomplete
+        Object.defineProperty(cell, 'innerText', {
+            get: () => {
+                const getText = (n: Node): string => {
+                    if (n.nodeType === Node.TEXT_NODE) return n.textContent || '';
+                    if (n.nodeName === 'BR') return '\n';
+                    let s = '';
+                    n.childNodes.forEach((c) => (s += getText(c)));
+                    return s;
+                };
+                return getText(cell);
+            },
+            configurable: true
+        });
+
+        // Spy on event
+        const keyEvent = new KeyboardEvent('keydown', {
+            key: 'Enter',
+            code: 'Enter',
+            altKey: true,
+            bubbles: true,
+            composed: true,
+            cancelable: true
+        });
+
+        const stopPropSpy = vi.spyOn(keyEvent, 'stopPropagation');
+        const preventDefSpy = vi.spyOn(keyEvent, 'preventDefault');
+
+        // Mock Selection API
+        const range = document.createRange();
+        range.setStart(cell, 0);
+        range.setEnd(cell, 0);
+        const selection = {
+            rangeCount: 1,
+            getRangeAt: () => range,
+            removeAllRanges: vi.fn(),
+            addRange: vi.fn(),
+            deleteFromDocument: vi.fn()
+        };
+        vi.spyOn(window, 'getSelection').mockReturnValue(selection as unknown as Selection);
+
+        // Manually invoke handler because dispatchEvent in test env is flaky with Shadow DOM
+        // Mock target
+        Object.defineProperty(keyEvent, 'target', { value: cell });
+        (el as unknown as TestableSpreadsheetTable)._handleKeyDown(keyEvent);
+
+        expect(stopPropSpy).toHaveBeenCalled();
+        expect(preventDefSpy).toHaveBeenCalled();
+
+        // Verify state update (Logic-First approach)
+        expect((el as unknown as TestableSpreadsheetTable).editCtrl.pendingEditValue).toBe('\nData');
     });
 });

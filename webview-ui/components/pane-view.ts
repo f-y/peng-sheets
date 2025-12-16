@@ -149,11 +149,11 @@ export class PaneView extends LitElement {
                 @dragleave="${this._handleTabBarDragLeave}"
             >
                 ${this.node.tables.map((globalIdx, i) => {
-            const table = this.tables[globalIdx];
-            const isActive = i === activeLocalIndex;
-            const isEditing = this._editingTabGlobalIndex === globalIdx;
+                    const table = this.tables[globalIdx];
+                    const isActive = i === activeLocalIndex;
+                    const isEditing = this._editingTabGlobalIndex === globalIdx;
 
-            return html`
+                    return html`
                         <div
                             class="tab ${isActive ? 'active' : ''}"
                             draggable="${!isEditing}"
@@ -163,7 +163,7 @@ export class PaneView extends LitElement {
                             @dblclick="${() => this._startRenaming(globalIdx, table.name || undefined)}"
                         >
                             ${isEditing
-                    ? html`
+                                ? html`
                                       <input
                                           class="tab-input"
                                           .value="${this._editingName}"
@@ -174,10 +174,10 @@ export class PaneView extends LitElement {
                                           @dblclick="${(e: Event) => e.stopPropagation()}"
                                       />
                                   `
-                    : table.name || t('table', (globalIdx + 1).toString())}
+                                : table.name || t('table', (globalIdx + 1).toString())}
                         </div>
                     `;
-        })}
+                })}
                 <div class="tab-add" @click="${this._handleAddTable}" title="${t('addTable')}">+</div>
             </div>
             <div
@@ -187,7 +187,7 @@ export class PaneView extends LitElement {
                 @drop="${this._handleContentDrop}"
             >
                 ${activeTable
-                ? html`
+                    ? html`
                           <spreadsheet-table
                               style="flex: 1; min-height: 0;"
                               .table="${activeTable}"
@@ -195,7 +195,7 @@ export class PaneView extends LitElement {
                               .tableIndex="${activeGlobalIndex}"
                           ></spreadsheet-table>
                       `
-                : html`<div>${t('noTableSelected')}</div>`}
+                    : html`<div>${t('noTableSelected')}</div>`}
                 ${this._renderDropOverlay()}
             </div>
             ${this._renderContextMenu()}
@@ -397,17 +397,26 @@ export class PaneView extends LitElement {
         const width = rect.width;
         const height = rect.height;
 
-        // Revised logic: 40% threshold to match user expectation "halfway"
-        // 40% leaves a 20% center deadzone, which reduces accidental splits.
-        // User requested even looser. 45% leaves 10% center deadzone.
-        const thresholdX = width * 0.45;
-        const thresholdY = height * 0.45;
+        // User Request Logic:
+        // 1. Right 30% is ALWAYS Right split.
+        // 2. Center to Bottom is Bottom split.
+        // 3. Remove Deadzone (Strictness issue).
 
-        if (y < thresholdY) this.activeDropZone = 'top';
-        else if (y > height - thresholdY) this.activeDropZone = 'bottom';
-        else if (x < thresholdX) this.activeDropZone = 'left';
-        else if (x > width - thresholdX) this.activeDropZone = 'right';
-        else this.activeDropZone = null;
+        const rightThreshold = width * 0.7; // Right 30%
+        const leftThreshold = width * 0.2; // Left 20% (Conservative default)
+
+        if (x >= rightThreshold) {
+            this.activeDropZone = 'right';
+        } else if (x <= leftThreshold) {
+            this.activeDropZone = 'left';
+        } else {
+            // Middle section: Split Top/Bottom
+            if (y >= height / 2) {
+                this.activeDropZone = 'bottom';
+            } else {
+                this.activeDropZone = 'top';
+            }
+        }
 
         this.requestUpdate();
     }

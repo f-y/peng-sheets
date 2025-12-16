@@ -16,8 +16,8 @@ export class EditController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
     startEditing(initialValue: string | null = null) {
         this.isEditing = true;

@@ -104,7 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
                 }
                 // console.log("Received message from webview:", message);
                 switch (message.type) {
-                    case 'updateRange':
+                    case 'updateRange': {
                         const startPosition = new vscode.Position(message.startLine, 0);
                         const endPosition = new vscode.Position(message.endLine, message.endCol ?? 0);
                         const range = new vscode.Range(startPosition, endPosition);
@@ -161,7 +161,8 @@ export function activate(context: vscode.ExtensionContext) {
                             });
                         }
                         return;
-                    case 'undo':
+                    }
+                    case 'undo': {
                         const editorForUndo = vscode.window.visibleTextEditors.find(
                             (e) => e.document.uri.toString() === activeDocument?.uri.toString()
                         );
@@ -176,7 +177,8 @@ export function activate(context: vscode.ExtensionContext) {
                             // But maybe syncing focus is confusing. Let's start with just executing it.
                         }
                         return;
-                    case 'redo':
+                    }
+                    case 'redo': {
                         const editorForRedo = vscode.window.visibleTextEditors.find(
                             (e) => e.document.uri.toString() === activeDocument?.uri.toString()
                         );
@@ -188,7 +190,8 @@ export function activate(context: vscode.ExtensionContext) {
                             await vscode.commands.executeCommand('redo');
                         }
                         return;
-                    case 'createSpreadsheet':
+                    }
+                    case 'createSpreadsheet': {
                         const wsEdit = new vscode.WorkspaceEdit();
                         const docText = activeDocument.getText();
                         const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
@@ -232,6 +235,7 @@ export function activate(context: vscode.ExtensionContext) {
 
                         vscode.workspace.applyEdit(wsEdit);
                         return;
+                    }
                 }
             },
             undefined,
@@ -248,8 +252,10 @@ function getWebviewContent(
     const isProduction = context.extensionMode === vscode.ExtensionMode.Production;
     let scriptUri: vscode.Uri | string;
     let wheelUri: vscode.Uri | string;
+    let codiconFontUri: vscode.Uri | string;
     let cspScriptSrc: string;
     let cspConnectSrc: string;
+    let cspFontSrc: string;
     let viteClient = '';
 
     if (isProduction) {
@@ -257,16 +263,29 @@ function getWebviewContent(
         wheelUri = webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.3.2-py3-none-any.whl')
         );
+        codiconFontUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'codicon.ttf')
+        );
         cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net ${webview.cspSource}`;
         cspConnectSrc = `https://cdn.jsdelivr.net ${webview.cspSource}`;
+        cspFontSrc = `${webview.cspSource}`;
     } else {
         scriptUri = 'http://localhost:5173/webview-ui/main.ts';
         // Use local resource for wheel even in dev mode to bypass Vite 404/MIME issues
         wheelUri = webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.3.2-py3-none-any.whl')
         );
+        // In dev, we can try to point to the file in node_modules if served, or fallback to the local file if copied?
+        // Vite dev server might not serve node_modules assets at root.
+        // For simplicity in dev, we might assume it works or point to localhost if possible.
+        // Actually, let's use the production logic for font even in dev if it exists in out, OR rely on localhost.
+        // But out/webview might not be populated in dev.
+        // Let's fallback to specific path if straightforward, or just 'self' http://localhost:5173.
+        codiconFontUri = 'http://localhost:5173/node_modules/@vscode/codicons/dist/codicon.ttf';
+
         cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net http://localhost:5173`;
         cspConnectSrc = `https://cdn.jsdelivr.net http://localhost:5173 ws://localhost:5173 ${webview.cspSource}`;
+        cspFontSrc = `http://localhost:5173 ${webview.cspSource}`;
         viteClient = '<script type="module" src="http://localhost:5173/@vite/client"></script>';
     }
 
@@ -282,8 +301,14 @@ function getWebviewContent(
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' ${cspScriptSrc}; connect-src ${cspConnectSrc};">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; font-src ${cspFontSrc}; script-src 'unsafe-inline' ${cspScriptSrc}; connect-src ${cspConnectSrc};">
         <title>Markdown Spreadsheet</title>
+        <style>
+            @font-face {
+                font-family: "codicon";
+                src: url("${codiconFontUri}") format("truetype");
+            }
+        </style>
     </head>
     <body>
         <md-spreadsheet-editor></md-spreadsheet-editor>
@@ -300,4 +325,4 @@ function getWebviewContent(
     </html>`;
 }
 
-export function deactivate() { }
+export function deactivate() {}
