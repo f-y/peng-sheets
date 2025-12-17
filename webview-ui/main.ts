@@ -553,6 +553,46 @@ export class MyEditor extends LitElement {
         });
     }
 
+    private async _handleUpdateColumnFilter(detail: any) {
+        if (!this.pyodide) return;
+        const { sheetIndex, tableIndex, colIndex, hiddenValues } = detail;
+        this._enqueueRequest(async () => {
+            const resultJson = await this.pyodide.runPythonAsync(`
+             import json
+             res = update_column_filter(${sheetIndex}, ${tableIndex}, ${colIndex}, ${JSON.stringify(hiddenValues)})
+             json.dumps(res) if res else "null"
+         `);
+            this._postUpdateMessage(JSON.parse(resultJson));
+        });
+    }
+
+    private async _handleSortRows(detail: any) {
+        if (!this.pyodide) return;
+        const { sheetIndex, tableIndex, colIndex, ascending } = detail;
+        this._enqueueRequest(async () => {
+            const resultJson = await this.pyodide.runPythonAsync(`
+             import json
+             # Python implementation uses True/False which JSON handles
+             res = sort_rows(${sheetIndex}, ${tableIndex}, ${colIndex}, ${ascending ? 'True' : 'False'})
+             json.dumps(res) if res else "null"
+         `);
+            this._postUpdateMessage(JSON.parse(resultJson));
+        });
+    }
+
+    private _handlePostMessage(detail: any) {
+        switch (detail.command) {
+            case 'update_column_filter':
+                this._handleUpdateColumnFilter(detail);
+                break;
+            case 'sort_rows':
+                this._handleSortRows(detail);
+                break;
+            default:
+                console.warn('Unknown post-message command:', detail.command);
+        }
+    }
+
     private _handleUndo() {
         vscode.postMessage({ type: 'undo' });
     }
@@ -708,6 +748,7 @@ export class MyEditor extends LitElement {
             window.addEventListener('metadata-change', (e: any) => this._handleVisualMetadataUpdate(e.detail));
             window.addEventListener('sheet-metadata-update', (e: any) => this._handleSheetMetadataUpdate(e.detail));
             window.addEventListener('paste-cells', (e: any) => this._handlePasteCells(e.detail));
+            window.addEventListener('post-message', (e: any) => this._handlePostMessage(e.detail));
 
             window.addEventListener('message', async (event) => {
                 const message = event.data;

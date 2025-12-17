@@ -14,7 +14,7 @@ describe('LayoutContainer', () => {
     it('renders default single pane if no layout provided', async () => {
         element.tables = [
             { name: 'Table 1', rows: [['A']], headers: ['H'], metadata: {}, start_line: 0, end_line: 0 },
-            { name: 'Table 2', rows: [['B']], headers: ['H'], metadata: {}, start_line: 0, end_line: 0 },
+            { name: 'Table 2', rows: [['B']], headers: ['H'], metadata: {}, start_line: 0, end_line: 0 }
         ];
         await element.updateComplete;
 
@@ -40,7 +40,7 @@ describe('LayoutContainer', () => {
         };
         element.layout = initialLayout;
         element.tables = [
-            { name: 'Table 1', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 }, // Index 0
+            { name: 'Table 1', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 } // Index 0
             // Table 2 (Index 1) removed physically from 'tables' array
         ];
         await element.updateComplete;
@@ -63,7 +63,7 @@ describe('LayoutContainer', () => {
         element.layout = initialLayout;
         element.tables = [
             { name: 'Table 1', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 },
-            { name: 'Table 2', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 },
+            { name: 'Table 2', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 }
         ];
         await element.updateComplete;
 
@@ -75,7 +75,7 @@ describe('LayoutContainer', () => {
     it('handles pane switch action', async () => {
         element.tables = [
             { name: 'Table 1', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 },
-            { name: 'Table 2', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 },
+            { name: 'Table 2', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 }
         ];
         await element.updateComplete;
 
@@ -83,15 +83,17 @@ describe('LayoutContainer', () => {
 
         // Simulate event from pane-view: switch-tab
         const paneId = (element as any)._currentLayout.id;
-        pane.dispatchEvent(new CustomEvent('pane-action', {
-            detail: {
-                type: 'switch-tab',
-                paneId: paneId,
-                index: 1, // Switch to 2nd table
-            },
-            bubbles: true,
-            composed: true
-        }));
+        pane.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'switch-tab',
+                    paneId: paneId,
+                    index: 1 // Switch to 2nd table
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
         await element.updateComplete;
 
         const layout = (element as any)._currentLayout;
@@ -99,25 +101,25 @@ describe('LayoutContainer', () => {
     });
 
     it('dispatches request-add-table event', async () => {
-        element.tables = [
-            { name: 'Table 1', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 },
-        ];
+        element.tables = [{ name: 'Table 1', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 }];
         await element.updateComplete;
 
         let evt: any = null;
-        element.addEventListener('request-add-table', (e: any) => evt = e);
+        element.addEventListener('request-add-table', (e: any) => (evt = e));
 
         const pane = element.shadowRoot!.querySelector('pane-view')!;
         const paneId = (element as any)._currentLayout.id;
 
-        pane.dispatchEvent(new CustomEvent('pane-action', {
-            detail: {
-                type: 'add-table',
-                paneId: paneId
-            },
-            bubbles: true,
-            composed: true
-        }));
+        pane.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'add-table',
+                    paneId: paneId
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
 
         expect(evt).to.exist;
         expect(evt.detail.sheetIndex).to.equal(element.sheetIndex);
@@ -129,7 +131,7 @@ describe('LayoutContainer', () => {
         // Setup simple 2-table pane
         element.tables = [
             { name: 'T1', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
-            { name: 'T2', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
+            { name: 'T2', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 }
         ];
         // Layout: One pane with [0, 1]
         await element.updateComplete;
@@ -138,18 +140,20 @@ describe('LayoutContainer', () => {
 
         // Perform split: Move T2 (index 1) to new pane 'right' (after)
         const pane = element.shadowRoot!.querySelector('pane-view')!;
-        pane.dispatchEvent(new CustomEvent('pane-action', {
-            detail: {
-                type: 'split-pane',
-                sourcePaneId: paneId,
-                targetPaneId: paneId, // Splitting self
-                tableIndex: 1, // T2
-                direction: 'horizontal',
-                placement: 'after'
-            },
-            bubbles: true,
-            composed: true
-        }));
+        pane.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'split-pane',
+                    sourcePaneId: paneId,
+                    targetPaneId: paneId, // Splitting self
+                    tableIndex: 1, // T2
+                    direction: 'horizontal',
+                    placement: 'after'
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
         await element.updateComplete;
 
         const layout = (element as any)._currentLayout;
@@ -186,29 +190,31 @@ describe('LayoutContainer', () => {
         };
         element.tables = [
             { name: 'T1', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
-            { name: 'T2', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
+            { name: 'T2', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 }
         ];
         await element.updateComplete;
 
         // Move T1 from Left to Right (append)
         const root = element.shadowRoot!.querySelector('split-view')!;
-        root.dispatchEvent(new CustomEvent('pane-action', {
-            detail: {
-                type: 'move-tab',
-                sourcePaneId: leftId,
-                targetPaneId: rightId,
-                tableIndex: 0, // T1
-                index: 1 // Append after T2 (which is at index 0 in target)
-            },
-            bubbles: true,
-            composed: true
-        }));
+        root.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'move-tab',
+                    sourcePaneId: leftId,
+                    targetPaneId: rightId,
+                    tableIndex: 0, // T1
+                    index: 1 // Append after T2 (which is at index 0 in target)
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
         await element.updateComplete;
 
         const layout = (element as any)._currentLayout;
 
         // Since left pane became empty, it should have been removed (or logically empty)?
-        // The implementation _removeTableFromLayout returns modified node. 
+        // The implementation _removeTableFromLayout returns modified node.
         // If pane becomes empty, _removeTableFromLayout returns { layout: {... tables: [] } }.
         // BUT wait, _removeTableFromLayout:
         // if (newTables.length === 0) return { layout: null ... }

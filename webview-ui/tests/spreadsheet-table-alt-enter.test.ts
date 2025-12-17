@@ -23,8 +23,6 @@ describe('SpreadsheetTable Alt+Enter', () => {
         el.editCtrl.startEditing('Alice');
         await el.updateComplete;
 
-
-
         const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
         expect(cell).to.exist;
 
@@ -44,8 +42,8 @@ describe('SpreadsheetTable Alt+Enter', () => {
         const mockSelection = {
             rangeCount: 1,
             getRangeAt: (index: number) => range,
-            removeAllRanges: () => { },
-            addRange: (r: Range) => { }
+            removeAllRanges: () => {},
+            addRange: (r: Range) => {}
         };
 
         (el.shadowRoot as any).getSelection = () => mockSelection;
@@ -130,8 +128,8 @@ describe('SpreadsheetTable Alt+Enter', () => {
         const mockSelection = {
             rangeCount: 1,
             getRangeAt: () => range,
-            removeAllRanges: () => { },
-            addRange: () => { }
+            removeAllRanges: () => {},
+            addRange: () => {}
         };
         (el.shadowRoot as any).getSelection = () => mockSelection;
 
@@ -158,7 +156,7 @@ describe('SpreadsheetTable Alt+Enter', () => {
         console.log('End-Test DOM:', cell.innerHTML);
 
         const childNodes = Array.from(cell.childNodes);
-        const brCount = childNodes.filter(n => n.nodeName === 'BR').length;
+        const brCount = childNodes.filter((n) => n.nodeName === 'BR').length;
 
         // To survive stripping, we need TWO BRs (or BR + significant text/newline).
         // Since we are at end, we expect TWO BRs if one is phantom.
@@ -170,7 +168,7 @@ describe('SpreadsheetTable Alt+Enter', () => {
             if (node.nodeName === 'BR') return '\n';
             if (node.nodeType === Node.TEXT_NODE) return node.textContent || '';
             let t = '';
-            node.childNodes.forEach(c => t += getDOMText(c));
+            node.childNodes.forEach((c) => (t += getDOMText(c)));
             return t;
         };
 

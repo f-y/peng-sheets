@@ -15,7 +15,7 @@ describe('SpreadsheetTable Clipboard', () => {
         Object.defineProperty(navigator, 'clipboard', {
             value: {
                 writeText: writeTextSpy,
-                readText: vi.fn(),
+                readText: vi.fn()
             },
             configurable: true,
             writable: true
@@ -50,14 +50,16 @@ describe('SpreadsheetTable Clipboard', () => {
         const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
         if (!cell) throw new Error('Cell not found');
 
-        cell.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'c',
-            code: 'KeyC',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
-        await new Promise(r => setTimeout(r, 0));
+        cell.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'c',
+                code: 'KeyC',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
         await element.updateComplete;
 
         expect(writeTextSpy).toHaveBeenCalledWith('1');
@@ -73,13 +75,15 @@ describe('SpreadsheetTable Clipboard', () => {
         const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
         if (!cell) throw new Error('Cell not found');
 
-        cell.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'c',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
-        await new Promise(r => setTimeout(r, 0));
+        cell.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'c',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
         await element.updateComplete;
 
         expect(writeTextSpy).toHaveBeenCalledWith('1\t2');
@@ -97,13 +101,15 @@ describe('SpreadsheetTable Clipboard', () => {
         const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
         if (!cell) throw new Error('Cell not found');
 
-        cell.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'c',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
-        await new Promise(r => setTimeout(r, 0));
+        cell.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'c',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
         await element.updateComplete;
 
         expect(writeTextSpy).toHaveBeenCalledWith('1\t2\n4\t5');
@@ -121,13 +127,15 @@ describe('SpreadsheetTable Clipboard', () => {
         const rowHeader = element.shadowRoot!.querySelector('.cell.header-row[data-row="1"]');
         if (!rowHeader) throw new Error('Row Header not found');
 
-        rowHeader.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'c',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
-        await new Promise(r => setTimeout(r, 0));
+        rowHeader.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'c',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
         await element.updateComplete;
 
         // Row 1 is "4", "5", "6"
@@ -146,13 +154,15 @@ describe('SpreadsheetTable Clipboard', () => {
         const colHeader = element.shadowRoot!.querySelector('.cell.header-col[data-col="1"]');
         if (!colHeader) throw new Error('Col Header not found');
 
-        colHeader.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'c',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
-        await new Promise(r => setTimeout(r, 0));
+        colHeader.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'c',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
         await element.updateComplete;
 
         // Col 1 is "2", "5", "8"
@@ -179,20 +189,24 @@ describe('SpreadsheetTable Clipboard', () => {
         const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
         if (!cell) throw new Error('Cell not found');
 
-        cell.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'v',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
-        await new Promise(r => setTimeout(r, 0));
+        cell.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'v',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
         await element.updateComplete;
 
-        expect(pasteSpy).toHaveBeenCalledWith(expect.objectContaining({
-            startRow: 0,
-            startCol: 0,
-            data: [['PASTED']]
-        }));
+        expect(pasteSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                startRow: 0,
+                startCol: 0,
+                data: [['PASTED']]
+            })
+        );
     });
 
     it('pastes multi row data', async () => {
@@ -211,19 +225,26 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectedCol = 1;
 
         const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
-        cell!.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'v',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
-        await new Promise(r => setTimeout(r, 0));
+        cell!.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'v',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
 
-        expect(pasteSpy).toHaveBeenCalledWith(expect.objectContaining({
-            startRow: 1,
-            startCol: 1,
-            data: [['A', 'B'], ['C', 'D']]
-        }));
+        expect(pasteSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                startRow: 1,
+                startCol: 1,
+                data: [
+                    ['A', 'B'],
+                    ['C', 'D']
+                ]
+            })
+        );
     });
 
     it('pastes into row header', async () => {
@@ -247,19 +268,23 @@ describe('SpreadsheetTable Clipboard', () => {
         const rowHeader = element.shadowRoot!.querySelector('.cell.header-row[data-row="1"]');
         if (!rowHeader) throw new Error('Row Header not found');
 
-        rowHeader.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'v',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
-        await new Promise(r => setTimeout(r, 0));
+        rowHeader.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'v',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
 
-        expect(pasteSpy).toHaveBeenCalledWith(expect.objectContaining({
-            startRow: 1,
-            startCol: 0,
-            data: [['X', 'Y']]
-        }));
+        expect(pasteSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                startRow: 1,
+                startCol: 0,
+                data: [['X', 'Y']]
+            })
+        );
     });
 
     it('pastes into column header', async () => {
@@ -283,31 +308,37 @@ describe('SpreadsheetTable Clipboard', () => {
         const colHeader = element.shadowRoot!.querySelector('.cell.header-col[data-col="1"]');
         if (!colHeader) throw new Error('Col Header not found');
 
-        colHeader.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'v',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
-        await new Promise(r => setTimeout(r, 0));
+        colHeader.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'v',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
+        await new Promise((r) => setTimeout(r, 0));
 
-        expect(pasteSpy).toHaveBeenCalledWith(expect.objectContaining({
-            startRow: 0,
-            startCol: 1,
-            data: [['P'], ['Q']]
-        }));
+        expect(pasteSpy).toHaveBeenCalledWith(
+            expect.objectContaining({
+                startRow: 0,
+                startCol: 1,
+                data: [['P'], ['Q']]
+            })
+        );
     });
 
     it('does nothing if no selection', async () => {
         element.selectionCtrl.selectedRow = -1;
         element.selectionCtrl.selectedCol = -1;
 
-        element.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'c',
-            ctrlKey: true,
-            bubbles: true,
-            composed: true
-        }));
+        element.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'c',
+                ctrlKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
         await element.updateComplete;
 
         expect(writeTextSpy).not.toHaveBeenCalled();

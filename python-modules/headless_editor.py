@@ -494,3 +494,40 @@ def update_column_width(sheet_idx, table_idx, col_idx, width):
         return replace(t, metadata=new_md)
 
     return apply_table_update(sheet_idx, table_idx, _update_logic)
+
+
+def update_column_filter(sheet_idx, table_idx, col_idx, hidden_values):
+    def _update_logic(t):
+        current_md = t.metadata or {}
+        new_md = current_md.copy()
+
+        current_visual = new_md.get("visual", {})
+        updated_visual = current_visual.copy()
+
+        # Deep merge/update filters
+        current_filters = updated_visual.get("filters", {})
+        updated_filters = current_filters.copy()
+        updated_filters[str(col_idx)] = hidden_values
+
+        updated_visual["filters"] = updated_filters
+        new_md["visual"] = updated_visual
+
+        return replace(t, metadata=new_md)
+
+    return apply_table_update(sheet_idx, table_idx, _update_logic)
+
+
+def sort_rows(sheet_idx, table_idx, col_idx, ascending):
+    def _sort_logic(t):
+        rows = list(t.rows)
+
+        # Safe sort: handle rows shorter than col_idx
+        def sort_key(row):
+            if col_idx < len(row):
+                return row[col_idx]
+            return ""
+
+        rows.sort(key=sort_key, reverse=not ascending)
+        return replace(t, rows=rows)
+
+    return apply_table_update(sheet_idx, table_idx, _sort_logic)

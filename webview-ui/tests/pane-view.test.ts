@@ -9,7 +9,7 @@ describe('PaneView', () => {
 
     const mockTables: TableJSON[] = [
         { name: 'Table 1', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
-        { name: 'Table 2', rows: [], headers: [], metadata: {}, start_line: 10, end_line: 10 },
+        { name: 'Table 2', rows: [], headers: [], metadata: {}, start_line: 10, end_line: 10 }
     ];
 
     beforeEach(async () => {
@@ -99,7 +99,7 @@ describe('PaneView', () => {
 
         firstTab.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }));
         await element.updateComplete;
-        await new Promise(r => setTimeout(r, 10)); // Allow setTimeout(focus) in component
+        await new Promise((r) => setTimeout(r, 10)); // Allow setTimeout(focus) in component
 
         const input = element.shadowRoot!.querySelector('.tab-input') as HTMLInputElement;
         expect(input).to.exist;

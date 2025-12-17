@@ -1,5 +1,6 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
 import { SelectionController } from './selection-controller';
+import { SpreadsheetTable } from '../components/spreadsheet-table';
 
 export class NavigationController implements ReactiveController {
     host: ReactiveControllerHost;
@@ -66,7 +67,11 @@ export class NavigationController implements ReactiveController {
             r += dr;
             c += dc;
         } else {
-            r += dr;
+            if (dr !== 0) {
+                r = (this.host as SpreadsheetTable).getNextVisibleRowIndex(r, dr);
+            } else {
+                r += dr;
+            }
             c += dc;
         }
 

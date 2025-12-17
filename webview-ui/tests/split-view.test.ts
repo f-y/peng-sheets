@@ -8,7 +8,7 @@ describe('SplitView', () => {
     let element: SplitView;
 
     const mockTables: TableJSON[] = [
-        { name: 'Table 1', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
+        { name: 'Table 1', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 }
     ];
 
     beforeEach(async () => {
@@ -87,7 +87,7 @@ describe('SplitView', () => {
             right: 1000,
             x: 0,
             y: 0,
-            toJSON: () => { }
+            toJSON: () => {}
         });
 
         // Listen for pane-action
@@ -97,31 +97,37 @@ describe('SplitView', () => {
         const resizer = element.shadowRoot!.querySelector('.resizer') as HTMLElement;
 
         // 1. MouseDown on resizer
-        resizer.dispatchEvent(new MouseEvent('mousedown', {
-            bubbles: true,
-            clientX: 500, // Middle (50%)
-            clientY: 0
-        }));
+        resizer.dispatchEvent(
+            new MouseEvent('mousedown', {
+                bubbles: true,
+                clientX: 500, // Middle (50%)
+                clientY: 0
+            })
+        );
 
         // 2. MouseMove on Window (Move 100px right = +10%)
         // New sizes should be roughly [60, 40]
-        window.dispatchEvent(new MouseEvent('mousemove', {
-            bubbles: true,
-            clientX: 600,
-            clientY: 0
-        }));
+        window.dispatchEvent(
+            new MouseEvent('mousemove', {
+                bubbles: true,
+                clientX: 600,
+                clientY: 0
+            })
+        );
 
         // Need to wait for requestAnimationFrame
         // Vitest might need wait or mock timer?
         // Let's use loop with small delay or just wait
-        await new Promise(r => setTimeout(r, 50));
+        await new Promise((r) => setTimeout(r, 50));
 
         // 3. MouseUp on Window
-        window.dispatchEvent(new MouseEvent('mouseup', {
-            bubbles: true,
-            clientX: 600,
-            clientY: 0
-        }));
+        window.dispatchEvent(
+            new MouseEvent('mouseup', {
+                bubbles: true,
+                clientX: 600,
+                clientY: 0
+            })
+        );
 
         expect(paneActionSpy).toHaveBeenCalled();
         const callArgs = paneActionSpy.mock.calls[0][0];

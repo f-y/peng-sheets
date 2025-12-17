@@ -1,5 +1,5 @@
 import { marked } from 'marked';
-import { html, css, LitElement, PropertyValues, nothing } from 'lit';
+import { html, css, LitElement, PropertyValues, nothing, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { live } from 'lit/directives/live.js';
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
@@ -8,8 +8,16 @@ import { EditController } from '../controllers/edit-controller';
 import { ResizeController } from '../controllers/resize-controller';
 import { NavigationController } from '../controllers/navigation-controller';
 import { t } from '../utils/i18n';
+import './filter-menu';
+// @ts-expect-error type import
+import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
+
+interface VisualMetadata {
+    filters?: Record<string, string[]>;
+    column_widths?: number[] | Record<number, number>;
+}
 
 export interface TableJSON {
     name: string | null;
@@ -23,350 +31,375 @@ export interface TableJSON {
 
 @customElement('spreadsheet-table')
 export class SpreadsheetTable extends LitElement {
-    static styles = css`
-        :host {
-            display: flex; /* Changed from block */
-            flex-direction: column;
-            width: 100%;
-            height: 100%;
-            margin-bottom: 0;
-            --header-bg: var(--vscode-sideBar-background); /* Strong opaque background */
-            --border-color: var(--vscode-widget-border);
-            --cell-padding: 0.25rem;
-            --selection-color: #217346;
-            box-sizing: border-box;
-            overflow: hidden; /* Prevent host overflow */
-        }
+    static styles = [
+        unsafeCSS(codiconsStyles),
+        css`
+            :host {
+                display: block;
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                position: relative;
+                --header-bg: var(--vscode-editor-background);
+                --header-fg: var(--vscode-editor-foreground);
+                --border-color: var(--vscode-editorWidget-border);
+                --selection-bg: var(--vscode-editor-selectionBackground);
+                --selection-border: var(--vscode-focusBorder);
+                --row-hover: var(--vscode-list-hoverBackground);
+            }
 
-        *,
-        *:before,
-        *:after {
-            box-sizing: inherit;
-        }
+            *,
+            *:before,
+            *:after {
+                box-sizing: inherit;
+            }
 
-        .table-container {
-            flex: 1; /* Fill remaining space below metadata */
-            overflow: auto;
-            width: 100%; /* Fill width */
-            height: 100%; /* Ensure it fills flex item */
-            border: 1px solid var(--border-color);
-            position: relative;
-        }
+            .table-container {
+                flex: 1; /* Fill remaining space below metadata */
+                overflow: auto;
+                width: 100%; /* Fill width */
+                height: 100%; /* Ensure it fills flex item */
+                border: 1px solid var(--border-color);
+                position: relative;
+            }
 
-        .grid {
-            display: grid;
-            transform-style: preserve-3d; /* Enable 3D transform context */
-            /* Grid columns will be set dynamically in style */
-        }
+            .grid {
+                display: grid;
+                transform-style: preserve-3d; /* Enable 3D transform context */
+                /* Grid columns will be set dynamically in style */
+            }
 
-        .cell {
-            padding: var(--cell-padding);
-            border-right: 1px solid var(--border-color);
-            border-bottom: 1px solid var(--border-color);
-            white-space: nowrap;
-            overflow: hidden;
-            min-height: 20px;
-            line-height: 20px;
-            outline: none;
-            background-color: var(--vscode-editor-background);
-            cursor: default;
-            user-select: none; /* Prevent text selection in nav mode */
-            position: relative; /* Ensure z-index participation */
-            z-index: 1;
-        }
+            .cell {
+                padding: var(--cell-padding);
+                border-right: 1px solid var(--border-color);
+                border-bottom: 1px solid var(--border-color);
+                white-space: nowrap;
+                overflow: hidden;
+                min-height: 20px;
+                line-height: 20px;
+                outline: none;
+                background-color: var(--vscode-editor-background);
+                cursor: default;
+                user-select: none; /* Prevent text selection in nav mode */
+                position: relative; /* Ensure z-index participation */
+                z-index: 1;
+            }
 
-        .cell.selected {
-            outline: 2px solid var(--selection-color);
-            outline-offset: -2px; /* Draw inside to prevent clipping at edges */
-            z-index: 100;
-        }
+            .cell.selected {
+                outline: 2px solid var(--selection-color);
+                outline-offset: -2px; /* Draw inside to prevent clipping at edges */
+                z-index: 100;
+            }
 
-        .cell::after {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            box-sizing: border-box;
-            z-index: 90;
-        }
+            .cell::after {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                pointer-events: none;
+                box-sizing: border-box;
+                z-index: 90;
+            }
 
-        .cell.selected-row-cell {
-            background-color: rgba(33, 115, 70, 0.05);
-            z-index: 90;
-        }
-        .cell.selected-row-cell::after {
-            border-top: 2px solid var(--selection-color);
-            border-bottom: 2px solid var(--selection-color);
-        }
-        .cell.selected-row-cell.first::after {
-            border-left: 2px solid var(--selection-color);
-        }
-        .cell.selected-row-cell.last::after {
-            border-right: 2px solid var(--selection-color);
-        }
+            .cell.selected-row-cell {
+                background-color: rgba(33, 115, 70, 0.05);
+                z-index: 90;
+            }
+            .cell.selected-row-cell::after {
+                border-top: 2px solid var(--selection-color);
+                border-bottom: 2px solid var(--selection-color);
+            }
+            .cell.selected-row-cell.first::after {
+                border-left: 2px solid var(--selection-color);
+            }
+            .cell.selected-row-cell.last::after {
+                border-right: 2px solid var(--selection-color);
+            }
 
-        .cell.selected-col-cell {
-            background-color: rgba(33, 115, 70, 0.05);
-            z-index: 90;
-        }
-        .cell.selected-col-cell::after {
-            border-left: 2px solid var(--selection-color);
-            border-right: 2px solid var(--selection-color);
-        }
-        .cell.selected-col-cell.first::after {
-            border-top: 2px solid var(--selection-color);
-        }
-        .cell.selected-col-cell.last::after {
-            border-bottom: 2px solid var(--selection-color);
-        }
+            .cell.selected-col-cell {
+                background-color: rgba(33, 115, 70, 0.05);
+                z-index: 90;
+            }
+            .cell.selected-col-cell::after {
+                border-left: 2px solid var(--selection-color);
+                border-right: 2px solid var(--selection-color);
+            }
+            .cell.selected-col-cell.first::after {
+                border-top: 2px solid var(--selection-color);
+            }
+            .cell.selected-col-cell.last::after {
+                border-bottom: 2px solid var(--selection-color);
+            }
 
-        .cell.selected-all-cell {
-            background-color: rgba(33, 115, 70, 0.05); /* Just background */
-            z-index: 90;
-        }
-        .cell.selected-all-cell.first-row::after {
-            border-top: 2px solid var(--selection-color);
-        }
-        .cell.selected-all-cell.last-row::after {
-            border-bottom: 2px solid var(--selection-color);
-        }
-        .cell.selected-all-cell.first-col::after {
-            border-left: 2px solid var(--selection-color);
-        }
-        .cell.selected-all-cell.last-col::after {
-            border-right: 2px solid var(--selection-color);
-        }
+            .cell.selected-all-cell {
+                background-color: rgba(33, 115, 70, 0.05); /* Just background */
+                z-index: 90;
+            }
+            .cell.selected-all-cell.first-row::after {
+                border-top: 2px solid var(--selection-color);
+            }
+            .cell.selected-all-cell.last-row::after {
+                border-bottom: 2px solid var(--selection-color);
+            }
+            .cell.selected-all-cell.first-col::after {
+                border-left: 2px solid var(--selection-color);
+            }
+            .cell.selected-all-cell.last-col::after {
+                border-right: 2px solid var(--selection-color);
+            }
 
-        .cell.selected:focus {
-            outline: 2px solid var(--selection-color);
-            outline-offset: -2px;
-        }
+            .cell.selected:focus {
+                outline: 2px solid var(--selection-color);
+                outline-offset: -2px;
+            }
 
-        .cell.editing {
-            z-index: 101;
-            background-color: var(--vscode-input-background, #fff);
-            color: var(--vscode-input-foreground);
-            outline: 2px solid var(--selection-color);
-            outline-offset: -2px;
-            user-select: text;
-            cursor: text;
-            white-space: break-spaces; /* Allow newlines and render trailing breaks */
-            word-break: break-word;
-            overflow: visible; /* Expand to show content */
-        }
+            .cell.editing {
+                z-index: 101;
+                background-color: var(--vscode-input-background, #fff);
+                color: var(--vscode-input-foreground);
+                outline: 2px solid var(--selection-color);
+                outline-offset: -2px;
+                user-select: text;
+                cursor: text;
+                white-space: break-spaces; /* Allow newlines and render trailing breaks */
+                word-break: break-word;
+                overflow: visible; /* Expand to show content */
+            }
 
-        .cell:focus {
-            /* Remove default browser focus ring, use .selected instead manually */
-            outline: none;
-        }
+            .cell:focus {
+                /* Remove default browser focus ring, use .selected instead manually */
+                outline: none;
+            }
 
-        /* Headers */
-        .cell.header-col {
-            background-color: var(--header-bg);
-            font-weight: normal;
-            color: var(--vscode-descriptionForeground);
-            text-align: center;
-            position: sticky;
-            top: 0;
-            z-index: 1000;
-            transform: translateZ(10px); /* Force GPU layer on top */
-            border-right: 1px solid var(--border-color);
-            border-bottom: 1px solid var(--border-color);
-            padding: 0; /* Minimal padding */
-            outline-offset: -2px; /* Ensure outline doesn't overflow */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+            /* Headers */
+            .cell.header-col {
+                background-color: var(--header-bg);
+                font-weight: normal;
+                color: var(--vscode-descriptionForeground);
+                text-align: center;
+                position: sticky;
+                top: 0;
+                z-index: 1000;
+                transform: translateZ(10px); /* Force GPU layer on top */
+                border-right: 1px solid var(--border-color);
+                border-bottom: 1px solid var(--border-color);
+                padding: 0 20px 0 0; /* Reserve space for filter icon */
+                outline-offset: -2px; /* Ensure outline doesn't overflow */
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
 
-        .cell.header-col.selected {
-            background-color: var(--vscode-editor-selectionBackground);
-            color: var(--vscode-editor-selectionForeground);
-            outline: none;
-        }
-        .cell.header-row.selected {
-            background-color: var(--vscode-editor-selectionBackground);
-            color: var(--vscode-editor-selectionForeground);
-            outline: none;
-        }
-        .cell.header-row.selected-range {
-            background-color: var(--vscode-editor-selectionBackground);
-            color: var(--vscode-editor-selectionForeground);
-        }
-        .cell.header-col.selected-range {
-            background-color: var(--vscode-editor-selectionBackground);
-            color: var(--vscode-editor-selectionForeground);
-        }
+            .cell.header-col.selected {
+                background-color: var(--vscode-editor-selectionBackground);
+                color: var(--vscode-editor-selectionForeground);
+                outline: none;
+            }
+            .cell.header-row.selected {
+                background-color: var(--vscode-editor-selectionBackground);
+                color: var(--vscode-editor-selectionForeground);
+                outline: none;
+            }
+            .cell.header-row.selected-range {
+                background-color: var(--vscode-editor-selectionBackground);
+                color: var(--vscode-editor-selectionForeground);
+            }
+            .cell.header-col.selected-range {
+                background-color: var(--vscode-editor-selectionBackground);
+                color: var(--vscode-editor-selectionForeground);
+            }
 
-        .header-row {
-            background-color: var(--header-bg);
-            text-align: center;
-            font-weight: normal;
-            color: var(--vscode-descriptionForeground);
-            position: sticky;
-            left: 0;
-            z-index: 1002;
-            transform: translateZ(15px); /* Higher than Col */
-            user-select: none;
-            border-right: 1px solid var(--border-color);
-            border-bottom: 1px solid var(--border-color);
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            outline-offset: -2px;
-        }
+            .header-row {
+                background-color: var(--header-bg);
+                text-align: center;
+                font-weight: normal;
+                color: var(--vscode-descriptionForeground);
+                position: sticky;
+                left: 0;
+                z-index: 1002;
+                transform: translateZ(15px); /* Higher than Col */
+                user-select: none;
+                border-right: 1px solid var(--border-color);
+                border-bottom: 1px solid var(--border-color);
+                padding: 0;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                outline-offset: -2px;
+            }
 
-        .header-row.selected {
-            background-color: var(--vscode-editor-selectionBackground);
-            color: var(--vscode-editor-selectionForeground);
-            outline: none;
-        }
+            .header-row.selected {
+                background-color: var(--vscode-editor-selectionBackground);
+                color: var(--vscode-editor-selectionForeground);
+                outline: none;
+            }
 
-        /* Corner Cell */
-        .header-corner {
-            z-index: 1005;
-            transform: translateZ(20px); /* Highest priority */
-            position: sticky;
-            top: 0;
-            left: 0;
-            border-right: 1px solid var(--border-color);
-            border-bottom: 1px solid var(--border-color);
-            text-align: center;
-            color: var(--header-bg);
-            user-select: none;
-            outline-offset: -2px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+            /* Corner Cell */
+            .header-corner {
+                z-index: 1005;
+                transform: translateZ(20px); /* Highest priority */
+                position: sticky;
+                top: 0;
+                left: 0;
+                border-right: 1px solid var(--border-color);
+                border-bottom: 1px solid var(--border-color);
+                text-align: center;
+                color: var(--header-bg);
+                user-select: none;
+                outline-offset: -2px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
 
-        .metadata-input-title {
-            font-size: 1.17em; /* h3 size */
-            font-weight: bold;
-            width: 100%;
-            margin: 1rem 0 0.5rem 0;
-            box-sizing: border-box;
-            border: 1px solid var(--border-color); /* Transparent? */
-            background: var(--vscode-input-background);
-            color: var(--vscode-input-foreground);
-            padding: 4px;
-        }
+            .metadata-input-title {
+                font-size: 1.17em; /* h3 size */
+                font-weight: bold;
+                width: 100%;
+                margin: 1rem 0 0.5rem 0;
+                box-sizing: border-box;
+                border: 1px solid var(--border-color); /* Transparent? */
+                background: var(--vscode-input-background);
+                color: var(--vscode-input-foreground);
+                padding: 4px;
+            }
 
-        .metadata-input-desc {
-            width: 100%;
-            margin: 0 0 1rem 0;
-            box-sizing: border-box;
-            border: 1px solid var(--border-color);
-            background: var(--vscode-input-background);
-            color: var(--vscode-input-foreground);
-            font-family: inherit;
-            padding: 4px;
-        }
+            .metadata-input-desc {
+                width: 100%;
+                margin: 0 0 1rem 0;
+                box-sizing: border-box;
+                border: 1px solid var(--border-color);
+                background: var(--vscode-input-background);
+                color: var(--vscode-input-foreground);
+                font-family: inherit;
+                padding: 4px;
+            }
 
-        .metadata-container {
-            margin-bottom: 0;
-        }
+            .metadata-container {
+                margin-bottom: 0;
+            }
 
-        .metadata-desc {
-            min-height: 1.5em; /* Ensure clickable even if empty */
-            margin: 0;
-            padding: 8px;
-            transition:
-                margin 0.2s,
-                min-height 0.2s;
-        }
+            .metadata-desc {
+                min-height: 1.5em; /* Ensure clickable even if empty */
+                margin: 0;
+                padding: 8px;
+                transition:
+                    margin 0.2s,
+                    min-height 0.2s;
+            }
 
-        .metadata-desc.empty {
-            margin: 0;
-            padding: 0;
-            height: 0;
-            min-height: 0;
-            overflow: hidden;
-            opacity: 0;
-            transition:
-                opacity 0.2s,
-                min-height 0.2s,
-                padding 0.2s,
-                margin 0.2s;
-        }
-        .metadata-container:hover .metadata-desc.empty {
-            min-height: 2em;
-            margin: 0;
-            padding: 4px;
-            opacity: 1;
-        }
-        .metadata-desc.empty:hover {
-            opacity: 1;
-            background: rgba(0, 0, 0, 0.02);
-        }
+            .metadata-desc.empty {
+                margin: 0;
+                padding: 0;
+                height: 0;
+                min-height: 0;
+                overflow: hidden;
+                opacity: 0;
+                transition:
+                    opacity 0.2s,
+                    min-height 0.2s,
+                    padding 0.2s,
+                    margin 0.2s;
+            }
+            .metadata-container:hover .metadata-desc.empty {
+                min-height: 2em;
+                margin: 0;
+                padding: 4px;
+                opacity: 1;
+            }
+            .metadata-desc.empty:hover {
+                opacity: 1;
+                background: rgba(0, 0, 0, 0.02);
+            }
 
-        .context-menu {
-            position: fixed;
-            background: var(--vscode-editor-background);
-            border: 1px solid var(--vscode-widget-border);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-            z-index: 2000;
-            min-width: 150px;
-            padding: 4px 0;
-        }
+            .context-menu {
+                position: fixed;
+                background: var(--vscode-editor-background);
+                border: 1px solid var(--vscode-widget-border);
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+                z-index: 2000;
+                min-width: 150px;
+                padding: 4px 0;
+            }
 
-        .context-menu-item {
-            padding: 6px 12px;
-            cursor: pointer;
-            font-family: var(--vscode-font-family);
-            font-size: 13px;
-            color: var(--vscode-foreground);
-        }
+            .context-menu-item {
+                padding: 6px 12px;
+                cursor: pointer;
+                font-family: var(--vscode-font-family);
+                font-size: 13px;
+                color: var(--vscode-foreground);
+            }
 
-        .context-menu-item:hover {
-            background: var(--vscode-list-hoverBackground);
-            color: var(--vscode-list-hoverForeground);
-        }
-        .col-resize-handle {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 5px;
-            height: 100%;
-            cursor: col-resize;
-            z-index: 20;
-        }
-        .col-resize-handle:hover {
-            background-color: var(--selection-color);
-        }
-        .cell.selected-range {
-            background-color: rgba(0, 120, 215, 0.1);
-        }
-        /* Perimeter Borders for Selection Range */
-        /* Perimeter Borders for Selection Range */
-        .cell.range-top::after {
-            border-top: 2px solid var(--selection-color);
-        }
-        .cell.range-bottom::after {
-            border-bottom: 2px solid var(--selection-color);
-        }
-        .cell.range-left::after {
-            border-left: 2px solid var(--selection-color);
-        }
-        .cell.range-right::after {
-            border-right: 2px solid var(--selection-color);
-        }
+            .context-menu-item:hover {
+                background: var(--vscode-list-hoverBackground);
+                color: var(--vscode-list-hoverForeground);
+            }
+            .col-resize-handle {
+                position: absolute;
+                top: 0;
+                right: 0;
+                width: 5px;
+                height: 100%;
+                cursor: col-resize;
+                z-index: 20;
+            }
+            .col-resize-handle:hover {
+                background-color: var(--selection-color);
+            }
+            .cell.selected-range {
+                background-color: rgba(0, 120, 215, 0.1);
+            }
+            /* Perimeter Borders for Selection Range */
+            /* Perimeter Borders for Selection Range */
+            .cell.range-top::after {
+                border-top: 2px solid var(--selection-color);
+            }
+            .cell.range-bottom::after {
+                border-bottom: 2px solid var(--selection-color);
+            }
+            .cell.range-left::after {
+                border-left: 2px solid var(--selection-color);
+            }
+            .cell.range-right::after {
+                border-right: 2px solid var(--selection-color);
+            }
 
-        .cell.active-cell {
-            outline: 2px solid var(--selection-color);
-            outline-offset: -2px;
-            z-index: 101; /* Above range borders if overlap? */
-        }
+            .cell.active-cell {
+                outline: 2px solid var(--selection-color);
+                outline-offset: -2px;
+                z-index: 101; /* Above range borders if overlap? */
+            }
 
-        .cell.active-cell-no-outline {
-            outline: none !important;
-            z-index: 101;
-        }
-    `;
+            .cell.active-cell-no-outline {
+                outline: none !important;
+                z-index: 101;
+            }
+        `,
+        css`
+            .filter-icon {
+                position: absolute;
+                right: 6px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 12px;
+                cursor: pointer;
+                color: var(--vscode-descriptionForeground);
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.2s;
+                z-index: 25;
+            }
+
+            .cell.header-col:hover .filter-icon,
+            .filter-icon.active {
+                visibility: visible;
+                opacity: 1;
+                color: var(--vscode-textLink-foreground);
+            }
+        `
+    ];
 
     @property({ type: Object })
     table: TableJSON | null = null;
@@ -384,6 +417,9 @@ export class SpreadsheetTable extends LitElement {
 
     @state()
     contextMenu: { x: number; y: number; type: 'row' | 'col'; index: number } | null = null;
+
+    @state()
+    private _activeFilterMenu: { colIndex: number; x: number; y: number } | null = null;
 
     private _shouldFocusCell: boolean = false;
     private _isCommitting: boolean = false; // Kept in host for now as it coordinates editCtrl and Events
@@ -426,14 +462,14 @@ export class SpreadsheetTable extends LitElement {
         }
 
         if (changedProperties.has('table') && this.table) {
-            const visual = (this.table.metadata as Record<string, any>)?.visual;
+            const visual = (this.table.metadata as Record<string, unknown>)?.visual as VisualMetadata;
             if (visual && visual.column_widths) {
                 if (Array.isArray(visual.column_widths)) {
-                    const widths: any = {};
+                    const widths: Record<number, number> = {};
                     visual.column_widths.forEach((w: number, i: number) => (widths[i] = w));
                     this.resizeCtrl.setColumnWidths(widths);
                 } else {
-                    this.resizeCtrl.setColumnWidths(visual.column_widths);
+                    this.resizeCtrl.setColumnWidths(visual.column_widths as Record<number, number>);
                 }
             } else {
                 this.resizeCtrl.setColumnWidths({});
@@ -806,7 +842,7 @@ export class SpreadsheetTable extends LitElement {
                 // 3. Request Update
                 // 4. Restore caret in updated()
 
-                const root = this.shadowRoot as any;
+                const root = this.shadowRoot as unknown as { getSelection: () => Selection | null };
                 const selection = root && root.getSelection ? root.getSelection() : window.getSelection();
 
                 if (selection && selection.rangeCount > 0) {
@@ -819,7 +855,7 @@ export class SpreadsheetTable extends LitElement {
                         const br = document.createElement('br');
                         range.insertNode(br);
 
-                        // If we are at the end of the cell, we need a "phantom" BR 
+                        // If we are at the end of the cell, we need a "phantom" BR
                         // so that the first BR is considered "real" content by browsers and our strip logic.
                         // Browsers often ignore a trailing BR in contenteditable.
                         let isAtEnd = !br.nextSibling;
@@ -1003,6 +1039,12 @@ export class SpreadsheetTable extends LitElement {
         }
     }
 
+    // Existing Focus Listeners
+    // Existing Focus Listeners
+    private _handleFocusIn = () => {
+        (window as unknown as { activeSpreadsheetTable: SpreadsheetTable }).activeSpreadsheetTable = this;
+    };
+
     private _handleBlur(e: FocusEvent) {
         if (e.relatedTarget && (e.target as Element).contains(e.relatedTarget as Node)) {
             return;
@@ -1010,6 +1052,18 @@ export class SpreadsheetTable extends LitElement {
         if (this.editCtrl.isEditing && !this._isCommitting) {
             this._commitEdit(e);
         }
+    }
+
+    private _getUniqueValues(colIndex: number): string[] {
+        if (!this.table) return [];
+        const values = new Set<string>();
+        // Get ALL values, not just visible ones, for the filter menu
+        for (const row of this.table.rows) {
+            if (colIndex < row.length) {
+                values.add(row[colIndex]);
+            }
+        }
+        return Array.from(values).sort();
     }
 
     private _deleteSelection() {
@@ -1207,7 +1261,7 @@ export class SpreadsheetTable extends LitElement {
         this.contextMenu = null;
     }
 
-    private _dispatchAction(action: string, detail: any) {
+    private _dispatchAction(action: string, detail: Record<string, unknown>) {
         this.dispatchEvent(
             new CustomEvent(action, {
                 detail: {
@@ -1222,10 +1276,152 @@ export class SpreadsheetTable extends LitElement {
         this._closeContextMenu();
     }
 
+    // Computed property for visibility
+    get visibleRowIndices(): number[] {
+        if (!this.table) return [];
+        const rows = this.table.rows;
+        const metadata = this.table.metadata || {};
+        const visual = (metadata['visual'] || {}) as VisualMetadata;
+        const filters = visual.filters || {};
+
+        const indices: number[] = [];
+        for (let i = 0; i < rows.length; i++) {
+            let visible = true;
+            const row = rows[i];
+
+            // Check all filters
+            for (const [colStr, hiddenValues] of Object.entries(filters)) {
+                if (!hiddenValues || hiddenValues.length === 0) continue;
+
+                const colIdx = parseInt(colStr, 10);
+                if (colIdx >= 0 && colIdx < row.length) {
+                    const cellValue = row[colIdx];
+                    if (hiddenValues.includes(cellValue)) {
+                        visible = false;
+                        break;
+                    }
+                }
+            }
+
+            if (visible) {
+                indices.push(i);
+            }
+        }
+        return indices;
+    }
+
+    getNextVisibleRowIndex(currentDataRowIndex: number, delta: number): number {
+        const indices = this.visibleRowIndices;
+        let visualIdx = indices.indexOf(currentDataRowIndex);
+
+        if (visualIdx === -1) {
+            // Current selection is hidden? Find closest?
+            // Fallback: simple clamp
+            return currentDataRowIndex + delta;
+        }
+
+        visualIdx += delta;
+        visualIdx = Math.max(0, Math.min(visualIdx, indices.length - 1));
+
+        return indices[visualIdx];
+    }
+
+    private _toggleFilterMenu(e: MouseEvent, colIndex: number) {
+        e.stopPropagation();
+        if (this._activeFilterMenu && this._activeFilterMenu.colIndex === colIndex) {
+            this._activeFilterMenu = null;
+        } else {
+            const button = e.target as HTMLElement;
+            const rect = button.getBoundingClientRect();
+            const hostRect = this.getBoundingClientRect();
+
+            const MENU_WIDTH = 200;
+            let x = rect.left - hostRect.left;
+
+            // Check if menu would overflow the right edge of the window
+            if (rect.left + MENU_WIDTH > window.innerWidth) {
+                // Align right edge of menu with right edge of button
+                x = rect.right - hostRect.left - MENU_WIDTH;
+            }
+
+            this._activeFilterMenu = {
+                colIndex,
+                x: x,
+                y: rect.bottom - hostRect.top
+            };
+        }
+    }
+
+    private _handleSort(e: CustomEvent) {
+        if (!this._activeFilterMenu) return;
+        const { direction } = e.detail;
+        const colIdx = this._activeFilterMenu.colIndex;
+
+        this.dispatchEvent(
+            new CustomEvent('post-message', {
+                detail: {
+                    command: 'sort_rows',
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    colIndex: colIdx,
+                    ascending: direction === 'asc'
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
+        this._activeFilterMenu = null;
+    }
+
+    private _handleFilterChange(e: CustomEvent) {
+        if (!this._activeFilterMenu) return;
+        const { hiddenValues } = e.detail;
+        const colIdx = this._activeFilterMenu.colIndex;
+
+        this.dispatchEvent(
+            new CustomEvent('post-message', {
+                detail: {
+                    command: 'update_column_filter',
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    colIndex: colIdx,
+                    hiddenValues: hiddenValues
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
+        // Do not close menu immediately to allow multiple checks
+    }
+
+    private _handleClearFilter(_e: CustomEvent) {
+        if (!this._activeFilterMenu) return;
+        const colIdx = this._activeFilterMenu.colIndex;
+        this.dispatchEvent(
+            new CustomEvent('post-message', {
+                detail: {
+                    command: 'update_column_filter',
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    colIndex: colIdx,
+                    hiddenValues: []
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
+        this._activeFilterMenu = null;
+    }
+
+    private _closeFilterMenu() {
+        this._activeFilterMenu = null;
+    }
+
     connectedCallback() {
         super.connectedCallback();
         // console.log('SpreadsheetTable connected', this.tableIndex);
         window.addEventListener('click', this._handleGlobalClick);
+
         // MouseMove/Up handled by SelectionController
         // Register focus tracker
         this.addEventListener('focusin', this._handleFocusIn);
@@ -1238,8 +1434,26 @@ export class SpreadsheetTable extends LitElement {
     }
 
     private _handleGlobalClick = (e: MouseEvent) => {
+        const path = e.composedPath();
         if (this.contextMenu) {
-            this._closeContextMenu();
+            // If click is inside context menu, do nothing (let menu handle it)
+            // But context menu is usually fixed pos, often explicit close needed?
+            // Actually, we usually want to close context menu on any outside click.
+            // Check if click source is the context menu itself
+            const isInside = path.some((el) => (el as HTMLElement).classList?.contains('context-menu'));
+            if (!isInside) {
+                this._closeContextMenu();
+            }
+        }
+        if (this._activeFilterMenu) {
+            const isInside = path.some(
+                (el) =>
+                    (el as HTMLElement).tagName?.toLowerCase() === 'filter-menu' ||
+                    (el as HTMLElement).classList?.contains('filter-icon')
+            );
+            if (!isInside) {
+                this._activeFilterMenu = null;
+            }
         }
     };
 
@@ -1282,26 +1496,26 @@ export class SpreadsheetTable extends LitElement {
         return html`
             <div class="metadata-container">
                 ${this.editCtrl.editingMetadata
-                ? html`
+                    ? html`
                           <textarea
                               class="metadata-input-desc"
                               .value="${table.description || ''}"
                               placeholder="${t('description')}"
                               @input="${(e: Event) =>
-                        (this.editCtrl.pendingDescription = (e.target as HTMLInputElement).value)}"
+                                  (this.editCtrl.pendingDescription = (e.target as HTMLInputElement).value)}"
                               @keydown="${this._handleMetadataKeydown}"
                               @blur="${this._commitMetadata}"
                               rows="2"
                           ></textarea>
                       `
-                : html`
+                    : html`
                           <p
                               class="metadata-desc ${!table.description ? 'empty' : ''}"
                               @click="${this._handleMetadataClick}"
                               style="color: var(--vscode-descriptionForeground); cursor: pointer; border: 1px dashed transparent;"
                           >
                               ${table.description ||
-                    html`<span style="opacity: 0.5; font-size: 0.9em;">${t('addDescription')}</span>`}
+                              html`<span style="opacity: 0.5; font-size: 0.9em;">${t('addDescription')}</span>`}
                           </p>
                       `}
             </div>
@@ -1312,42 +1526,48 @@ export class SpreadsheetTable extends LitElement {
                     <div
                         class="cell header-corner"
                         @click="${() => {
-                this.selectionCtrl.selectCell(-2, -2);
-                this.focusCell();
-            }}"
+                            this.selectionCtrl.selectCell(-2, -2);
+                            this.focusCell();
+                        }}"
                     ></div>
 
                     <!-- Column Headers -->
                     ${table.headers
-                ? table.headers.map((header, i) => {
-                    const isActive = selRow === -1 && selCol === i;
-                    const isColMode = selRow === -2;
-                    const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
-                    const showActiveOutline = isActive && minC === maxC;
-                    return html`
+                        ? table.headers.map((header, i) => {
+                              const isActive = selRow === -1 && selCol === i;
+                              const isColMode = selRow === -2;
+                              const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+                              const showActiveOutline = isActive && minC === maxC;
+
+                              const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
+                              const filters = visual.filters || {};
+                              const hiddenValues = filters[i.toString()] || [];
+                              const isFiltered = hiddenValues.length > 0;
+
+                              return html`
                                   <div
                                       class="cell header-col ${(selRow === -2 && (selCol === i || isInRange)) ||
-                            (selRow === -1 && selCol === i)
-                            ? 'selected'
-                            : ''} ${this.editCtrl.isEditing && isActive
-                                ? 'editing'
-                                : ''} ${showActiveOutline
-                                    ? 'active-cell'
-                                    : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                      (selRow === -1 && selCol === i)
+                                          ? 'selected'
+                                          : ''} ${this.editCtrl.isEditing && isActive
+                                          ? 'editing'
+                                          : ''} ${showActiveOutline
+                                          ? 'active-cell'
+                                          : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
                                       data-col="${i}"
                                       data-row="-1"
                                       tabindex="0"
                                       contenteditable="false"
-                                      @click="${(e: MouseEvent) => {
-                            this.selectionCtrl.selectCell(-2, i);
-                            this.focusCell();
-                        }}"
-                                      @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(-2, i)}"
+                                      @click="${(_e: MouseEvent) => {
+                                          this.selectionCtrl.selectCell(-2, i);
+                                          this.focusCell();
+                                      }}"
+                                      @mousedown="${(_e: MouseEvent) => this.selectionCtrl.startSelection(-2, i)}"
                                       @dblclick="${(e: MouseEvent) => {
-                            this.selectionCtrl.selectCell(-1, i);
-                            this.editCtrl.startEditing(header);
-                            this.focusCell();
-                        }}"
+                                          this.selectionCtrl.selectCell(-1, i);
+                                          this.editCtrl.startEditing(header);
+                                          this.focusCell();
+                                      }}"
                                       @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
                                       @input="${this._handleInput}"
                                       @blur="${this._handleBlur}"
@@ -1360,45 +1580,50 @@ export class SpreadsheetTable extends LitElement {
                                           @blur="${this._handleBlur}"
                                           .textContent="${live(header)}"
                                       ></span>
+                                      <span
+                                          class="filter-icon codicon codicon-filter ${isFiltered ? 'active' : ''}"
+                                          @click="${(e: MouseEvent) => this._toggleFilterMenu(e, i)}"
+                                      ></span>
+
                                       <div
                                           class="col-resize-handle"
                                           contenteditable="false"
                                           @mousedown="${(e: MouseEvent) =>
-                            this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
+                                              this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
                                           @dblclick="${(e: Event) => e.stopPropagation()}"
                                       ></div>
                                   </div>
                               `;
-                })
-                : Array.from({ length: colCount }).map((_, i) => {
-                    const isActive = selRow === -1 && selCol === i;
-                    const isColMode = selRow === -2;
-                    const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
-                    const showActiveOutline = isActive && minC === maxC;
-                    return html`
+                          })
+                        : Array.from({ length: colCount }).map((_, i) => {
+                              const isActive = selRow === -1 && selCol === i;
+                              const isColMode = selRow === -2;
+                              const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+                              const showActiveOutline = isActive && minC === maxC;
+                              return html`
                                   <div
                                       class="cell header-col ${(selRow === -2 && (selCol === i || isInRange)) ||
-                            (selRow === -1 && selCol === i)
-                            ? 'selected'
-                            : ''} ${this.editCtrl.isEditing && isActive
-                                ? 'editing'
-                                : ''} ${showActiveOutline
-                                    ? 'active-cell'
-                                    : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                      (selRow === -1 && selCol === i)
+                                          ? 'selected'
+                                          : ''} ${this.editCtrl.isEditing && isActive
+                                          ? 'editing'
+                                          : ''} ${showActiveOutline
+                                          ? 'active-cell'
+                                          : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
                                       data-col="${i}"
                                       data-row="-1"
                                       tabindex="0"
                                       contenteditable="false"
                                       @click="${() => {
-                            this.selectionCtrl.selectCell(-2, i);
-                            this.focusCell();
-                        }}"
+                                          this.selectionCtrl.selectCell(-2, i);
+                                          this.focusCell();
+                                      }}"
                                       @mousedown="${() => this.selectionCtrl.startSelection(-2, i)}"
                                       @dblclick="${() => {
-                            this.selectionCtrl.selectCell(-1, i);
-                            this.editCtrl.startEditing(i + 1 + '');
-                            this.focusCell();
-                        }}"
+                                          this.selectionCtrl.selectCell(-1, i);
+                                          this.editCtrl.startEditing(i + 1 + '');
+                                          this.focusCell();
+                                      }}"
                                       @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
                                       @input="${this._handleInput}"
                                       @blur="${this._handleBlur}"
@@ -1415,31 +1640,32 @@ export class SpreadsheetTable extends LitElement {
                                           class="col-resize-handle"
                                           contenteditable="false"
                                           @mousedown="${(e: MouseEvent) =>
-                            this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
+                                              this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
                                           @dblclick="${(e: Event) => e.stopPropagation()}"
                                       ></div>
                                   </div>
                               `;
-                })}
+                          })}
 
                     <!-- Rows -->
-                    ${table.rows.map(
-                    (row, r) => html`
+                    ${this.visibleRowIndices.map((r) => {
+                        const row = table.rows[r];
+                        return html`
                             <!-- Row Header -->
                             <div
                                 class="cell header-row ${(selCol === -2 &&
-                            (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))) ||
-                            (selCol === -1 && selRow === r)
-                            ? 'selected'
-                            : ''} ${(minC === -1 || selCol === -2) && r >= minR && r <= maxR
-                                ? 'selected-range'
-                                : ''}"
+                                    (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))) ||
+                                (selCol === -1 && selRow === r)
+                                    ? 'selected'
+                                    : ''} ${(minC === -1 || selCol === -2) && r >= minR && r <= maxR
+                                    ? 'selected-range'
+                                    : ''}"
                                 data-row="${r}"
                                 tabindex="0"
                                 @click="${() => {
-                            this.selectionCtrl.selectCell(r, -2);
-                            this.focusCell();
-                        }}"
+                                    this.selectionCtrl.selectCell(r, -2);
+                                    this.focusCell();
+                                }}"
                                 @mousedown="${() => this.selectionCtrl.startSelection(r, -2)}"
                                 @keydown="${this._handleKeyDown}"
                                 @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
@@ -1449,44 +1675,44 @@ export class SpreadsheetTable extends LitElement {
 
                             <!-- Cells -->
                             ${Array.from({ length: colCount }).map((_, c) => {
-                            const cell = row[c] !== undefined ? row[c] : '';
-                            const isSelected = selRow === r && selCol === c;
+                                const cell = row[c] !== undefined ? row[c] : '';
+                                const isSelected = selRow === r && selCol === c;
 
-                            const isActive = r === selRow && c === selCol;
+                                const isActive = r === selRow && c === selCol;
 
-                            // Range Logic
-                            let inRange = false;
-                            let leftEdge = false,
-                                rightEdge = false,
-                                topEdge = false,
-                                bottomEdge = false;
+                                // Range Logic
+                                let inRange = false;
+                                let leftEdge = false,
+                                    rightEdge = false,
+                                    topEdge = false,
+                                    bottomEdge = false;
 
-                            if (minR !== -1) {
-                                if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
-                                    inRange = true;
-                                    // Determine edges
-                                    if (r === minR) topEdge = true;
-                                    if (r === maxR) bottomEdge = true;
-                                    if (c === minC) leftEdge = true;
-                                    if (c === maxC) rightEdge = true;
+                                if (minR !== -1) {
+                                    if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
+                                        inRange = true;
+                                        // Determine edges
+                                        if (r === minR) topEdge = true;
+                                        if (r === maxR) bottomEdge = true;
+                                        if (c === minC) leftEdge = true;
+                                        if (c === maxC) rightEdge = true;
+                                    }
                                 }
-                            }
 
-                            const isEditingCell = this.editCtrl.isEditing && isActive;
-                            const isRangeSelection = minR !== maxR || minC !== maxC;
-                            const activeClass = isActive
-                                ? isRangeSelection
-                                    ? 'active-cell-no-outline'
-                                    : 'active-cell'
-                                : '';
+                                const isEditingCell = this.editCtrl.isEditing && isActive;
+                                const isRangeSelection = minR !== maxR || minC !== maxC;
+                                const activeClass = isActive
+                                    ? isRangeSelection
+                                        ? 'active-cell-no-outline'
+                                        : 'active-cell'
+                                    : '';
 
-                            return html`
+                                return html`
                                     <div
                                         class="cell ${isSelected ? 'selected' : ''} ${inRange
-                                    ? 'selected-range'
-                                    : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
-                                        ? 'range-top'
-                                        : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
+                                            ? 'selected-range'
+                                            : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
+                                            ? 'range-top'
+                                            : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
                                             ? 'range-left'
                                             : ''} ${rightEdge ? 'range-right' : ''} ${activeClass}"
                                         data-row="${r}"
@@ -1494,55 +1720,55 @@ export class SpreadsheetTable extends LitElement {
                                         tabindex="${isActive ? 0 : -1}"
                                         contenteditable="${isEditingCell ? 'true' : 'false'}"
                                         @click="${(e: MouseEvent) => {
-                                    if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
-                                    else this.selectionCtrl.selectCell(r, c);
-                                    this.focusCell();
-                                }}"
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.selectCell(r, c);
+                                            this.focusCell();
+                                        }}"
                                         @mousedown="${(e: MouseEvent) => {
-                                    if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
-                                    else this.selectionCtrl.startSelection(r, c);
-                                    this.focusCell();
-                                }}"
-                                        @dblclick="${(_: MouseEvent) => {
-                                    this.selectionCtrl.selectCell(r, c);
-                                    this.editCtrl.startEditing(cell);
-                                    this.focusCell();
-                                }}"
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.startSelection(r, c);
+                                            this.focusCell();
+                                        }}"
+                                        @dblclick="${(_e: MouseEvent) => {
+                                            this.selectionCtrl.selectCell(r, c);
+                                            this.editCtrl.startEditing(cell);
+                                            this.focusCell();
+                                        }}"
                                         @input="${this._handleInput}"
                                         @blur="${this._handleBlur}"
                                         @keydown="${this._handleKeyDown}"
                                         .innerHTML="${isEditingCell
-                                    ? live(
-                                        this._getEditingHtml(
-                                            this.editCtrl.pendingEditValue !== null
-                                                ? this.editCtrl.pendingEditValue
-                                                : cell
-                                        )
-                                    )
-                                    : this._renderMarkdown(cell)}"
+                                            ? live(
+                                                  this._getEditingHtml(
+                                                      this.editCtrl.pendingEditValue !== null
+                                                          ? this.editCtrl.pendingEditValue
+                                                          : cell
+                                                  )
+                                              )
+                                            : this._renderMarkdown(cell)}"
                                     ></div>
                                 `;
-                        })}
-                        `
-                )}
+                            })}
+                        `;
+                    })}
 
                     <!-- Ghost Row -->
                     ${(() => {
-                // Render one extra row
-                const r = table.rows.length;
+                        // Render one extra row
+                        const r = table.rows.length;
 
-                return html`
+                        return html`
                             <div
                                 class="cell header-row ${selCol === -2 &&
-                        (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))
-                        ? 'selected'
-                        : ''}"
+                                (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))
+                                    ? 'selected'
+                                    : ''}"
                                 data-row="${r}"
                                 tabindex="0"
                                 @click="${(_: MouseEvent) => {
-                        this.selectionCtrl.selectCell(r, -2);
-                        this.focusCell();
-                    }}"
+                                    this.selectionCtrl.selectCell(r, -2);
+                                    this.focusCell();
+                                }}"
                                 @mousedown="${(_: MouseEvent) => this.selectionCtrl.startSelection(r, -2)}"
                                 @keydown="${this._handleKeyDown}"
                                 @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
@@ -1552,150 +1778,134 @@ export class SpreadsheetTable extends LitElement {
                             </div>
 
                             ${Array.from({ length: colCount }).map((_, c) => {
-                        const isActive = r === selRow && c === selCol;
-                        const isEditingCell = this.editCtrl.isEditing && isActive;
+                                const isActive = r === selRow && c === selCol;
+                                const isEditingCell = this.editCtrl.isEditing && isActive;
 
-                        let inRange = false;
-                        let topEdge = false,
-                            bottomEdge = false,
-                            leftEdge = false,
-                            rightEdge = false;
-                        if (minR !== -1) {
-                            if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
-                                inRange = true;
-                                if (r === minR) topEdge = true;
-                                if (r === maxR) bottomEdge = true;
-                                if (r === maxR && r === table.rows.length) bottomEdge = true; // explicitly ghost row is usually last
-                                if (c === minC) leftEdge = true;
-                                if (c === maxC) rightEdge = true;
-                            }
-                        }
+                                let inRange = false;
+                                let topEdge = false,
+                                    bottomEdge = false,
+                                    leftEdge = false,
+                                    rightEdge = false;
+                                if (minR !== -1) {
+                                    if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
+                                        inRange = true;
+                                        if (r === minR) topEdge = true;
+                                        if (r === maxR) bottomEdge = true;
+                                        if (r === maxR && r === table.rows.length) bottomEdge = true; // explicitly ghost row is usually last
+                                        if (c === minC) leftEdge = true;
+                                        if (c === maxC) rightEdge = true;
+                                    }
+                                }
 
-                        return html`
+                                return html`
                                     <div
                                         class="cell ${isActive ? 'selected' : ''} ${inRange
-                                ? 'selected-range'
-                                : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
-                                    ? 'range-top'
-                                    : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
-                                        ? 'range-left'
-                                        : ''} ${rightEdge ? 'range-right' : ''} ${isActive ? 'active-cell' : ''}"
+                                            ? 'selected-range'
+                                            : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
+                                            ? 'range-top'
+                                            : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
+                                            ? 'range-left'
+                                            : ''} ${rightEdge ? 'range-right' : ''} ${isActive ? 'active-cell' : ''}"
                                         data-row="${r}"
                                         data-col="${c}"
                                         tabindex="${isActive ? 0 : -1}"
                                         contenteditable="${isEditingCell ? 'true' : 'false'}"
                                         @click="${(e: MouseEvent) => {
-                                if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
-                                else this.selectionCtrl.selectCell(r, c);
-                                this.focusCell();
-                            }}"
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.selectCell(r, c);
+                                            this.focusCell();
+                                        }}"
                                         @mousedown="${(e: MouseEvent) => {
-                                if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
-                                else this.selectionCtrl.startSelection(r, c);
-                                this.focusCell();
-                            }}"
-                                        @dblclick="${(_: MouseEvent) => {
-                                this.selectionCtrl.selectCell(r, c);
-                                this.editCtrl.startEditing('');
-                                this.focusCell();
-                            }}"
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.startSelection(r, c);
+                                            this.focusCell();
+                                        }}"
+                                        @dblclick="${(_e: MouseEvent) => {
+                                            this.selectionCtrl.selectCell(r, c);
+                                            this.editCtrl.startEditing('');
+                                            this.focusCell();
+                                        }}"
                                         @input="${this._handleInput}"
                                         @blur="${this._handleBlur}"
                                         @keydown="${this._handleKeyDown}"
                                         .textContent="${isEditingCell
-                                ? live(
-                                    this.editCtrl.pendingEditValue !== null
-                                        ? this.editCtrl.pendingEditValue
-                                        : ''
-                                )
-                                : nothing}"
+                                            ? live(
+                                                  this.editCtrl.pendingEditValue !== null
+                                                      ? this.editCtrl.pendingEditValue
+                                                      : ''
+                                              )
+                                            : nothing}"
                                         .innerHTML="${!isEditingCell ? this._renderMarkdown('') : nothing}"
                                         style="opacity: 0.5;"
                                     ></div>
                                 `;
-                    })}
+                            })}
                         `;
-            })()}
+                    })()}
                 </div>
             </div>
 
-            <!-- Context Menu -->
             ${this.contextMenu
                 ? html`
                       <div class="context-menu" style="top: ${this.contextMenu.y}px; left: ${this.contextMenu.x}px">
+                          <!-- Context Menu Items (unchanged logic) -->
                           ${this.contextMenu.type === 'row'
-                        ? html`
+                              ? html`
                                     <div
                                         class="context-menu-item"
-                                        @click="${() => {
-                                if (this.contextMenu) {
-                                    this._dispatchAction('insert-row', {
-                                        rowIndex: this.contextMenu.index
-                                    });
-                                }
-                            }}"
+                                        @click="${() =>
+                                            this.contextMenu &&
+                                            this._dispatchAction('insert-row', { rowIndex: this.contextMenu.index })}"
                                     >
                                         ${t('insertRowAbove')}
                                     </div>
                                     <div
                                         class="context-menu-item"
-                                        @click="${() => {
-                                if (this.contextMenu) {
-                                    this._dispatchAction('insert-row', {
-                                        rowIndex: this.contextMenu.index + 1
-                                    });
-                                }
-                            }}"
+                                        @click="${() =>
+                                            this.contextMenu &&
+                                            this._dispatchAction('insert-row', {
+                                                rowIndex: this.contextMenu.index + 1
+                                            })}"
                                     >
                                         ${t('insertRowBelow')}
                                     </div>
                                     <div
                                         class="context-menu-item"
-                                        @click="${() => {
-                                if (this.contextMenu) {
-                                    this._dispatchAction('row-delete', {
-                                        rowIndex: this.contextMenu.index
-                                    });
-                                }
-                            }}"
+                                        @click="${() =>
+                                            this.contextMenu &&
+                                            this._dispatchAction('row-delete', { rowIndex: this.contextMenu.index })}"
                                     >
                                         ${t('deleteRow')}
                                     </div>
                                 `
-                        : html`
+                              : html`
                                     <div
                                         class="context-menu-item"
-                                        @click="${() => {
-                                if (this.contextMenu) {
-                                    this._dispatchAction('insert-column', {
-                                        colIndex: this.contextMenu.index
-                                    });
-                                }
-                            }}"
+                                        @click="${() =>
+                                            this.contextMenu &&
+                                            this._dispatchAction('insert-column', {
+                                                colIndex: this.contextMenu.index
+                                            })}"
                                     >
                                         ${t('insertColLeft')}
                                     </div>
                                     <div
                                         class="context-menu-item"
-                                        @click="${() => {
-                                if (this.contextMenu) {
-                                    this._dispatchAction('insert-column', {
-                                        colIndex: this.contextMenu.index + 1
-                                    });
-                                }
-                            }}"
+                                        @click="${() =>
+                                            this.contextMenu &&
+                                            this._dispatchAction('insert-column', {
+                                                colIndex: this.contextMenu.index + 1
+                                            })}"
                                     >
                                         ${t('insertColRight')}
                                     </div>
                                     <div
                                         class="context-menu-item"
-                                        @click="${() => {
-                                if (this.contextMenu) {
-                                    this._dispatchAction('column-delete', {
-                                        colIndex: this.contextMenu.index
-                                    });
-                                }
-                            }}"
+                                        @click="${() =>
+                                            this.contextMenu &&
+                                            this._dispatchAction('column-delete', {
+                                                colIndex: this.contextMenu.index
+                                            })}"
                                     >
                                         ${t('deleteCol')}
                                     </div>
@@ -1703,12 +1913,24 @@ export class SpreadsheetTable extends LitElement {
                       </div>
                   `
                 : ''}
+            ${this._activeFilterMenu
+                ? html`
+                      <filter-menu
+                          style="position: absolute; left: ${this._activeFilterMenu.x}px; top: ${this._activeFilterMenu
+                              .y}px;"
+                          .columnName="${this.table.headers?.[this._activeFilterMenu.colIndex] || ''}"
+                          .values="${this._getUniqueValues(this._activeFilterMenu.colIndex)}"
+                          .hiddenValues="${((this.table.metadata?.['visual'] as VisualMetadata)?.['filters'] || {})[
+                              this._activeFilterMenu.colIndex.toString()
+                          ] || []}"
+                          @sort="${this._handleSort}"
+                          @filter-change="${this._handleFilterChange}"
+                          @clear-filter="${this._handleClearFilter}"
+                      ></filter-menu>
+                  `
+                : nothing}
         `;
     }
-
-    private _handleFocusIn = () => {
-        (window as any).activeSpreadsheetTable = this;
-    };
 
     private _getEditingHtml(text: string) {
         if (!text) return '';
@@ -1731,7 +1953,7 @@ export class SpreadsheetTable extends LitElement {
             return '\n';
         }
         let text = '';
-        node.childNodes.forEach(child => {
+        node.childNodes.forEach((child) => {
             text += this._getDOMText(child);
         });
         return text;
