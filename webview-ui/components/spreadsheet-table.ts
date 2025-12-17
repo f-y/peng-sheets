@@ -81,45 +81,62 @@ export class SpreadsheetTable extends LitElement {
             z-index: 100;
         }
 
+        .cell::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            box-sizing: border-box;
+            z-index: 90;
+        }
+
         .cell.selected-row-cell {
-            border-top: 2px solid var(--selection-color);
-            border-bottom: 2px solid var(--selection-color);
             background-color: rgba(33, 115, 70, 0.05);
             z-index: 90;
         }
-        .cell.selected-row-cell.first {
+        .cell.selected-row-cell::after {
+            border-top: 2px solid var(--selection-color);
+            border-bottom: 2px solid var(--selection-color);
+        }
+        .cell.selected-row-cell.first::after {
             border-left: 2px solid var(--selection-color);
         }
-        .cell.selected-row-cell.last {
+        .cell.selected-row-cell.last::after {
             border-right: 2px solid var(--selection-color);
         }
 
         .cell.selected-col-cell {
-            border-left: 2px solid var(--selection-color);
-            border-right: 2px solid var(--selection-color);
             background-color: rgba(33, 115, 70, 0.05);
             z-index: 90;
         }
-        .cell.selected-col-cell.first {
+        .cell.selected-col-cell::after {
+            border-left: 2px solid var(--selection-color);
+            border-right: 2px solid var(--selection-color);
+        }
+        .cell.selected-col-cell.first::after {
             border-top: 2px solid var(--selection-color);
         }
-        .cell.selected-col-cell.last {
+        .cell.selected-col-cell.last::after {
             border-bottom: 2px solid var(--selection-color);
         }
+
         .cell.selected-all-cell {
             background-color: rgba(33, 115, 70, 0.05); /* Just background */
             z-index: 90;
         }
-        .cell.selected-all-cell.first-row {
+        .cell.selected-all-cell.first-row::after {
             border-top: 2px solid var(--selection-color);
         }
-        .cell.selected-all-cell.last-row {
+        .cell.selected-all-cell.last-row::after {
             border-bottom: 2px solid var(--selection-color);
         }
-        .cell.selected-all-cell.first-col {
+        .cell.selected-all-cell.first-col::after {
             border-left: 2px solid var(--selection-color);
         }
-        .cell.selected-all-cell.last-col {
+        .cell.selected-all-cell.last-col::after {
             border-right: 2px solid var(--selection-color);
         }
 
@@ -325,16 +342,17 @@ export class SpreadsheetTable extends LitElement {
             background-color: rgba(0, 120, 215, 0.1);
         }
         /* Perimeter Borders for Selection Range */
-        .cell.range-top {
+        /* Perimeter Borders for Selection Range */
+        .cell.range-top::after {
             border-top: 2px solid var(--selection-color);
         }
-        .cell.range-bottom {
+        .cell.range-bottom::after {
             border-bottom: 2px solid var(--selection-color);
         }
-        .cell.range-left {
+        .cell.range-left::after {
             border-left: 2px solid var(--selection-color);
         }
-        .cell.range-right {
+        .cell.range-right::after {
             border-right: 2px solid var(--selection-color);
         }
 
@@ -768,7 +786,9 @@ export class SpreadsheetTable extends LitElement {
         const text = rows.join('\n');
         try {
             await navigator.clipboard.writeText(text);
-        } catch (err) { }
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+        }
     }
 
     private _handleEditModeKey(e: KeyboardEvent) {
