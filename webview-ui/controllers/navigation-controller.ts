@@ -12,8 +12,8 @@ export class NavigationController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
     handleKeyDown(e: KeyboardEvent, maxRows: number, maxCols: number) {
         if (e.isComposing) return;
@@ -24,6 +24,7 @@ export class NavigationController implements ReactiveController {
         // Simple nav logic moved here
         let dr = 0;
         let dc = 0;
+        let extend = shift; // Default extension behavior based on Shift
 
         switch (e.key) {
             case 'ArrowUp':
@@ -40,10 +41,12 @@ export class NavigationController implements ReactiveController {
                 break;
             case 'Tab':
                 dc = shift ? -1 : 1;
+                extend = false; // Tab should never extend selection
                 e.preventDefault();
                 break; // Tab cycle
             case 'Enter':
                 dr = shift ? -1 : 1;
+                extend = false; // Enter should never extend selection
                 e.preventDefault();
                 break; // Enter cycle
             default:
@@ -52,7 +55,7 @@ export class NavigationController implements ReactiveController {
 
         if (dr !== 0 || dc !== 0) {
             e.preventDefault();
-            this._moveSelection(dr, dc, shift, maxRows, maxCols, ctrl);
+            this._moveSelection(dr, dc, extend, maxRows, maxCols, ctrl);
         }
     }
 
