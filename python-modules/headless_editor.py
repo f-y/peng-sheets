@@ -517,17 +517,70 @@ def update_column_filter(sheet_idx, table_idx, col_idx, hidden_values):
     return apply_table_update(sheet_idx, table_idx, _update_logic)
 
 
+def _infer_column_type(rows, col_idx, metadata):
+    # 1. Check Metadata for explicit type
+    # We look in 'visual' -> 'columns' for now as that's where we store it in tests
+    visual = metadata.get("visual", {})
+    if visual and "columns" in visual:
+        col_meta = visual["columns"].get(str(col_idx))
+        if col_meta and "type" in col_meta:
+            return col_meta["type"]
+
+    # 2. Heuristic: Check if all non-empty values are numeric (allowing for commas)
+    is_number = True
+    has_value = False
+
+    for row in rows:
+        if col_idx >= len(row):
+            continue
+        val = row[col_idx].strip()
+        if not val:
+            continue
+
+        has_value = True
+        # Simple check: remove commas and generic whitespace
+        val_clean = val.replace(",", "")
+        try:
+            float(val_clean)
+        except ValueError:
+            is_number = False
+            break
+
+    if has_value and is_number:
+        return "number"
+
+    return "string"
+
+
+def _get_sort_key(row, col_idx, col_type):
+    val = ""
+    if col_idx < len(row):
+        val = row[col_idx]
+
+    if col_type == "number":
+        s = val.strip()
+        if not s:
+            return float("-inf")
+        try:
+            return float(s.replace(",", ""))
+        except ValueError:
+            return float("-inf")
+
+    return val.lower()
+
+
 def sort_rows(sheet_idx, table_idx, col_idx, ascending):
     def _sort_logic(t):
         rows = list(t.rows)
+        metadata = t.metadata or {}
 
-        # Safe sort: handle rows shorter than col_idx
-        def sort_key(row):
-            if col_idx < len(row):
-                return row[col_idx]
-            return ""
+        # Determine column type
+        col_type = _infer_column_type(rows, col_idx, metadata)
 
-        rows.sort(key=sort_key, reverse=not ascending)
+        # Sort
+        rows.sort(
+            key=lambda r: _get_sort_key(r, col_idx, col_type), reverse=not ascending
+        )
         return replace(t, rows=rows)
 
     return apply_table_update(sheet_idx, table_idx, _sort_logic)
