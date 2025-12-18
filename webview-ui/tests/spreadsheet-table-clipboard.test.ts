@@ -165,8 +165,8 @@ describe('SpreadsheetTable Clipboard', () => {
         await new Promise((r) => setTimeout(r, 0));
         await element.updateComplete;
 
-        // Col 1 is "2", "5", "8"
-        expect(writeTextSpy).toHaveBeenCalledWith('2\n5\n8');
+        // Col 1 is header "B" + data "2", "5", "8"
+        expect(writeTextSpy).toHaveBeenCalledWith('B\n2\n5\n8');
     });
 
     it('pastes single cell', async () => {

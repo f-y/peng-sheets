@@ -776,7 +776,13 @@ export class SpreadsheetTable extends LitElement {
         const selRow = this.selectionCtrl.selectedRow;
         const selCol = this.selectionCtrl.selectedCol;
 
-        if (anchorRow !== -1 && anchorCol !== -1) {
+        // Full table selection (corner click)
+        if (selRow === -2 && selCol === -2) {
+            minR = 0;
+            maxR = numRows - 1;
+            minC = 0;
+            maxC = numCols - 1;
+        } else if (anchorRow !== -1 && anchorCol !== -1) {
             if (selCol === -2 || anchorCol === -2) {
                 minR = Math.min(anchorRow, selRow);
                 maxR = Math.max(anchorRow, selRow);
@@ -806,11 +812,33 @@ export class SpreadsheetTable extends LitElement {
         const effectiveMaxC = Math.min(numCols - 1, maxC);
 
         const rows: string[] = [];
+
+        // Helper to escape TSV values (quote if contains newline, tab, or quotes)
+        const escapeTsvValue = (val: string): string => {
+            if (val.includes('\n') || val.includes('\t') || val.includes('"')) {
+                // Escape quotes by doubling them
+                const escaped = val.replace(/"/g, '""');
+                return `"${escaped}"`;
+            }
+            return val;
+        };
+
+        // Column selection or full table selection - include header row first
+        const isColumnSelection = selRow === -2 || anchorRow === -2;
+        const isFullTableSelection = selRow === -2 && selCol === -2;
+        if ((isColumnSelection || isFullTableSelection) && this.table.headers) {
+            const headerData: string[] = [];
+            for (let c = effectiveMinC; c <= effectiveMaxC; c++) {
+                headerData.push(escapeTsvValue(this.table.headers[c] || ''));
+            }
+            rows.push(headerData.join('\t'));
+        }
+
         for (let r = effectiveMinR; r <= effectiveMaxR; r++) {
             const rowData: string[] = [];
             for (let c = effectiveMinC; c <= effectiveMaxC; c++) {
                 const cellVal = this.table.rows[r][c] || '';
-                rowData.push(cellVal);
+                rowData.push(escapeTsvValue(cellVal));
             }
             rows.push(rowData.join('\t'));
         }
@@ -1522,7 +1550,13 @@ export class SpreadsheetTable extends LitElement {
         const ancRow = this.selectionCtrl.selectionAnchorRow;
         const ancCol = this.selectionCtrl.selectionAnchorCol;
 
-        if (ancRow !== -1 && ancCol !== -1) {
+        // Full table selection (corner click)
+        if (selRow === -2 && selCol === -2) {
+            minR = 0;
+            maxR = (table.rows.length || 1) - 1;
+            minC = 0;
+            maxC = numCols - 1;
+        } else if (ancRow !== -1 && ancCol !== -1) {
             if (selCol === -2 || ancCol === -2) {
                 minR = Math.min(ancRow, selRow);
                 maxR = Math.max(ancRow, selRow);
@@ -1575,10 +1609,12 @@ export class SpreadsheetTable extends LitElement {
                     <!-- Corner -->
                     <div
                         class="cell header-corner"
+                        tabindex="0"
                         @click="${() => {
                             this.selectionCtrl.selectCell(-2, -2);
                             this.focusCell();
                         }}"
+                        @keydown="${this._handleKeyDown}"
                     ></div>
 
                     <!-- Column Headers -->
