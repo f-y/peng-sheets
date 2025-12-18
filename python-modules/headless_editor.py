@@ -291,22 +291,39 @@ def update_visual_metadata(sheet_idx, table_idx, visual_metadata):
     return apply_table_update(sheet_idx, table_idx, _update_logic)
 
 
-def paste_cells(sheet_idx, table_idx, start_row, start_col, new_data):
+def paste_cells(
+    sheet_idx, table_idx, start_row, start_col, new_data, include_headers=False
+):
     def _paste_logic(t):
+        paste_data = list(new_data)
+        new_headers = list(t.headers) if t.headers else []
+
+        # Handle headers from first row of paste data
+        if include_headers and len(paste_data) > 0:
+            header_row = paste_data[0]
+            paste_data = paste_data[1:]  # Remaining rows are data
+
+            # Update headers from first row, starting at start_col
+            for c_offset, val in enumerate(header_row):
+                target_c = start_col + c_offset
+                while len(new_headers) <= target_c:
+                    new_headers.append(f"Col {len(new_headers) + 1}")
+                new_headers[target_c] = val
+
         current_rows = [list(r) for r in t.rows]
-        rows_to_paste = len(new_data)
-        if rows_to_paste == 0:
+        rows_to_paste = len(paste_data)
+        if rows_to_paste == 0 and not include_headers:
             return t
 
         # Max columns in pasted data
         cols_to_paste = 0
-        for row in new_data:
+        for row in paste_data:
             cols_to_paste = max(cols_to_paste, len(row))
 
         # 1. Expand Rows
         needed_rows = start_row + rows_to_paste
         # Determine width for new empty rows
-        base_width = len(t.headers) if t.headers else 0
+        base_width = len(new_headers) if new_headers else 0
         if current_rows:
             base_width = max(base_width, len(current_rows[0]))
 
@@ -316,7 +333,7 @@ def paste_cells(sheet_idx, table_idx, start_row, start_col, new_data):
         # 2. Update Data & Expand Columns if needed
         max_cols_needed = start_col + cols_to_paste
 
-        for r_offset, row_data in enumerate(new_data):
+        for r_offset, row_data in enumerate(paste_data):
             target_r = start_row + r_offset
 
             # Expand this row's columns
@@ -332,8 +349,8 @@ def paste_cells(sheet_idx, table_idx, start_row, start_col, new_data):
         for r in current_rows:
             global_max_width = max(global_max_width, len(r))
 
-        if t.headers:
-            global_max_width = max(global_max_width, len(t.headers))
+        if new_headers:
+            global_max_width = max(global_max_width, len(new_headers))
 
         # Pad all rows
         for r in current_rows:
@@ -341,11 +358,11 @@ def paste_cells(sheet_idx, table_idx, start_row, start_col, new_data):
                 r.append("")
 
         # Pad headers
-        new_headers = list(t.headers) if t.headers else []
         if new_headers:
             while len(new_headers) < global_max_width:
                 new_headers.append(f"Col {len(new_headers) + 1}")
 
+        # If rows_to_paste was 0 but we updated headers, still return updated table
         return replace(t, rows=current_rows, headers=new_headers)
 
     return apply_table_update(sheet_idx, table_idx, _paste_logic)
@@ -510,6 +527,32 @@ def update_column_filter(sheet_idx, table_idx, col_idx, hidden_values):
         updated_filters[str(col_idx)] = hidden_values
 
         updated_visual["filters"] = updated_filters
+        new_md["visual"] = updated_visual
+
+        return replace(t, metadata=new_md)
+
+    return apply_table_update(sheet_idx, table_idx, _update_logic)
+
+
+def update_column_align(sheet_idx, table_idx, col_idx, alignment):
+    def _update_logic(t):
+        current_md = t.metadata or {}
+        new_md = current_md.copy()
+
+        current_visual = new_md.get("visual", {})
+        updated_visual = current_visual.copy()
+
+        # Ensure 'columns' dict exists
+        current_columns = updated_visual.get("columns", {})
+        updated_columns = current_columns.copy()
+
+        # Update specific column
+        col_key = str(col_idx)
+        col_data = updated_columns.get(col_key, {}).copy()
+        col_data["align"] = alignment
+        updated_columns[col_key] = col_data
+
+        updated_visual["columns"] = updated_columns
         new_md["visual"] = updated_visual
 
         return replace(t, metadata=new_md)
