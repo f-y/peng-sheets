@@ -39,6 +39,7 @@ interface TabDefinition {
     title: string;
     index: number;
     sheetIndex?: number;
+    docIndex?: number; // Document section index for document tabs
     data?: any;
 }
 
@@ -634,9 +635,77 @@ export class MyEditor extends LitElement {
         }
     }
 
+    private async _handleDocumentChange(detail: { sectionIndex: number; content: string; title?: string }) {
+        console.log('Document change received:', detail);
+
+        // Find the active document tab
+        const activeTab = this.tabs[this.activeTabIndex];
+        if (!activeTab || activeTab.type !== 'document') {
+            console.warn('Document change event but no active document tab');
+            return;
+        }
+
+        // Use the docIndex tracked when the tab was created
+        const docIndex = activeTab.docIndex;
+        if (docIndex === undefined) {
+            console.error('Document tab missing docIndex');
+            return;
+        }
+
+        try {
+            // Get the document section range from Python using docIndex
+            const result = this.pyodide?.runPython(`
+import json
+result = get_document_section_range(workbook, ${docIndex})
+json.dumps(result)
+            `);
+
+            console.log('Python result:', result);
+
+            if (result) {
+                const range = JSON.parse(result);
+                if (range && range.start_line !== undefined && range.end_line !== undefined) {
+                    // Use title from event (may have been edited) or fall back to existing
+                    const newTitle = detail.title || activeTab.title;
+                    const header = `# ${newTitle}`;
+                    // Ensure content ends with newline for separation from next section
+                    const body = detail.content.endsWith('\n') ? detail.content : detail.content + '\n';
+                    const fullContent = header + '\n' + body;
+
+                    // Send update to VS Code
+                    vscode.postMessage({
+                        type: 'updateRange',
+                        startLine: range.start_line,
+                        endLine: range.end_line,
+                        endCol: range.end_col,
+                        content: fullContent
+                    });
+
+                    // Update local state including title
+                    activeTab.title = newTitle;
+                    activeTab.data.content = detail.content;
+                    this.requestUpdate();
+
+                    console.log('Document updated:', { range, title: newTitle, content: fullContent.substring(0, 50) + '...' });
+                } else if (range && range.error) {
+                    console.error('Python error:', range.error);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to update document section:', error);
+            // Fallback: just update local state without file save
+            if (detail.title) {
+                activeTab.title = detail.title;
+            }
+            activeTab.data.content = detail.content;
+            this.requestUpdate();
+        }
+    }
+
     private _handleUndo() {
         vscode.postMessage({ type: 'undo' });
     }
+
 
     private _handleRedo() {
         vscode.postMessage({ type: 'redo' });
@@ -790,6 +859,7 @@ export class MyEditor extends LitElement {
             window.addEventListener('sheet-metadata-update', (e: any) => this._handleSheetMetadataUpdate(e.detail));
             window.addEventListener('paste-cells', (e: any) => this._handlePasteCells(e.detail));
             window.addEventListener('post-message', (e: any) => this._handlePostMessage(e.detail));
+            window.addEventListener('document-change', (e: any) => this._handleDocumentChange(e.detail));
 
             window.addEventListener('message', async (event) => {
                 const message = event.data;
@@ -879,7 +949,9 @@ export class MyEditor extends LitElement {
         if (!activeTab) return html``;
 
         return html`
-            <spreadsheet-toolbar @toolbar-action="${this._handleToolbarAction}"></spreadsheet-toolbar>
+            ${activeTab.type !== 'document' ? html`
+                <spreadsheet-toolbar @toolbar-action="${this._handleToolbarAction}"></spreadsheet-toolbar>
+            ` : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet'
                 ? html`
@@ -1230,6 +1302,7 @@ export class MyEditor extends LitElement {
             const structure: StructureItem[] = result.structure;
             const newTabs: TabDefinition[] = [];
             let workbookFound = false;
+            let docIndex = 0; // Track document section index separately
 
             // Reconstruct Tabs from Structure
             for (const section of structure) {
@@ -1238,6 +1311,7 @@ export class MyEditor extends LitElement {
                         type: 'document',
                         title: section.title!,
                         index: newTabs.length,
+                        docIndex: docIndex++, // Store document section index
                         data: section
                     });
                 } else if (section.type === 'workbook') {

@@ -430,6 +430,68 @@ def extract_structure(md_text, root_marker):
     return json.dumps(sections)
 
 
+def get_document_section_range(wb, section_index):
+    """Get the start and end line numbers for a document section.
+
+    Args:
+        wb: Workbook instance (unused, but matches call pattern)
+        section_index: Index of the section in the structure (0-based)
+
+    Returns:
+        dict with 'start_line' and 'end_line', or 'error' if not found
+    """
+    global md_text, config
+
+    config_dict = json.loads(config) if config else {}
+    root_marker = config_dict.get("rootMarker", "# Tables")
+
+    lines = md_text.split("\n")
+    sections = []
+    current_section = None
+    current_start = None
+
+    for i, line in enumerate(lines):
+        if line.startswith("# ") and not line.startswith("##"):
+            # End previous section
+            if current_section is not None:
+                sections.append(
+                    {
+                        "start": current_start,
+                        "end": i - 1,
+                        "type": current_section["type"],
+                    }
+                )
+
+            stripped = line.strip()
+            if stripped == root_marker:
+                current_section = {"type": "workbook"}
+            else:
+                current_section = {"type": "document"}
+            current_start = i
+
+    # Add final section
+    if current_section is not None:
+        sections.append(
+            {
+                "start": current_start,
+                "end": len(lines) - 1,
+                "type": current_section["type"],
+            }
+        )
+
+    # Find document sections only
+    doc_sections = [s for s in sections if s["type"] == "document"]
+
+    if section_index < 0 or section_index >= len(doc_sections):
+        return {"error": f"Invalid section index: {section_index}"}
+
+    target = doc_sections[section_index]
+    # Return end_col as length of the end line to cover the full line
+    end_line = target["end"]
+    end_col = len(lines[end_line]) if end_line < len(lines) else 0
+    return {"start_line": target["start"], "end_line": end_line, "end_col": end_col}
+
+
 def initialize_workbook(md_text_input, config_json):
     global workbook, schema, md_text, config
     md_text = md_text_input

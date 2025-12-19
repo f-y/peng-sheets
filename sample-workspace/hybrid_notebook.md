@@ -1,10 +1,36 @@
-# Project Overview
+# Project
 
 This is a design document that also contains a spreadsheet.
 
 ## Context
 
 We are building a new application.
+
+- test1
+  - test
+  - test 3
+
+
+| Category | Amount |
+| --- | --- |
+| Server | $500 |
+| Design | $300 |
+| Design | $300 |
+| Server | $500 |
+| Design | $300 |
+| Design | $300 |
+| Server | $500 |
+| Design | $300 |
+| Design | $300 |
+| Server | $500 |
+| Design | $300 |
+| Design | $300 |
+| Server | $500 |
+| Design | $300 |
+| Design | $300 |
+| Server | $500 |
+| Design | $300 |
+| Design | $300 |
 
 # Tables
 
@@ -16,6 +42,7 @@ We are building a new application.
 | --- | --- |
 | Server | $500 |
 | Design | $300 |
+
 
 # Appendix
 
