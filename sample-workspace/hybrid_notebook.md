@@ -8,7 +8,7 @@ We are building a new application.
 
 - test1
   - test
-  - test 3
+  - test
 
 
 | Category | Amount |
@@ -42,6 +42,7 @@ We are building a new application.
 | --- | --- |
 | Server | $500 |
 | Design | $300 |
+|  | a |
 
 
 # Appendix

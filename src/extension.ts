@@ -98,11 +98,12 @@ export function activate(context: vscode.ExtensionContext) {
 
         currentPanel.webview.onDidReceiveMessage(
             async (message) => {
+                console.log('[Extension] Received message from webview:', message.type);
                 if (!activeDocument) {
                     console.error('No active document!');
                     return;
                 }
-                // console.log("Received message from webview:", message);
+                console.log('[Extension] Processing message:', message.type);
                 switch (message.type) {
                     case 'updateRange': {
                         const startPosition = new vscode.Position(message.startLine, 0);
@@ -236,6 +237,36 @@ export function activate(context: vscode.ExtensionContext) {
                         vscode.workspace.applyEdit(wsEdit);
                         return;
                     }
+                    case 'save': {
+                        console.log('Received save request');
+                        // Prevent concurrent save requests using a simple lock
+                        if ((message as any)._saveLock) {
+                            console.log('Save already in progress, skipping');
+                            return;
+                        }
+                        (message as any)._saveLock = true;
+
+                        if (activeDocument) {
+                            if (activeDocument.isDirty) {
+                                try {
+                                    const saved = await activeDocument.save();
+                                    console.log(`Document saved: ${saved}`);
+                                    if (!saved) {
+                                        console.warn('Save returned false, but document may have been saved by another process');
+                                    }
+                                } catch (error) {
+                                    console.error('Error saving document:', error);
+                                    vscode.window.showErrorMessage('Failed to save document.');
+                                }
+                            } else {
+                                console.log('Document is not dirty, nothing to save');
+                            }
+                        } else {
+                            console.error('No active document to save');
+                            vscode.window.showErrorMessage('No active document to save.');
+                        }
+                        return;
+                    }
                 }
             },
             undefined,
@@ -325,4 +356,4 @@ function getWebviewContent(
     </html>`;
 }
 
-export function deactivate() {}
+export function deactivate() { }

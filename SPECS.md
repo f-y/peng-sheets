@@ -250,6 +250,26 @@ Excel has a vast array of formatting options. Since Markdown is plain text, we c
 *   **Merge Cells**: Fundamentally incompatible with Markdown tables.
 *   **Arbitrary Cell Styling**: Ad-hoc background colors (cell-by-cell painting) are discouraged in favor of rule-based Conditional Formatting to keep Markdown clean.
 
+#### Phase 6: Data Validation (Input Rules)
+*   **Goal**: Restrict input to maintain data integrity, similar to Excel's Data Validation.
+*   **Excel Features vs Extension**:
+    *   **List (Dropdown)**:
+        *   *Excel*: Defined comma-separated list or cell range.
+        *   *Extension*: Defined in metadata (e.g., `["Open", "Closed"]`). Renders as a dropdown in edit mode.
+    *   **Data Type validation**:
+        *   *Excel*: Whole Number, Decimal, Date, Time, Text Length.
+        *   *Extension*: Schema-based validation. If a column is defined as `int`, warn or block non-integer input.
+    *   **Custom Formula**:
+        *   *Excel*: `A1 > 5`.
+        *   *Extension*: Likely via Python expression or Regex in metadata.
+    *   **Error Alert**:
+        *   *Excel*: Popup blocking execution.
+        *   *Extension*: Toast notification or red cell border (non-blocking preferred).
+    *   **Input Message**:
+        *   *Excel*: Tooltip when cell is selected.
+        *   *Extension*: Tooltip or Status Bar message.
+*   **Metadata Persistence**: Validation rules must be stored in the table metadata (JSON/YAML in comments) to persist across sessions.
+
 ## 14. App & File Structure Integration
 ### 14.1. Hybrid Document Model (Sheets + Docs)
 The application treats a Markdown file as a collection of "Tabs".
