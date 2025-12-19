@@ -349,7 +349,9 @@ describe('SpreadsheetTable', () => {
         expect(stopPropSpy).toHaveBeenCalled();
         expect(preventDefSpy).toHaveBeenCalled();
 
-        // Verify state update (Logic-First approach)
-        expect((el as unknown as TestableSpreadsheetTable).editCtrl.pendingEditValue).toBe('\nData');
+        // Verify DOM was modified (we no longer sync pendingEditValue during editing)
+        // The BR element should have been inserted
+        const brElements = cell.querySelectorAll('br');
+        expect(brElements.length).toBeGreaterThan(0);
     });
 });

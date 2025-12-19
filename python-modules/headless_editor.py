@@ -627,3 +627,50 @@ def sort_rows(sheet_idx, table_idx, col_idx, ascending):
         return replace(t, rows=rows)
 
     return apply_table_update(sheet_idx, table_idx, _sort_logic)
+
+
+def update_column_format(sheet_idx, table_idx, col_idx, format_config):
+    """Update the display format settings for a specific column.
+
+    Args:
+        sheet_idx: Sheet index
+        table_idx: Table index
+        col_idx: Column index
+        format_config: Dictionary containing format settings:
+            - wordWrap: bool (optional) - False to disable word wrap
+            - numberFormat: dict (optional) - Number formatting options:
+                - type: 'number' | 'currency' | 'percent'
+                - decimals: int
+                - useThousandsSeparator: bool
+                - currencySymbol: str
+    """
+
+    def _update_logic(t):
+        current_md = t.metadata or {}
+        new_md = current_md.copy()
+
+        current_visual = new_md.get("visual", {})
+        updated_visual = current_visual.copy()
+
+        # Ensure 'columns' dict exists
+        current_columns = updated_visual.get("columns", {})
+        updated_columns = current_columns.copy()
+
+        # Update specific column
+        col_key = str(col_idx)
+        col_data = updated_columns.get(col_key, {}).copy()
+
+        # Update format settings
+        if format_config:
+            col_data["format"] = format_config
+        elif "format" in col_data:
+            # Remove format if empty config provided
+            del col_data["format"]
+
+        updated_columns[col_key] = col_data
+        updated_visual["columns"] = updated_columns
+        new_md["visual"] = updated_visual
+
+        return replace(t, metadata=new_md)
+
+    return apply_table_update(sheet_idx, table_idx, _update_logic)

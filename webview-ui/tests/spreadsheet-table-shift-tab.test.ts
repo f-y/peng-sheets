@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 
 describe('SpreadsheetTable Navigation', () => {
-
     it('Shift+Tab moves selection to previous cell without extending selection', async () => {
         const element = new SpreadsheetTable();
         document.body.appendChild(element);
