@@ -6,6 +6,13 @@ export class EditController implements ReactiveController {
     isEditing: boolean = false;
     editingMetadata: boolean = false;
     pendingEditValue: string | null = null;
+    // Flag to indicate if editing started via direct keyboard input (replacement mode)
+    // vs double-click (append mode). In replacement mode, pendingEditValue should be
+    // used as fallback when DOM is empty.
+    isReplacementMode: boolean = false;
+    // Flag to track if user explicitly inserted a newline via Option+Enter
+    // Used to distinguish intentional newlines from browser-inserted cursor placeholders
+    hasUserInsertedNewline: boolean = false;
 
     // Metadata State
     pendingTitle: string = '';
@@ -16,12 +23,13 @@ export class EditController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
-    startEditing(initialValue: string | null = null) {
+    startEditing(initialValue: string | null = null, isReplacement: boolean = false) {
         this.isEditing = true;
-        this.pendingEditValue = initialValue;
+        this.pendingEditValue = (initialValue === null || initialValue === undefined) ? '' : initialValue;
+        this.isReplacementMode = isReplacement;
         this.host.requestUpdate();
     }
 
@@ -29,6 +37,8 @@ export class EditController implements ReactiveController {
         this.isEditing = false;
         this.editingMetadata = false; // Reset metadata edit mode too
         this.pendingEditValue = null;
+        this.isReplacementMode = false;
+        this.hasUserInsertedNewline = false;
         this.host.requestUpdate();
     }
 

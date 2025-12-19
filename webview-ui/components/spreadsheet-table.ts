@@ -2,6 +2,7 @@ import { marked } from 'marked';
 import { html, css, LitElement, PropertyValues, nothing, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { live } from 'lit/directives/live.js';
+import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
 import { SelectionController } from '../controllers/selection-controller';
 import { EditController } from '../controllers/edit-controller';
@@ -191,6 +192,14 @@ export class SpreadsheetTable extends LitElement {
                 white-space: break-spaces; /* Allow newlines and render trailing breaks */
                 word-break: break-word;
                 overflow: visible; /* Expand to show content */
+                min-height: 1em; /* Prevent collapse, but don't grow for placeholder <br> */
+            }
+
+            /* When editing cell has only browser-inserted <br> (no text siblings), 
+               collapse the <br> height to prevent 2-line display */
+            .cell.editing:not(:has(br ~ *)):not(:has(* ~ br)) > br:only-child {
+                line-height: 0;
+                font-size: 0;
             }
 
             .cell:focus {
@@ -683,9 +692,25 @@ export class SpreadsheetTable extends LitElement {
         }
     }
 
-    private _handleInput(_e: Event) {
-        // Do nothing - let browser handle contenteditable natively
-        // Value is extracted only at commit time via _commitEdit
+    private _handleInput(e: Event) {
+        const inputEvent = e as InputEvent;
+        const target = e.target as HTMLElement;
+
+        // Track if user explicitly inserted a newline via Option+Enter
+        if (inputEvent.inputType === 'insertLineBreak') {
+            this.editCtrl.hasUserInsertedNewline = true;
+        }
+
+        // Normalize empty cells: when only <br> remains (browser placeholder), clear it
+        // BUT only if user hasn't explicitly inserted newlines during this edit session
+        if (target && target.innerHTML) {
+            // Check if content is only <br> tags (browser cursor placeholder)
+            const stripped = target.innerHTML.replace(/<br\s*\/?>/gi, '').replace(/\u200B/g, '').trim();
+            if (stripped === '' && !this.editCtrl.hasUserInsertedNewline) {
+                // Content is only BR and user didn't insert newlines, clear the browser placeholder
+                target.innerHTML = '';
+            }
+        }
     }
 
     private _handleKeyDown = (e: KeyboardEvent) => {
@@ -707,7 +732,7 @@ export class SpreadsheetTable extends LitElement {
         ) {
             e.preventDefault();
             this.selectionCtrl.selectedRow = -1;
-            this.editCtrl.startEditing(e.key);
+            this.editCtrl.startEditing(e.key, true);
             this.focusCell();
             return;
         }
@@ -738,8 +763,14 @@ export class SpreadsheetTable extends LitElement {
 
         if (!isControl && e.key.length === 1 && !isRangeSelection) {
             e.preventDefault();
-            this.editCtrl.startEditing(e.key);
+            this.editCtrl.startEditing(e.key, true);
             this.focusCell();
+            return;
+        }
+
+        if (isControl && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            this.dispatchEvent(new CustomEvent('save-requested', { bubbles: true, composed: true }));
             return;
         }
 
@@ -1160,6 +1191,22 @@ export class SpreadsheetTable extends LitElement {
         }
     }
 
+    /**
+     * Commits the current edit if one is active.
+     * Call this before changing cell selection to ensure edits are saved.
+     */
+    private async _commitCurrentEdit(): Promise<void> {
+        if (this.editCtrl.isEditing && !this._isCommitting) {
+            const editingCell = this.shadowRoot?.querySelector('.cell.editing') as HTMLElement | null;
+            if (editingCell) {
+                // Create a synthetic event with the editing cell as target
+                const syntheticEvent = new FocusEvent('blur', { bubbles: true });
+                Object.defineProperty(syntheticEvent, 'target', { value: editingCell, writable: false });
+                await this._commitEdit(syntheticEvent);
+            }
+        }
+    }
+
     private async _commitEdit(e: Event) {
         if (this._isCommitting) return;
         this._isCommitting = true;
@@ -1180,20 +1227,32 @@ export class SpreadsheetTable extends LitElement {
             const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
             let newValue = '';
 
-            // PRIORITIZE DOM CONTENT for WYSIWYG correctness during edit
-            // innerText can be inconsistent across browsers or with specific CSS (pre-wrap).
-            // We use a custom extractor to ensure <br> is always \n and text is preserved.
-            if (contentSpan) {
-                newValue = this._getDOMText(contentSpan);
-            } else {
-                newValue = this._getDOMText(cell);
-            }
+            // Read from DOM for WYSIWYG correctness
+            const targetEl = contentSpan || cell;
+            newValue = this._getDOMText(targetEl);
 
-            // contenteditable often adds a trailing <br> for caret positioning (or _getEditingHtml adds one).
-            // This results in an extra \n when extracting. We strip one trailing \n to match WYSIWYG.
+            // contenteditable often adds a trailing <br> for caret positioning.
+            // This results in an extra \n when extracting. We strip only ONE trailing \n
+            // (the browser-inserted one), preserving user-entered trailing newlines.
             if (newValue.endsWith('\n')) {
                 newValue = newValue.slice(0, -1);
             }
+
+            // If the remaining content is ONLY newlines (e.g., browser inserted multiple <br>
+            // for cursor positioning when content was cleared), treat it as empty.
+            // UNLESS user explicitly inserted newlines via Option+Enter during this session.
+            if (/^\n*$/.test(newValue) && !this.editCtrl.hasUserInsertedNewline) {
+                newValue = '';
+            }
+
+            // In replacement mode (direct keyboard input), pendingEditValue is the authoritative value.
+            // DOM may be empty or stale due to timing between mousedown and commit.
+            // In non-replacement mode (dblclick), DOM is authoritative - user edits are preserved.
+            if (this.editCtrl.isReplacementMode &&
+                this.editCtrl.pendingEditValue !== null) {
+                newValue = this.editCtrl.pendingEditValue;
+            }
+            // Note: No fallback for non-replacement mode. If user clears content, save empty.
 
             let editRow = parseInt(cell.dataset.row || '-10');
             let editCol = parseInt(cell.dataset.col || '-10');
@@ -1211,10 +1270,18 @@ export class SpreadsheetTable extends LitElement {
                         this.table.rows[editRow][editCol] = newValue;
                     }
                 } else if (editRow === this.table.rows.length) {
-                    const width = this.table.headers ? this.table.headers.length : this.table.rows[0]?.length || 0;
-                    const newRow = new Array(width).fill('');
-                    if (editCol < width) newRow[editCol] = newValue;
-                    this.table.rows.push(newRow);
+                    // Ghost row: Only add a new row if the value is non-empty
+                    if (newValue.trim() !== '') {
+                        const width = this.table.headers ? this.table.headers.length : this.table.rows[0]?.length || 0;
+                        const newRow = new Array(width).fill('');
+                        if (editCol < width) newRow[editCol] = newValue;
+                        this.table.rows.push(newRow);
+                    } else {
+                        // Empty value on ghost row: just cancel editing, don't add row
+                        this.editCtrl.cancelEditing();
+                        this._isCommitting = false;
+                        return;
+                    }
                 }
                 this.requestUpdate();
 
@@ -1513,18 +1580,36 @@ export class SpreadsheetTable extends LitElement {
 
     getNextVisibleRowIndex(currentDataRowIndex: number, delta: number): number {
         const indices = this.visibleRowIndices;
+        const ghostRowIndex = this.table ? this.table.rows.length : -1;
+
+        // Handle Ghost Row source
+        if (ghostRowIndex !== -1 && currentDataRowIndex === ghostRowIndex) {
+            if (delta < 0 && indices.length > 0) {
+                return indices[indices.length - 1];
+            }
+            return ghostRowIndex;
+        }
+
         let visualIdx = indices.indexOf(currentDataRowIndex);
 
         if (visualIdx === -1) {
-            // Current selection is hidden? Find closest?
-            // Fallback: simple clamp
             return currentDataRowIndex + delta;
         }
 
-        visualIdx += delta;
-        visualIdx = Math.max(0, Math.min(visualIdx, indices.length - 1));
+        const nextVisualIdx = visualIdx + delta;
 
-        return indices[visualIdx];
+        if (nextVisualIdx >= indices.length) {
+            if (delta > 0 && ghostRowIndex !== -1) {
+                return ghostRowIndex;
+            }
+            return indices[indices.length - 1];
+        }
+
+        if (nextVisualIdx < 0) {
+            return indices[0];
+        }
+
+        return indices[nextVisualIdx];
     }
 
     private _toggleFilterMenu(e: MouseEvent, colIndex: number) {
@@ -2032,7 +2117,8 @@ export class SpreadsheetTable extends LitElement {
                                         tabindex="${isActive ? 0 : -1}"
                                         contenteditable="${isEditingCell ? 'true' : 'false'}"
                                         style="text-align: ${align};"
-                                        @click="${(e: MouseEvent) => {
+                                        @click="${async (e: MouseEvent) => {
+                                    await this._commitCurrentEdit();
                                     if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
                                     else this.selectionCtrl.selectCell(r, c);
                                     this.focusCell();
@@ -2121,7 +2207,8 @@ export class SpreadsheetTable extends LitElement {
                                         data-col="${c}"
                                         tabindex="${isActive ? 0 : -1}"
                                         contenteditable="${isEditingCell ? 'true' : 'false'}"
-                                        @click="${(e: MouseEvent) => {
+                                        @click="${async (e: MouseEvent) => {
+                                await this._commitCurrentEdit();
                                 if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
                                 else this.selectionCtrl.selectCell(r, c);
                                 this.focusCell();
@@ -2139,15 +2226,14 @@ export class SpreadsheetTable extends LitElement {
                                         @input="${this._handleInput}"
                                         @blur="${this._handleBlur}"
                                         @keydown="${this._handleKeyDown}"
-                                        .textContent="${isEditingCell
-                                ? live(
+                                        style="opacity: 0.5;"
+                                        .innerHTML="${isEditingCell
+                                ? this._getEditingHtml(
                                     this.editCtrl.pendingEditValue !== null
                                         ? this.editCtrl.pendingEditValue
                                         : ''
                                 )
-                                : nothing}"
-                                        .innerHTML="${!isEditingCell ? this._renderMarkdown('') : nothing}"
-                                        style="opacity: 0.5;"
+                                : this._renderMarkdown('')}"
                                     ></div>
                                 `;
                     })}
