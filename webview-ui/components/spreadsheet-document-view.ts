@@ -310,8 +310,8 @@ export class SpreadsheetDocumentView extends LitElement {
     private _exitEditMode(): void {
         this._isEditing = false;
 
-        // Only save if content changed
-        if (this._editContent !== this.content) {
+        // Only save if content changed (compare full content including title)
+        if (this._editContent !== this._getFullContent()) {
             this._saveContent();
         }
     }

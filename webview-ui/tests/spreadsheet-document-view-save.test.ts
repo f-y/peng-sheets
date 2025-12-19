@@ -58,10 +58,10 @@ describe('SpreadsheetDocumentView save functionality', () => {
 
         // Verify event was dispatched
         expect(eventSpy).toHaveBeenCalled();
-        expect(eventSpy.mock.calls[0][0].detail).toEqual({
-            sectionIndex: 0,
-            content: '# Modified Content\n\nNew text'
-        });
+        // Event includes both content (body) and title
+        expect(eventSpy.mock.calls[0][0].detail.sectionIndex).toEqual(0);
+        expect(eventSpy.mock.calls[0][0].detail.content).toEqual('\nNew text');
+        expect(eventSpy.mock.calls[0][0].detail.title).toEqual('Modified Content');
     });
 
     it('should NOT dispatch document-change event if content is unchanged', async () => {

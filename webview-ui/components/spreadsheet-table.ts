@@ -711,6 +711,13 @@ export class SpreadsheetTable extends LitElement {
                 target.innerHTML = '';
             }
         }
+
+        // In replacement mode, keep pendingEditValue in sync with DOM content
+        // This ensures that if user continues typing after initial direct input,
+        // the final value reflects all their input, not just the initial character.
+        if (this.editCtrl.isReplacementMode && target) {
+            this.editCtrl.pendingEditValue = this._getDOMText(target);
+        }
     }
 
     private _handleKeyDown = (e: KeyboardEvent) => {
@@ -1251,6 +1258,13 @@ export class SpreadsheetTable extends LitElement {
             if (this.editCtrl.isReplacementMode &&
                 this.editCtrl.pendingEditValue !== null) {
                 newValue = this.editCtrl.pendingEditValue;
+                // Apply same trailing newline stripping to pendingEditValue
+                if (newValue.endsWith('\n')) {
+                    newValue = newValue.slice(0, -1);
+                }
+                if (/^\n*$/.test(newValue) && !this.editCtrl.hasUserInsertedNewline) {
+                    newValue = '';
+                }
             }
             // Note: No fallback for non-replacement mode. If user clears content, save empty.
 
