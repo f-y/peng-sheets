@@ -711,6 +711,22 @@ json.dumps(result)
         vscode.postMessage({ type: 'redo' });
     }
 
+    private _saveDebounceTimer: number | null = null;
+    private _handleSave() {
+        // Debounce save requests to prevent duplicate calls
+        if (this._saveDebounceTimer !== null) {
+            console.log('[Webview] Save already queued, skipping duplicate');
+            return;
+        }
+        console.log('[Webview] _handleSave called, sending save message to extension host');
+        vscode.postMessage({ type: 'save' });
+
+        // Prevent another save for 500ms
+        this._saveDebounceTimer = window.setTimeout(() => {
+            this._saveDebounceTimer = null;
+        }, 500);
+    }
+
     private _postUpdateMessage(updateSpec: any) {
         if (this._isBatching) {
             if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
@@ -769,7 +785,10 @@ json.dumps(result)
         // Debug Log
         // console.log("Keydown:", e.key, "Ctrl:", e.ctrlKey, "Meta:", e.metaKey, "Shift:", e.shiftKey);
 
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            this._handleSave();
+        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
             console.log('Likely Undo detected');
             e.preventDefault();
             this._handleUndo();
@@ -897,14 +916,22 @@ json.dumps(result)
 
             // Handle Add Sheet Selection
             if (this.pendingAddSheet) {
-                // Select last sheet (before 'add-sheet' button if present)
-                let targetIndex = tabs.length - 1;
-                if (tabs.length > 0 && tabs[tabs.length - 1].type === 'add-sheet') {
-                    targetIndex = tabs.length - 2;
-                }
-
-                if (targetIndex >= 0) {
-                    this.activeTabIndex = targetIndex;
+                // Find the 'add-sheet' button and select the tab immediately before it
+                // (which is the newly added sheet). This handles cases where Documents
+                // appear after the Workbook in the tabs array.
+                const addSheetIndex = tabs.findIndex(tab => tab.type === 'add-sheet');
+                if (addSheetIndex > 0) {
+                    // Select the tab before the add-sheet button (the new sheet)
+                    this.activeTabIndex = addSheetIndex - 1;
+                } else if (addSheetIndex === 0) {
+                    // Edge case: add-sheet is first (shouldn't happen normally)
+                    this.activeTabIndex = 0;
+                } else {
+                    // No add-sheet button found, fallback to last sheet tab
+                    const lastSheetIndex = tabs.map((t, i) => ({ t, i }))
+                        .filter(x => x.t.type === 'sheet')
+                        .pop()?.i ?? 0;
+                    this.activeTabIndex = lastSheetIndex;
                 }
                 this.pendingAddSheet = false;
             }
@@ -960,6 +987,7 @@ json.dumps(result)
                                   .layout="${activeTab.data.metadata?.layout}"
                                   .tables="${activeTab.data.tables}"
                                   .sheetIndex="${activeTab.sheetIndex}"
+                                  @save-requested="${this._handleSave}"
                               ></layout-container>
                           </div>
                       `
