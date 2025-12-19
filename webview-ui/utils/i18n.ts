@@ -31,7 +31,25 @@ const translations = {
         toolbarAlignLeft: 'Align Left',
         toolbarAlignCenter: 'Align Center',
         toolbarAlignRight: 'Align Right',
-        toolbarStrikethrough: 'Strikethrough'
+        toolbarStrikethrough: 'Strikethrough',
+        toolbarUnderline: 'Underline',
+        displaySettings: 'Display Settings',
+        wordWrap: 'Word Wrap',
+        numberFormat: 'Number Format',
+        formatNone: 'None',
+        formatNumber: 'Number',
+        formatCurrency: 'Currency',
+        formatPercent: 'Percent',
+        decimals: 'Decimals',
+        thousandsSeparator: 'Thousands Separator',
+        currencySymbol: 'Symbol',
+        apply: 'Apply',
+        columnFormat: 'Column Format',
+        toolbarCommaSeparator: 'Thousands Separator',
+        toolbarPercent: 'Percent Format',
+        toolbarWordWrap: 'Toggle Word Wrap',
+        toolbarDecimalIncrease: 'Increase Decimals',
+        toolbarDecimalDecrease: 'Decrease Decimals'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -65,7 +83,25 @@ const translations = {
         toolbarAlignLeft: '左揃え',
         toolbarAlignCenter: '中央揃え',
         toolbarAlignRight: '右揃え',
-        toolbarStrikethrough: '取り消し線'
+        toolbarStrikethrough: '取り消し線',
+        toolbarUnderline: '下線',
+        displaySettings: '表示設定',
+        wordWrap: '折り返し',
+        numberFormat: '数値フォーマット',
+        formatNone: 'なし',
+        formatNumber: '数値',
+        formatCurrency: '通貨',
+        formatPercent: 'パーセント',
+        decimals: '小数点桁数',
+        thousandsSeparator: '桁区切り',
+        currencySymbol: '記号',
+        apply: '適用',
+        columnFormat: '列フォーマット',
+        toolbarCommaSeparator: '桁区切り',
+        toolbarPercent: 'パーセント形式',
+        toolbarWordWrap: '折り返し切替',
+        toolbarDecimalIncrease: '小数点桁数を増やす',
+        toolbarDecimalDecrease: '小数点桁数を減らす'
     }
 };
 

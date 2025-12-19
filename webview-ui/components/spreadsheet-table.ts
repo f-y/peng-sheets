@@ -14,10 +14,22 @@ import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
+interface NumberFormat {
+    type: 'number' | 'currency' | 'percent';
+    decimals?: number;
+    useThousandsSeparator?: boolean;
+    currencySymbol?: string;
+}
+
+interface ColumnDisplayFormat {
+    wordWrap?: boolean; // false の場合のみ保存（デフォルトtrue）
+    numberFormat?: NumberFormat;
+}
+
 interface VisualMetadata {
     filters?: Record<string, string[]>;
     column_widths?: number[] | Record<number, number>;
-    columns?: Record<string, { align?: string }>;
+    columns?: Record<string, { align?: string; format?: ColumnDisplayFormat }>;
 }
 
 export interface TableJSON {
@@ -86,6 +98,20 @@ export class SpreadsheetTable extends LitElement {
                 user-select: none; /* Prevent text selection in nav mode */
                 position: relative; /* Ensure z-index participation */
                 z-index: 1;
+            }
+
+            /* Word Wrap有効時（デフォルト）*/
+            .cell.word-wrap {
+                white-space: pre-wrap;
+                word-break: break-word;
+                overflow: hidden;
+            }
+
+            /* Word Wrap無効時（Excelライク：はみ出し表示）*/
+            .cell.no-wrap {
+                white-space: nowrap;
+                overflow: visible;
+                z-index: 50; /* Higher than normal cells so text shows above adjacent cells */
             }
 
             .cell.selected {
@@ -398,6 +424,26 @@ export class SpreadsheetTable extends LitElement {
                 opacity: 1;
                 color: var(--vscode-textLink-foreground);
             }
+
+            .format-icon {
+                position: absolute;
+                right: 22px;
+                top: 50%;
+                transform: translateY(-50%);
+                font-size: 12px;
+                cursor: pointer;
+                color: var(--vscode-descriptionForeground);
+                opacity: 0;
+                visibility: hidden;
+                transition: opacity 0.2s;
+                z-index: 200;
+            }
+
+            .cell.header-col:hover .format-icon {
+                visibility: visible;
+                opacity: 1;
+                color: var(--vscode-textLink-foreground);
+            }
         `
     ];
 
@@ -420,6 +466,9 @@ export class SpreadsheetTable extends LitElement {
 
     @state()
     private _activeFilterMenu: { colIndex: number; x: number; y: number } | null = null;
+
+    @state()
+    private _activeFormatMenu: { colIndex: number; x: number; y: number } | null = null;
 
     private _shouldFocusCell: boolean = false;
     private _isCommitting: boolean = false; // Kept in host for now as it coordinates editCtrl and Events
@@ -1586,6 +1635,76 @@ export class SpreadsheetTable extends LitElement {
         }
     };
 
+    private _toggleFormatMenu(e: MouseEvent, colIndex: number) {
+        e.stopPropagation();
+        if (this._activeFormatMenu && this._activeFormatMenu.colIndex === colIndex) {
+            this._closeFormatMenu();
+        } else {
+            const button = e.target as HTMLElement;
+            const rect = button.getBoundingClientRect();
+
+            const MENU_WIDTH = 240;
+            let x = rect.left;
+
+            // Adjust if menu would overflow the right edge of the viewport
+            if (rect.left + MENU_WIDTH > window.innerWidth) {
+                x = rect.right - MENU_WIDTH;
+            }
+
+            this._activeFormatMenu = {
+                colIndex,
+                x: x,
+                y: rect.bottom
+            };
+            // Register outside click handler on next frame to avoid catching the opening click
+            requestAnimationFrame(() => {
+                window.addEventListener('click', this._handleFormatOutsideClick, true);
+            });
+        }
+    }
+
+    private _closeFormatMenu() {
+        if (this._activeFormatMenu) {
+            window.removeEventListener('click', this._handleFormatOutsideClick, true);
+            this._activeFormatMenu = null;
+        }
+    }
+
+    private _handleFormatOutsideClick = (e: MouseEvent) => {
+        const path = e.composedPath();
+        const isInside = path.some(
+            (el) =>
+                (el as HTMLElement).tagName?.toLowerCase() === 'column-format-menu' ||
+                (el as HTMLElement).classList?.contains('format-icon')
+        );
+        if (!isInside) {
+            this._closeFormatMenu();
+        }
+    };
+
+    private _handleFormatChange(e: CustomEvent) {
+        const { colIndex, format } = e.detail;
+
+        this.dispatchEvent(
+            new CustomEvent('post-message', {
+                detail: {
+                    command: 'update_column_format',
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    colIndex: colIndex,
+                    format: format
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
+        this._closeFormatMenu();
+    }
+
+    private _handleFormatCancel() {
+        this._closeFormatMenu();
+    }
+
     connectedCallback() {
         super.connectedCallback();
         // console.log('SpreadsheetTable connected', this.tableIndex);
@@ -1762,7 +1881,6 @@ export class SpreadsheetTable extends LitElement {
                                           class="filter-icon codicon codicon-filter ${isFiltered ? 'active' : ''}"
                                           @click="${(e: MouseEvent) => this._toggleFilterMenu(e, i)}"
                                       ></span>
-
                                       <div
                                           class="col-resize-handle"
                                           contenteditable="false"
@@ -1886,14 +2004,23 @@ export class SpreadsheetTable extends LitElement {
                                     : 'active-cell'
                                 : '';
 
-                            // Get alignment from metadata
+                            // Get alignment and format from metadata
                             const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
                             const columns = visual.columns || {};
-                            const align = columns[c.toString()]?.align || 'left';
+                            const colSettings = columns[c.toString()] || {};
+                            const align = colSettings.align || 'left';
+                            const format = colSettings.format;
+                            const wordWrapEnabled = format?.wordWrap !== false; // Default true
+                            const wrapClass = wordWrapEnabled ? 'word-wrap' : 'no-wrap';
+
+                            // Apply number formatting for display (not during editing)
+                            const displayValue = isEditingCell
+                                ? cell
+                                : this._formatCellValue(cell, format?.numberFormat);
 
                             return html`
                                     <div
-                                        class="cell ${isSelected ? 'selected' : ''} ${inRange
+                                        class="cell ${wrapClass} ${isSelected ? 'selected' : ''} ${inRange
                                     ? 'selected-range'
                                     : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
                                         ? 'range-top'
@@ -1929,7 +2056,7 @@ export class SpreadsheetTable extends LitElement {
                                             ? this.editCtrl.pendingEditValue
                                             : cell
                                     )
-                                    : this._renderMarkdown(cell)}"
+                                    : this._renderMarkdown(displayValue)}"
                                     ></div>
                                 `;
                         })}
@@ -2164,6 +2291,40 @@ export class SpreadsheetTable extends LitElement {
         return text;
     }
 
+    /**
+     * Format a cell value based on number format settings.
+     * Returns the original value if not a valid number.
+     */
+    private _formatCellValue(value: string, format?: NumberFormat): string {
+        if (!format || !value) return value;
+
+        const num = parseFloat(value);
+        if (isNaN(num)) return value; // Non-numeric values pass through
+
+        const decimals = format.decimals ?? 0;
+
+        if (format.type === 'percent') {
+            const percentVal = num * 100;
+            return percentVal.toFixed(decimals) + '%';
+        }
+
+        let result: string;
+        if (format.useThousandsSeparator) {
+            result = num.toLocaleString('en-US', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        } else {
+            result = num.toFixed(decimals);
+        }
+
+        if (format.type === 'currency' && format.currencySymbol) {
+            result = format.currencySymbol + result;
+        }
+
+        return result;
+    }
+
     private _renderMarkdown(content: string): string {
         if (!content) return '';
         // Use parseInline to avoid <p> tags and enable GFM line breaks
@@ -2184,8 +2345,6 @@ export class SpreadsheetTable extends LitElement {
     }
 
     public handleToolbarAction(action: string) {
-        console.log('SpreadsheetTable.handleToolbarAction', action);
-
         if (action.startsWith('align-')) {
             const align = action.replace('align-', '');
             const col = this.selectionCtrl.selectedCol;
@@ -2195,6 +2354,109 @@ export class SpreadsheetTable extends LitElement {
                     command: 'update_column_align',
                     colIndex: col,
                     alignment: align
+                });
+            }
+            return;
+        }
+
+        // Format actions for currently selected column
+        if (action.startsWith('format-')) {
+            const col = this.selectionCtrl.selectedCol;
+            if (col < 0) {
+                console.warn('No column selected for format action');
+                return;
+            }
+
+            // Get current format for the column
+            const visual = (this.table?.metadata as any)?.['visual'] || {};
+            const currentFormat = visual.columns?.[String(col)]?.format || {};
+
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            let newFormat: Record<string, any> | null = null;
+
+            if (action === 'format-comma') {
+                // Toggle thousands separator
+                const currentNumberFormat = currentFormat.numberFormat || {};
+                const hasComma = currentNumberFormat.useThousandsSeparator === true;
+                if (hasComma) {
+                    // Remove thousands separator
+                    const formatType = currentNumberFormat.type || 'number';
+                    if (formatType === 'number' && !currentNumberFormat.decimals) {
+                        // Only thousandsSeparator was set, clear entire numberFormat
+                        const { numberFormat: _, ...rest } = currentFormat;
+                        newFormat = rest;
+                    } else {
+                        // Keep other settings, just disable thousands separator
+                        newFormat = {
+                            ...currentFormat,
+                            numberFormat: { ...currentNumberFormat, useThousandsSeparator: false }
+                        };
+                    }
+                } else {
+                    // Enable thousands separator
+                    newFormat = {
+                        ...currentFormat,
+                        numberFormat: {
+                            ...currentNumberFormat,
+                            type: currentNumberFormat.type || 'number',
+                            useThousandsSeparator: true
+                        }
+                    };
+                }
+            } else if (action === 'format-percent') {
+                // Toggle percent format
+                const currentNumberFormat = currentFormat.numberFormat || {};
+                if (currentNumberFormat.type === 'percent') {
+                    // Remove percent format
+                    const { numberFormat: _, ...rest } = currentFormat;
+                    newFormat = rest;
+                } else {
+                    newFormat = {
+                        ...currentFormat,
+                        numberFormat: { type: 'percent', decimals: 0 }
+                    };
+                }
+            } else if (action === 'format-wordwrap') {
+                // Toggle word wrap
+                const currentWordWrap = currentFormat.wordWrap !== false; // default is true
+                newFormat = {
+                    ...currentFormat,
+                    wordWrap: !currentWordWrap
+                };
+            } else if (action === 'format-decimal-increase') {
+                // Increase decimal places
+                const currentNumberFormat = currentFormat.numberFormat || {};
+                const currentDecimals = currentNumberFormat.decimals ?? 0;
+                newFormat = {
+                    ...currentFormat,
+                    numberFormat: {
+                        ...currentNumberFormat,
+                        type: currentNumberFormat.type || 'number',
+                        decimals: Math.min(currentDecimals + 1, 10)
+                    }
+                };
+            } else if (action === 'format-decimal-decrease') {
+                // Decrease decimal places
+                const currentNumberFormat = currentFormat.numberFormat || {};
+                const currentDecimals = currentNumberFormat.decimals ?? 0;
+                if (currentDecimals > 0) {
+                    newFormat = {
+                        ...currentFormat,
+                        numberFormat: {
+                            ...currentNumberFormat,
+                            type: currentNumberFormat.type || 'number',
+                            decimals: currentDecimals - 1
+                        }
+                    };
+                }
+            }
+
+            if (newFormat !== null) {
+                // Send format update - empty object means clear format
+                this._dispatchAction('post-message', {
+                    command: 'update_column_format',
+                    colIndex: col,
+                    format: Object.keys(newFormat).length > 0 ? newFormat : null
                 });
             }
             return;

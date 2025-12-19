@@ -593,6 +593,28 @@ export class MyEditor extends LitElement {
         });
     }
 
+    private async _handleUpdateColumnFormat(detail: any) {
+        if (!this.pyodide) return;
+        const { sheetIndex, tableIndex, colIndex, format } = detail;
+        // Convert null to Python None, otherwise use JSON with Python boolean conversion
+        let formatArg = 'None';
+        if (format !== null) {
+            // Convert JSON to Python-compatible format:
+            // - true -> True, false -> False
+            formatArg = JSON.stringify(format)
+                .replace(/\btrue\b/g, 'True')
+                .replace(/\bfalse\b/g, 'False');
+        }
+        this._enqueueRequest(async () => {
+            const resultJson = await this.pyodide.runPythonAsync(`
+              import json
+              res = update_column_format(${sheetIndex}, ${tableIndex}, ${colIndex}, ${formatArg})
+              json.dumps(res) if res else "null"
+          `);
+            this._postUpdateMessage(JSON.parse(resultJson));
+        });
+    }
+
     private _handlePostMessage(detail: any) {
         switch (detail.command) {
             case 'update_column_filter':
@@ -603,6 +625,9 @@ export class MyEditor extends LitElement {
                 break;
             case 'update_column_align':
                 this._handleUpdateColumnAlign(detail);
+                break;
+            case 'update_column_format':
+                this._handleUpdateColumnFormat(detail);
                 break;
             default:
                 console.warn('Unknown post-message command:', detail.command);
