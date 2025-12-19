@@ -1940,11 +1940,11 @@ export class SpreadsheetTable extends LitElement {
                                       data-row="-1"
                                       tabindex="0"
                                       contenteditable="false"
-                                      @click="${(_e: MouseEvent) => {
-                            this.selectionCtrl.selectCell(-2, i);
+                                      @click="${(e: MouseEvent) => {
+                            this.selectionCtrl.selectCell(-2, i, e.shiftKey);
                             this.focusCell();
                         }}"
-                                      @mousedown="${(_e: MouseEvent) => this.selectionCtrl.startSelection(-2, i)}"
+                                      @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(-2, i, e.shiftKey)}"
                                       @dblclick="${(e: MouseEvent) => {
                             this.selectionCtrl.selectCell(-1, i);
                             this.editCtrl.startEditing(header);
@@ -2000,7 +2000,7 @@ export class SpreadsheetTable extends LitElement {
                             this.selectionCtrl.selectCell(-2, i);
                             this.focusCell();
                         }}"
-                                      @mousedown="${() => this.selectionCtrl.startSelection(-2, i)}"
+                                      @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(-2, i, e.shiftKey)}"
                                       @dblclick="${() => {
                             this.selectionCtrl.selectCell(-1, i);
                             this.editCtrl.startEditing(i + 1 + '');
@@ -2045,11 +2045,11 @@ export class SpreadsheetTable extends LitElement {
                                 : ''}"
                                 data-row="${r}"
                                 tabindex="0"
-                                @click="${() => {
-                            this.selectionCtrl.selectCell(r, -2);
+                                @click="${(e: MouseEvent) => {
+                            this.selectionCtrl.selectCell(r, -2, e.shiftKey);
                             this.focusCell();
                         }}"
-                                @mousedown="${() => this.selectionCtrl.startSelection(r, -2)}"
+                                @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(r, -2, e.shiftKey)}"
                                 @keydown="${this._handleKeyDown}"
                                 @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
                             >
@@ -2162,11 +2162,11 @@ export class SpreadsheetTable extends LitElement {
                         : ''}"
                                 data-row="${r}"
                                 tabindex="0"
-                                @click="${(_: MouseEvent) => {
-                        this.selectionCtrl.selectCell(r, -2);
+                                @click="${(e: MouseEvent) => {
+                        this.selectionCtrl.selectCell(r, -2, e.shiftKey);
                         this.focusCell();
                     }}"
-                                @mousedown="${(_: MouseEvent) => this.selectionCtrl.startSelection(r, -2)}"
+                                @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(r, -2, e.shiftKey)}"
                                 @keydown="${this._handleKeyDown}"
                                 @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
                                 style="opacity: 0.5;"
