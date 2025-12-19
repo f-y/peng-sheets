@@ -271,3 +271,7 @@ The application treats a Markdown file as a collection of "Tabs".
 *   **Writing**:
     *   **In-Place Update**: If a table already exists, edits update the corresponding lines in the file, preserving the table's location relative to other content.
     *   **Append**: New tables are typically appended to the Workbook Section.
+*   **Content Preservation**:
+    *   When deleting sheets, content before and after the Workbook Section MUST be preserved.
+    *   The Workbook Section boundary is determined by the next top-level header (same level as root marker) or end of file.
+    *   Example: In a document with `# Tables` followed by `# Appendix`, deleting all sheets removes only the content between these headers.

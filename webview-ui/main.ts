@@ -1126,6 +1126,7 @@ export class MyEditor extends LitElement {
                         type: 'updateRange',
                         startLine: updateSpec.startLine,
                         endLine: updateSpec.endLine,
+                        endCol: updateSpec.endCol,
                         content: updateSpec.content
                     });
                 } else if (updateSpec.error) {

@@ -112,50 +112,27 @@ def generate_and_get_range():
 
     end_col = 0
 
-    # EOF Handling: If logic points to line AFTER last line (len(lines)),
-    # we must clamp to the actual end of the document (last line, last char).
+    # Case 1: end_line points beyond the file (workbook is at EOF)
+    # We need to replace up to and including the last character
     if end_line >= len(lines):
         end_line = len(lines) - 1
         end_col = len(lines[end_line])
+    # Case 2: end_line points to a line within the file (workbook is followed by other content)
+    # end_line is the line of the NEXT section (e.g., "# Appendix")
+    # We should NOT include that line in our replacement
+    # So we set end_line to the previous line and end_col to its length
+    else:
+        # Move back to include the blank line before the next section if present
+        # The range should end at line end_line - 1, at its last character
+        if end_line > 0:
+            end_line = end_line - 1
+            end_col = len(lines[end_line])
 
-        # Ensure new content prepends newline if appending to a non-empty file without trailing newline
-        if start_line > end_line:  # Edge case: appending to empty or after end
-            pass  # Logic below handles start_line checks
-
-    # Logic for appending (start_line check logic preserved/moved)
-    # Original: if start_line == len(lines): ...
-
-    # Refined Logic:
-    # If we are strictly appending (start_line was calculated as len(lines) in get_workbook_range)
-    # Then end_line is also len(lines).
-    # We need to target (len-1, len) ?
-
+    # Handle case where start_line is beyond the file (appending to end)
     if start_line >= len(lines):
-        # It's an append.
-        # Target the very end.
         start_line = len(lines) - 1
         if start_line < 0:
-            start_line = 0  # Empty file
-
-        # Wait, get_workbook_range set start_line = len(lines).
-        # If file is "A". lines=["A"]. start_line=1.
-        # We want to append "\nNew".
-        # We should Insert at (0, 1)? Or (1, 0) [Invalid]?
-        # Document end is (0, 1).
-
-        if len(lines) > 0:
-            start_line = len(lines) - 1
-            # Adjust start_Col?
-            # If we send startCol=0, we replace the last line? No.
-            # We want to append.
-            # Ideally we use VS Code's "Insert" semantics, but here we prefer Range Replacement.
-            # If we replace (LastLine, LastChar) -> (LastLine, LastChar) with "\nNewTable".
-            # That works.
-
-            # Re-read get_workbook_range.
-            # If not found, start_line = len(lines).
-
-            pass
+            start_line = 0
 
     return {
         "startLine": start_line,
