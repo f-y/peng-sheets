@@ -66,7 +66,12 @@ describe('Browser-accurate click-away test', () => {
         await table.updateComplete;
 
         // After mousedown, selection may have changed but edit should still be pending
-        console.log('After mousedown: isEditing=', table.editCtrl.isEditing, 'pendingEditValue=', table.editCtrl.pendingEditValue);
+        console.log(
+            'After mousedown: isEditing=',
+            table.editCtrl.isEditing,
+            'pendingEditValue=',
+            table.editCtrl.pendingEditValue
+        );
 
         cell01.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, composed: true }));
         await table.updateComplete;
@@ -97,14 +102,24 @@ describe('Browser-accurate click-away test', () => {
         const editingCell = table.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
         expect(editingCell).toBeTruthy();
 
-        console.log('Before clear: innerHTML=', editingCell.innerHTML, 'pendingEditValue=', table.editCtrl.pendingEditValue);
+        console.log(
+            'Before clear: innerHTML=',
+            editingCell.innerHTML,
+            'pendingEditValue=',
+            table.editCtrl.pendingEditValue
+        );
 
         // Clear the content
         editingCell.innerHTML = '';
         editingCell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
         await table.updateComplete;
 
-        console.log('After clear: innerHTML=', editingCell.innerHTML, 'pendingEditValue=', table.editCtrl.pendingEditValue);
+        console.log(
+            'After clear: innerHTML=',
+            editingCell.innerHTML,
+            'pendingEditValue=',
+            table.editCtrl.pendingEditValue
+        );
 
         // Press Enter to commit
         editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));

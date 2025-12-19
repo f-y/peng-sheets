@@ -19,8 +19,8 @@ describe('Line break display sync tests', () => {
         (element as any).table = {
             name: 'test',
             rows: [
-                ['\na', 'World'],   // Cell with leading newline (displayed as <br>a)
-                ['', 'Bar']          // Empty cell
+                ['\na', 'World'], // Cell with leading newline (displayed as <br>a)
+                ['', 'Bar'] // Empty cell
             ],
             headers: ['A', 'B'],
             metadata: {}
@@ -78,12 +78,14 @@ describe('Line break display sync tests', () => {
         console.log('Empty cell editing - initial pendingEditValue:', table.editCtrl.pendingEditValue);
 
         // Simulate Alt+Enter (newline insertion)
-        editingCell.dispatchEvent(new KeyboardEvent('keydown', {
-            key: 'Enter',
-            altKey: true,
-            bubbles: true,
-            composed: true
-        }));
+        editingCell.dispatchEvent(
+            new KeyboardEvent('keydown', {
+                key: 'Enter',
+                altKey: true,
+                bubbles: true,
+                composed: true
+            })
+        );
         await table.updateComplete;
 
         console.log('After Alt+Enter - innerHTML:', editingCell.innerHTML);

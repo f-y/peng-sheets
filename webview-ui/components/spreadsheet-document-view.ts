@@ -127,7 +127,6 @@ export class SpreadsheetDocumentView extends LitElement {
             font-size: 12px;
         }
 
-
         /* Headings */
         .output h1 {
             font-size: 2em;
@@ -153,7 +152,8 @@ export class SpreadsheetDocumentView extends LitElement {
             margin: 0.5em 0;
         }
 
-        .output ul, .output ol {
+        .output ul,
+        .output ol {
             margin: 0.5em 0;
             padding-left: 2em;
         }
@@ -281,7 +281,7 @@ export class SpreadsheetDocumentView extends LitElement {
 
         marked.setOptions({
             gfm: true,
-            breaks: false,
+            breaks: false
         });
 
         try {
@@ -358,46 +358,50 @@ export class SpreadsheetDocumentView extends LitElement {
         this._debounceTimer = window.setTimeout(() => {
             const { title, body } = this._extractTitleAndBody(this._editContent);
 
-            this.dispatchEvent(new CustomEvent('document-change', {
-                bubbles: true,
-                composed: true,
-                detail: {
-                    sectionIndex: this.sectionIndex,
-                    content: body,
-                    title: title
-                }
-            }));
+            this.dispatchEvent(
+                new CustomEvent('document-change', {
+                    bubbles: true,
+                    composed: true,
+                    detail: {
+                        sectionIndex: this.sectionIndex,
+                        content: body,
+                        title: title
+                    }
+                })
+            );
         }, 100);
     }
 
     render() {
         return html`
             <div class="container">
-                ${this._isEditing ? html`
-                    <div class="edit-container">
-                        <div class="edit-hint visible">Press Escape to cancel</div>
-                        <textarea
-                            class="editor"
-                            .value=${this._editContent}
-                            @input=${this._handleInput}
-                            @blur=${this._exitEditMode}
-                            @keydown=${this._handleKeyDown}
-                        ></textarea>
-                    </div>
-                    <button 
-                        class="save-button"
-                        @mousedown=${(e: MouseEvent) => e.preventDefault()}
-                        @click=${this._exitEditMode}
-                    >
-                        <span class="codicon codicon-check"></span>
-                        Save
-                    </button>
-                ` : html`
-                    <div class="output" @click=${this._enterEditMode}>
-                        ${unsafeHTML(this._getRenderedContent())}
-                    </div>
-                    <div class="edit-hint">Click to edit</div>
-                `}
+                ${this._isEditing
+                    ? html`
+                          <div class="edit-container">
+                              <div class="edit-hint visible">Press Escape to cancel</div>
+                              <textarea
+                                  class="editor"
+                                  .value=${this._editContent}
+                                  @input=${this._handleInput}
+                                  @blur=${this._exitEditMode}
+                                  @keydown=${this._handleKeyDown}
+                              ></textarea>
+                          </div>
+                          <button
+                              class="save-button"
+                              @mousedown=${(e: MouseEvent) => e.preventDefault()}
+                              @click=${this._exitEditMode}
+                          >
+                              <span class="codicon codicon-check"></span>
+                              Save
+                          </button>
+                      `
+                    : html`
+                          <div class="output" @click=${this._enterEditMode}>
+                              ${unsafeHTML(this._getRenderedContent())}
+                          </div>
+                          <div class="edit-hint">Click to edit</div>
+                      `}
             </div>
         `;
     }

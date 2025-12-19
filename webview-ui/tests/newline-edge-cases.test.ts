@@ -19,8 +19,8 @@ describe('Newline handling - critical edge cases', () => {
             name: 'test',
             rows: [
                 ['X', 'World'],
-                ['a\nb', 'trailing\n'],  // multiline content, content with trailing newline
-                ['', '']                  // empty cells
+                ['a\nb', 'trailing\n'], // multiline content, content with trailing newline
+                ['', ''] // empty cells
             ],
             headers: ['A', 'B'],
             metadata: {}

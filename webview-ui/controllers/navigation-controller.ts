@@ -12,8 +12,8 @@ export class NavigationController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() { }
-    hostDisconnected() { }
+    hostConnected() {}
+    hostDisconnected() {}
 
     handleKeyDown(e: KeyboardEvent, maxRows: number, maxCols: number) {
         if (e.isComposing) return;
@@ -31,7 +31,6 @@ export class NavigationController implements ReactiveController {
                 dr = -1;
                 break;
             case 'ArrowDown':
-
                 dr = 1;
                 break;
             case 'ArrowLeft':
@@ -46,7 +45,6 @@ export class NavigationController implements ReactiveController {
                 e.preventDefault();
                 break; // Tab cycle
             case 'Enter':
-
                 dr = shift ? -1 : 1;
                 extend = false; // Enter should never extend selection
                 e.preventDefault();
@@ -62,7 +60,6 @@ export class NavigationController implements ReactiveController {
     }
 
     private _moveSelection(dr: number, dc: number, split: boolean, maxRows: number, maxCols: number, jump: boolean) {
-
         // Implementation delegates to selectionCtrl
         let r = this.selectionCtrl.selectedRow;
         let c = this.selectionCtrl.selectedCol;
@@ -75,7 +72,6 @@ export class NavigationController implements ReactiveController {
         } else {
             if (dr !== 0) {
                 r = (this.host as SpreadsheetTable).getNextVisibleRowIndex(r, dr);
-
             } else {
                 r += dr;
             }

@@ -52,7 +52,7 @@ interface StructureItem {
 // Acquire VS Code API
 const vscode = acquireVsCodeApi();
 
-// @ts-ignore
+// @ts-expect-error Vite raw import for Python module
 import pythonCore from '../python-modules/headless_editor.py?raw';
 
 @customElement('md-spreadsheet-editor')
@@ -686,7 +686,11 @@ json.dumps(result)
                     activeTab.data.content = detail.content;
                     this.requestUpdate();
 
-                    console.log('Document updated:', { range, title: newTitle, content: fullContent.substring(0, 50) + '...' });
+                    console.log('Document updated:', {
+                        range,
+                        title: newTitle,
+                        content: fullContent.substring(0, 50) + '...'
+                    });
                 } else if (range && range.error) {
                     console.error('Python error:', range.error);
                 }
@@ -705,7 +709,6 @@ json.dumps(result)
     private _handleUndo() {
         vscode.postMessage({ type: 'undo' });
     }
-
 
     private _handleRedo() {
         vscode.postMessage({ type: 'redo' });
@@ -919,7 +922,7 @@ json.dumps(result)
                 // Find the 'add-sheet' button and select the tab immediately before it
                 // (which is the newly added sheet). This handles cases where Documents
                 // appear after the Workbook in the tabs array.
-                const addSheetIndex = tabs.findIndex(tab => tab.type === 'add-sheet');
+                const addSheetIndex = tabs.findIndex((tab) => tab.type === 'add-sheet');
                 if (addSheetIndex > 0) {
                     // Select the tab before the add-sheet button (the new sheet)
                     this.activeTabIndex = addSheetIndex - 1;
@@ -928,9 +931,11 @@ json.dumps(result)
                     this.activeTabIndex = 0;
                 } else {
                     // No add-sheet button found, fallback to last sheet tab
-                    const lastSheetIndex = tabs.map((t, i) => ({ t, i }))
-                        .filter(x => x.t.type === 'sheet')
-                        .pop()?.i ?? 0;
+                    const lastSheetIndex =
+                        tabs
+                            .map((t, i) => ({ t, i }))
+                            .filter((x) => x.t.type === 'sheet')
+                            .pop()?.i ?? 0;
                     this.activeTabIndex = lastSheetIndex;
                 }
                 this.pendingAddSheet = false;
@@ -976,9 +981,9 @@ json.dumps(result)
         if (!activeTab) return html``;
 
         return html`
-            ${activeTab.type !== 'document' ? html`
-                <spreadsheet-toolbar @toolbar-action="${this._handleToolbarAction}"></spreadsheet-toolbar>
-            ` : html``}
+            ${activeTab.type !== 'document'
+                ? html` <spreadsheet-toolbar @toolbar-action="${this._handleToolbarAction}"></spreadsheet-toolbar> `
+                : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet'
                 ? html`

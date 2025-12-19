@@ -17,7 +17,10 @@ describe('Deep Debug: Click-away save issue', () => {
         element = document.createElement('spreadsheet-table') as HTMLElement;
         (element as any).table = {
             name: 'test',
-            rows: [['3', 'World'], ['Foo', 'Bar']],
+            rows: [
+                ['3', 'World'],
+                ['Foo', 'Bar']
+            ],
             headers: ['A', 'B'],
             metadata: {}
         };

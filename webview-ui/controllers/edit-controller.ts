@@ -23,12 +23,12 @@ export class EditController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() { }
-    hostDisconnected() { }
+    hostConnected() {}
+    hostDisconnected() {}
 
     startEditing(initialValue: string | null = null, isReplacement: boolean = false) {
         this.isEditing = true;
-        this.pendingEditValue = (initialValue === null || initialValue === undefined) ? '' : initialValue;
+        this.pendingEditValue = initialValue === null || initialValue === undefined ? '' : initialValue;
         this.isReplacementMode = isReplacement;
         this.host.requestUpdate();
     }

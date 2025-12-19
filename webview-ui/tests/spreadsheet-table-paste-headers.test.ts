@@ -75,7 +75,11 @@ describe('SpreadsheetTable Paste with Headers', () => {
                 startRow: 0,
                 startCol: 0,
                 includeHeaders: true,
-                data: [['Name', 'Age'], ['Alice', '30'], ['Bob', '25']]
+                data: [
+                    ['Name', 'Age'],
+                    ['Alice', '30'],
+                    ['Bob', '25']
+                ]
             })
         );
     });
@@ -115,7 +119,10 @@ describe('SpreadsheetTable Paste with Headers', () => {
                 startRow: 0,
                 startCol: 0,
                 includeHeaders: true,
-                data: [['X', 'Y'], ['10', '20']]
+                data: [
+                    ['X', 'Y'],
+                    ['10', '20']
+                ]
             })
         );
     });

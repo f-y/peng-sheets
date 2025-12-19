@@ -705,7 +705,10 @@ export class SpreadsheetTable extends LitElement {
         // BUT only if user hasn't explicitly inserted newlines during this edit session
         if (target && target.innerHTML) {
             // Check if content is only <br> tags (browser cursor placeholder)
-            const stripped = target.innerHTML.replace(/<br\s*\/?>/gi, '').replace(/\u200B/g, '').trim();
+            const stripped = target.innerHTML
+                .replace(/<br\s*\/?>/gi, '')
+                .replace(/\u200B/g, '')
+                .trim();
             if (stripped === '' && !this.editCtrl.hasUserInsertedNewline) {
                 // Content is only BR and user didn't insert newlines, clear the browser placeholder
                 target.innerHTML = '';
@@ -895,8 +898,7 @@ export class SpreadsheetTable extends LitElement {
             }
 
             // Full table selection (corner click)
-            const isFullTableSelection =
-                this.selectionCtrl.selectedRow === -2 && this.selectionCtrl.selectedCol === -2;
+            const isFullTableSelection = this.selectionCtrl.selectedRow === -2 && this.selectionCtrl.selectedCol === -2;
 
             // Column selection (row header area)
             const isColumnSelection = this.selectionCtrl.selectedRow === -2 && this.selectionCtrl.selectedCol !== -2;
@@ -1255,8 +1257,7 @@ export class SpreadsheetTable extends LitElement {
             // In replacement mode (direct keyboard input), pendingEditValue is the authoritative value.
             // DOM may be empty or stale due to timing between mousedown and commit.
             // In non-replacement mode (dblclick), DOM is authoritative - user edits are preserved.
-            if (this.editCtrl.isReplacementMode &&
-                this.editCtrl.pendingEditValue !== null) {
+            if (this.editCtrl.isReplacementMode && this.editCtrl.pendingEditValue !== null) {
                 newValue = this.editCtrl.pendingEditValue;
                 // Apply same trailing newline stripping to pendingEditValue
                 if (newValue.endsWith('\n')) {
@@ -1604,7 +1605,7 @@ export class SpreadsheetTable extends LitElement {
             return ghostRowIndex;
         }
 
-        let visualIdx = indices.indexOf(currentDataRowIndex);
+        const visualIdx = indices.indexOf(currentDataRowIndex);
 
         if (visualIdx === -1) {
             return currentDataRowIndex + delta;
@@ -1889,26 +1890,26 @@ export class SpreadsheetTable extends LitElement {
         return html`
             <div class="metadata-container">
                 ${this.editCtrl.editingMetadata
-                ? html`
+                    ? html`
                           <textarea
                               class="metadata-input-desc"
                               .value="${table.description || ''}"
                               placeholder="${t('description')}"
                               @input="${(e: Event) =>
-                        (this.editCtrl.pendingDescription = (e.target as HTMLInputElement).value)}"
+                                  (this.editCtrl.pendingDescription = (e.target as HTMLInputElement).value)}"
                               @keydown="${this._handleMetadataKeydown}"
                               @blur="${this._commitMetadata}"
                               rows="2"
                           ></textarea>
                       `
-                : html`
+                    : html`
                           <p
                               class="metadata-desc ${!table.description ? 'empty' : ''}"
                               @click="${this._handleMetadataClick}"
                               style="color: var(--vscode-descriptionForeground); cursor: pointer; border: 1px dashed transparent;"
                           >
                               ${table.description ||
-                    html`<span style="opacity: 0.5; font-size: 0.9em;">${t('addDescription')}</span>`}
+                              html`<span style="opacity: 0.5; font-size: 0.9em;">${t('addDescription')}</span>`}
                           </p>
                       `}
             </div>
@@ -1920,50 +1921,51 @@ export class SpreadsheetTable extends LitElement {
                         class="cell header-corner ${selRow === -2 && selCol === -2 ? 'selected' : ''}"
                         tabindex="0"
                         @click="${() => {
-                this.selectionCtrl.selectCell(-2, -2);
-                this.focusCell();
-            }}"
+                            this.selectionCtrl.selectCell(-2, -2);
+                            this.focusCell();
+                        }}"
                         @keydown="${this._handleKeyDown}"
                     ></div>
 
                     <!-- Column Headers -->
                     ${table.headers
-                ? table.headers.map((header, i) => {
-                    const isActive = selRow === -1 && selCol === i;
-                    const isColMode = selRow === -2;
-                    const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
-                    const showActiveOutline = isActive && minC === maxC;
+                        ? table.headers.map((header, i) => {
+                              const isActive = selRow === -1 && selCol === i;
+                              const isColMode = selRow === -2;
+                              const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+                              const showActiveOutline = isActive && minC === maxC;
 
-                    const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
-                    const filters = visual.filters || {};
-                    const hiddenValues = filters[i.toString()] || [];
-                    const isFiltered = hiddenValues.length > 0;
+                              const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
+                              const filters = visual.filters || {};
+                              const hiddenValues = filters[i.toString()] || [];
+                              const isFiltered = hiddenValues.length > 0;
 
-                    return html`
+                              return html`
                                   <div
                                       class="cell header-col ${(selRow === -2 && (selCol === i || isInRange)) ||
-                            (selRow === -1 && selCol === i) ||
-                            (selRow >= 0 && selCol === i && minR === maxR && minC === maxC)
-                            ? 'selected'
-                            : ''} ${this.editCtrl.isEditing && isActive
-                                ? 'editing'
-                                : ''} ${showActiveOutline
-                                    ? 'active-cell'
-                                    : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                      (selRow === -1 && selCol === i) ||
+                                      (selRow >= 0 && selCol === i && minR === maxR && minC === maxC)
+                                          ? 'selected'
+                                          : ''} ${this.editCtrl.isEditing && isActive
+                                          ? 'editing'
+                                          : ''} ${showActiveOutline
+                                          ? 'active-cell'
+                                          : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
                                       data-col="${i}"
                                       data-row="-1"
                                       tabindex="0"
                                       contenteditable="false"
                                       @click="${(e: MouseEvent) => {
-                            this.selectionCtrl.selectCell(-2, i, e.shiftKey);
-                            this.focusCell();
-                        }}"
-                                      @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(-2, i, e.shiftKey)}"
+                                          this.selectionCtrl.selectCell(-2, i, e.shiftKey);
+                                          this.focusCell();
+                                      }}"
+                                      @mousedown="${(e: MouseEvent) =>
+                                          this.selectionCtrl.startSelection(-2, i, e.shiftKey)}"
                                       @dblclick="${(e: MouseEvent) => {
-                            this.selectionCtrl.selectCell(-1, i);
-                            this.editCtrl.startEditing(header);
-                            this.focusCell();
-                        }}"
+                                          this.selectionCtrl.selectCell(-1, i);
+                                          this.editCtrl.startEditing(header);
+                                          this.focusCell();
+                                      }}"
                                       @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
                                       @input="${this._handleInput}"
                                       @blur="${this._handleBlur}"
@@ -1984,42 +1986,43 @@ export class SpreadsheetTable extends LitElement {
                                           class="col-resize-handle"
                                           contenteditable="false"
                                           @mousedown="${(e: MouseEvent) =>
-                            this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
+                                              this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
                                           @dblclick="${(e: Event) => e.stopPropagation()}"
                                       ></div>
                                   </div>
                               `;
-                })
-                : Array.from({ length: colCount }).map((_, i) => {
-                    const isActive = selRow === -1 && selCol === i;
-                    const isColMode = selRow === -2;
-                    const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
-                    const showActiveOutline = isActive && minC === maxC;
-                    return html`
+                          })
+                        : Array.from({ length: colCount }).map((_, i) => {
+                              const isActive = selRow === -1 && selCol === i;
+                              const isColMode = selRow === -2;
+                              const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+                              const showActiveOutline = isActive && minC === maxC;
+                              return html`
                                   <div
                                       class="cell header-col ${(selRow === -2 && (selCol === i || isInRange)) ||
-                            (selRow === -1 && selCol === i) ||
-                            (selRow >= 0 && selCol === i && minR === maxR && minC === maxC)
-                            ? 'selected'
-                            : ''} ${this.editCtrl.isEditing && isActive
-                                ? 'editing'
-                                : ''} ${showActiveOutline
-                                    ? 'active-cell'
-                                    : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
+                                      (selRow === -1 && selCol === i) ||
+                                      (selRow >= 0 && selCol === i && minR === maxR && minC === maxC)
+                                          ? 'selected'
+                                          : ''} ${this.editCtrl.isEditing && isActive
+                                          ? 'editing'
+                                          : ''} ${showActiveOutline
+                                          ? 'active-cell'
+                                          : 'active-cell-no-outline'} ${isInRange ? 'selected-range' : ''}"
                                       data-col="${i}"
                                       data-row="-1"
                                       tabindex="0"
                                       contenteditable="false"
                                       @click="${() => {
-                            this.selectionCtrl.selectCell(-2, i);
-                            this.focusCell();
-                        }}"
-                                      @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(-2, i, e.shiftKey)}"
+                                          this.selectionCtrl.selectCell(-2, i);
+                                          this.focusCell();
+                                      }}"
+                                      @mousedown="${(e: MouseEvent) =>
+                                          this.selectionCtrl.startSelection(-2, i, e.shiftKey)}"
                                       @dblclick="${() => {
-                            this.selectionCtrl.selectCell(-1, i);
-                            this.editCtrl.startEditing(i + 1 + '');
-                            this.focusCell();
-                        }}"
+                                          this.selectionCtrl.selectCell(-1, i);
+                                          this.editCtrl.startEditing(i + 1 + '');
+                                          this.focusCell();
+                                      }}"
                                       @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'col', i)}"
                                       @input="${this._handleInput}"
                                       @blur="${this._handleBlur}"
@@ -2036,33 +2039,33 @@ export class SpreadsheetTable extends LitElement {
                                           class="col-resize-handle"
                                           contenteditable="false"
                                           @mousedown="${(e: MouseEvent) =>
-                            this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
+                                              this.resizeCtrl.startResize(e, i, this.resizeCtrl.colWidths[i])}"
                                           @dblclick="${(e: Event) => e.stopPropagation()}"
                                       ></div>
                                   </div>
                               `;
-                })}
+                          })}
 
                     <!-- Rows -->
                     ${this.visibleRowIndices.map((r) => {
-                    const row = table.rows[r];
-                    return html`
+                        const row = table.rows[r];
+                        return html`
                             <!-- Row Header -->
                             <div
                                 class="cell header-row ${(selCol === -2 &&
-                            (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))) ||
-                            (selCol === -1 && selRow === r) ||
-                            (selCol >= 0 && selRow === r && minR === maxR && minC === maxC)
-                            ? 'selected'
-                            : ''} ${(minC === -1 || selCol === -2) && r >= minR && r <= maxR
-                                ? 'selected-range'
-                                : ''}"
+                                    (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))) ||
+                                (selCol === -1 && selRow === r) ||
+                                (selCol >= 0 && selRow === r && minR === maxR && minC === maxC)
+                                    ? 'selected'
+                                    : ''} ${(minC === -1 || selCol === -2) && r >= minR && r <= maxR
+                                    ? 'selected-range'
+                                    : ''}"
                                 data-row="${r}"
                                 tabindex="0"
                                 @click="${(e: MouseEvent) => {
-                            this.selectionCtrl.selectCell(r, -2, e.shiftKey);
-                            this.focusCell();
-                        }}"
+                                    this.selectionCtrl.selectCell(r, -2, e.shiftKey);
+                                    this.focusCell();
+                                }}"
                                 @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(r, -2, e.shiftKey)}"
                                 @keydown="${this._handleKeyDown}"
                                 @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
@@ -2072,58 +2075,58 @@ export class SpreadsheetTable extends LitElement {
 
                             <!-- Cells -->
                             ${Array.from({ length: colCount }).map((_, c) => {
-                            const cell = row[c] !== undefined ? row[c] : '';
-                            const isSelected = selRow === r && selCol === c;
+                                const cell = row[c] !== undefined ? row[c] : '';
+                                const isSelected = selRow === r && selCol === c;
 
-                            const isActive = r === selRow && c === selCol;
+                                const isActive = r === selRow && c === selCol;
 
-                            // Range Logic
-                            let inRange = false;
-                            let leftEdge = false,
-                                rightEdge = false,
-                                topEdge = false,
-                                bottomEdge = false;
+                                // Range Logic
+                                let inRange = false;
+                                let leftEdge = false,
+                                    rightEdge = false,
+                                    topEdge = false,
+                                    bottomEdge = false;
 
-                            if (minR !== -1) {
-                                if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
-                                    inRange = true;
-                                    // Determine edges
-                                    if (r === minR) topEdge = true;
-                                    if (r === maxR) bottomEdge = true;
-                                    if (c === minC) leftEdge = true;
-                                    if (c === maxC) rightEdge = true;
+                                if (minR !== -1) {
+                                    if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
+                                        inRange = true;
+                                        // Determine edges
+                                        if (r === minR) topEdge = true;
+                                        if (r === maxR) bottomEdge = true;
+                                        if (c === minC) leftEdge = true;
+                                        if (c === maxC) rightEdge = true;
+                                    }
                                 }
-                            }
 
-                            const isEditingCell = this.editCtrl.isEditing && isActive;
-                            const isRangeSelection = minR !== maxR || minC !== maxC;
-                            const activeClass = isActive
-                                ? isRangeSelection
-                                    ? 'active-cell-no-outline'
-                                    : 'active-cell'
-                                : '';
+                                const isEditingCell = this.editCtrl.isEditing && isActive;
+                                const isRangeSelection = minR !== maxR || minC !== maxC;
+                                const activeClass = isActive
+                                    ? isRangeSelection
+                                        ? 'active-cell-no-outline'
+                                        : 'active-cell'
+                                    : '';
 
-                            // Get alignment and format from metadata
-                            const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
-                            const columns = visual.columns || {};
-                            const colSettings = columns[c.toString()] || {};
-                            const align = colSettings.align || 'left';
-                            const format = colSettings.format;
-                            const wordWrapEnabled = format?.wordWrap !== false; // Default true
-                            const wrapClass = wordWrapEnabled ? 'word-wrap' : 'no-wrap';
+                                // Get alignment and format from metadata
+                                const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
+                                const columns = visual.columns || {};
+                                const colSettings = columns[c.toString()] || {};
+                                const align = colSettings.align || 'left';
+                                const format = colSettings.format;
+                                const wordWrapEnabled = format?.wordWrap !== false; // Default true
+                                const wrapClass = wordWrapEnabled ? 'word-wrap' : 'no-wrap';
 
-                            // Apply number formatting for display (not during editing)
-                            const displayValue = isEditingCell
-                                ? cell
-                                : this._formatCellValue(cell, format?.numberFormat);
+                                // Apply number formatting for display (not during editing)
+                                const displayValue = isEditingCell
+                                    ? cell
+                                    : this._formatCellValue(cell, format?.numberFormat);
 
-                            return html`
+                                return html`
                                     <div
                                         class="cell ${wrapClass} ${isSelected ? 'selected' : ''} ${inRange
-                                    ? 'selected-range'
-                                    : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
-                                        ? 'range-top'
-                                        : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
+                                            ? 'selected-range'
+                                            : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
+                                            ? 'range-top'
+                                            : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
                                             ? 'range-left'
                                             : ''} ${rightEdge ? 'range-right' : ''} ${activeClass}"
                                         data-row="${r}"
@@ -2132,54 +2135,54 @@ export class SpreadsheetTable extends LitElement {
                                         contenteditable="${isEditingCell ? 'true' : 'false'}"
                                         style="text-align: ${align};"
                                         @click="${async (e: MouseEvent) => {
-                                    await this._commitCurrentEdit();
-                                    if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
-                                    else this.selectionCtrl.selectCell(r, c);
-                                    this.focusCell();
-                                }}"
+                                            await this._commitCurrentEdit();
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.selectCell(r, c);
+                                            this.focusCell();
+                                        }}"
                                         @mousedown="${(e: MouseEvent) => {
-                                    if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
-                                    else this.selectionCtrl.startSelection(r, c);
-                                    this.focusCell();
-                                }}"
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.startSelection(r, c);
+                                            this.focusCell();
+                                        }}"
                                         @dblclick="${(_e: MouseEvent) => {
-                                    this.selectionCtrl.selectCell(r, c);
-                                    this.editCtrl.startEditing(cell);
-                                    this.focusCell();
-                                }}"
+                                            this.selectionCtrl.selectCell(r, c);
+                                            this.editCtrl.startEditing(cell);
+                                            this.focusCell();
+                                        }}"
                                         @input="${this._handleInput}"
                                         @blur="${this._handleBlur}"
                                         @keydown="${this._handleKeyDown}"
                                         .innerHTML="${isEditingCell
-                                    ? this._getEditingHtml(
-                                        this.editCtrl.pendingEditValue !== null
-                                            ? this.editCtrl.pendingEditValue
-                                            : cell
-                                    )
-                                    : this._renderMarkdown(displayValue)}"
+                                            ? this._getEditingHtml(
+                                                  this.editCtrl.pendingEditValue !== null
+                                                      ? this.editCtrl.pendingEditValue
+                                                      : cell
+                                              )
+                                            : this._renderMarkdown(displayValue)}"
                                     ></div>
                                 `;
-                        })}
+                            })}
                         `;
-                })}
+                    })}
 
                     <!-- Ghost Row -->
                     ${(() => {
-                // Render one extra row
-                const r = table.rows.length;
+                        // Render one extra row
+                        const r = table.rows.length;
 
-                return html`
+                        return html`
                             <div
                                 class="cell header-row ${selCol === -2 &&
-                        (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))
-                        ? 'selected'
-                        : ''}"
+                                (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))
+                                    ? 'selected'
+                                    : ''}"
                                 data-row="${r}"
                                 tabindex="0"
                                 @click="${(e: MouseEvent) => {
-                        this.selectionCtrl.selectCell(r, -2, e.shiftKey);
-                        this.focusCell();
-                    }}"
+                                    this.selectionCtrl.selectCell(r, -2, e.shiftKey);
+                                    this.focusCell();
+                                }}"
                                 @mousedown="${(e: MouseEvent) => this.selectionCtrl.startSelection(r, -2, e.shiftKey)}"
                                 @keydown="${this._handleKeyDown}"
                                 @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, 'row', r)}"
@@ -2189,70 +2192,70 @@ export class SpreadsheetTable extends LitElement {
                             </div>
 
                             ${Array.from({ length: colCount }).map((_, c) => {
-                        const isActive = r === selRow && c === selCol;
-                        const isEditingCell = this.editCtrl.isEditing && isActive;
+                                const isActive = r === selRow && c === selCol;
+                                const isEditingCell = this.editCtrl.isEditing && isActive;
 
-                        let inRange = false;
-                        let topEdge = false,
-                            bottomEdge = false,
-                            leftEdge = false,
-                            rightEdge = false;
-                        if (minR !== -1) {
-                            if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
-                                inRange = true;
-                                if (r === minR) topEdge = true;
-                                if (r === maxR) bottomEdge = true;
-                                if (r === maxR && r === table.rows.length) bottomEdge = true; // explicitly ghost row is usually last
-                                if (c === minC) leftEdge = true;
-                                if (c === maxC) rightEdge = true;
-                            }
-                        }
+                                let inRange = false;
+                                let topEdge = false,
+                                    bottomEdge = false,
+                                    leftEdge = false,
+                                    rightEdge = false;
+                                if (minR !== -1) {
+                                    if (r >= minR && r <= maxR && c >= minC && c <= maxC) {
+                                        inRange = true;
+                                        if (r === minR) topEdge = true;
+                                        if (r === maxR) bottomEdge = true;
+                                        if (r === maxR && r === table.rows.length) bottomEdge = true; // explicitly ghost row is usually last
+                                        if (c === minC) leftEdge = true;
+                                        if (c === maxC) rightEdge = true;
+                                    }
+                                }
 
-                        return html`
+                                return html`
                                     <div
                                         class="cell ${isActive ? 'selected' : ''} ${inRange
-                                ? 'selected-range'
-                                : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
-                                    ? 'range-top'
-                                    : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
-                                        ? 'range-left'
-                                        : ''} ${rightEdge ? 'range-right' : ''} ${isActive ? 'active-cell' : ''}"
+                                            ? 'selected-range'
+                                            : ''} ${isEditingCell ? 'editing' : ''} ${topEdge
+                                            ? 'range-top'
+                                            : ''} ${bottomEdge ? 'range-bottom' : ''} ${leftEdge
+                                            ? 'range-left'
+                                            : ''} ${rightEdge ? 'range-right' : ''} ${isActive ? 'active-cell' : ''}"
                                         data-row="${r}"
                                         data-col="${c}"
                                         tabindex="${isActive ? 0 : -1}"
                                         contenteditable="${isEditingCell ? 'true' : 'false'}"
                                         @click="${async (e: MouseEvent) => {
-                                await this._commitCurrentEdit();
-                                if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
-                                else this.selectionCtrl.selectCell(r, c);
-                                this.focusCell();
-                            }}"
+                                            await this._commitCurrentEdit();
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.selectCell(r, c);
+                                            this.focusCell();
+                                        }}"
                                         @mousedown="${(e: MouseEvent) => {
-                                if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
-                                else this.selectionCtrl.startSelection(r, c);
-                                this.focusCell();
-                            }}"
+                                            if (e.shiftKey) this.selectionCtrl.selectCell(r, c, true);
+                                            else this.selectionCtrl.startSelection(r, c);
+                                            this.focusCell();
+                                        }}"
                                         @dblclick="${(_e: MouseEvent) => {
-                                this.selectionCtrl.selectCell(r, c);
-                                this.editCtrl.startEditing('');
-                                this.focusCell();
-                            }}"
+                                            this.selectionCtrl.selectCell(r, c);
+                                            this.editCtrl.startEditing('');
+                                            this.focusCell();
+                                        }}"
                                         @input="${this._handleInput}"
                                         @blur="${this._handleBlur}"
                                         @keydown="${this._handleKeyDown}"
                                         style="opacity: 0.5;"
                                         .innerHTML="${isEditingCell
-                                ? this._getEditingHtml(
-                                    this.editCtrl.pendingEditValue !== null
-                                        ? this.editCtrl.pendingEditValue
-                                        : ''
-                                )
-                                : this._renderMarkdown('')}"
+                                            ? this._getEditingHtml(
+                                                  this.editCtrl.pendingEditValue !== null
+                                                      ? this.editCtrl.pendingEditValue
+                                                      : ''
+                                              )
+                                            : this._renderMarkdown('')}"
                                     ></div>
                                 `;
-                    })}
+                            })}
                         `;
-            })()}
+                    })()}
                 </div>
             </div>
 
@@ -2261,62 +2264,62 @@ export class SpreadsheetTable extends LitElement {
                       <div class="context-menu" style="top: ${this.contextMenu.y}px; left: ${this.contextMenu.x}px">
                           <!-- Context Menu Items (unchanged logic) -->
                           ${this.contextMenu.type === 'row'
-                        ? html`
+                              ? html`
                                     <div
                                         class="context-menu-item"
                                         @click="${() =>
-                                this.contextMenu &&
-                                this._dispatchAction('insert-row', { rowIndex: this.contextMenu.index })}"
+                                            this.contextMenu &&
+                                            this._dispatchAction('insert-row', { rowIndex: this.contextMenu.index })}"
                                     >
                                         ${t('insertRowAbove')}
                                     </div>
                                     <div
                                         class="context-menu-item"
                                         @click="${() =>
-                                this.contextMenu &&
-                                this._dispatchAction('insert-row', {
-                                    rowIndex: this.contextMenu.index + 1
-                                })}"
+                                            this.contextMenu &&
+                                            this._dispatchAction('insert-row', {
+                                                rowIndex: this.contextMenu.index + 1
+                                            })}"
                                     >
                                         ${t('insertRowBelow')}
                                     </div>
                                     <div
                                         class="context-menu-item"
                                         @click="${() =>
-                                this.contextMenu &&
-                                this._dispatchAction('row-delete', { rowIndex: this.contextMenu.index })}"
+                                            this.contextMenu &&
+                                            this._dispatchAction('row-delete', { rowIndex: this.contextMenu.index })}"
                                     >
                                         ${t('deleteRow')}
                                     </div>
                                 `
-                        : html`
+                              : html`
                                     <div
                                         class="context-menu-item"
                                         @click="${() =>
-                                this.contextMenu &&
-                                this._dispatchAction('column-insert', {
-                                    colIndex: this.contextMenu.index
-                                })}"
+                                            this.contextMenu &&
+                                            this._dispatchAction('column-insert', {
+                                                colIndex: this.contextMenu.index
+                                            })}"
                                     >
                                         ${t('insertColLeft')}
                                     </div>
                                     <div
                                         class="context-menu-item"
                                         @click="${() =>
-                                this.contextMenu &&
-                                this._dispatchAction('column-insert', {
-                                    colIndex: this.contextMenu.index + 1
-                                })}"
+                                            this.contextMenu &&
+                                            this._dispatchAction('column-insert', {
+                                                colIndex: this.contextMenu.index + 1
+                                            })}"
                                     >
                                         ${t('insertColRight')}
                                     </div>
                                     <div
                                         class="context-menu-item"
                                         @click="${() =>
-                                this.contextMenu &&
-                                this._dispatchAction('column-delete', {
-                                    colIndex: this.contextMenu.index
-                                })}"
+                                            this.contextMenu &&
+                                            this._dispatchAction('column-delete', {
+                                                colIndex: this.contextMenu.index
+                                            })}"
                                     >
                                         ${t('deleteCol')}
                                     </div>
@@ -2328,12 +2331,12 @@ export class SpreadsheetTable extends LitElement {
                 ? html`
                       <filter-menu
                           style="position: fixed; left: ${this._activeFilterMenu.x}px; top: ${this._activeFilterMenu
-                        .y}px; z-index: 2001;"
+                              .y}px; z-index: 2001;"
                           .columnName="${this.table.headers?.[this._activeFilterMenu.colIndex] || ''}"
                           .values="${this._getUniqueValues(this._activeFilterMenu.colIndex)}"
                           .hiddenValues="${((this.table.metadata?.['visual'] as VisualMetadata)?.['filters'] || {})[
-                    this._activeFilterMenu.colIndex.toString()
-                    ] || []}"
+                              this._activeFilterMenu.colIndex.toString()
+                          ] || []}"
                           @sort="${this._handleSort}"
                           @filter-change="${this._handleFilterChange}"
                           @clear-filter="${this._handleClearFilter}"

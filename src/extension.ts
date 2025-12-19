@@ -252,7 +252,9 @@ export function activate(context: vscode.ExtensionContext) {
                                     const saved = await activeDocument.save();
                                     console.log(`Document saved: ${saved}`);
                                     if (!saved) {
-                                        console.warn('Save returned false, but document may have been saved by another process');
+                                        console.warn(
+                                            'Save returned false, but document may have been saved by another process'
+                                        );
                                     }
                                 } catch (error) {
                                     console.error('Error saving document:', error);
@@ -356,4 +358,4 @@ function getWebviewContent(
     </html>`;
 }
 
-export function deactivate() { }
+export function deactivate() {}

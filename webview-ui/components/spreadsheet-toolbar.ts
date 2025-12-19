@@ -166,7 +166,7 @@ export class SpreadsheetToolbar extends LitElement {
                     @click="${() => this._dispatch('format-decimal-increase')}"
                 >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-                        <path d="M1 8 L5 5 L5 11 Z"/>
+                        <path d="M1 8 L5 5 L5 11 Z" />
                         <text x="6" y="12" font-size="9">.0</text>
                     </svg>
                 </vscode-button>
@@ -178,7 +178,7 @@ export class SpreadsheetToolbar extends LitElement {
                 >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
                         <text x="1" y="12" font-size="9">.0</text>
-                        <path d="M15 8 L11 5 L11 11 Z"/>
+                        <path d="M15 8 L11 5 L11 11 Z" />
                     </svg>
                 </vscode-button>
             </div>

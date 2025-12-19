@@ -54,7 +54,7 @@ describe('SpreadsheetDocumentView save functionality', () => {
         textarea.dispatchEvent(new FocusEvent('blur'));
 
         // Wait for debounce timer (100ms + buffer)
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 150));
 
         // Verify event was dispatched
         expect(eventSpy).toHaveBeenCalled();
@@ -79,7 +79,7 @@ describe('SpreadsheetDocumentView save functionality', () => {
         // Blur without changing content
         textarea.dispatchEvent(new FocusEvent('blur'));
 
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 150));
 
         // Event should NOT be dispatched
         expect(eventSpy).not.toHaveBeenCalled();
@@ -105,7 +105,7 @@ describe('SpreadsheetDocumentView save functionality', () => {
         textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
 
         await (element as any).updateComplete;
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 150));
 
         // Event should NOT be dispatched
         expect(eventSpy).not.toHaveBeenCalled();

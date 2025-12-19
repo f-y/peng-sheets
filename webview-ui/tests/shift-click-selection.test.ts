@@ -10,16 +10,16 @@ describe('Shift+Click Range Selection on Headers', () => {
         table = await fixture<SpreadsheetTable>(html`
             <spreadsheet-table
                 .table="${{
-                headers: ['A', 'B', 'C', 'D', 'E'],
-                rows: [
-                    ['1', '2', '3', '4', '5'],
-                    ['a', 'b', 'c', 'd', 'e'],
-                    ['x', 'y', 'z', 'w', 'v'],
-                    ['p', 'q', 'r', 's', 't'],
-                    ['i', 'j', 'k', 'l', 'm']
-                ],
-                metadata: {}
-            }}"
+                    headers: ['A', 'B', 'C', 'D', 'E'],
+                    rows: [
+                        ['1', '2', '3', '4', '5'],
+                        ['a', 'b', 'c', 'd', 'e'],
+                        ['x', 'y', 'z', 'w', 'v'],
+                        ['p', 'q', 'r', 's', 't'],
+                        ['i', 'j', 'k', 'l', 'm']
+                    ],
+                    metadata: {}
+                }}"
             ></spreadsheet-table>
         `);
         await table.updateComplete;
@@ -36,7 +36,12 @@ describe('Shift+Click Range Selection on Headers', () => {
             row2Header.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
             await table.updateComplete;
 
-            console.log('After first click: anchor=', table.selectionCtrl.selectionAnchorRow, 'selected=', table.selectionCtrl.selectedRow);
+            console.log(
+                'After first click: anchor=',
+                table.selectionCtrl.selectionAnchorRow,
+                'selected=',
+                table.selectionCtrl.selectedRow
+            );
 
             // Verify initial selection
             expect(table.selectionCtrl.selectedRow).to.equal(1);
@@ -46,19 +51,28 @@ describe('Shift+Click Range Selection on Headers', () => {
             const row5Header = rowHeaders[4] as HTMLElement;
 
             // In browser, mousedown fires BEFORE click
-            row5Header.dispatchEvent(new MouseEvent('mousedown', {
-                bubbles: true,
-                composed: true,
-                shiftKey: true
-            }));
-            row5Header.dispatchEvent(new MouseEvent('click', {
-                bubbles: true,
-                composed: true,
-                shiftKey: true
-            }));
+            row5Header.dispatchEvent(
+                new MouseEvent('mousedown', {
+                    bubbles: true,
+                    composed: true,
+                    shiftKey: true
+                })
+            );
+            row5Header.dispatchEvent(
+                new MouseEvent('click', {
+                    bubbles: true,
+                    composed: true,
+                    shiftKey: true
+                })
+            );
             await table.updateComplete;
 
-            console.log('After shift+click: anchor=', table.selectionCtrl.selectionAnchorRow, 'selected=', table.selectionCtrl.selectedRow);
+            console.log(
+                'After shift+click: anchor=',
+                table.selectionCtrl.selectionAnchorRow,
+                'selected=',
+                table.selectionCtrl.selectedRow
+            );
 
             // Now selectedRow should be 4 (row 5), anchor should REMAIN 1
             expect(table.selectionCtrl.selectedRow).to.equal(4);
@@ -78,7 +92,12 @@ describe('Shift+Click Range Selection on Headers', () => {
             colBHeader.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
             await table.updateComplete;
 
-            console.log('After first col click: anchorCol=', table.selectionCtrl.selectionAnchorCol, 'selectedCol=', table.selectionCtrl.selectedCol);
+            console.log(
+                'After first col click: anchorCol=',
+                table.selectionCtrl.selectionAnchorCol,
+                'selectedCol=',
+                table.selectionCtrl.selectedCol
+            );
 
             // Verify initial selection
             expect(table.selectionCtrl.selectedCol).to.equal(1);
@@ -87,19 +106,28 @@ describe('Shift+Click Range Selection on Headers', () => {
             // Shift+Click column E (index 4)
             const colEHeader = colHeaders[4] as HTMLElement;
 
-            colEHeader.dispatchEvent(new MouseEvent('mousedown', {
-                bubbles: true,
-                composed: true,
-                shiftKey: true
-            }));
-            colEHeader.dispatchEvent(new MouseEvent('click', {
-                bubbles: true,
-                composed: true,
-                shiftKey: true
-            }));
+            colEHeader.dispatchEvent(
+                new MouseEvent('mousedown', {
+                    bubbles: true,
+                    composed: true,
+                    shiftKey: true
+                })
+            );
+            colEHeader.dispatchEvent(
+                new MouseEvent('click', {
+                    bubbles: true,
+                    composed: true,
+                    shiftKey: true
+                })
+            );
             await table.updateComplete;
 
-            console.log('After shift+click col: anchorCol=', table.selectionCtrl.selectionAnchorCol, 'selectedCol=', table.selectionCtrl.selectedCol);
+            console.log(
+                'After shift+click col: anchorCol=',
+                table.selectionCtrl.selectionAnchorCol,
+                'selectedCol=',
+                table.selectionCtrl.selectedCol
+            );
 
             // Now selectedCol should be 4 (column E), anchor should REMAIN 1
             expect(table.selectionCtrl.selectedCol).to.equal(4);

@@ -79,8 +79,7 @@ describe('SpreadsheetTable Format Actions', () => {
             expect(event.detail.colIndex).toBe(0);
             // Format should be cleared (null) or have useThousandsSeparator: false
             expect(
-                event.detail.format === null ||
-                event.detail.format?.numberFormat?.useThousandsSeparator === false
+                event.detail.format === null || event.detail.format?.numberFormat?.useThousandsSeparator === false
             ).toBe(true);
         });
     });
@@ -242,12 +241,18 @@ describe('SpreadsheetTable Format Actions', () => {
             element.selectionCtrl.selectedRow = -1;
 
             let eventFired = false;
-            element.addEventListener('post-message', () => { eventFired = true; }, { once: true });
+            element.addEventListener(
+                'post-message',
+                () => {
+                    eventFired = true;
+                },
+                { once: true }
+            );
 
             element.handleToolbarAction('format-decimal-decrease');
 
             // Wait a bit to ensure no event is fired
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise((resolve) => setTimeout(resolve, 50));
             expect(eventFired).toBe(false);
         });
     });
@@ -258,11 +263,17 @@ describe('SpreadsheetTable Format Actions', () => {
             element.selectionCtrl.selectedRow = -1;
 
             let eventFired = false;
-            element.addEventListener('post-message', () => { eventFired = true; }, { once: true });
+            element.addEventListener(
+                'post-message',
+                () => {
+                    eventFired = true;
+                },
+                { once: true }
+            );
 
             element.handleToolbarAction('format-comma');
 
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise((resolve) => setTimeout(resolve, 50));
             expect(eventFired).toBe(false);
         });
     });

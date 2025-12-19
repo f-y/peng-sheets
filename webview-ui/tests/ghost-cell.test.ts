@@ -18,7 +18,10 @@ describe('SpreadsheetTable Ghost Cell Bugs', () => {
         // Correctly set table property
         (element as any).table = {
             name: 'test',
-            rows: [['A1', 'B1'], ['A2', 'B2']],
+            rows: [
+                ['A1', 'B1'],
+                ['A2', 'B2']
+            ],
             headers: ['A', 'B'],
             metadata: {}
         };
@@ -52,7 +55,6 @@ describe('SpreadsheetTable Ghost Cell Bugs', () => {
         // Ensure absolutely no whitespace
         expect(editingCell.textContent).toBe('');
     });
-
 
     it('should navigate to ghost row when pressing ArrowDown from last row', async () => {
         const table = element as any;

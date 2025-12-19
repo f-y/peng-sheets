@@ -6,16 +6,16 @@ const postMessage = vi.fn();
 vi.stubGlobal('acquireVsCodeApi', () => ({
     postMessage: postMessage,
     getState: () => ({}),
-    setState: () => { }
+    setState: () => {}
 }));
 
 // Mock Pyodide that returns workbook with documents AFTER workbook
 vi.stubGlobal('loadPyodide', async () => ({
-    loadPackage: async () => { },
-    pyimport: () => ({ install: async () => { } }),
+    loadPackage: async () => {},
+    pyimport: () => ({ install: async () => {} }),
     globals: {
-        set: () => { },
-        get: () => { }
+        set: () => {},
+        get: () => {}
     },
     runPythonAsync: async (code: string) => {
         if (code.includes('get_state')) {
@@ -58,7 +58,7 @@ describe('Sheet Tab Selection Bug - Document after Workbook', () => {
 
     it('should select new sheet, not document tab, when adding sheet', async () => {
         const el = await fixture(html`<md-spreadsheet-editor></md-spreadsheet-editor>`);
-        await new Promise(r => setTimeout(r, 300));
+        await new Promise((r) => setTimeout(r, 300));
 
         // Check initial tab structure: [Intro, Sheet 1, Sheet 2, +, Appendix]
         const tabs = (el as any).tabs;

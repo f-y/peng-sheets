@@ -42,7 +42,7 @@ We are building a new application.
 | --- | --- |
 | Server | $500 |
 | Design | $300 |
-|  | a |
+| a | a |
 
 
 # Appendix
