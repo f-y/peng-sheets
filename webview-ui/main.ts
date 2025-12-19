@@ -266,7 +266,7 @@ export class MyEditor extends LitElement {
         if (this._debounceTimer) clearTimeout(this._debounceTimer);
         this._debounceTimer = setTimeout(() => {
             this._processQueue();
-        }, 300);
+        }, 100);
     }
 
     private async _processQueue() {
