@@ -1,0 +1,278 @@
+/**
+ * Phase 0: Clipboard Verification Tests
+ *
+ * These tests verify the current copy/paste behavior in SpreadsheetTable.
+ * They must pass BEFORE refactoring begins and serve as regression tests.
+ */
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { fixture, html } from '@open-wc/testing';
+import '../../components/spreadsheet-table';
+import { SpreadsheetTable, TableJSON } from '../../components/spreadsheet-table';
+
+describe('Clipboard Verification', () => {
+    const createMockTable = (): TableJSON => ({
+        name: 'Test Table',
+        description: 'Test Description',
+        headers: ['A', 'B', 'C'],
+        rows: [
+            ['1', '2', '3'],
+            ['4', '5', '6'],
+            ['7', '8', '9']
+        ],
+        metadata: {},
+        start_line: 0,
+        end_line: 5
+    });
+
+    let clipboardData: string = '';
+
+    beforeEach(() => {
+        // Mock clipboard API
+        Object.defineProperty(navigator, 'clipboard', {
+            value: {
+                writeText: vi.fn((text: string) => {
+                    clipboardData = text;
+                    return Promise.resolve();
+                }),
+                readText: vi.fn(() => Promise.resolve(clipboardData))
+            },
+            configurable: true
+        });
+    });
+
+    afterEach(() => {
+        clipboardData = '';
+    });
+
+    describe('Copy', () => {
+        it('copies single cell on Ctrl+C', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await el.updateComplete;
+
+            // Select cell [1, 1] with value "5"
+            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            cell.click();
+            await el.updateComplete;
+
+            // Press Ctrl+C
+            cell.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, composed: true })
+            );
+
+            // Wait for async clipboard operation
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(navigator.clipboard.writeText).toHaveBeenCalledWith('5');
+        });
+
+        it('copies range as TSV on Ctrl+C', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await el.updateComplete;
+
+            // Select range [0,0] to [1,1]
+            const cell00 = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            cell00.click();
+            await el.updateComplete;
+
+            const cell11 = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            cell11.dispatchEvent(
+                new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true })
+            );
+            await el.updateComplete;
+
+            // Press Ctrl+C
+            cell11.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, composed: true })
+            );
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            // TSV format: "1\t2\n4\t5"
+            expect(navigator.clipboard.writeText).toHaveBeenCalled();
+            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock.calls[0][0];
+            expect(writtenText).to.include('1');
+            expect(writtenText).to.include('2');
+            expect(writtenText).to.include('4');
+            expect(writtenText).to.include('5');
+        });
+
+        it('includes headers when column selected', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await el.updateComplete;
+
+            // Select column 0
+            const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="0"]') as HTMLElement;
+            colHeader.click();
+            await el.updateComplete;
+
+            // Press Ctrl+C
+            colHeader.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, composed: true })
+            );
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(navigator.clipboard.writeText).toHaveBeenCalled();
+            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock.calls[0][0];
+            // Should include header "A" and data "1", "4", "7"
+            expect(writtenText).to.include('A');
+        });
+
+        it('escapes values with newlines in TSV format', async () => {
+            const table = createMockTable();
+            table.rows[0][0] = 'line1\nline2';
+
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${table}"></spreadsheet-table>`
+            );
+            await el.updateComplete;
+
+            // Select cell with newline
+            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            cell.click();
+            await el.updateComplete;
+
+            // Press Ctrl+C
+            cell.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, composed: true })
+            );
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(navigator.clipboard.writeText).toHaveBeenCalled();
+            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock.calls[0][0];
+            // Value with newline should be quoted
+            expect(writtenText).to.include('"');
+        });
+
+        it('escapes values with tabs in TSV format', async () => {
+            const table = createMockTable();
+            table.rows[0][0] = 'col1\tcol2';
+
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${table}"></spreadsheet-table>`
+            );
+            await el.updateComplete;
+
+            // Select cell with tab
+            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            cell.click();
+            await el.updateComplete;
+
+            // Press Ctrl+C
+            cell.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true, composed: true })
+            );
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(navigator.clipboard.writeText).toHaveBeenCalled();
+            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock.calls[0][0];
+            // Value with tab should be quoted
+            expect(writtenText).to.include('"');
+        });
+    });
+
+    describe('Paste', () => {
+        it('pastes single value to selected cell', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await el.updateComplete;
+
+            const pasteSpy = vi.fn();
+            el.addEventListener('paste-cells', pasteSpy);
+
+            // Set clipboard content
+            clipboardData = 'new value';
+
+            // Select cell [1, 1]
+            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            cell.click();
+            await el.updateComplete;
+
+            // Press Ctrl+V
+            cell.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, bubbles: true, composed: true })
+            );
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(pasteSpy).toHaveBeenCalled();
+            const detail = pasteSpy.mock.calls[0][0].detail;
+            expect(detail.startRow).to.equal(1);
+            expect(detail.startCol).to.equal(1);
+            expect(detail.data).to.deep.equal([['new value']]);
+        });
+
+        it('pastes TSV range to cells', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await el.updateComplete;
+
+            const pasteSpy = vi.fn();
+            el.addEventListener('paste-cells', pasteSpy);
+
+            // Set clipboard content (2x2 TSV)
+            clipboardData = 'a\tb\nc\td';
+
+            // Select cell [0, 0]
+            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            cell.click();
+            await el.updateComplete;
+
+            // Press Ctrl+V
+            cell.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, bubbles: true, composed: true })
+            );
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(pasteSpy).toHaveBeenCalled();
+            const detail = pasteSpy.mock.calls[0][0].detail;
+            expect(detail.startRow).to.equal(0);
+            expect(detail.startCol).to.equal(0);
+            expect(detail.data).to.deep.equal([
+                ['a', 'b'],
+                ['c', 'd']
+            ]);
+        });
+
+        it('handles quoted TSV with embedded newlines', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await el.updateComplete;
+
+            const pasteSpy = vi.fn();
+            el.addEventListener('paste-cells', pasteSpy);
+
+            // Set clipboard content with quoted value containing newline
+            clipboardData = '"line1\nline2"\tvalue';
+
+            // Select cell [0, 0]
+            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            cell.click();
+            await el.updateComplete;
+
+            // Press Ctrl+V
+            cell.dispatchEvent(
+                new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, bubbles: true, composed: true })
+            );
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(pasteSpy).toHaveBeenCalled();
+            const detail = pasteSpy.mock.calls[0][0].detail;
+            // Newline inside quoted value should be preserved
+            expect(detail.data[0][0]).to.include('\n');
+        });
+    });
+});
