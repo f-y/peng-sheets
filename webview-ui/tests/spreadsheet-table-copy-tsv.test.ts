@@ -54,14 +54,16 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
             await awaitView(element);
 
             // Call internal _handleKeyDown directly (Container doesn't have raw @keydown listener)
-            (element as any)._handleKeyDown(
-                new KeyboardEvent('keydown', {
-                    key: 'c',
-                    ctrlKey: true,
-                    bubbles: true,
-                    composed: true
-                })
-            );
+            // Create mock event
+            const event = {
+                ctrlKey: true,
+                metaKey: true,
+                key: 'c',
+                preventDefault: () => { }
+            } as unknown as KeyboardEvent;
+
+            // Call handleKeyDown on the keyboard controller
+            await (element as any).keyboardCtrl.handleKeyDown(event);
             await new Promise((r) => setTimeout(r, 0));
             await awaitView(element);
 

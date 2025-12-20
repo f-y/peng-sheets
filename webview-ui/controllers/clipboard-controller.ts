@@ -32,8 +32,8 @@ export class ClipboardController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
     /**
      * Parse TSV text that may contain quoted values with embedded newlines, tabs, or escaped quotes.
@@ -124,13 +124,49 @@ export class ClipboardController implements ReactiveController {
      * Copy selected cells to clipboard as TSV
      */
     async copyToClipboard(): Promise<void> {
+        const text = this._getTsvForSelection();
+        if (!text) return;
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (err) {
+            console.error('Failed to copy to clipboard:', err);
+        }
+    }
+
+    handleCopy(e: ClipboardEvent) {
+        const text = this._getTsvForSelection();
+        if (text) {
+            e.clipboardData?.setData('text/plain', text);
+            e.preventDefault();
+        }
+    }
+
+    handleCut(e: ClipboardEvent) {
+        const text = this._getTsvForSelection();
+        if (text) {
+            e.clipboardData?.setData('text/plain', text);
+            e.preventDefault();
+            this.deleteSelection();
+        }
+    }
+
+    handlePaste(e: ClipboardEvent) {
+        const text = e.clipboardData?.getData('text/plain');
+        if (text) {
+            e.preventDefault();
+            this._pasteTsvData(text);
+        }
+    }
+
+    private _getTsvForSelection(): string | null {
         const { table, selectionCtrl } = this.host;
-        if (!table) return;
+        if (!table) return null;
 
         let minR = -100,
             maxR = -100,
             minC = -100,
             maxC = -100;
+        // ... (existing logic)
         const numCols = table?.headers?.length || 0;
         const numRows = table.rows.length;
 
@@ -167,7 +203,7 @@ export class ClipboardController implements ReactiveController {
             minC = maxC = selCol;
         }
 
-        if (minR < -1 || minC < -1) return;
+        if (minR < -1 || minC < -1) return null;
 
         const effectiveMinR = Math.max(0, minR);
         const effectiveMaxR = Math.min(numRows - 1, maxR);
@@ -196,84 +232,83 @@ export class ClipboardController implements ReactiveController {
             rows.push(rowData.join('\t'));
         }
 
-        const text = rows.join('\n');
-        try {
-            await navigator.clipboard.writeText(text);
-        } catch (err) {
-            console.error('Failed to copy to clipboard:', err);
-        }
+        return rows.join('\n');
     }
 
     /**
      * Paste TSV data from clipboard into the spreadsheet
      */
     async paste(): Promise<void> {
-        const { table, selectionCtrl, sheetIndex, tableIndex } = this.host;
-        if (!table) return;
-
         try {
             const text = await navigator.clipboard.readText();
-            if (!text) return;
-
-            const rows = this.parseTsv(text);
-
-            let startRow = selectionCtrl.selectedRow;
-            let startCol = selectionCtrl.selectedCol;
-
-            if (selectionCtrl.selectedRow === -1 || selectionCtrl.selectedCol === -1) {
-                return;
+            if (text) {
+                this._pasteTsvData(text);
             }
-
-            // Full table selection (corner click)
-            const isFullTableSelection = selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol === -2;
-
-            // Column selection (row header area)
-            const isColumnSelection = selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol !== -2;
-
-            if (isFullTableSelection) {
-                startRow = 0;
-                startCol = 0;
-            } else if (isColumnSelection) {
-                startRow = 0;
-                // startCol stays at selected column
-            } else if (selectionCtrl.selectedCol === -2) {
-                // Row selection
-                startRow = selectionCtrl.selectedRow;
-                startCol = 0;
-            } else if (
-                selectionCtrl.selectionAnchorRow !== -1 &&
-                selectionCtrl.selectedRow !== -2 &&
-                selectionCtrl.selectedCol !== -2
-            ) {
-                startRow = Math.min(selectionCtrl.selectionAnchorRow, selectionCtrl.selectedRow);
-                startCol = Math.min(selectionCtrl.selectionAnchorCol, selectionCtrl.selectedCol);
-            }
-
-            if (selectionCtrl.selectedRow >= (table?.rows.length || 0)) {
-                startRow = table?.rows.length || 0;
-                startCol = 0;
-            }
-
-            // Include headers when pasting at row 0 with column/full selection
-            const includeHeaders = isFullTableSelection || isColumnSelection;
-
-            this.host.dispatchEvent(
-                new CustomEvent('paste-cells', {
-                    detail: {
-                        sheetIndex: sheetIndex,
-                        tableIndex: tableIndex,
-                        startRow: startRow,
-                        startCol: startCol,
-                        data: rows,
-                        includeHeaders: includeHeaders
-                    },
-                    bubbles: true,
-                    composed: true
-                })
-            );
         } catch (err) {
             console.error('Paste failed', err);
         }
+    }
+
+    private _pasteTsvData(text: string): void {
+        const { table, selectionCtrl, sheetIndex, tableIndex } = this.host;
+        if (!table) return;
+
+        const rows = this.parseTsv(text);
+
+        let startRow = selectionCtrl.selectedRow;
+        let startCol = selectionCtrl.selectedCol;
+
+        if (selectionCtrl.selectedRow === -1 || selectionCtrl.selectedCol === -1) {
+            return;
+        }
+
+        // Full table selection (corner click)
+        const isFullTableSelection = selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol === -2;
+
+        // Column selection (row header area)
+        const isColumnSelection = selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol !== -2;
+
+        if (isFullTableSelection) {
+            startRow = 0;
+            startCol = 0;
+        } else if (isColumnSelection) {
+            startRow = 0;
+            // startCol stays at selected column
+        } else if (selectionCtrl.selectedCol === -2) {
+            // Row selection
+            startRow = selectionCtrl.selectedRow;
+            startCol = 0;
+        } else if (
+            selectionCtrl.selectionAnchorRow !== -1 &&
+            selectionCtrl.selectedRow !== -2 &&
+            selectionCtrl.selectedCol !== -2
+        ) {
+            startRow = Math.min(selectionCtrl.selectionAnchorRow, selectionCtrl.selectedRow);
+            startCol = Math.min(selectionCtrl.selectionAnchorCol, selectionCtrl.selectedCol);
+        }
+
+        if (selectionCtrl.selectedRow >= (table?.rows.length || 0)) {
+            startRow = table?.rows.length || 0;
+            startCol = 0;
+        }
+
+        // Include headers when pasting at row 0 with column/full selection
+        const includeHeaders = isFullTableSelection || isColumnSelection;
+
+        this.host.dispatchEvent(
+            new CustomEvent('paste-cells', {
+                detail: {
+                    sheetIndex: sheetIndex,
+                    tableIndex: tableIndex,
+                    startRow: startRow,
+                    startCol: startCol,
+                    data: rows,
+                    includeHeaders: includeHeaders
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
     }
 
     /**

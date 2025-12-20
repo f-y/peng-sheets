@@ -211,11 +211,16 @@ describe('SpreadsheetTable Selection', () => {
 
         // Trigger Paste via _handleKeyDown (Container doesn't have raw @keydown listener)
         ghostHeader.focus();
-        (el as any)._handleKeyDown(
-            new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, bubbles: true, composed: true })
-        );
-
-        // Wait for async clipboard
+        (el as any).keyboardCtrl.handleKeyDown(
+            new KeyboardEvent('keydown', {
+                key: 'v',
+                code: 'KeyV',
+                ctrlKey: false,
+                metaKey: true,
+                bubbles: true,
+                composed: true
+            })
+        ); // Wait for async clipboard
         await new Promise((r) => setTimeout(r, 20));
 
         expect(pasteEvent).to.exist;

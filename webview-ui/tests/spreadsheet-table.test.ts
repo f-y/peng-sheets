@@ -18,7 +18,7 @@ type TestableSpreadsheetTable = {
     clipboardCtrl: {
         deleteSelection(): void;
     };
-    _commitEdit(e: unknown): void;
+    commitEdit(e: unknown): void;
     _renderMarkdown(content: string): string;
     _handleKeyDown(e: KeyboardEvent): void;
 };
@@ -183,7 +183,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
         // Trigger commit
-        (element as unknown as TestableSpreadsheetTable)._commitEdit({ target: mockTarget } as unknown as Event);
+        (element as unknown as TestableSpreadsheetTable).commitEdit({ target: mockTarget } as unknown as Event);
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
@@ -349,7 +349,7 @@ describe('SpreadsheetTable', () => {
         // Manually invoke handler because dispatchEvent in test env is flaky with Shadow DOM
         // Mock target
         Object.defineProperty(keyEvent, 'target', { value: cell });
-        (el as unknown as TestableSpreadsheetTable)._handleKeyDown(keyEvent);
+        (el as unknown as TestableSpreadsheetTable).keyboardCtrl.handleKeyDown(keyEvent);
 
         expect(stopPropSpy).toHaveBeenCalled();
         expect(preventDefSpy).toHaveBeenCalled();

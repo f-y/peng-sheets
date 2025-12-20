@@ -1,0 +1,321 @@
+
+> vscode-md-spreadsheet@0.0.1 test:webview
+> vitest run webview-ui/tests --environment jsdom -t selects all cells when corner clicked webview-ui/tests/refactoring/selection.test.ts
+
+
+[1m[46m RUN [49m[22m [36mv4.0.15 [39m[90m/Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet[39m
+
+[90mstderr[2m | webview-ui/tests/filter-menu.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/filter-menu.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/refactoring/selection.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31649) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/click-away-debug.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/cell-edit-bugs.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/ghost-cell-empty-edit.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/ghost-cell-direct-input.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/browser-accurate-click.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/click-away-debug.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/cell-edit-bugs.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/browser-accurate-click.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/ghost-cell-empty-edit.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/ghost-cell-direct-input.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+[90mstdout[2m | webview-ui/tests/refactoring/selection.test.ts[2m > [22m[2mSelection Verification[2m > [22m[2mFull Table Selection[2m > [22m[2mselects all cells when corner clicked
+[22m[39mEventController initialized
+
+ [31m❯[39m webview-ui/tests/refactoring/selection.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m8 skipped[39m[2m)[22m[32m 143[2mms[22m[39m
+       [2m[90m↓[39m[22m selects cell on mousedown
+       [2m[90m↓[39m[22m deselects previous cell when new cell clicked
+       [2m[90m↓[39m[22m extends selection with Shift+mousedown
+       [2m[90m↓[39m[22m extends selection by mouse drag
+       [2m[90m↓[39m[22m selects entire row when row header clicked
+       [2m[90m↓[39m[22m extends row selection with Shift+click
+       [2m[90m↓[39m[22m selects entire column when column header clicked
+       [2m[90m↓[39m[22m extends column selection with Shift+click
+[31m       [31m×[31m selects all cells when corner clicked[39m[32m 142[2mms[22m[39m
+[90mstderr[2m | webview-ui/tests/ghost-cell.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/ghost-cell.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/linebreak-sync.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/global-shortcuts.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/newline-edge-cases.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/layout-container.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31688) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/pane-view.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31691) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/sheet-add-selection.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/sheet-add-selection.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+(node:31693) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/newline-edge-cases.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/layout-container.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/linebreak-sync.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/pane-view.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/sheet-delete.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31694) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/sheet-rename.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/shift-click-selection.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-document-view-save.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-alt-enter.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31699) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-backspace.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31700) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/split-view.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31697) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/sheet-delete.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/shift-click-selection.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+(node:31696) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-alt-enter.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/split-view.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-backspace.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-clipboard.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-copy-tsv.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-clipboard.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+(node:31703) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-delete.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-dom-text.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-format.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-header-commit.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31708) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-copy-tsv.test.ts [2m([22m[2m4 tests[22m[2m | [22m[33m4 skipped[39m[2m)[22m
+(node:31704) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-header-edit.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31709) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-delete.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+(node:31705) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-dom-text.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-format.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-header-commit.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-header-edit.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-metadata-edit.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31710) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-metadata-reedit.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31711) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-newlines-roundtrip.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-newlines-commit.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-metadata-edit.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-paste-headers.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-newlines.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-paste-tsv.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-metadata-reedit.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-newlines-roundtrip.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-newlines-commit.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-newlines.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-paste-headers.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+(node:31715) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-paste-tsv.test.ts [2m([22m[2m3 tests[22m[2m | [22m[33m3 skipped[39m[2m)[22m
+(node:31716) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-rendering.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-resize.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-selection.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31719) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-shift-tab.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-rendering.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+(node:31717) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/spreadsheet-table.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+[90mstderr[2m | webview-ui/tests/spreadsheet-table-state.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31721) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-resize.test.ts [2m([22m[2m1 test[22m[2m | [22m[33m1 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/undo-redo.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-shift-tab.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-selection.test.ts [2m([22m[2m5 tests[22m[2m | [22m[33m5 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table-state.test.ts [2m([22m[2m2 tests[22m[2m | [22m[33m2 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/spreadsheet-table.test.ts [2m([22m[2m11 tests[22m[2m | [22m[33m11 skipped[39m[2m)[22m
+(node:31722) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/undo-redo.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+(node:31723) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/refactoring/clipboard.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31724) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/refactoring/editing.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31726) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/refactoring/context-menu.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31725) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/refactoring/ghost-row.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+ [2m[90m↓[39m[22m webview-ui/tests/refactoring/clipboard.test.ts [2m([22m[2m8 tests[22m[2m | [22m[33m8 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/refactoring/headers.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31728) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+[90mstderr[2m | webview-ui/tests/refactoring/metadata.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31729) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/refactoring/editing.test.ts [2m([22m[2m10 tests[22m[2m | [22m[33m10 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/refactoring/context-menu.test.ts [2m([22m[2m13 tests[22m[2m | [22m[33m13 skipped[39m[2m)[22m
+[90mstderr[2m | webview-ui/tests/refactoring/navigation.test.ts
+[22m[39mLit is in dev mode. Not recommended for production! See https://lit.dev/msg/dev-mode for more information.
+
+(node:31730) [DEP0151] DeprecationWarning: No "main" or "exports" field defined in the package.json for /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/semantic-dom-diff/ resolving the main entry point "index.js", imported from /Users/hyuki/work/md-spreadsheet-suite/vscode-md-spreadsheet/node_modules/@open-wc/testing/register-chai-plugins.js.
+Default "index" lookups for the main are deprecated for ES modules.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+ [2m[90m↓[39m[22m webview-ui/tests/refactoring/ghost-row.test.ts [2m([22m[2m6 tests[22m[2m | [22m[33m6 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/refactoring/headers.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/refactoring/metadata.test.ts [2m([22m[2m7 tests[22m[2m | [22m[33m7 skipped[39m[2m)[22m
+ [2m[90m↓[39m[22m webview-ui/tests/refactoring/navigation.test.ts [2m([22m[2m16 tests[22m[2m | [22m[33m16 skipped[39m[2m)[22m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m webview-ui/tests/refactoring/selection.test.ts[2m > [22mSelection Verification[2m > [22mFull Table Selection[2m > [22mselects all cells when corner clicked
+[31m[1mAssertionError[22m: expected +0 to equal -2[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- -2[39m
+[31m+ 0[39m
+
+[36m [2m❯[22m webview-ui/tests/refactoring/selection.test.ts:[2m266:53[22m[39m
+    [90m264| [39m            [35mawait[39m [34mawaitView[39m(el)[33m;[39m
+    [90m265| [39m
+    [90m266| [39m            [34mexpect[39m(el[33m.[39mselectionCtrl[33m.[39mselectedRow)[33m.[39mto[33m.[39m[34mequal[39m([33m-[39m[34m2[39m)[33m;[39m
+    [90m   | [39m                                                    [31m^[39m
+    [90m267| [39m            [34mexpect[39m(el[33m.[39mselectionCtrl[33m.[39mselectedCol)[33m.[39mto[33m.[39m[34mequal[39m([33m-[39m[34m2[39m)[33m;[39m
+    [90m268| [39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[33m48 skipped[39m[90m (49)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m213 skipped[39m[90m (214)[39m
+[2m   Start at [22m 21:35:21
+[2m   Duration [22m 14.52s[2m (transform 3.26s, setup 1.36s, import 30.55s, tests 143ms, environment 56.45s)[22m
+

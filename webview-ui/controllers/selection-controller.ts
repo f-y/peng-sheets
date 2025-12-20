@@ -22,7 +22,7 @@ export class SelectionController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
+    hostConnected() { }
 
     hostDisconnected() {
         // cleanup listeners if any
@@ -60,11 +60,19 @@ export class SelectionController implements ReactiveController {
         window.addEventListener('mouseup', this._handleGlobalMouseUp);
     }
 
+    handleMouseMove = (e: MouseEvent) => {
+        this._handleGlobalMouseMove(e);
+    };
+
+    handleMouseUp = (e: MouseEvent) => {
+        this._handleGlobalMouseUp(e);
+    };
+
     private _handleGlobalMouseMove = (e: MouseEvent) => {
         if (!this.isSelecting) return;
 
         const path = e.composedPath();
-        const element = path.find((el) => (el as HTMLElement).classList?.contains('cell')) as HTMLElement;
+        const element = path.find((el: EventTarget) => (el as HTMLElement).classList?.contains('cell')) as HTMLElement;
 
         if (element) {
             const r = parseInt(element.getAttribute('data-row') || '-100');
@@ -107,7 +115,7 @@ export class SelectionController implements ReactiveController {
         }
     }
 
-    private _handleGlobalMouseUp = (e: MouseEvent) => {
+    private _handleGlobalMouseUp = (_e: MouseEvent) => {
         this.isSelecting = false;
         window.removeEventListener('mousemove', this._handleGlobalMouseMove);
         window.removeEventListener('mouseup', this._handleGlobalMouseUp);
