@@ -6,6 +6,13 @@ export default defineConfig({
         environment: 'jsdom',
         include: ['**/*.test.ts'],
         setupFiles: ['./test-setup.ts'],
+        pool: 'threads',
+        poolOptions: {
+            threads: {
+                singleThread: false,
+                isolate: true,
+            }
+        },
         deps: {
             inline: [/lit-element/, /lit-html/]
         }

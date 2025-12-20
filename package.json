@@ -101,7 +101,10 @@
         "lint": "eslint src webview-ui --ext ts",
         "format": "prettier --write \"src/**/*.ts\" \"webview-ui/**/*.ts\"",
         "test": "vscode-test",
-        "test:webview": "vitest run webview-ui/tests --environment jsdom"
+        "test:webview": "vitest run webview-ui/tests --environment jsdom",
+        "test:components": "vitest run webview-ui/tests/components --environment jsdom",
+        "test:regression": "vitest run webview-ui/tests/regression --environment jsdom",
+        "test:integration": "vitest run webview-ui/tests/integration --environment jsdom"
     },
     "devDependencies": {
         "@open-wc/testing": "^4.0.0",
