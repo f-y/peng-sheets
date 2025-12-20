@@ -134,32 +134,32 @@ describe('ClipboardController', () => {
 
     describe('_escapeTsvValue', () => {
         it('should not quote simple values', () => {
-            const result = clipboard._escapeTsvValue('simple');
+            const result = (clipboard as any)._escapeTsvValue('simple');
             expect(result).toBe('simple');
         });
 
         it('should quote values with tabs', () => {
-            const result = clipboard._escapeTsvValue('A\tB');
+            const result = (clipboard as any)._escapeTsvValue('A\tB');
             expect(result).toBe('"A\tB"');
         });
 
         it('should quote values with newlines', () => {
-            const result = clipboard._escapeTsvValue('Line1\nLine2');
+            const result = (clipboard as any)._escapeTsvValue('Line1\nLine2');
             expect(result).toBe('"Line1\nLine2"');
         });
 
         it('should quote and escape values with quotes', () => {
-            const result = clipboard._escapeTsvValue('Say "Hello"');
+            const result = (clipboard as any)._escapeTsvValue('Say "Hello"');
             expect(result).toBe('"Say ""Hello"""');
         });
 
         it('should handle empty string', () => {
-            const result = clipboard._escapeTsvValue('');
+            const result = (clipboard as any)._escapeTsvValue('');
             expect(result).toBe('');
         });
 
         it('should handle value with all special chars', () => {
-            const result = clipboard._escapeTsvValue('A\t"B"\nC');
+            const result = (clipboard as any)._escapeTsvValue('A\t"B"\nC');
             expect(result).toBe('"A\t""B""\nC"');
         });
     });
@@ -167,7 +167,7 @@ describe('ClipboardController', () => {
     describe('_getTsvForSelection', () => {
         it('should return null if no table', () => {
             host.table = null;
-            const result = clipboard._getTsvForSelection();
+            const result = (clipboard as any)._getTsvForSelection();
             expect(result).toBeNull();
         });
 
@@ -178,7 +178,7 @@ describe('ClipboardController', () => {
                 minC: 0,
                 maxC: 0
             }));
-            const result = clipboard._getTsvForSelection();
+            const result = (clipboard as any)._getTsvForSelection();
             expect(result).toBe('1');
         });
 
@@ -194,7 +194,7 @@ describe('ClipboardController', () => {
                 minC: 0,
                 maxC: 1
             }));
-            const result = clipboard._getTsvForSelection();
+            const result = (clipboard as any)._getTsvForSelection();
             expect(result).toBe('1\t2\n3\t4');
         });
 
@@ -210,7 +210,7 @@ describe('ClipboardController', () => {
                 minC: 0,
                 maxC: 0
             }));
-            const result = clipboard._getTsvForSelection();
+            const result = (clipboard as any)._getTsvForSelection();
             expect(result).toBe('1\n3');
         });
 
@@ -227,7 +227,7 @@ describe('ClipboardController', () => {
                 minC: 0,
                 maxC: 1
             }));
-            const result = clipboard._getTsvForSelection();
+            const result = (clipboard as any)._getTsvForSelection();
             expect(result).toBe('1\t2');
         });
 
@@ -244,7 +244,7 @@ describe('ClipboardController', () => {
                 minC: 0,
                 maxC: 1
             }));
-            const result = clipboard._getTsvForSelection();
+            const result = (clipboard as any)._getTsvForSelection();
             expect(result).toBe('A\tB\n1\t2\n3\t4');
         });
 
@@ -256,7 +256,7 @@ describe('ClipboardController', () => {
                 minC: 0,
                 maxC: 0
             }));
-            const result = clipboard._getTsvForSelection();
+            const result = (clipboard as any)._getTsvForSelection();
             expect(result).toBe('"Line1\nLine2"');
         });
     });
@@ -332,7 +332,9 @@ describe('ClipboardController', () => {
             ];
 
             // Convert to TSV
-            const tsv = original.map((row) => row.map((cell) => clipboard._escapeTsvValue(cell)).join('\t')).join('\n');
+            const tsv = original.map((row) =>
+                row.map((cell) => (clipboard as any)._escapeTsvValue(cell)).join('\t')
+            ).join('\n');
 
             // Parse back
             const parsed = clipboard.parseTsv(tsv);
