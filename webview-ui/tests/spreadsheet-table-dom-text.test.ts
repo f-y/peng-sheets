@@ -1,23 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SpreadsheetTable } from '../components/spreadsheet-table';
-import '../components/spreadsheet-table';
+import { describe, it, expect } from 'vitest';
+import { getDOMText } from '../utils/spreadsheet-helpers';
 
-// Helper to simulate internal logic since we can't easily trigger full Lit render cycle with JSDOM behavior for contenteditable
-// We will test the logic used in _commitEdit by creating a similar environment
+// We test the utility function directly now, simplified.
 
-describe('SpreadsheetTable _getDOMText Logic', () => {
-    let table: SpreadsheetTable;
-
-    beforeEach(() => {
-        table = new SpreadsheetTable();
-    });
-
+describe('SpreadsheetTable getDOMText Logic', () => {
     it('should extract text with newlines from BR tags', () => {
         const div = document.createElement('div');
         div.innerHTML = 'A<br>B';
 
-        // Access private method via casting
-        const result = (table as any)._getDOMText(div);
+        const result = getDOMText(div);
         expect(result).toBe('A\nB');
     });
 
@@ -25,7 +16,7 @@ describe('SpreadsheetTable _getDOMText Logic', () => {
         const div = document.createElement('div');
         div.innerHTML = 'AB'; // Simulate state after backspace
 
-        const result = (table as any)._getDOMText(div);
+        const result = getDOMText(div);
         expect(result).toBe('AB');
         expect(result).not.toContain('\n');
     });
@@ -34,7 +25,7 @@ describe('SpreadsheetTable _getDOMText Logic', () => {
         const div = document.createElement('div');
         div.appendChild(document.createTextNode('A\nB'));
 
-        const result = (table as any)._getDOMText(div);
+        const result = getDOMText(div);
         expect(result).toBe('A\nB');
     });
 
@@ -47,7 +38,7 @@ describe('SpreadsheetTable _getDOMText Logic', () => {
         // Line1 (text) + \n (br) + Line2\n (text) + \n (br) + Line3 (text)
         // -> Line1\nLine2\n\nLine3
 
-        const result = (table as any)._getDOMText(div);
+        const result = getDOMText(div);
         expect(result).toBe('Line1\nLine2\n\nLine3');
     });
 
@@ -60,7 +51,7 @@ describe('SpreadsheetTable _getDOMText Logic', () => {
         div.appendChild(span);
         div.appendChild(document.createTextNode('B'));
 
-        const result = (table as any)._getDOMText(div);
+        const result = getDOMText(div);
         expect(result).toBe('AB');
     });
 });

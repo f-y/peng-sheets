@@ -12,13 +12,7 @@ import { FocusController } from '../controllers/focus-controller';
 import { KeyboardController } from '../controllers/keyboard-controller';
 import { EventController } from '../controllers/event-controller';
 import { RowVisibilityController, VisualMetadata } from '../controllers/row-visibility-controller';
-import {
-    getEditingHtml,
-    getDOMText,
-    formatCellValue,
-    renderMarkdown,
-    NumberFormat
-} from '../utils/spreadsheet-helpers';
+import { getDOMText } from '../utils/spreadsheet-helpers';
 import { normalizeEditContent, findEditingCell } from '../utils/edit-mode-helpers';
 import { spreadsheetTableStyles } from './styles/spreadsheet-table-styles';
 import './filter-menu';
@@ -250,7 +244,7 @@ export class SpreadsheetTable extends LitElement {
 
             // Read from DOM for WYSIWYG correctness
             const targetEl = contentSpan || cell;
-            newValue = this._getDOMText(targetEl);
+            newValue = getDOMText(targetEl);
 
             // Normalize content (strip trailing newlines, handle empty content)
             newValue = normalizeEditContent(newValue, this.editCtrl.hasUserInsertedNewline);
@@ -393,62 +387,18 @@ export class SpreadsheetTable extends LitElement {
         `;
     }
 
-    private _getEditingHtml(text: string): string {
-        return getEditingHtml(text);
-    }
 
-    private _getDOMText(node: Node, isRoot = false): string {
-        return getDOMText(node, isRoot);
-    }
 
-    private _formatCellValue(value: string, format?: NumberFormat): string {
-        return formatCellValue(value, format);
-    }
 
-    private _renderMarkdown(content: string): string {
-        return renderMarkdown(content);
-    }
+
+
+
 
     public handleToolbarAction(action: string) {
         this.toolbarCtrl.handleAction(action);
     }
 
-    private _updateCell(r: number, c: number, value: string) {
-        // Optimistic update
-        if (this.table && this.table.rows[r]) {
-            this.table.rows[r][c] = value;
-            this.requestUpdate();
-            this.dispatchEvent(
-                new CustomEvent('cell-edit', {
-                    detail: {
-                        sheetIndex: this.sheetIndex,
-                        tableIndex: this.tableIndex,
-                        rowIndex: r,
-                        colIndex: c,
-                        newValue: value
-                    },
-                    bubbles: true,
-                    composed: true
-                })
-            );
-        }
-    }
 
-    // ---- Helper methods for ToolbarController ----
 
-    getCellValue(row: number, col: number): string {
-        return this.table?.rows[row]?.[col] || '';
-    }
 
-    updateCellValue(row: number, col: number, value: string): void {
-        this._updateCell(row, col, value);
-    }
-
-    getEditModeValue(): string {
-        return this.editCtrl.pendingEditValue || '';
-    }
-
-    setEditModeValue(value: string): void {
-        this.editCtrl.setPendingValue(value);
-    }
 }

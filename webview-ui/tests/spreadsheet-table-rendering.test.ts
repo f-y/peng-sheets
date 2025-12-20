@@ -3,6 +3,7 @@ import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
 import { queryView, awaitView } from './test-helpers';
 import { html, fixture } from '@open-wc/testing';
+import { renderMarkdown } from '../utils/spreadsheet-helpers';
 
 describe('SpreadsheetTable Rendering', () => {
     let el: SpreadsheetTable;
@@ -12,8 +13,7 @@ describe('SpreadsheetTable Rendering', () => {
     });
 
     it('renders trailing newlines correctly in read mode', () => {
-        // Access private method
-        const renderMarkdown = (el as any)._renderMarkdown.bind(el);
+        // Access private method - removed, us unit util
 
         // Case 1: "Alice\n\n" -> Should result in visible line breaks.
         const input = 'Alice\n\n';
@@ -32,6 +32,7 @@ describe('SpreadsheetTable Rendering', () => {
     it('visually interprets trailing double newline', async () => {
         el.table = {
             name: 'Test',
+            description: '',
             headers: ['A'],
             rows: [['Alice\n\n']], // Double newline
             metadata: {},

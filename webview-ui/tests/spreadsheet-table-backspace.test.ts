@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
+import { getDOMText } from '../utils/spreadsheet-helpers';
 import { queryView, awaitView } from './test-helpers';
 
 describe('SpreadsheetTable Backspace at Trailing Newline', () => {
@@ -81,8 +82,8 @@ describe('SpreadsheetTable Backspace at Trailing Newline', () => {
         console.log('After Backspace - innerHTML:', cell.innerHTML);
         console.log('After Backspace - textContent:', JSON.stringify(cell.textContent));
 
-        // Extract text using the component's _getDOMText method
-        const extractedText = (el as any)._getDOMText(cell, true);
+        // Extract text using the helper
+        const extractedText = getDOMText(cell, true);
         console.log('Extracted text:', JSON.stringify(extractedText));
 
         // Expected: The trailing newline should be deleted, resulting in "Bob"

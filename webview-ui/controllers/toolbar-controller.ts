@@ -14,23 +14,18 @@ interface SelectionController {
 
 interface EditController {
     isEditing: boolean;
+    pendingEditValue: string | null;
+    setPendingValue(value: string): void;
 }
 
 interface ToolbarHost extends ReactiveControllerHost {
     table: TableData | null;
     sheetIndex: number;
-    tableIndex: number;
+    tableIndex: number; // needed for events
     selectionCtrl: SelectionController;
-    editCtrl: EditController;
+    editCtrl: EditController; // needed for edit values
     dispatchEvent(event: Event): boolean;
     requestUpdate(): void;
-    // Callback to get current cell value
-    getCellValue(row: number, col: number): string;
-    // Callback to update cell value
-    updateCellValue(row: number, col: number, value: string): void;
-    // Callback to get and set edit mode value
-    getEditModeValue(): string;
-    setEditModeValue(value: string): void;
 }
 
 /**
@@ -49,8 +44,8 @@ export class ToolbarController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
     /**
      * Handle toolbar action
@@ -158,18 +153,18 @@ export class ToolbarController implements ReactiveController {
 
         if (editCtrl.isEditing) {
             // Edit mode: Apply to pending value
-            const currentVal = this.host.getEditModeValue();
+            const currentVal = editCtrl.pendingEditValue || '';
             const newValue = this.applyFormat(currentVal, action);
-            this.host.setEditModeValue(newValue);
+            editCtrl.setPendingValue(newValue);
         } else {
             // Non-edit mode: Apply to cell value
             const r = selectionCtrl.selectedRow;
             const c = selectionCtrl.selectedCol;
             if (r >= 0 && c >= 0) {
-                const currentValue = this.host.getCellValue(r, c);
+                const currentValue = this.host.table?.rows[r]?.[c] || '';
                 const newValue = this.applyFormat(currentValue, action);
                 if (newValue !== currentValue) {
-                    this.host.updateCellValue(r, c, newValue);
+                    this._dispatchCellEdit(r, c, newValue);
                 }
             }
         }
@@ -254,6 +249,23 @@ export class ToolbarController implements ReactiveController {
                     ...detail,
                     sheetIndex: this.host.sheetIndex,
                     tableIndex: this.host.tableIndex
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+    private _dispatchCellEdit(r: number, c: number, value: string) {
+        // Optimistic update handled by main.ts listener usually, but here we just emit the event
+        // The host (SpreadsheetTable) doesn't need to do it via _updateCell anymore
+        this.host.dispatchEvent(
+            new CustomEvent('cell-edit', {
+                detail: {
+                    sheetIndex: this.host.sheetIndex,
+                    tableIndex: this.host.tableIndex,
+                    rowIndex: r,
+                    colIndex: c,
+                    newValue: value
                 },
                 bubbles: true,
                 composed: true

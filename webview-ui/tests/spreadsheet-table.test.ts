@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
-import '../components/spreadsheet-table';
 import { queryView, awaitView } from './test-helpers';
+import { renderMarkdown } from '../utils/spreadsheet-helpers';
 
 // Helper type to access private members for testing
 type TestableSpreadsheetTable = {
@@ -15,12 +15,12 @@ type TestableSpreadsheetTable = {
         selectedRow: number;
         selectedCol: number;
     };
+    keyboardCtrl: any;
     clipboardCtrl: {
         deleteSelection(): void;
     };
     commitEdit(e: unknown): void;
-    _renderMarkdown(content: string): string;
-    _handleKeyDown(e: KeyboardEvent): void;
+    // _renderMarkdown removed
 };
 import { fixture, html } from '@open-wc/testing';
 
@@ -222,9 +222,9 @@ describe('SpreadsheetTable', () => {
     });
 
     it('renders markdown correctly', async () => {
-        const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table></spreadsheet-table>`);
+        // const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table></spreadsheet-table>`);
         const testMarkdown = '<u>test</u> *italic* **bold**\nLine2';
-        const rendered = (el as unknown as TestableSpreadsheetTable)._renderMarkdown(testMarkdown);
+        const rendered = renderMarkdown(testMarkdown);
         expect(rendered).to.include('<u>test</u>');
         expect(rendered).to.include('<em>italic</em>');
         expect(rendered).to.include('<strong>bold</strong>');
