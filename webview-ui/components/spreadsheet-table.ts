@@ -188,7 +188,6 @@ export class SpreadsheetTable extends LitElement {
         }
     }
 
-
     // Existing Focus Listeners
     private _handleFocusIn = () => {
         (window as unknown as { activeSpreadsheetTable: SpreadsheetTable }).activeSpreadsheetTable = this;
@@ -305,9 +304,6 @@ export class SpreadsheetTable extends LitElement {
         }
     }
 
-
-
-
     /**
      * Calculate the selection range boundaries based on current selection state.
      * Delegates to SelectionController for the actual logic.
@@ -334,12 +330,12 @@ export class SpreadsheetTable extends LitElement {
         // Build filter menu state from FilterController
         const filterMenu = this.filterCtrl.activeFilterMenu
             ? {
-                x: this.filterCtrl.activeFilterMenu.x,
-                y: this.filterCtrl.activeFilterMenu.y,
-                col: this.filterCtrl.activeFilterMenu.colIndex,
-                values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
-                selectedValues: new Set<string>()
-            }
+                  x: this.filterCtrl.activeFilterMenu.x,
+                  y: this.filterCtrl.activeFilterMenu.y,
+                  col: this.filterCtrl.activeFilterMenu.colIndex,
+                  values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
+                  hiddenValues: this.filterCtrl.getHiddenValues(this.filterCtrl.activeFilterMenu.colIndex)
+              }
             : null;
 
         return html`
@@ -383,22 +379,14 @@ export class SpreadsheetTable extends LitElement {
                 @view-filter-click="${this.eventCtrl.handleFilterClick}"
                 @view-resize-start="${this.eventCtrl.handleResizeStart}"
                 @ss-metadata-change="${this.eventCtrl.handleMetadataChange}"
+                @view-sort="${this.filterCtrl.handleSort}"
+                @view-filter-change="${this.filterCtrl.handleFilterChange}"
+                @view-clear-filter="${this.filterCtrl.handleClearFilter}"
             ></spreadsheet-table-view>
         `;
     }
 
-
-
-
-
-
-
-
     public handleToolbarAction(action: string) {
         this.toolbarCtrl.handleAction(action);
     }
-
-
-
-
 }

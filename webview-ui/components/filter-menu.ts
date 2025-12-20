@@ -225,7 +225,7 @@ export class FilterMenu extends LitElement {
                         .checked=${isSelectAllChecked}
                         .indeterminate=${isIndeterminate}
                         @change=${(e: Event) =>
-                this._toggleSelectAll((e.target as HTMLInputElement).checked, filteredValues)}
+                            this._toggleSelectAll((e.target as HTMLInputElement).checked, filteredValues)}
                         ?disabled=${filteredValues.length === 0}
                     />
                     <span>(Select All)</span>
@@ -237,7 +237,7 @@ export class FilterMenu extends LitElement {
                                 type="checkbox"
                                 .checked=${!this.hiddenValues.includes(value)}
                                 @change=${(e: Event) =>
-                            this._toggleValue(value, (e.target as HTMLInputElement).checked)}
+                                    this._toggleValue(value, (e.target as HTMLInputElement).checked)}
                             />
                             <span>${value === '' ? '(Blanks)' : value}</span>
                         </label>

@@ -1,6 +1,6 @@
 /**
  * Filter Menu Integration Test
- * 
+ *
  * Tests the ENTIRE chain from filter icon click to menu rendering.
  * This is a true integration test that does NOT mock intermediate components.
  */

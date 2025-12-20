@@ -35,6 +35,9 @@ export class FilterController implements ReactiveController {
     activeFilterMenu: MenuPosition | null = null;
     activeFormatMenu: MenuPosition | null = null;
 
+    // Filter state per column (colIndex -> hiddenValues)
+    columnFilters: Map<number, string[]> = new Map();
+
     constructor(host: FilterHost) {
         this.host = host;
         host.addController(this);
@@ -62,6 +65,13 @@ export class FilterController implements ReactiveController {
             }
         }
         return Array.from(values).sort();
+    }
+
+    /**
+     * Get hidden values for a column
+     */
+    getHiddenValues(colIndex: number): string[] {
+        return this.columnFilters.get(colIndex) || [];
     }
 
     /**
@@ -99,7 +109,7 @@ export class FilterController implements ReactiveController {
     /**
      * Handle sort request from filter menu
      */
-    handleSort(e: CustomEvent): void {
+    handleSort = (e: CustomEvent): void => {
         if (!this.activeFilterMenu) return;
         const { direction } = e.detail;
         const colIdx = this.activeFilterMenu.colIndex;
@@ -119,15 +129,22 @@ export class FilterController implements ReactiveController {
         );
         this.activeFilterMenu = null;
         this.host.requestUpdate();
-    }
+    };
 
     /**
      * Handle filter value change from filter menu
      */
-    handleFilterChange(e: CustomEvent): void {
+    handleFilterChange = (e: CustomEvent): void => {
         if (!this.activeFilterMenu) return;
         const { hiddenValues } = e.detail;
         const colIdx = this.activeFilterMenu.colIndex;
+
+        // Store filter state locally
+        if (hiddenValues.length > 0) {
+            this.columnFilters.set(colIdx, hiddenValues);
+        } else {
+            this.columnFilters.delete(colIdx);
+        }
 
         this.host.dispatchEvent(
             new CustomEvent('post-message', {
@@ -142,15 +159,20 @@ export class FilterController implements ReactiveController {
                 composed: true
             })
         );
-        // Do not close menu immediately to allow multiple checks
-    }
+        // Trigger re-render to update FilterMenu with new hiddenValues
+        this.host.requestUpdate();
+    };
 
     /**
      * Clear filter for current column
      */
-    handleClearFilter(_e: CustomEvent): void {
+    handleClearFilter = (_e: CustomEvent): void => {
         if (!this.activeFilterMenu) return;
         const colIdx = this.activeFilterMenu.colIndex;
+
+        // Clear filter state locally
+        this.columnFilters.delete(colIdx);
+
         this.host.dispatchEvent(
             new CustomEvent('post-message', {
                 detail: {
@@ -166,7 +188,7 @@ export class FilterController implements ReactiveController {
         );
         this.activeFilterMenu = null;
         this.host.requestUpdate();
-    }
+    };
 
     /**
      * Close filter menu
@@ -257,7 +279,7 @@ export class FilterController implements ReactiveController {
     /**
      * Handle format change from format menu
      */
-    handleFormatChange(e: CustomEvent): void {
+    handleFormatChange = (e: CustomEvent): void => {
         const { colIndex, format } = e.detail;
 
         this.host.dispatchEvent(
@@ -274,12 +296,12 @@ export class FilterController implements ReactiveController {
             })
         );
         this.closeFormatMenu();
-    }
+    };
 
     /**
      * Cancel format menu
      */
-    handleFormatCancel(): void {
+    handleFormatCancel = (): void => {
         this.closeFormatMenu();
-    }
+    };
 }

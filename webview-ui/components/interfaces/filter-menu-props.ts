@@ -1,6 +1,6 @@
 /**
  * Filter Menu Props Interface
- * 
+ *
  * Defines the contract between parent components (Container/View) and FilterMenu.
  * This interface ensures type safety and documents the expected properties.
  */
@@ -26,5 +26,5 @@ export interface FilterMenuState {
     y: number;
     col: number;
     values: string[];
-    selectedValues: Set<string>;  // NOTE: This doesn't match FilterMenu's hiddenValues!
+    selectedValues: Set<string>; // NOTE: This doesn't match FilterMenu's hiddenValues!
 }

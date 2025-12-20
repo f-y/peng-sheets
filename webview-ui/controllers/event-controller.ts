@@ -161,8 +161,8 @@ export class EventController implements ReactiveController {
             {
                 clientX: e.detail.x,
                 clientY: e.detail.y,
-                preventDefault: () => { },
-                stopPropagation: () => { }
+                preventDefault: () => {},
+                stopPropagation: () => {}
             } as MouseEvent,
             'col',
             e.detail.index
@@ -186,7 +186,7 @@ export class EventController implements ReactiveController {
             {
                 clientX: e.detail.x,
                 clientY: e.detail.y,
-                stopPropagation: () => { },
+                stopPropagation: () => {},
                 target: {
                     getBoundingClientRect: () => ({
                         left: e.detail.x,
@@ -201,7 +201,7 @@ export class EventController implements ReactiveController {
 
     handleResizeStart = (e: CustomEvent<{ col: number; x: number; width: number }>) => {
         this.host.resizeCtrl.startResize(
-            { clientX: e.detail.x, preventDefault: () => { }, stopPropagation: () => { } } as MouseEvent,
+            { clientX: e.detail.x, preventDefault: () => {}, stopPropagation: () => {} } as MouseEvent,
             e.detail.col,
             e.detail.width
         );
@@ -221,8 +221,8 @@ export class EventController implements ReactiveController {
             {
                 clientX: e.detail.x,
                 clientY: e.detail.y,
-                preventDefault: () => { },
-                stopPropagation: () => { }
+                preventDefault: () => {},
+                stopPropagation: () => {}
             } as MouseEvent,
             'row',
             e.detail.index

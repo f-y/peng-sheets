@@ -63,7 +63,7 @@ describe('SpreadsheetTable Paste with Headers', () => {
             ctrlKey: true,
             metaKey: true,
             key: 'v',
-            preventDefault: () => { }
+            preventDefault: () => {}
         } as unknown as KeyboardEvent;
 
         // Call handleKeyDown on the keyboard controller

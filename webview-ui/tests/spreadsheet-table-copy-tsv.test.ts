@@ -59,7 +59,7 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
                 ctrlKey: true,
                 metaKey: true,
                 key: 'c',
-                preventDefault: () => { }
+                preventDefault: () => {}
             } as unknown as KeyboardEvent;
 
             // Call handleKeyDown on the keyboard controller

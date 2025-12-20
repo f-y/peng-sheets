@@ -1,6 +1,6 @@
 /**
  * Filter Icon Click Position Test
- * 
+ *
  * Verifies that clicking the filter icon emits coordinates based on
  * the icon element's bounding rect, not the mouse cursor position.
  */
@@ -37,8 +37,8 @@ describe('Filter Icon Click Position', () => {
         const clickEvent = new MouseEvent('click', {
             bubbles: true,
             composed: true,
-            clientX: 110,  // Middle of icon
-            clientY: 200   // WAY below the element's bottom (30)
+            clientX: 110, // Middle of icon
+            clientY: 200 // WAY below the element's bottom (30)
         });
         filterIcon.dispatchEvent(clickEvent);
 
@@ -46,7 +46,7 @@ describe('Filter Icon Click Position', () => {
         const detail = filterSpy.mock.calls[0][0].detail;
 
         // The y should be element's bottom (30), NOT the mouse Y (200)
-        expect(detail.y).toBe(30);  // rect.bottom
+        expect(detail.y).toBe(30); // rect.bottom
         expect(detail.x).toBe(100); // rect.left
         expect(detail.col).toBe(0);
     });

@@ -22,7 +22,7 @@ export class SelectionController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() { }
+    hostConnected() {}
 
     hostDisconnected() {
         // cleanup listeners if any

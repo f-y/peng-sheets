@@ -45,7 +45,7 @@ export interface FilterMenuState {
     y: number;
     col: number;
     values: string[];
-    selectedValues: Set<string>;
+    hiddenValues: string[];
 }
 
 export interface EditState {
@@ -126,20 +126,20 @@ export class SpreadsheetTableView extends LitElement {
                           .menuType="${contextMenu.type}"
                           .index="${contextMenu.index}"
                           @ss-insert-row="${(e: CustomEvent<{ index: number; position: string }>) => {
-                        this._bubbleEvent('view-insert-row', e.detail);
-                    }}"
+                              this._bubbleEvent('view-insert-row', e.detail);
+                          }}"
                           @ss-delete-row="${(e: CustomEvent<{ index: number }>) => {
-                        this._bubbleEvent('view-delete-row', e.detail);
-                    }}"
+                              this._bubbleEvent('view-delete-row', e.detail);
+                          }}"
                           @ss-insert-col="${(e: CustomEvent<{ index: number; position: string }>) => {
-                        this._bubbleEvent('view-insert-col', e.detail);
-                    }}"
+                              this._bubbleEvent('view-insert-col', e.detail);
+                          }}"
                           @ss-delete-col="${(e: CustomEvent<{ index: number }>) => {
-                        this._bubbleEvent('view-delete-col', e.detail);
-                    }}"
+                              this._bubbleEvent('view-delete-col', e.detail);
+                          }}"
                           @ss-menu-close="${() => {
-                        this.dispatchEvent(new CustomEvent('view-menu-close', { bubbles: true, composed: true }));
-                    }}"
+                              this.dispatchEvent(new CustomEvent('view-menu-close', { bubbles: true, composed: true }));
+                          }}"
                       ></ss-context-menu>
                   `
                 : nothing}
@@ -149,21 +149,35 @@ export class SpreadsheetTableView extends LitElement {
                           .x="${filterMenu.x}"
                           .y="${filterMenu.y}"
                           .values="${filterMenu.values}"
-                          .selectedValues="${filterMenu.selectedValues}"
-                          @filter-apply="${(e: CustomEvent<{ selectedValues: Set<string> }>) => {
-                        this.dispatchEvent(
-                            new CustomEvent('view-filter-apply', {
-                                detail: { col: filterMenu.col, selectedValues: e.detail.selectedValues },
-                                bubbles: true,
-                                composed: true
-                            })
-                        );
-                    }}"
-                          @filter-close="${() => {
-                        this.dispatchEvent(
-                            new CustomEvent('view-filter-close', { bubbles: true, composed: true })
-                        );
-                    }}"
+                          .hiddenValues="${filterMenu.hiddenValues || []}"
+                          .columnName="${this.table?.headers?.[filterMenu.col] || ''}"
+                          @sort="${(e: CustomEvent<{ direction: string; column: string }>) => {
+                              this.dispatchEvent(
+                                  new CustomEvent('view-sort', {
+                                      detail: { col: filterMenu.col, direction: e.detail.direction },
+                                      bubbles: true,
+                                      composed: true
+                                  })
+                              );
+                          }}"
+                          @filter-change="${(e: CustomEvent<{ column: string; hiddenValues: string[] }>) => {
+                              this.dispatchEvent(
+                                  new CustomEvent('view-filter-change', {
+                                      detail: { col: filterMenu.col, hiddenValues: e.detail.hiddenValues },
+                                      bubbles: true,
+                                      composed: true
+                                  })
+                              );
+                          }}"
+                          @clear-filter="${(e: CustomEvent<{ column: string }>) => {
+                              this.dispatchEvent(
+                                  new CustomEvent('view-clear-filter', {
+                                      detail: { col: filterMenu.col },
+                                      bubbles: true,
+                                      composed: true
+                                  })
+                              );
+                          }}"
                       ></filter-menu>
                   `
                 : nothing}
@@ -190,8 +204,8 @@ export class SpreadsheetTableView extends LitElement {
             <ss-corner-cell
                 .isSelected="${isAllSelected}"
                 @ss-corner-click="${() => {
-                this.dispatchEvent(new CustomEvent('view-corner-click', { bubbles: true, composed: true }));
-            }}"
+                    this.dispatchEvent(new CustomEvent('view-corner-click', { bubbles: true, composed: true }));
+                }}"
             ></ss-corner-cell>
 
             <!-- Column Headers -->
@@ -273,35 +287,35 @@ export class SpreadsheetTableView extends LitElement {
 
             <!-- Cells -->
             ${Array.from({ length: colCount }).map((_, c) => {
-            const cell = row[c] !== undefined ? row[c] : '';
-            const isActive = r === selRow && c === selCol;
-            const rangeState = calculateCellRangeState(r, c, minR, maxR, minC, maxC);
-            const isEditingCell = this.editState.isEditing && isActive;
-            const isRangeSelection = minR !== maxR || minC !== maxC;
+                const cell = row[c] !== undefined ? row[c] : '';
+                const isActive = r === selRow && c === selCol;
+                const rangeState = calculateCellRangeState(r, c, minR, maxR, minC, maxC);
+                const isEditingCell = this.editState.isEditing && isActive;
+                const isRangeSelection = minR !== maxR || minC !== maxC;
 
-            // Get alignment and format from metadata
-            const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
-            const columns = visual.columns || {};
-            const colSettings = columns[c.toString()] || {};
-            const align = colSettings.align || 'left';
-            const format = colSettings.format;
-            const wordWrapEnabled = format?.wordWrap !== false;
+                // Get alignment and format from metadata
+                const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
+                const columns = visual.columns || {};
+                const colSettings = columns[c.toString()] || {};
+                const align = colSettings.align || 'left';
+                const format = colSettings.format;
+                const wordWrapEnabled = format?.wordWrap !== false;
 
-            const displayValue = isEditingCell ? cell : this._formatCellValue(cell, format?.numberFormat);
+                const displayValue = isEditingCell ? cell : this._formatCellValue(cell, format?.numberFormat);
 
-            return html`
+                return html`
                     <ss-data-cell
                         .row="${r}"
                         .col="${c}"
                         .value="${isEditingCell && this.editState.pendingEditValue !== null
-                    ? this.editState.pendingEditValue
-                    : cell}"
+                            ? this.editState.pendingEditValue
+                            : cell}"
                         .renderedHtml="${this._renderMarkdown(displayValue)}"
                         .editingHtml="${this._getEditingHtml(
-                        isEditingCell && this.editState.pendingEditValue !== null
-                            ? this.editState.pendingEditValue
-                            : cell
-                    )}"
+                            isEditingCell && this.editState.pendingEditValue !== null
+                                ? this.editState.pendingEditValue
+                                : cell
+                        )}"
                         .isEditing="${isEditingCell}"
                         .isSelected="${r === selRow && c === selCol}"
                         .isInRange="${rangeState.inRange}"
@@ -320,7 +334,7 @@ export class SpreadsheetTableView extends LitElement {
                         @ss-cell-keydown="${(e: CustomEvent) => this._bubbleEvent('view-cell-keydown', e.detail)}"
                     ></ss-data-cell>
                 `;
-        })}
+            })}
         `;
     }
 
@@ -353,15 +367,15 @@ export class SpreadsheetTableView extends LitElement {
 
             <!-- Ghost Cells -->
             ${Array.from({ length: colCount }).map((_, c) => {
-            const isActive = selRow === ghostRowIndex && selCol === c;
-            const isEditingCell = this.editState.isEditing && isActive;
-            const rangeState = calculateCellRangeState(ghostRowIndex, c, minR, maxR, minC, maxC);
+                const isActive = selRow === ghostRowIndex && selCol === c;
+                const isEditingCell = this.editState.isEditing && isActive;
+                const rangeState = calculateCellRangeState(ghostRowIndex, c, minR, maxR, minC, maxC);
 
-            // Get the current value - use pendingEditValue ONLY if this specific cell is being edited
-            const cellValue =
-                isEditingCell && this.editState.pendingEditValue !== null ? this.editState.pendingEditValue : '';
+                // Get the current value - use pendingEditValue ONLY if this specific cell is being edited
+                const cellValue =
+                    isEditingCell && this.editState.pendingEditValue !== null ? this.editState.pendingEditValue : '';
 
-            return html`
+                return html`
                     <ss-ghost-cell
                         .row="${ghostRowIndex}"
                         .col="${c}"
@@ -382,7 +396,7 @@ export class SpreadsheetTableView extends LitElement {
                         @ss-cell-keydown="${(e: CustomEvent) => this._bubbleEvent('view-cell-keydown', e.detail)}"
                     ></ss-ghost-cell>
                 `;
-        })}
+            })}
         `;
     }
 
@@ -413,8 +427,8 @@ export class SpreadsheetTableView extends LitElement {
             <ss-metadata-editor
                 .description="${table.description || ''}"
                 @ss-metadata-change="${(e: CustomEvent<{ description: string }>) => {
-                this._bubbleEvent('view-metadata-change', { description: e.detail.description });
-            }}"
+                    this._bubbleEvent('view-metadata-change', { description: e.detail.description });
+                }}"
             ></ss-metadata-editor>
 
             <div class="table-container">
@@ -423,9 +437,9 @@ export class SpreadsheetTableView extends LitElement {
 
                     <!-- Rows -->
                     ${this.visibleRowIndices.map((r) => {
-                const row = table.rows[r];
-                return this._renderDataRow(r, row, colCount, selRow, selCol, minR, maxR, minC, maxC);
-            })}
+                        const row = table.rows[r];
+                        return this._renderDataRow(r, row, colCount, selRow, selCol, minR, maxR, minC, maxC);
+                    })}
 
                     <!-- Ghost Row -->
                     ${this._renderGhostRow(table, colCount, selRow, selCol, minR, maxR, minC, maxC)}
