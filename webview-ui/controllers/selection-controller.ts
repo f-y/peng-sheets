@@ -1,5 +1,13 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
 
+/** Range boundaries for cell selection */
+export interface SelectionRange {
+    minR: number;
+    maxR: number;
+    minC: number;
+    maxC: number;
+}
+
 export class SelectionController implements ReactiveController {
     host: ReactiveControllerHost;
 
@@ -106,4 +114,55 @@ export class SelectionController implements ReactiveController {
         // host can verify focus if needed
         this.host.requestUpdate();
     };
+
+    /**
+     * Calculate the selection range boundaries based on current selection state.
+     * @param numRows - Total number of data rows
+     * @param numCols - Total number of columns
+     * @returns SelectionRange with minR, maxR, minC, maxC
+     */
+    getSelectionRange(numRows: number, numCols: number): SelectionRange {
+        // Full table selection (corner click)
+        if (this.selectedRow === -2 && this.selectedCol === -2) {
+            return {
+                minR: 0,
+                maxR: Math.max(0, numRows - 1),
+                minC: 0,
+                maxC: Math.max(0, numCols - 1)
+            };
+        }
+
+        // No anchor means no range selection
+        if (this.selectionAnchorRow === -1 || this.selectionAnchorCol === -1) {
+            return { minR: -1, maxR: -1, minC: -1, maxC: -1 };
+        }
+
+        // Row selection mode
+        if (this.selectedCol === -2 || this.selectionAnchorCol === -2) {
+            return {
+                minR: Math.min(this.selectionAnchorRow, this.selectedRow),
+                maxR: Math.max(this.selectionAnchorRow, this.selectedRow),
+                minC: 0,
+                maxC: Math.max(0, numCols - 1)
+            };
+        }
+
+        // Column selection mode
+        if (this.selectedRow === -2 || this.selectionAnchorRow === -2) {
+            return {
+                minR: 0,
+                maxR: Math.max(0, numRows - 1),
+                minC: Math.min(this.selectionAnchorCol, this.selectedCol),
+                maxC: Math.max(this.selectionAnchorCol, this.selectedCol)
+            };
+        }
+
+        // Regular cell range selection
+        return {
+            minR: Math.min(this.selectionAnchorRow, this.selectedRow),
+            maxR: Math.max(this.selectionAnchorRow, this.selectedRow),
+            minC: Math.min(this.selectionAnchorCol, this.selectedCol),
+            maxC: Math.max(this.selectionAnchorCol, this.selectedCol)
+        };
+    }
 }
