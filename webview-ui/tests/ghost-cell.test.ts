@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { SpreadsheetTable } from '../components/spreadsheet-table';
+import '../components/spreadsheet-table';
+import { queryView, awaitView } from './test-helpers';
 
 // Mock dependencies
 vi.mock('../utils/i18n', () => ({
@@ -6,7 +9,7 @@ vi.mock('../utils/i18n', () => ({
 }));
 
 describe('SpreadsheetTable Ghost Cell Bugs', () => {
-    let element: HTMLElement;
+    let element: SpreadsheetTable;
     let container: HTMLElement;
 
     beforeEach(async () => {
@@ -14,19 +17,21 @@ describe('SpreadsheetTable Ghost Cell Bugs', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        element = document.createElement('spreadsheet-table') as HTMLElement;
-        // Correctly set table property
-        (element as any).table = {
+        element = document.createElement('spreadsheet-table') as SpreadsheetTable;
+        element.table = {
             name: 'test',
+            description: null,
             rows: [
                 ['A1', 'B1'],
                 ['A2', 'B2']
             ],
             headers: ['A', 'B'],
-            metadata: {}
+            metadata: {},
+            start_line: null,
+            end_line: null
         };
         container.appendChild(element);
-        await (element as any).updateComplete;
+        await awaitView(element);
     });
 
     afterEach(() => {
@@ -35,58 +40,51 @@ describe('SpreadsheetTable Ghost Cell Bugs', () => {
     });
 
     it('should NOT show "undefined" when editing a ghost cell', async () => {
-        const table = element as any;
-        await table.updateComplete;
-
-        // Ghost row is at index 2.
-        // We find the cell in shadow DOM
-        const ghostCell = table.shadowRoot?.querySelector('.cell[data-row="2"][data-col="0"]') as HTMLElement;
+        // Ghost row is at index 2 (after 2 data rows)
+        const ghostCell = queryView(element, '.cell[data-row="2"][data-col="0"]') as HTMLElement;
         expect(ghostCell).toBeTruthy();
 
         // Dispatch dblclick to start editing
         ghostCell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(element);
 
         // Check content
-        const editingCell = table.shadowRoot?.querySelector('.cell[data-row="2"][data-col="0"]') as HTMLElement;
+        const editingCell = queryView(element, '.cell[data-row="2"][data-col="0"]') as HTMLElement;
         expect(editingCell.classList.contains('editing')).toBe(true);
         expect(editingCell.textContent?.trim()).toBe('');
         expect(editingCell.textContent).not.toContain('undefined');
-        // Ensure absolutely no whitespace
         expect(editingCell.textContent).toBe('');
     });
 
     it('should navigate to ghost row when pressing ArrowDown from last row', async () => {
-        const table = element as any;
-
         // Select last row (index 1)
-        table.selectionCtrl.selectCell(1, 0, false);
-        await table.updateComplete;
+        element.selectionCtrl.selectCell(1, 0, false);
+        await awaitView(element);
 
         // Simulate ArrowDown on the active cell
-        const activeCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const activeCell = queryView(element, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        expect(activeCell).toBeTruthy();
         const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true });
         activeCell.dispatchEvent(event);
-        await table.updateComplete;
+        await awaitView(element);
 
         // Verify selection moved to Row 2 (Ghost Row)
-        expect(table.selectionCtrl.selectedRow).toBe(2);
+        expect(element.selectionCtrl.selectedRow).toBe(2);
     });
 
     it('should navigate to ghost row when pressing Enter from last row', async () => {
-        const table = element as any;
-
         // Select last row (index 1)
-        table.selectionCtrl.selectCell(1, 0, false);
-        await table.updateComplete;
+        element.selectionCtrl.selectCell(1, 0, false);
+        await awaitView(element);
 
         // Simulate Enter on the active cell
-        const activeCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const activeCell = queryView(element, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        expect(activeCell).toBeTruthy();
         const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true });
         activeCell.dispatchEvent(event);
-        await table.updateComplete;
+        await awaitView(element);
 
         // Verify selection moved to Row 2 (Ghost Row)
-        expect(table.selectionCtrl.selectedRow).toBe(2);
+        expect(element.selectionCtrl.selectedRow).toBe(2);
     });
 });

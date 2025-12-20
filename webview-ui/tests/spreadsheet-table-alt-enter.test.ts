@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
+import { queryView, awaitView } from './test-helpers';
 
 describe('SpreadsheetTable Alt+Enter', () => {
     it('inserts <br> and moves caret after it on Alt+Enter', async () => {
@@ -14,16 +15,16 @@ describe('SpreadsheetTable Alt+Enter', () => {
             start_line: 0,
             end_line: 0
         };
-        await el.updateComplete;
+        await awaitView(el);
 
         // 1. Start Editing
         // Force editing to ensure we test the specific logic
         el.selectionCtrl.selectedRow = 0;
         el.selectionCtrl.selectedCol = 0;
         el.editCtrl.startEditing('Alice');
-        await el.updateComplete;
+        await awaitView(el);
 
-        const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
         expect(cell).to.exist;
 
         // 2. Set initial text "Ali|ce" (Cursor at 3)
@@ -62,7 +63,7 @@ describe('SpreadsheetTable Alt+Enter', () => {
         });
 
         cell.dispatchEvent(event);
-        await el.updateComplete;
+        await awaitView(el);
 
         // 4. Verify DOM
         // Should be "Ali<br>ce"
@@ -106,15 +107,15 @@ describe('SpreadsheetTable Alt+Enter', () => {
             start_line: 0,
             end_line: 0
         };
-        await el.updateComplete;
+        await awaitView(el);
 
         // 1. Start Editing
         el.selectionCtrl.selectedRow = 0;
         el.selectionCtrl.selectedCol = 0;
         el.editCtrl.startEditing('Alice');
-        await el.updateComplete;
+        await awaitView(el);
 
-        const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
         const textNode = cell.firstChild as Text;
 
         // Focus and set selection to END ("Alice|")
@@ -144,7 +145,7 @@ describe('SpreadsheetTable Alt+Enter', () => {
         });
 
         cell.dispatchEvent(event);
-        await el.updateComplete;
+        await awaitView(el);
 
         // 4. Verify DOM
         // We expect Alice<br> followed by zero-width space for caret positioning

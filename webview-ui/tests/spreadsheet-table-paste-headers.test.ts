@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, queryAllView, awaitView } from './test-helpers';
 import { fixture, html } from '@open-wc/testing';
 import '../components/spreadsheet-table';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
@@ -33,7 +34,7 @@ describe('SpreadsheetTable Paste with Headers', () => {
             start_line: 0,
             end_line: 0
         };
-        await element.updateComplete;
+        await awaitView(element);
     });
 
     afterEach(() => {
@@ -54,12 +55,10 @@ describe('SpreadsheetTable Paste with Headers', () => {
         element.selectionCtrl.selectedRow = -2;
         element.selectionCtrl.selectedCol = -2;
 
-        await element.updateComplete;
+        await awaitView(element);
 
-        const corner = element.shadowRoot!.querySelector('.cell.header-corner');
-        if (!corner) throw new Error('Corner not found');
-
-        corner.dispatchEvent(
+        // Call internal _handleKeyDown directly (Container doesn't have raw @keydown listener)
+        (element as any)._handleKeyDown(
             new KeyboardEvent('keydown', {
                 key: 'v',
                 ctrlKey: true,
@@ -68,7 +67,7 @@ describe('SpreadsheetTable Paste with Headers', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(pasteSpy).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -98,9 +97,9 @@ describe('SpreadsheetTable Paste with Headers', () => {
         element.selectionCtrl.selectedRow = -2;
         element.selectionCtrl.selectedCol = 0;
 
-        await element.updateComplete;
+        await awaitView(element);
 
-        const colHeader = element.shadowRoot!.querySelector('.cell.header-col[data-col="0"]');
+        const colHeader = queryView(element, '.cell.header-col[data-col="0"]');
         if (!colHeader) throw new Error('Column header not found');
 
         colHeader.dispatchEvent(
@@ -112,7 +111,7 @@ describe('SpreadsheetTable Paste with Headers', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(pasteSpy).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -141,9 +140,9 @@ describe('SpreadsheetTable Paste with Headers', () => {
         element.selectionCtrl.selectionAnchorRow = -1;
         element.selectionCtrl.selectionAnchorCol = -1;
 
-        await element.updateComplete;
+        await awaitView(element);
 
-        const cell = element.shadowRoot!.querySelector('.cell[data-row="1"][data-col="0"]');
+        const cell = queryView(element, '.cell[data-row="1"][data-col="0"]');
         if (!cell) throw new Error('Cell not found');
 
         cell.dispatchEvent(
@@ -155,7 +154,7 @@ describe('SpreadsheetTable Paste with Headers', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(pasteSpy).toHaveBeenCalledWith(
             expect.objectContaining({

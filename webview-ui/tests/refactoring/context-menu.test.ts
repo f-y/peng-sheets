@@ -12,13 +12,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import '../../components/spreadsheet-table';
+import { queryView, awaitView } from '../test-helpers';
 import { SpreadsheetTable, TableJSON } from '../../components/spreadsheet-table';
 
 /**
  * Helper to get the context menu component and its internal elements
  */
 function getContextMenu(el: SpreadsheetTable) {
-    const contextMenuEl = el.shadowRoot!.querySelector('ss-context-menu');
+    const contextMenuEl = queryView(el, 'ss-context-menu');
     if (!contextMenuEl) return null;
     const menuContent = contextMenuEl.shadowRoot!.querySelector('.context-menu');
     const menuItems = contextMenuEl.shadowRoot!.querySelectorAll('.context-menu-item');
@@ -45,10 +46,10 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Light DOM: query the inner div, not the custom element
-            const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
+            const rowHeader = queryView(el, '.cell.header-row[data-row="1"]') as HTMLElement;
             rowHeader.dispatchEvent(
                 new MouseEvent('contextmenu', {
                     bubbles: true,
@@ -58,7 +59,7 @@ describe('Context Menu Verification', () => {
                     clientY: 100
                 })
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const menu = getContextMenu(el);
             expect(menu).to.exist;
@@ -69,11 +70,11 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
-            const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
+            const rowHeader = queryView(el, '.cell.header-row[data-row="1"]') as HTMLElement;
             rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             const menu = getContextMenu(el);
             expect(menu?.content?.textContent).to.include('Insert Row Above');
@@ -83,11 +84,11 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
-            const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
+            const rowHeader = queryView(el, '.cell.header-row[data-row="1"]') as HTMLElement;
             rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             const menu = getContextMenu(el);
             expect(menu?.content?.textContent).to.include('Insert Row Below');
@@ -97,11 +98,11 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
-            const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
+            const rowHeader = queryView(el, '.cell.header-row[data-row="1"]') as HTMLElement;
             rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             const menu = getContextMenu(el);
             expect(menu?.content?.textContent).to.include('Delete Row');
@@ -111,15 +112,15 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const insertSpy = vi.fn();
             el.addEventListener('insert-row', insertSpy);
 
             // Open context menu on row 1
-            const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
+            const rowHeader = queryView(el, '.cell.header-row[data-row="1"]') as HTMLElement;
             rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Click Insert Above
             const menu = getContextMenu(el);
@@ -127,7 +128,7 @@ describe('Context Menu Verification', () => {
                 item.textContent?.includes('Insert Row Above')
             ) as HTMLElement;
             insertAbove.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(insertSpy).toHaveBeenCalled();
             const detail = insertSpy.mock.calls[0][0].detail;
@@ -138,15 +139,15 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const deleteSpy = vi.fn();
             el.addEventListener('row-delete', deleteSpy);
 
             // Open context menu on row 1
-            const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
+            const rowHeader = queryView(el, '.cell.header-row[data-row="1"]') as HTMLElement;
             rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Click Delete Row
             const menu = getContextMenu(el);
@@ -154,7 +155,7 @@ describe('Context Menu Verification', () => {
                 item.textContent?.includes('Delete Row')
             ) as HTMLElement;
             deleteRow.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(deleteSpy).toHaveBeenCalled();
             const detail = deleteSpy.mock.calls[0][0].detail;
@@ -167,10 +168,10 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Light DOM: query the inner div, not the custom element
-            const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
+            const colHeader = queryView(el, '.cell.header-col[data-col="1"]') as HTMLElement;
             colHeader.dispatchEvent(
                 new MouseEvent('contextmenu', {
                     bubbles: true,
@@ -180,7 +181,7 @@ describe('Context Menu Verification', () => {
                     clientY: 50
                 })
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const menu = getContextMenu(el);
             expect(menu).to.exist;
@@ -191,11 +192,11 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
-            const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
+            const colHeader = queryView(el, '.cell.header-col[data-col="1"]') as HTMLElement;
             colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             const menu = getContextMenu(el);
             expect(menu?.content?.textContent).to.include('Insert Column Left');
@@ -205,11 +206,11 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
-            const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
+            const colHeader = queryView(el, '.cell.header-col[data-col="1"]') as HTMLElement;
             colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             const menu = getContextMenu(el);
             expect(menu?.content?.textContent).to.include('Insert Column Right');
@@ -219,11 +220,11 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
-            const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
+            const colHeader = queryView(el, '.cell.header-col[data-col="1"]') as HTMLElement;
             colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             const menu = getContextMenu(el);
             expect(menu?.content?.textContent).to.include('Delete Column');
@@ -233,15 +234,15 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const insertSpy = vi.fn();
             el.addEventListener('column-insert', insertSpy);
 
             // Open context menu on column 1
-            const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
+            const colHeader = queryView(el, '.cell.header-col[data-col="1"]') as HTMLElement;
             colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Click Insert Left
             const menu = getContextMenu(el);
@@ -249,7 +250,7 @@ describe('Context Menu Verification', () => {
                 item.textContent?.includes('Insert Column Left')
             ) as HTMLElement;
             insertLeft.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(insertSpy).toHaveBeenCalled();
             const detail = insertSpy.mock.calls[0][0].detail;
@@ -260,15 +261,15 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const deleteSpy = vi.fn();
             el.addEventListener('column-delete', deleteSpy);
 
             // Open context menu on column 1
-            const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
+            const colHeader = queryView(el, '.cell.header-col[data-col="1"]') as HTMLElement;
             colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Click Delete Column
             const menu = getContextMenu(el);
@@ -276,7 +277,7 @@ describe('Context Menu Verification', () => {
                 item.textContent?.includes('Delete Column')
             ) as HTMLElement;
             deleteCol.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(deleteSpy).toHaveBeenCalled();
             const detail = deleteSpy.mock.calls[0][0].detail;
@@ -289,19 +290,19 @@ describe('Context Menu Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Open context menu
-            const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
+            const rowHeader = queryView(el, '.cell.header-row[data-row="1"]') as HTMLElement;
             rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             let menu = getContextMenu(el);
             expect(menu).to.exist;
 
             // Click outside (on window to simulate global click)
             window.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             menu = getContextMenu(el);
             expect(menu).to.be.null;

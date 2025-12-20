@@ -10,13 +10,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import '../../components/spreadsheet-table';
+import { queryView, awaitView } from '../test-helpers';
 import { SpreadsheetTable, TableJSON } from '../../components/spreadsheet-table';
 
 /**
  * Helper to get the metadata editor component and its internal elements
  */
 function getMetadataEditor(el: SpreadsheetTable) {
-    const editorEl = el.shadowRoot!.querySelector('ss-metadata-editor');
+    const editorEl = queryView(el, 'ss-metadata-editor');
     if (!editorEl) return null;
     const descEl = editorEl.shadowRoot!.querySelector('.metadata-desc');
     const textareaEl = editorEl.shadowRoot!.querySelector('.metadata-input-desc');
@@ -42,7 +43,7 @@ describe('Metadata Editor Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable('My Description')}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const editor = getMetadataEditor(el);
             expect(editor).to.exist;
@@ -53,7 +54,7 @@ describe('Metadata Editor Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable('')}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // The metadata editor element should still exist
             const editor = getMetadataEditor(el);
@@ -68,15 +69,15 @@ describe('Metadata Editor Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable('Existing')}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             let editor = getMetadataEditor(el);
             const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
-            await el.updateComplete;
+            await awaitView(el);
             // Allow requestAnimationFrame in the handler
             await new Promise((r) => setTimeout(r, 50));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Refresh editor reference and check for textarea
             editor = getMetadataEditor(el);
@@ -87,7 +88,7 @@ describe('Metadata Editor Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable('Old')}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const metadataSpy = vi.fn();
             el.addEventListener('metadata-update', metadataSpy);
@@ -96,9 +97,9 @@ describe('Metadata Editor Verification', () => {
             let editor = getMetadataEditor(el);
             const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
-            await el.updateComplete;
+            await awaitView(el);
             await new Promise((r) => setTimeout(r, 50));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Refresh editor reference
             editor = getMetadataEditor(el);
@@ -108,7 +109,7 @@ describe('Metadata Editor Verification', () => {
 
             // Press Enter (non-shift)
             textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(metadataSpy).toHaveBeenCalled();
             const detail = metadataSpy.mock.calls[0][0].detail;
@@ -119,7 +120,7 @@ describe('Metadata Editor Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable('Initial')}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const metadataSpy = vi.fn();
             el.addEventListener('metadata-update', metadataSpy);
@@ -128,9 +129,9 @@ describe('Metadata Editor Verification', () => {
             let editor = getMetadataEditor(el);
             const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
-            await el.updateComplete;
+            await awaitView(el);
             await new Promise((r) => setTimeout(r, 50));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Modify the textarea
             editor = getMetadataEditor(el);
@@ -140,7 +141,7 @@ describe('Metadata Editor Verification', () => {
 
             // Blur the textarea
             textarea.dispatchEvent(new FocusEvent('blur', { bubbles: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(metadataSpy).toHaveBeenCalled();
             const detail = metadataSpy.mock.calls[0][0].detail;
@@ -151,7 +152,7 @@ describe('Metadata Editor Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable('Original')}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const metadataSpy = vi.fn();
             el.addEventListener('metadata-update', metadataSpy);
@@ -160,9 +161,9 @@ describe('Metadata Editor Verification', () => {
             let editor = getMetadataEditor(el);
             const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
-            await el.updateComplete;
+            await awaitView(el);
             await new Promise((r) => setTimeout(r, 50));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Modify the textarea
             editor = getMetadataEditor(el);
@@ -172,7 +173,7 @@ describe('Metadata Editor Verification', () => {
 
             // Press Escape
             textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Should NOT dispatch event (edit was cancelled)
             expect(metadataSpy).not.toHaveBeenCalled();
@@ -186,15 +187,15 @@ describe('Metadata Editor Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable('Keep This')}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Enter edit mode
             let editor = getMetadataEditor(el);
             const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
-            await el.updateComplete;
+            await awaitView(el);
             await new Promise((r) => setTimeout(r, 50));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Modify the textarea
             editor = getMetadataEditor(el);
@@ -203,7 +204,7 @@ describe('Metadata Editor Verification', () => {
 
             // Press Escape
             textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify original value is shown after exiting edit mode
             editor = getMetadataEditor(el);

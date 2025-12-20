@@ -2,12 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
+import { queryView, awaitView } from './test-helpers';
 
 /**
  * Helper to get the metadata editor component and its internal elements
  */
 function getMetadataEditor(el: SpreadsheetTable) {
-    const editorEl = el.shadowRoot!.querySelector('ss-metadata-editor');
+    const editorEl = queryView(el, 'ss-metadata-editor');
     if (!editorEl) return null;
     const descEl = editorEl.shadowRoot!.querySelector('.metadata-desc');
     const textareaEl = editorEl.shadowRoot!.querySelector('.metadata-input-desc');
@@ -27,14 +28,14 @@ describe('SpreadsheetTable Metadata Re-Edit', () => {
             start_line: 0,
             end_line: 5
         } as any;
-        await el.updateComplete;
+        await awaitView(el);
 
         // 1. Enter Edit Mode
         let editor = getMetadataEditor(el);
         (editor?.description as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
-        await el.updateComplete;
+        await awaitView(el);
         await new Promise((r) => setTimeout(r, 50));
-        await el.updateComplete;
+        await awaitView(el);
         editor = getMetadataEditor(el);
         expect(editor?.textarea).toBeTruthy(); // In edit mode
 
@@ -42,9 +43,9 @@ describe('SpreadsheetTable Metadata Re-Edit', () => {
         (editor?.textarea as HTMLTextAreaElement).dispatchEvent(
             new FocusEvent('blur', { bubbles: true, composed: true })
         );
-        await el.updateComplete;
+        await awaitView(el);
         await new Promise((r) => setTimeout(r, 50));
-        await el.updateComplete;
+        await awaitView(el);
 
         editor = getMetadataEditor(el);
         expect(editor?.textarea).toBeNull(); // Exited edit mode
@@ -52,9 +53,9 @@ describe('SpreadsheetTable Metadata Re-Edit', () => {
         // 3. Re-Enter Edit Mode
         expect(editor?.description).not.toBeNull();
         (editor?.description as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
-        await el.updateComplete;
+        await awaitView(el);
         await new Promise((r) => setTimeout(r, 50));
-        await el.updateComplete;
+        await awaitView(el);
 
         // 4. Expectation: In edit mode again (textarea exists)
         editor = getMetadataEditor(el);
@@ -73,14 +74,14 @@ describe('SpreadsheetTable Metadata Re-Edit', () => {
             start_line: 0,
             end_line: 5
         } as any;
-        await el.updateComplete;
+        await awaitView(el);
 
         // 1. Enter Edit Mode
         let editor = getMetadataEditor(el);
         (editor?.description as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
-        await el.updateComplete;
+        await awaitView(el);
         await new Promise((r) => setTimeout(r, 50));
-        await el.updateComplete;
+        await awaitView(el);
         editor = getMetadataEditor(el);
         expect(editor?.textarea).toBeTruthy();
 
@@ -89,9 +90,9 @@ describe('SpreadsheetTable Metadata Re-Edit', () => {
         input.value = 'Desc B';
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-        await el.updateComplete;
+        await awaitView(el);
         await new Promise((r) => setTimeout(r, 50));
-        await el.updateComplete;
+        await awaitView(el);
 
         editor = getMetadataEditor(el);
         expect(editor?.textarea).toBeNull(); // Exited edit mode
@@ -106,7 +107,7 @@ describe('SpreadsheetTable Metadata Re-Edit', () => {
             start_line: 0,
             end_line: 5
         } as any;
-        await el.updateComplete;
+        await awaitView(el);
 
         // 4. Re-Enter Edit Mode
         editor = getMetadataEditor(el);
@@ -114,9 +115,9 @@ describe('SpreadsheetTable Metadata Re-Edit', () => {
         expect(editor?.description!.textContent).toContain('Desc B');
 
         (editor?.description as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
-        await el.updateComplete;
+        await awaitView(el);
         await new Promise((r) => setTimeout(r, 50));
-        await el.updateComplete;
+        await awaitView(el);
 
         // 5. Expectation: In edit mode again
         editor = getMetadataEditor(el);

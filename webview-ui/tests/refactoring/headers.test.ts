@@ -6,7 +6,9 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
+import { LitElement } from 'lit';
 import '../../components/spreadsheet-table';
+import { queryView, awaitView } from '../test-helpers';
 import { SpreadsheetTable, TableJSON } from '../../components/spreadsheet-table';
 
 describe('Headers Verification', () => {
@@ -29,14 +31,12 @@ describe('Headers Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Double-click on cell-content inside header
-            const cellContent = el.shadowRoot!.querySelector(
-                '.cell.header-col[data-col="0"] .cell-content'
-            ) as HTMLElement;
+            const cellContent = queryView(el, '.cell.header-col[data-col="0"] .cell-content') as HTMLElement;
             cellContent.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.editCtrl.isEditing).to.be.true;
             expect(el.selectionCtrl.selectedRow).to.equal(-1); // Header row
@@ -50,21 +50,19 @@ describe('Headers Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const editSpy = vi.fn();
             el.addEventListener('cell-edit', editSpy);
 
             // Double-click to edit header
-            const cellContent = el.shadowRoot!.querySelector(
-                '.cell.header-col[data-col="0"] .cell-content'
-            ) as HTMLElement;
+            const cellContent = queryView(el, '.cell.header-col[data-col="0"] .cell-content') as HTMLElement;
             cellContent.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press Enter without modifying - should commit with current value
             cellContent.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Edit mode should be exited
             expect(el.editCtrl.isEditing).to.be.false;
@@ -83,13 +81,13 @@ describe('Headers Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Click column header (not cell-content, should select column)
-            const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
+            const colHeader = queryView(el, '.cell.header-col[data-col="1"]') as HTMLElement;
             colHeader.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
             colHeader.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Should be in column selection mode (selectedRow = -2)
             expect(el.selectionCtrl.selectedRow).to.equal(-2);
@@ -102,17 +100,17 @@ describe('Headers Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
-            const filterIcon = el.shadowRoot!.querySelector('.header-col[data-col="0"] .filter-icon') as HTMLElement;
+            const filterIcon = queryView(el, '.header-col[data-col="0"] .filter-icon') as HTMLElement;
             expect(filterIcon).to.exist;
 
             // Click filter icon
             filterIcon.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify filter-menu appears
-            const filterMenu = el.shadowRoot!.querySelector('filter-menu');
+            const filterMenu = queryView(el, 'filter-menu');
             expect(filterMenu).to.exist;
         });
 
@@ -127,9 +125,17 @@ describe('Headers Verification', () => {
             };
 
             const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
-            await el.updateComplete;
+            await awaitView(el);
 
-            const filterIcon = el.shadowRoot!.querySelector('.header-col[data-col="0"] .filter-icon') as HTMLElement;
+            // Column headers are in View's template - get View's shadowRoot
+            const view = el.shadowRoot?.querySelector('spreadsheet-table-view');
+            const columnHeaders = view?.shadowRoot?.querySelectorAll('ss-column-header');
+            expect(columnHeaders?.length).to.be.greaterThan(0);
+            const firstColHeader = columnHeaders![0] as LitElement;
+            await firstColHeader?.updateComplete;
+            // ss-column-header uses Light DOM (not Shadow DOM), so query directly
+            const filterIcon = firstColHeader?.querySelector('.filter-icon') as HTMLElement;
+            expect(filterIcon).to.exist;
             expect(filterIcon.classList.contains('active')).to.be.true;
         });
     });
@@ -139,11 +145,9 @@ describe('Headers Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
-            const resizeHandle = el.shadowRoot!.querySelector(
-                '.header-col[data-col="0"] .col-resize-handle'
-            ) as HTMLElement;
+            const resizeHandle = queryView(el, '.header-col[data-col="0"] .col-resize-handle') as HTMLElement;
             expect(resizeHandle).to.exist;
 
             // Mousedown on resize handle
@@ -156,25 +160,23 @@ describe('Headers Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const resizeSpy = vi.fn();
             el.addEventListener('column-resize', resizeSpy);
 
-            const resizeHandle = el.shadowRoot!.querySelector(
-                '.header-col[data-col="0"] .col-resize-handle'
-            ) as HTMLElement;
+            const resizeHandle = queryView(el, '.header-col[data-col="0"] .col-resize-handle') as HTMLElement;
 
             // Start resize
             resizeHandle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, clientX: 100 }));
 
             // Move
             document.dispatchEvent(new MouseEvent('mousemove', { clientX: 150 }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // End resize
             document.dispatchEvent(new MouseEvent('mouseup', { clientX: 150 }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(resizeSpy).toHaveBeenCalled();
             const detail = resizeSpy.mock.calls[0][0].detail;

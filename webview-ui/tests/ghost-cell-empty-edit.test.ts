@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, awaitView } from './test-helpers';
 
 // Mock dependencies
 vi.mock('../utils/i18n', () => ({
@@ -32,25 +33,25 @@ describe('Ghost Cell Empty Edit Bug', () => {
 
     it('should NOT add a new row when ghost cell is edited and left empty', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         const initialRowCount = table.table.rows.length;
         expect(initialRowCount).toBe(1);
 
         // Ghost row is at index 1 (rows has 1 item)
-        const ghostCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const ghostCell = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(ghostCell).toBeTruthy();
 
         // Dispatch dblclick to start editing
         ghostCell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
-        const editingCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const editingCell = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(editingCell.classList.contains('editing')).toBe(true);
 
         // Leave cell empty and blur (do NOT type anything)
         editingCell.dispatchEvent(new FocusEvent('blur', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         // The row count should still be 1 (no new row added)
         expect(table.table.rows.length).toBe(initialRowCount);
@@ -58,27 +59,27 @@ describe('Ghost Cell Empty Edit Bug', () => {
 
     it('should add a new row when ghost cell is edited with a value', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         const initialRowCount = table.table.rows.length;
         expect(initialRowCount).toBe(1);
 
         // Ghost row is at index 1
-        const ghostCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const ghostCell = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(ghostCell).toBeTruthy();
 
         // Dispatch dblclick to start editing
         ghostCell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
-        const editingCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const editingCell = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(editingCell.classList.contains('editing')).toBe(true);
 
         // Type a value into the cell
         const content = editingCell.querySelector('.cell-content') || editingCell;
         (content as HTMLElement).textContent = 'New Value';
         editingCell.dispatchEvent(new FocusEvent('blur', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         // The row count should now be 2 (new row added)
         expect(table.table.rows.length).toBe(initialRowCount + 1);

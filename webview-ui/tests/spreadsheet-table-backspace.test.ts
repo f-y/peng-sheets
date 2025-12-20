@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
+import { queryView, awaitView } from './test-helpers';
 
 describe('SpreadsheetTable Backspace at Trailing Newline', () => {
     it('should delete newline when pressing Backspace at end of cell with trailing newline', async () => {
@@ -16,15 +17,15 @@ describe('SpreadsheetTable Backspace at Trailing Newline', () => {
             start_line: 0,
             end_line: 0
         };
-        await el.updateComplete;
+        await awaitView(el);
 
         // Start editing
         el.selectionCtrl.selectedRow = 0;
         el.selectionCtrl.selectedCol = 0;
         el.editCtrl.startEditing('Bob\n');
-        await el.updateComplete;
+        await awaitView(el);
 
-        const cell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+        const cell = queryView(el, '.cell.editing') as HTMLElement;
         expect(cell).to.exist;
 
         // Log initial state
@@ -74,7 +75,7 @@ describe('SpreadsheetTable Backspace at Trailing Newline', () => {
         });
 
         cell.dispatchEvent(backspaceEvent);
-        await el.updateComplete;
+        await awaitView(el);
 
         // Log state after Backspace
         console.log('After Backspace - innerHTML:', cell.innerHTML);

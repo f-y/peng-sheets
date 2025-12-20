@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { queryView, queryAllView, awaitView } from './test-helpers';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
+import '../components/spreadsheet-table';
+import '../components/spreadsheet-table';
 
 describe('SpreadsheetTable Column Resize', () => {
     it('emits metadata-change event when column is resized', async () => {
@@ -15,7 +18,7 @@ describe('SpreadsheetTable Column Resize', () => {
             start_line: 0,
             end_line: 0
         };
-        await el.updateComplete;
+        await awaitView(el);
 
         let resizeEvent = null;
         el.addEventListener('column-resize', (e: any) => {
@@ -24,8 +27,12 @@ describe('SpreadsheetTable Column Resize', () => {
         });
 
         const root = el.shadowRoot!;
-        // 1. Locate resize handle for Column 0
-        const resizeHandle = root.querySelector('.header-col[data-col="0"] .col-resize-handle') as HTMLElement;
+        // Column headers are in View's shadowRoot, ss-column-header uses Light DOM
+        const view = root.querySelector('spreadsheet-table-view');
+        const columnHeaders = view?.shadowRoot?.querySelectorAll('ss-column-header');
+        expect(columnHeaders?.length, 'Column headers should exist').to.be.greaterThan(0);
+        const firstColHeader = columnHeaders![0];
+        const resizeHandle = firstColHeader?.querySelector('.col-resize-handle') as HTMLElement;
         expect(resizeHandle, 'Resize handle should exist').to.exist;
 
         // 2. Simulate Drag Start
@@ -37,7 +44,7 @@ describe('SpreadsheetTable Column Resize', () => {
         // 4. Simulate Drag End
         document.dispatchEvent(new MouseEvent('mouseup'));
 
-        await el.updateComplete;
+        await awaitView(el);
 
         // Expectation: column-resize fired
         expect(resizeEvent, 'column-resize should fire').to.exist;

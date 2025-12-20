@@ -2,12 +2,13 @@ import { describe, it, expect } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
+import { queryView, awaitView } from './test-helpers';
 
 /**
  * Helper to get the metadata editor component and its internal elements
  */
 function getMetadataEditor(el: SpreadsheetTable) {
-    const editorEl = el.shadowRoot!.querySelector('ss-metadata-editor');
+    const editorEl = queryView(el, 'ss-metadata-editor');
     if (!editorEl) return null;
     const descEl = editorEl.shadowRoot!.querySelector('.metadata-desc');
     const textareaEl = editorEl.shadowRoot!.querySelector('.metadata-input-desc');
@@ -29,7 +30,7 @@ describe('SpreadsheetTable Metadata Edit', () => {
         };
 
         el.table = tableData;
-        await el.updateComplete;
+        await awaitView(el);
 
         // Verify initial state: Check for description element
         let editor = getMetadataEditor(el);
@@ -38,11 +39,11 @@ describe('SpreadsheetTable Metadata Edit', () => {
 
         // Click to edit
         (editor?.description as HTMLElement)!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
-        await el.updateComplete;
+        await awaitView(el);
 
         // Check UI (input should be visible)
         await new Promise((r) => setTimeout(r, 50));
-        await el.updateComplete;
+        await awaitView(el);
 
         editor = getMetadataEditor(el);
         expect(editor?.textarea).toBeTruthy();

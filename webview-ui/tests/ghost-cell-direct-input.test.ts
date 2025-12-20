@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, awaitView } from './test-helpers';
 
 // Mock dependencies
 vi.mock('../utils/i18n', () => ({
@@ -32,16 +33,16 @@ describe('Ghost Cell Direct Input + Click-Away Bug', () => {
 
     it('should add a new row when ghost cell is selected, value typed directly, and another cell is clicked', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         const initialRowCount = table.table.rows.length;
         expect(initialRowCount).toBe(1);
 
         // Click ghost cell to select it (not edit mode yet)
-        const ghostCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const ghostCell = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(ghostCell).toBeTruthy();
         ghostCell.click();
-        await table.updateComplete;
+        await awaitView(table);
 
         // Verify ghost cell is selected but NOT editing
         expect(table.selectionCtrl.selectedRow).toBe(1);
@@ -50,17 +51,18 @@ describe('Ghost Cell Direct Input + Click-Away Bug', () => {
 
         // Type "X" directly (this should start replacement mode with pendingEditValue = 'X')
         ghostCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'X', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         // Now it should be in editing mode with pendingEditValue = 'X'
         expect(table.editCtrl.isEditing).toBe(true);
         expect(table.editCtrl.pendingEditValue).toBe('X');
 
         // Click another cell (row 0, col 1)
-        const otherCell = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="1"]') as HTMLElement;
+        const otherCell = queryView(table, '.cell[data-row="0"][data-col="1"]') as HTMLElement;
         expect(otherCell).toBeTruthy();
-        otherCell.click();
-        await table.updateComplete;
+        otherCell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
+        window.dispatchEvent(new MouseEvent('mouseup'));
+        await awaitView(table);
 
         // The row count should now be 2 (new row added from ghost cell)
         expect(table.table.rows.length).toBe(initialRowCount + 1);
@@ -69,29 +71,30 @@ describe('Ghost Cell Direct Input + Click-Away Bug', () => {
 
     it('should render new row in UI after ghost cell direct input and click-away', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         const initialRowCount = table.table.rows.length;
         expect(initialRowCount).toBe(1);
 
         // Click ghost cell (row 1, col 0) to select it
-        const ghostCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const ghostCell = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(ghostCell).toBeTruthy();
         ghostCell.click();
-        await table.updateComplete;
+        await awaitView(table);
 
         // Type "Y" directly
         ghostCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Y', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         expect(table.editCtrl.isEditing).toBe(true);
         expect(table.editCtrl.pendingEditValue).toBe('Y');
 
         // Click another cell to commit
-        const dataCell = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        const dataCell = queryView(table, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
         expect(dataCell).toBeTruthy();
-        dataCell.click();
-        await table.updateComplete;
+        dataCell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
+        window.dispatchEvent(new MouseEvent('mouseup'));
+        await awaitView(table);
 
         // Data should be updated
         expect(table.table.rows.length).toBe(initialRowCount + 1);
@@ -99,7 +102,7 @@ describe('Ghost Cell Direct Input + Click-Away Bug', () => {
 
         // UI should also be updated - the new row should be visible in DOM
         // After commit, the old ghost row (row 1) should now be a data row with "Y"
-        const newDataCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const newDataCell = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(newDataCell).toBeTruthy();
         // The cell should contain "Y" (not be empty like a ghost cell)
         expect(newDataCell.textContent?.trim()).toBe('Y');
@@ -107,24 +110,24 @@ describe('Ghost Cell Direct Input + Click-Away Bug', () => {
 
     it('should NOT show pendingEditValue in other ghost cells while editing', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         // Click first ghost cell (row 1, col 0) to select it
-        const ghostCell0 = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const ghostCell0 = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(ghostCell0).toBeTruthy();
         ghostCell0.click();
-        await table.updateComplete;
+        await awaitView(table);
 
         // Type "X" directly to enter replacement mode
         ghostCell0.dispatchEvent(new KeyboardEvent('keydown', { key: 'X', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         // Verify editing state
         expect(table.editCtrl.isEditing).toBe(true);
         expect(table.editCtrl.pendingEditValue).toBe('X');
 
         // Check the OTHER ghost cell (row 1, col 1) - should NOT contain "X"
-        const ghostCell1 = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+        const ghostCell1 = queryView(table, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
         expect(ghostCell1).toBeTruthy();
         // The bug was that pendingEditValue was showing in all empty/ghost cells
         // The textContent of the non-editing ghost cell should be empty, not "X"
@@ -137,28 +140,28 @@ describe('Ghost Cell Direct Input + Click-Away Bug', () => {
         const table = element as any;
         table.table = {
             name: 'test',
-            rows: [['A1', '']],  // Second cell is empty
+            rows: [['A1', '']], // Second cell is empty
             headers: ['A', 'B'],
             metadata: {}
         };
-        await table.updateComplete;
+        await awaitView(table);
 
         // Click ghost cell (row 1, col 0) to select it
-        const ghostCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const ghostCell = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(ghostCell).toBeTruthy();
         ghostCell.click();
-        await table.updateComplete;
+        await awaitView(table);
 
         // Type "Y" directly
         ghostCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Y', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         // Verify editing state
         expect(table.editCtrl.isEditing).toBe(true);
         expect(table.editCtrl.pendingEditValue).toBe('Y');
 
         // Check the EMPTY data cell (row 0, col 1) - should NOT contain "Y"
-        const emptyDataCell = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="1"]') as HTMLElement;
+        const emptyDataCell = queryView(table, '.cell[data-row="0"][data-col="1"]') as HTMLElement;
         expect(emptyDataCell).toBeTruthy();
         // Bug: empty cells were showing pendingEditValue
         expect(emptyDataCell.textContent?.trim()).toBe('');

@@ -2,9 +2,11 @@
  * Phase 0: Ghost Row Verification Tests
  *
  * These tests verify the ghost row behavior in SpreadsheetTable.
- * They must pass BEFORE refactoring begins and serve as regression tests.
+ * Updated to use View component helpers after Container-View refactoring.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, awaitView } from '../test-helpers';
+import { SpreadsheetTable } from '../../components/spreadsheet-table';
 
 // Mock i18n like the existing tests
 vi.mock('../../utils/i18n', () => ({
@@ -12,7 +14,7 @@ vi.mock('../../utils/i18n', () => ({
 }));
 
 describe('Ghost Row Verification', () => {
-    let element: HTMLElement;
+    let element: SpreadsheetTable;
     let container: HTMLElement;
 
     beforeEach(async () => {
@@ -20,8 +22,8 @@ describe('Ghost Row Verification', () => {
         container = document.createElement('div');
         document.body.appendChild(container);
 
-        element = document.createElement('spreadsheet-table') as HTMLElement;
-        (element as any).table = {
+        element = document.createElement('spreadsheet-table') as SpreadsheetTable;
+        element.table = {
             name: 'Test Table',
             description: 'Test Description',
             headers: ['A', 'B', 'C'],
@@ -34,7 +36,8 @@ describe('Ghost Row Verification', () => {
             end_line: 5
         };
         container.appendChild(element);
-        await (element as any).updateComplete;
+        // Wait for both Container and View to render
+        await awaitView(element);
     });
 
     afterEach(() => {
@@ -43,11 +46,10 @@ describe('Ghost Row Verification', () => {
     });
 
     it('displays ghost row after last data row', async () => {
-        const table = element as any;
-        const ghostRowIndex = table.table.rows.length; // 2
+        const ghostRowIndex = element.table!.rows.length; // 2
 
-        // Verify ghost row cells exist
-        const ghostCell0 = table.shadowRoot?.querySelector(`.cell[data-row="${ghostRowIndex}"][data-col="0"]`);
+        // Verify ghost row cells exist - query through View's shadow DOM
+        const ghostCell0 = queryView(element, `.cell[data-row="${ghostRowIndex}"][data-col="0"]`);
         expect(ghostCell0).toBeTruthy();
 
         // Ghost cells should be empty
@@ -55,32 +57,29 @@ describe('Ghost Row Verification', () => {
     });
 
     it('creates new row on ghost cell edit', async () => {
-        const table = element as any;
-        await table.updateComplete;
-
-        const initialRowCount = table.table.rows.length; // 2
+        const initialRowCount = element.table!.rows.length; // 2
         const ghostRowIndex = initialRowCount;
 
         const editSpy = vi.fn();
         element.addEventListener('cell-edit', editSpy);
 
         // Double-click ghost cell to edit
-        const ghostCell = table.shadowRoot?.querySelector(
-            `.cell[data-row="${ghostRowIndex}"][data-col="0"]`
-        ) as HTMLElement;
+        const ghostCell = queryView(element, `.cell[data-row="${ghostRowIndex}"][data-col="0"]`) as HTMLElement;
+        expect(ghostCell).toBeTruthy();
         ghostCell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(element);
 
-        expect(table.editCtrl.isEditing).toBe(true);
+        expect(element.editCtrl.isEditing).toBe(true);
 
         // Find editing cell and update content
-        const editingCell = table.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
+        const editingCell = queryView(element, '.cell.editing') as HTMLElement;
+        expect(editingCell).toBeTruthy();
         editingCell.textContent = 'New Value';
         editingCell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
 
         // Commit edit
         editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(element);
 
         // Verify cell-edit event was dispatched for ghost row
         expect(editSpy).toHaveBeenCalled();
@@ -90,72 +89,63 @@ describe('Ghost Row Verification', () => {
     });
 
     it('does not create row on empty edit', async () => {
-        const table = element as any;
-        await table.updateComplete;
-
-        const ghostRowIndex = table.table.rows.length;
+        const ghostRowIndex = element.table!.rows.length;
 
         const editSpy = vi.fn();
         element.addEventListener('cell-edit', editSpy);
 
         // Enter edit mode on ghost cell
-        const ghostCell = table.shadowRoot?.querySelector(
-            `.cell[data-row="${ghostRowIndex}"][data-col="0"]`
-        ) as HTMLElement;
+        const ghostCell = queryView(element, `.cell[data-row="${ghostRowIndex}"][data-col="0"]`) as HTMLElement;
+        expect(ghostCell).toBeTruthy();
         ghostCell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(element);
 
         // Find editing cell and leave it empty
-        const editingCell = table.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
+        const editingCell = queryView(element, '.cell.editing') as HTMLElement;
+        expect(editingCell).toBeTruthy();
         editingCell.textContent = '';
 
         // Commit empty edit
         editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(element);
 
         // Verify no cell-edit event for empty ghost cell
-        // (implementation should cancel edit on empty ghost cell)
         expect(editSpy).not.toHaveBeenCalled();
     });
 
     it('allows selection of ghost row', async () => {
-        const table = element as any;
-        const ghostRowIndex = table.table.rows.length;
+        const ghostRowIndex = element.table!.rows.length;
 
         // Click ghost cell
-        const ghostCell = table.shadowRoot?.querySelector(
-            `.cell[data-row="${ghostRowIndex}"][data-col="0"]`
-        ) as HTMLElement;
+        const ghostCell = queryView(element, `.cell[data-row="${ghostRowIndex}"][data-col="0"]`) as HTMLElement;
+        expect(ghostCell).toBeTruthy();
         ghostCell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
         window.dispatchEvent(new MouseEvent('mouseup'));
-        await table.updateComplete;
+        await awaitView(element);
 
-        expect(table.selectionCtrl.selectedRow).toBe(ghostRowIndex);
-        expect(table.selectionCtrl.selectedCol).toBe(0);
+        expect(element.selectionCtrl.selectedRow).toBe(ghostRowIndex);
+        expect(element.selectionCtrl.selectedCol).toBe(0);
     });
 
     it('allows navigation to ghost row', async () => {
-        const table = element as any;
-        const lastDataRow = table.table.rows.length - 1; // Row 1
-        const ghostRowIndex = table.table.rows.length; // Row 2
+        const lastDataRow = element.table!.rows.length - 1; // Row 1
+        const ghostRowIndex = element.table!.rows.length; // Row 2
 
         // Select last data row cell
-        table.selectionCtrl.selectCell(lastDataRow, 0, false);
-        await table.updateComplete;
+        element.selectionCtrl.selectCell(lastDataRow, 0, false);
+        await awaitView(element);
 
         // Navigate down to ghost row
-        const activeCell = table.shadowRoot?.querySelector(
-            `.cell[data-row="${lastDataRow}"][data-col="0"]`
-        ) as HTMLElement;
+        const activeCell = queryView(element, `.cell[data-row="${lastDataRow}"][data-col="0"]`) as HTMLElement;
+        expect(activeCell).toBeTruthy();
         activeCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(element);
 
-        expect(table.selectionCtrl.selectedRow).toBe(ghostRowIndex);
+        expect(element.selectionCtrl.selectedRow).toBe(ghostRowIndex);
     });
 
     it('allows paste into ghost row cells', async () => {
-        const table = element as any;
-        const ghostRowIndex = table.table.rows.length;
+        const ghostRowIndex = element.table!.rows.length;
 
         const pasteSpy = vi.fn();
         element.addEventListener('paste-cells', pasteSpy);
@@ -169,13 +159,12 @@ describe('Ghost Row Verification', () => {
         });
 
         // Select ghost cell
-        table.selectionCtrl.selectCell(ghostRowIndex, 0, false);
-        await table.updateComplete;
+        element.selectionCtrl.selectCell(ghostRowIndex, 0, false);
+        await awaitView(element);
 
         // Focus and paste (Ctrl+V)
-        const ghostCell = table.shadowRoot?.querySelector(
-            `.cell[data-row="${ghostRowIndex}"][data-col="0"]`
-        ) as HTMLElement;
+        const ghostCell = queryView(element, `.cell[data-row="${ghostRowIndex}"][data-col="0"]`) as HTMLElement;
+        expect(ghostCell).toBeTruthy();
         ghostCell.dispatchEvent(
             new KeyboardEvent('keydown', { key: 'v', ctrlKey: true, bubbles: true, composed: true })
         );

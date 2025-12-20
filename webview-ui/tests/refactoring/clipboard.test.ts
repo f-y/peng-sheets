@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import '../../components/spreadsheet-table';
+import { queryView, awaitView } from '../test-helpers';
 import { SpreadsheetTable, TableJSON } from '../../components/spreadsheet-table';
 
 describe('Clipboard Verification', () => {
@@ -49,12 +50,12 @@ describe('Clipboard Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [1, 1] with value "5"
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press Ctrl+C
             cell.dispatchEvent(
@@ -71,16 +72,16 @@ describe('Clipboard Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select range [0,0] to [1,1]
-            const cell00 = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell00 = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell00.click();
-            await el.updateComplete;
+            await awaitView(el);
 
-            const cell11 = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            const cell11 = queryView(el, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
             cell11.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press Ctrl+C
             cell11.dispatchEvent(
@@ -103,12 +104,12 @@ describe('Clipboard Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select column 0
-            const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="0"]') as HTMLElement;
+            const colHeader = queryView(el, '.cell.header-col[data-col="0"]') as HTMLElement;
             colHeader.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press Ctrl+C
             colHeader.dispatchEvent(
@@ -129,12 +130,12 @@ describe('Clipboard Verification', () => {
             table.rows[0][0] = 'line1\nline2';
 
             const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell with newline
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press Ctrl+C
             cell.dispatchEvent(
@@ -155,12 +156,12 @@ describe('Clipboard Verification', () => {
             table.rows[0][0] = 'col1\tcol2';
 
             const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell with tab
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press Ctrl+C
             cell.dispatchEvent(
@@ -182,7 +183,7 @@ describe('Clipboard Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const pasteSpy = vi.fn();
             el.addEventListener('paste-cells', pasteSpy);
@@ -191,9 +192,9 @@ describe('Clipboard Verification', () => {
             clipboardData = 'new value';
 
             // Select cell [1, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press Ctrl+V
             cell.dispatchEvent(
@@ -213,7 +214,7 @@ describe('Clipboard Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const pasteSpy = vi.fn();
             el.addEventListener('paste-cells', pasteSpy);
@@ -222,9 +223,9 @@ describe('Clipboard Verification', () => {
             clipboardData = 'a\tb\nc\td';
 
             // Select cell [0, 0]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press Ctrl+V
             cell.dispatchEvent(
@@ -247,7 +248,7 @@ describe('Clipboard Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const pasteSpy = vi.fn();
             el.addEventListener('paste-cells', pasteSpy);
@@ -256,9 +257,9 @@ describe('Clipboard Verification', () => {
             clipboardData = '"line1\nline2"\tvalue';
 
             // Select cell [0, 0]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press Ctrl+V
             cell.dispatchEvent(

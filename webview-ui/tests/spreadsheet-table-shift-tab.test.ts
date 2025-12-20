@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import { queryView, queryAllView, awaitView } from './test-helpers';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
+import '../components/spreadsheet-table';
+import '../components/spreadsheet-table';
 
 describe('SpreadsheetTable Navigation', () => {
     it('Shift+Tab moves selection to previous cell without extending selection', async () => {
@@ -19,13 +22,13 @@ describe('SpreadsheetTable Navigation', () => {
         };
         element.sheetIndex = 0;
         element.tableIndex = 0;
-        await element.updateComplete;
+        await awaitView(element);
 
         // Start at (1, 1)
         element.selectionCtrl.selectCell(1, 1, false);
-        await element.updateComplete;
+        await awaitView(element);
 
-        const cell = element.shadowRoot?.querySelector('.cell.selected') as HTMLElement;
+        const cell = queryView(element, '.cell.selected') as HTMLElement;
         expect(cell).to.exist;
 
         expect(element.selectionCtrl.selectedRow).to.equal(1);
@@ -44,7 +47,7 @@ describe('SpreadsheetTable Navigation', () => {
         });
 
         cell.dispatchEvent(event);
-        await element.updateComplete;
+        await awaitView(element);
 
         // Expect move to (1, 0)
         expect(element.selectionCtrl.selectedRow).to.equal(1, 'Row should remain 1');
@@ -74,13 +77,13 @@ describe('SpreadsheetTable Navigation', () => {
         };
         element.sheetIndex = 0;
         element.tableIndex = 0;
-        await element.updateComplete;
+        await awaitView(element);
 
         // Start at (0, 0)
         element.selectionCtrl.selectCell(0, 0, false);
-        await element.updateComplete;
+        await awaitView(element);
 
-        const cell = element.shadowRoot?.querySelector('.cell.selected') as HTMLElement;
+        const cell = queryView(element, '.cell.selected') as HTMLElement;
         expect(cell).to.exist;
 
         // Simulate Tab
@@ -94,7 +97,7 @@ describe('SpreadsheetTable Navigation', () => {
         });
 
         cell.dispatchEvent(event);
-        await element.updateComplete;
+        await awaitView(element);
 
         // Expect move to (0, 1)
         expect(element.selectionCtrl.selectedRow).to.equal(0);

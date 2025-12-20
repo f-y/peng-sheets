@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { awaitView } from './test-helpers';
 import '../components/spreadsheet-table';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 
@@ -22,7 +23,7 @@ describe('SpreadsheetTable Format Actions', () => {
         element.sheetIndex = 0;
         element.tableIndex = 0;
         document.body.appendChild(element);
-        await element.updateComplete;
+        await awaitView(element);
     });
 
     afterEach(() => {
@@ -63,7 +64,7 @@ describe('SpreadsheetTable Format Actions', () => {
                     }
                 }
             };
-            await element.updateComplete;
+            await awaitView(element);
 
             element.selectionCtrl.selectedCol = 0;
             element.selectionCtrl.selectedRow = -1;
@@ -117,7 +118,7 @@ describe('SpreadsheetTable Format Actions', () => {
                     }
                 }
             };
-            await element.updateComplete;
+            await awaitView(element);
 
             element.selectionCtrl.selectedCol = 1;
             element.selectionCtrl.selectedRow = -1;
@@ -169,7 +170,7 @@ describe('SpreadsheetTable Format Actions', () => {
                     }
                 }
             };
-            await element.updateComplete;
+            await awaitView(element);
 
             element.selectionCtrl.selectedCol = 0;
             element.selectionCtrl.selectedRow = -1;
@@ -220,7 +221,7 @@ describe('SpreadsheetTable Format Actions', () => {
                     }
                 }
             };
-            await element.updateComplete;
+            await awaitView(element);
 
             element.selectionCtrl.selectedCol = 0;
             element.selectionCtrl.selectedRow = -1;

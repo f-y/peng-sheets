@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, queryAllView, awaitView } from './test-helpers';
 import { fixture, html } from '@open-wc/testing';
 import '../components/spreadsheet-table';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
@@ -40,7 +41,7 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
                 start_line: 0,
                 end_line: 0
             };
-            await element.updateComplete;
+            await awaitView(element);
         });
 
         it('copies full table with headers when corner is clicked', async () => {
@@ -50,13 +51,10 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
             element.selectionCtrl.selectedRow = -2;
             element.selectionCtrl.selectedCol = -2;
 
-            await element.updateComplete;
+            await awaitView(element);
 
-            // Find corner cell and dispatch copy
-            const corner = element.shadowRoot!.querySelector('.cell.header-corner');
-            if (!corner) throw new Error('Corner not found');
-
-            corner.dispatchEvent(
+            // Call internal _handleKeyDown directly (Container doesn't have raw @keydown listener)
+            (element as any)._handleKeyDown(
                 new KeyboardEvent('keydown', {
                     key: 'c',
                     ctrlKey: true,
@@ -65,7 +63,7 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
                 })
             );
             await new Promise((r) => setTimeout(r, 0));
-            await element.updateComplete;
+            await awaitView(element);
 
             // Should include headers + all data rows
             // Expected: "A\tB\n1\t2\n3\t4"
@@ -87,7 +85,7 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
                 start_line: 0,
                 end_line: 0
             };
-            await element.updateComplete;
+            await awaitView(element);
         });
 
         it('quotes cell values containing newlines in TSV output', async () => {
@@ -97,9 +95,9 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
             element.selectionCtrl.selectedRow = 1;
             element.selectionCtrl.selectedCol = 1;
 
-            await element.updateComplete;
+            await awaitView(element);
 
-            const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+            const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
             if (!cell) throw new Error('Cell not found');
 
             cell.dispatchEvent(
@@ -111,7 +109,7 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
                 })
             );
             await new Promise((r) => setTimeout(r, 0));
-            await element.updateComplete;
+            await awaitView(element);
 
             // Values with newlines should be quoted
             // Expected: 'Alice\t"Line1\nLine2"\nBob\tSimple'
@@ -128,16 +126,16 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
                 start_line: 0,
                 end_line: 0
             };
-            await element.updateComplete;
+            await awaitView(element);
 
             element.selectionCtrl.selectionAnchorRow = 0;
             element.selectionCtrl.selectionAnchorCol = 0;
             element.selectionCtrl.selectedRow = 0;
             element.selectionCtrl.selectedCol = 1;
 
-            await element.updateComplete;
+            await awaitView(element);
 
-            const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+            const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
             cell!.dispatchEvent(
                 new KeyboardEvent('keydown', {
                     key: 'c',
@@ -162,12 +160,12 @@ describe('SpreadsheetTable Copy with Full Table and Newlines', () => {
                 start_line: 0,
                 end_line: 0
             };
-            await element.updateComplete;
+            await awaitView(element);
 
             element.selectionCtrl.selectedRow = 0;
             element.selectionCtrl.selectedCol = 0;
 
-            const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+            const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
             cell!.dispatchEvent(
                 new KeyboardEvent('keydown', {
                     key: 'c',

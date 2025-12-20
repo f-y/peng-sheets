@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
+import { queryView, awaitView } from './test-helpers';
 
 describe('SpreadsheetTable Header Edit', () => {
     it('Enters edit mode on empty header double click', async () => {
@@ -19,17 +20,15 @@ describe('SpreadsheetTable Header Edit', () => {
         };
 
         el.table = tableData;
-        await el.updateComplete;
+        await awaitView(el);
 
         // Find the empty header (index 1)
-        const emptyHeaderSpan = el.shadowRoot!.querySelector(
-            '.cell.header-col[data-col="1"] .cell-content'
-        ) as HTMLElement;
+        const emptyHeaderSpan = queryView(el, '.cell.header-col[data-col="1"] .cell-content') as HTMLElement;
         expect(emptyHeaderSpan).toBeTruthy();
 
         // Double Click
         emptyHeaderSpan.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await el.updateComplete;
+        await awaitView(el);
 
         expect(el.editCtrl.isEditing).toBe(true);
         expect(el.selectionCtrl.selectedCol).toBe(1);

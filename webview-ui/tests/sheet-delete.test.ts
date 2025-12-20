@@ -3,6 +3,7 @@ import { describe, it, beforeEach, vi } from 'vitest';
 import { MyEditor } from '../main';
 import '../main'; // Ensure custom element is defined
 import '../components/confirmation-modal'; // Ensure modal is defined
+import { awaitView } from './test-helpers';
 
 describe('MyEditor Sheet Deletion', () => {
     let el: MyEditor;
@@ -19,7 +20,7 @@ describe('MyEditor Sheet Deletion', () => {
                 { type: 'sheet', title: 'Sheet1', index: 0, sheetIndex: 0, data: { tables: [] } },
                 { type: 'sheet', title: 'Sheet2', index: 1, sheetIndex: 1, data: { tables: [] } }
             ];
-            await el.updateComplete;
+            await awaitView(el);
         } finally {
             // Restore (optional if we want clean state, but vitest resets modules usually? No, JSDOM env might persist class)
             // Ideally restore after test.
@@ -67,7 +68,7 @@ describe('MyEditor Sheet Deletion', () => {
             { type: 'add-sheet', title: '+', index: 2 }
         ];
         (el as any).activeTabIndex = 1; // Select Sheet2
-        await el.updateComplete;
+        await awaitView(el);
 
         // Simulate deletion of Sheet2. New state: Sheet1, +
         (el as any).tabs = [
@@ -75,7 +76,7 @@ describe('MyEditor Sheet Deletion', () => {
             { type: 'add-sheet', title: '+', index: 1 }
         ];
         // Trigger update
-        await el.updateComplete;
+        await awaitView(el);
 
         // activeTabIndex was 1. At 1 is "+". Should move to 0.
         expect((el as any).activeTabIndex).to.equal(0);
@@ -87,7 +88,7 @@ describe('MyEditor Sheet Deletion', () => {
             { type: 'add-sheet', title: '+', index: 1 }
         ];
         (el as any).activeTabIndex = 0;
-        await el.updateComplete;
+        await awaitView(el);
 
         (el as any)._handleAddSheet(); // Sets pendingAddSheet = true
 
@@ -97,7 +98,7 @@ describe('MyEditor Sheet Deletion', () => {
             { type: 'sheet', title: 'Sheet 2', index: 1, sheetIndex: 1, data: { tables: [] } },
             { type: 'add-sheet', title: '+', index: 2 }
         ];
-        await el.updateComplete;
+        await awaitView(el);
 
         // Should select index 1 (Sheet 2)
         expect((el as any).activeTabIndex).to.equal(1);

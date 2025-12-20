@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
+import { queryView, queryAllView, awaitView } from './test-helpers';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
+import '../components/spreadsheet-table';
 
 describe('SpreadsheetTable Roundtrip Newlines', () => {
     it('captures newlines from BR tags correctly on commit', async () => {
@@ -16,16 +18,16 @@ describe('SpreadsheetTable Roundtrip Newlines', () => {
         };
         element.sheetIndex = 0;
         element.tableIndex = 0;
-        await element.updateComplete;
+        await awaitView(element);
 
         // Select cell and enter edit mode
         element.selectionCtrl.selectCell(0, 0);
-        await element.updateComplete;
+        await awaitView(element);
 
         element.editCtrl.startEditing('Original');
-        await element.updateComplete;
+        await awaitView(element);
 
-        const cell = element.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
+        const cell = queryView(element, '.cell.editing') as HTMLElement;
         expect(cell).to.exist;
 
         // Listen for cell-edit event
@@ -38,7 +40,7 @@ describe('SpreadsheetTable Roundtrip Newlines', () => {
 
         // Commit with Enter key
         cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-        await element.updateComplete;
+        await awaitView(element);
 
         // Verify the committed value has newlines correctly extracted
         expect(spy).toHaveBeenCalled();
@@ -62,15 +64,15 @@ describe('SpreadsheetTable Roundtrip Newlines', () => {
         };
         element.sheetIndex = 0;
         element.tableIndex = 0;
-        await element.updateComplete;
+        await awaitView(element);
 
         element.selectionCtrl.selectCell(0, 0);
-        await element.updateComplete;
+        await awaitView(element);
 
         element.editCtrl.startEditing('Original');
-        await element.updateComplete;
+        await awaitView(element);
 
-        const cell = element.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
+        const cell = queryView(element, '.cell.editing') as HTMLElement;
         expect(cell).to.exist;
 
         const spy = vi.fn();
@@ -81,7 +83,7 @@ describe('SpreadsheetTable Roundtrip Newlines', () => {
 
         // Commit
         cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;

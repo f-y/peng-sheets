@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, awaitView } from './test-helpers';
 
 // Mock dependencies
 vi.mock('../utils/i18n', () => ({
@@ -35,27 +36,27 @@ describe('Browser-accurate click-away test', () => {
 
     it('should save "4" with realistic mousedown → click sequence', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         // Step 1: Click cell to select
-        const cell00 = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        const cell00 = queryView(table, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
         expect(cell00).toBeTruthy();
         cell00.click();
-        await table.updateComplete;
+        await awaitView(table);
 
         expect(table.selectionCtrl.selectedRow).toBe(0);
         expect(table.selectionCtrl.selectedCol).toBe(0);
 
         // Step 2: Type "4" directly
         cell00.dispatchEvent(new KeyboardEvent('keydown', { key: '4', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         expect(table.editCtrl.isEditing).toBe(true);
         expect(table.editCtrl.isReplacementMode).toBe(true);
         expect(table.editCtrl.pendingEditValue).toBe('4');
 
         // Step 3: Simulate realistic click on another cell with mousedown FIRST
-        const cell01 = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="1"]') as HTMLElement;
+        const cell01 = queryView(table, '.cell[data-row="0"][data-col="1"]') as HTMLElement;
         expect(cell01).toBeTruthy();
 
         // This is the realistic browser sequence:
@@ -63,7 +64,7 @@ describe('Browser-accurate click-away test', () => {
         // 2. mouseup fires
         // 3. click fires (commits edit in current code)
         cell01.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         // After mousedown, selection may have changed but edit should still be pending
         console.log(
@@ -74,10 +75,10 @@ describe('Browser-accurate click-away test', () => {
         );
 
         cell01.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         cell01.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         console.log('After click: table.rows[0][0] =', table.table.rows[0][0]);
 
@@ -87,19 +88,19 @@ describe('Browser-accurate click-away test', () => {
 
     it('should save empty string when dblclick + backspace + Enter', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         // Double-click cell with "3" to edit
-        const cell00 = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        const cell00 = queryView(table, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
         expect(cell00).toBeTruthy();
         cell00.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         expect(table.editCtrl.isEditing).toBe(true);
         expect(table.editCtrl.isReplacementMode).toBe(false); // NOT replacement mode
 
         // Get the editing cell and clear its content (simulating backspace)
-        const editingCell = table.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
+        const editingCell = queryView(table, '.cell.editing') as HTMLElement;
         expect(editingCell).toBeTruthy();
 
         console.log(
@@ -112,7 +113,7 @@ describe('Browser-accurate click-away test', () => {
         // Clear the content
         editingCell.innerHTML = '';
         editingCell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         console.log(
             'After clear: innerHTML=',
@@ -123,7 +124,7 @@ describe('Browser-accurate click-away test', () => {
 
         // Press Enter to commit
         editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         console.log('After Enter: table.rows[0][0] =', table.table.rows[0][0], 'isEditing=', table.editCtrl.isEditing);
 

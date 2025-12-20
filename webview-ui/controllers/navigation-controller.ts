@@ -12,8 +12,8 @@ export class NavigationController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() { }
-    hostDisconnected() { }
+    hostConnected() {}
+    hostDisconnected() {}
 
     handleKeyDown(e: KeyboardEvent, maxRows: number, maxCols: number) {
         if (e.isComposing) return;

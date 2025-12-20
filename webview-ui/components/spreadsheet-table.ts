@@ -34,6 +34,7 @@ import './cells/ss-column-header';
 import './cells/ss-ghost-cell';
 import './menus/ss-context-menu';
 import './menus/ss-metadata-editor';
+import './spreadsheet-table-view';
 // @ts-expect-error type import
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
@@ -404,9 +405,12 @@ export class SpreadsheetTable extends LitElement {
 
         try {
             const target = e.target as HTMLElement;
+            // Use View's shadowRoot since cells are in the View component
+            const view = this.shadowRoot?.querySelector('spreadsheet-table-view');
+            const viewShadowRoot = view?.shadowRoot ?? null;
             const result = findEditingCell(
                 target,
-                this.shadowRoot,
+                viewShadowRoot,
                 this.selectionCtrl.selectedRow,
                 this.selectionCtrl.selectedCol
             );
@@ -605,8 +609,8 @@ export class SpreadsheetTable extends LitElement {
             {
                 clientX: e.detail.x,
                 clientY: e.detail.y,
-                preventDefault: () => { },
-                stopPropagation: () => { }
+                preventDefault: () => {},
+                stopPropagation: () => {}
             } as MouseEvent,
             'col',
             e.detail.index
@@ -634,7 +638,7 @@ export class SpreadsheetTable extends LitElement {
             {
                 clientX: e.detail.x,
                 clientY: e.detail.y,
-                stopPropagation: () => { },
+                stopPropagation: () => {},
                 target: {
                     getBoundingClientRect: () => ({
                         left: e.detail.x,
@@ -650,7 +654,7 @@ export class SpreadsheetTable extends LitElement {
     /** Handle column resize start */
     private _onResizeStart = (e: CustomEvent<{ col: number; x: number; width: number }>) => {
         this.resizeCtrl.startResize(
-            { clientX: e.detail.x, preventDefault: () => { }, stopPropagation: () => { } } as MouseEvent,
+            { clientX: e.detail.x, preventDefault: () => {}, stopPropagation: () => {} } as MouseEvent,
             e.detail.col,
             e.detail.width
         );
@@ -673,8 +677,8 @@ export class SpreadsheetTable extends LitElement {
             {
                 clientX: e.detail.x,
                 clientY: e.detail.y,
-                preventDefault: () => { },
-                stopPropagation: () => { }
+                preventDefault: () => {},
+                stopPropagation: () => {}
             } as MouseEvent,
             'row',
             e.detail.index
@@ -695,6 +699,40 @@ export class SpreadsheetTable extends LitElement {
 
     /** Handle data cell mousedown for drag selection */
     private _onCellMousedown = (e: CustomEvent<{ row: number; col: number; shiftKey: boolean }>) => {
+        // Commit any pending edit before changing selection (click-away commit)
+        if (this.editCtrl.isEditing) {
+            // Editing cell is in View's shadow DOM, not Container's
+            const view = this.shadowRoot?.querySelector('spreadsheet-table-view');
+            const editingCell = view?.shadowRoot?.querySelector('.cell.editing') as HTMLElement | null;
+            if (editingCell) {
+                const syntheticEvent = new FocusEvent('blur', { bubbles: true });
+                Object.defineProperty(syntheticEvent, 'target', { value: editingCell, writable: false });
+                this._commitEdit(syntheticEvent);
+            } else if (this.editCtrl.isReplacementMode && this.editCtrl.pendingEditValue !== null) {
+                // Replacement mode without DOM update yet - directly apply pending value
+                const row = this.selectionCtrl.selectedRow;
+                const col = this.selectionCtrl.selectedCol;
+                if (this.table && row >= 0 && col >= 0 && row < this.table.rows.length) {
+                    this.table.rows[row][col] = this.editCtrl.pendingEditValue;
+                    this.dispatchEvent(
+                        new CustomEvent('cell-edit', {
+                            detail: {
+                                sheetIndex: this.sheetIndex,
+                                tableIndex: this.tableIndex,
+                                rowIndex: row,
+                                colIndex: col,
+                                newValue: this.editCtrl.pendingEditValue
+                            },
+                            bubbles: true,
+                            composed: true
+                        })
+                    );
+                    this.requestUpdate();
+                }
+                this.editCtrl.cancelEditing();
+            }
+        }
+
         if (e.detail.shiftKey) {
             this.selectionCtrl.selectCell(e.detail.row, e.detail.col, true);
         } else {
@@ -727,6 +765,54 @@ export class SpreadsheetTable extends LitElement {
         this._handleKeyDown(e.detail.originalEvent);
     };
 
+    /** Handle data cell mousemove event for drag selection */
+    private _onCellMousemove = (e: CustomEvent<{ row: number; col: number }>) => {
+        // Update selection if currently selecting
+        if (this.selectionCtrl.isSelecting) {
+            this.selectionCtrl.selectCell(e.detail.row, e.detail.col, true);
+        }
+    };
+
+    /** Handle corner cell click (select all) */
+    private _onCornerClick = () => {
+        this.selectionCtrl.selectCell(-2, -2);
+        this.focusCell();
+    };
+
+    /** Handle context menu action from View */
+    private _onMenuAction = (e: CustomEvent<{ action: string; type: string; index: number }>) => {
+        const { action, type, index } = e.detail;
+        if (action === 'insert') {
+            if (type === 'row') {
+                this._dispatchAction('insert-row', { rowIndex: index });
+            } else {
+                this._dispatchAction('column-insert', { colIndex: index });
+            }
+        } else if (action === 'delete') {
+            if (type === 'row') {
+                this._dispatchAction('row-delete', { rowIndex: index });
+            } else {
+                this._dispatchAction('column-delete', { colIndex: index });
+            }
+        }
+        this.contextMenu = null;
+    };
+
+    /** Handle filter apply from View */
+    private _onFilterApply = (e: CustomEvent) => {
+        this.filterCtrl.handleFilterChange(e);
+    };
+
+    /** Handle filter close from View */
+    private _onFilterClose = () => {
+        this.filterCtrl.closeFilterMenu();
+    };
+
+    /** Handle metadata change from View */
+    private _onMetadataChange = (e: CustomEvent<{ description: string }>) => {
+        this._dispatchAction('metadata-update', { description: e.detail.description });
+    };
+
     /**
      * Calculate the selection range boundaries based on current selection state.
      * Delegates to SelectionController for the actual logic.
@@ -752,24 +838,24 @@ export class SpreadsheetTable extends LitElement {
                       .menuType="${this.contextMenu.type}"
                       .index="${this.contextMenu.index}"
                       @ss-insert-row="${(e: CustomEvent<{ index: number }>) => {
-                    this._dispatchAction('insert-row', { rowIndex: e.detail.index });
-                    this.contextMenu = null;
-                }}"
+                          this._dispatchAction('insert-row', { rowIndex: e.detail.index });
+                          this.contextMenu = null;
+                      }}"
                       @ss-delete-row="${(e: CustomEvent<{ index: number }>) => {
-                    this._dispatchAction('row-delete', { rowIndex: e.detail.index });
-                    this.contextMenu = null;
-                }}"
+                          this._dispatchAction('row-delete', { rowIndex: e.detail.index });
+                          this.contextMenu = null;
+                      }}"
                       @ss-insert-col="${(e: CustomEvent<{ index: number }>) => {
-                    this._dispatchAction('column-insert', { colIndex: e.detail.index });
-                    this.contextMenu = null;
-                }}"
+                          this._dispatchAction('column-insert', { colIndex: e.detail.index });
+                          this.contextMenu = null;
+                      }}"
                       @ss-delete-col="${(e: CustomEvent<{ index: number }>) => {
-                    this._dispatchAction('column-delete', { colIndex: e.detail.index });
-                    this.contextMenu = null;
-                }}"
+                          this._dispatchAction('column-delete', { colIndex: e.detail.index });
+                          this.contextMenu = null;
+                      }}"
                       @ss-menu-close="${() => {
-                    this.contextMenu = null;
-                }}"
+                          this.contextMenu = null;
+                      }}"
                   ></ss-context-menu>
               `
             : nothing;
@@ -778,12 +864,12 @@ export class SpreadsheetTable extends LitElement {
             ? html`
                   <filter-menu
                       style="position: fixed; left: ${this.filterCtrl.activeFilterMenu.x}px; top: ${this.filterCtrl
-                    .activeFilterMenu.y}px; z-index: 2001;"
+                          .activeFilterMenu.y}px; z-index: 2001;"
                       .columnName="${this.table?.headers?.[this.filterCtrl.activeFilterMenu.colIndex] || ''}"
                       .values="${this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex)}"
                       .hiddenValues="${((this.table?.metadata?.['visual'] as VisualMetadata)?.['filters'] || {})[
-                this.filterCtrl.activeFilterMenu.colIndex.toString()
-                ] || []}"
+                          this.filterCtrl.activeFilterMenu.colIndex.toString()
+                      ] || []}"
                       @sort="${(e: CustomEvent) => this.filterCtrl.handleSort(e)}"
                       @filter-change="${(e: CustomEvent) => this.filterCtrl.handleFilterChange(e)}"
                       @clear-filter="${(e: CustomEvent) => this.filterCtrl.handleClearFilter(e)}"
@@ -814,33 +900,33 @@ export class SpreadsheetTable extends LitElement {
             <ss-corner-cell
                 .isSelected="${selRow === -2 && selCol === -2}"
                 @ss-corner-click="${() => {
-                this.selectionCtrl.selectCell(-2, -2);
-                this.focusCell();
-            }}"
+                    this.selectionCtrl.selectCell(-2, -2);
+                    this.focusCell();
+                }}"
                 @ss-corner-keydown="${(e: CustomEvent<{ originalEvent: KeyboardEvent }>) => {
-                this._handleKeyDown(e.detail.originalEvent);
-            }}"
+                    this._handleKeyDown(e.detail.originalEvent);
+                }}"
             ></ss-corner-cell>
 
             <!-- Column Headers -->
             ${table.headers
                 ? table.headers.map((header, i) => {
-                    const isActive = selRow === -1 && selCol === i;
-                    const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
-                    const showActiveOutline = isActive && minC === maxC;
+                      const isActive = selRow === -1 && selCol === i;
+                      const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+                      const showActiveOutline = isActive && minC === maxC;
 
-                    const visual = (table.metadata?.['visual'] as VisualMetadata) || {};
-                    const filters = visual.filters || {};
-                    const hiddenValues = filters[i.toString()] || [];
-                    const isFiltered = hiddenValues.length > 0;
+                      const visual = (table.metadata?.['visual'] as VisualMetadata) || {};
+                      const filters = visual.filters || {};
+                      const hiddenValues = filters[i.toString()] || [];
+                      const isFiltered = hiddenValues.length > 0;
 
-                    return html`
+                      return html`
                           <ss-column-header
                               .col="${i}"
                               .value="${header}"
                               .isSelected="${(selRow === -2 && (selCol === i || isInRange)) ||
-                        (selRow === -1 && selCol === i) ||
-                        (selRow >= 0 && selCol === i && minR === maxR && minC === maxC)}"
+                              (selRow === -1 && selCol === i) ||
+                              (selRow >= 0 && selCol === i && minR === maxR && minC === maxC)}"
                               .isInRange="${isInRange}"
                               .isEditing="${this.editCtrl.isEditing && isActive}"
                               .hasActiveFilter="${isFiltered}"
@@ -857,72 +943,72 @@ export class SpreadsheetTable extends LitElement {
                               @ss-resize-start="${this._onResizeStart}"
                           ></ss-column-header>
                       `;
-                })
+                  })
                 : Array.from({ length: colCount }).map((_, i) => {
-                    const isActive = selRow === -1 && selCol === i;
-                    const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
-                    const showActiveOutline = isActive && minC === maxC;
-                    return html`
+                      const isActive = selRow === -1 && selCol === i;
+                      const isInRange = (minR === -1 || isColMode) && i >= minC && i <= maxC;
+                      const showActiveOutline = isActive && minC === maxC;
+                      return html`
                           <ss-column-header
                               .col="${i}"
                               .header="${i + 1}"
                               .isSelected="${(selRow === -2 && (selCol === i || isInRange)) ||
-                        (selRow === -1 && selCol === i) ||
-                        (selRow >= 0 && selCol === i && minR === maxR && minC === maxC)}"
+                              (selRow === -1 && selCol === i) ||
+                              (selRow >= 0 && selCol === i && minR === maxR && minC === maxC)}"
                               .isEditing="${this.editCtrl.isEditing && isActive}"
                               .isActive="${showActiveOutline}"
                               .isInRange="${isInRange}"
                               .hasActiveFilter="${false}"
                               .width="${this.resizeCtrl.colWidths[i]}"
                               @ss-col-click="${() => {
-                            this.selectionCtrl.selectCell(-2, i);
-                            this.focusCell();
-                        }}"
+                                  this.selectionCtrl.selectCell(-2, i);
+                                  this.focusCell();
+                              }}"
                               @ss-col-mousedown="${(e: CustomEvent<{ col: number; shiftKey: boolean }>) => {
-                            this.selectionCtrl.startSelection(-2, i, e.detail.shiftKey);
-                        }}"
+                                  this.selectionCtrl.startSelection(-2, i, e.detail.shiftKey);
+                              }}"
                               @ss-col-dblclick="${() => {
-                            this.selectionCtrl.selectCell(-1, i);
-                            this.editCtrl.startEditing(i + 1 + '');
-                            this.focusCell();
-                        }}"
+                                  this.selectionCtrl.selectCell(-1, i);
+                                  this.editCtrl.startEditing(i + 1 + '');
+                                  this.focusCell();
+                              }}"
                               @ss-contextmenu="${(
-                            e: CustomEvent<{ type: string; index: number; x: number; y: number }>
-                        ) => {
-                            this._handleContextMenu(
-                                {
-                                    clientX: e.detail.x,
-                                    clientY: e.detail.y,
-                                    preventDefault: () => { },
-                                    stopPropagation: () => { }
-                                } as MouseEvent,
-                                'col',
-                                i
-                            );
-                        }}"
+                                  e: CustomEvent<{ type: string; index: number; x: number; y: number }>
+                              ) => {
+                                  this._handleContextMenu(
+                                      {
+                                          clientX: e.detail.x,
+                                          clientY: e.detail.y,
+                                          preventDefault: () => {},
+                                          stopPropagation: () => {}
+                                      } as MouseEvent,
+                                      'col',
+                                      i
+                                  );
+                              }}"
                               @ss-col-input="${(e: CustomEvent<{ col: number; target: EventTarget | null }>) => {
-                            this._handleInput({ target: e.detail.target } as Event);
-                        }}"
+                                  this._handleInput({ target: e.detail.target } as Event);
+                              }}"
                               @ss-col-blur="${(e: CustomEvent<{ col: number; originalEvent: FocusEvent }>) => {
-                            this._handleBlur(e.detail.originalEvent);
-                        }}"
+                                  this._handleBlur(e.detail.originalEvent);
+                              }}"
                               @ss-col-keydown="${(e: CustomEvent<{ col: number; originalEvent: KeyboardEvent }>) => {
-                            this._handleKeyDown(e.detail.originalEvent);
-                        }}"
+                                  this._handleKeyDown(e.detail.originalEvent);
+                              }}"
                               @ss-resize-start="${(e: CustomEvent<{ col: number; x: number; width: number }>) => {
-                            this.resizeCtrl.startResize(
-                                {
-                                    clientX: e.detail.x,
-                                    preventDefault: () => { },
-                                    stopPropagation: () => { }
-                                } as MouseEvent,
-                                i,
-                                this.resizeCtrl.colWidths[i]
-                            );
-                        }}"
+                                  this.resizeCtrl.startResize(
+                                      {
+                                          clientX: e.detail.x,
+                                          preventDefault: () => {},
+                                          stopPropagation: () => {}
+                                      } as MouseEvent,
+                                      i,
+                                      this.resizeCtrl.colWidths[i]
+                                  );
+                              }}"
                           ></ss-column-header>
                       `;
-                })}
+                  })}
         `;
     }
 
@@ -956,11 +1042,11 @@ export class SpreadsheetTable extends LitElement {
             ></ss-row-header>
 
             ${Array.from({ length: colCount }).map((_, c) => {
-            const isActive = r === selRow && c === selCol;
-            const isEditingCell = this.editCtrl.isEditing && isActive;
-            const rangeState = calculateCellRangeState(r, c, minR, maxR, minC, maxC);
+                const isActive = r === selRow && c === selCol;
+                const isEditingCell = this.editCtrl.isEditing && isActive;
+                const rangeState = calculateCellRangeState(r, c, minR, maxR, minC, maxC);
 
-            return html`
+                return html`
                     <ss-ghost-cell
                         .row="${r}"
                         .col="${c}"
@@ -973,41 +1059,41 @@ export class SpreadsheetTable extends LitElement {
                         .rangeLeft="${rangeState.leftEdge}"
                         .rangeRight="${rangeState.rightEdge}"
                         .editingHtml="${this._getEditingHtml(
-                isEditingCell && this.editCtrl.pendingEditValue !== null
-                    ? this.editCtrl.pendingEditValue
-                    : ''
-            )}"
+                            isEditingCell && this.editCtrl.pendingEditValue !== null
+                                ? this.editCtrl.pendingEditValue
+                                : ''
+                        )}"
                         @ss-cell-click="${async (e: CustomEvent<{ row: number; col: number; shiftKey: boolean }>) => {
-                    await this._commitCurrentEdit();
-                    this.selectionCtrl.selectCell(e.detail.row, e.detail.col, e.detail.shiftKey);
-                    this.focusCell();
-                }}"
+                            await this._commitCurrentEdit();
+                            this.selectionCtrl.selectCell(e.detail.row, e.detail.col, e.detail.shiftKey);
+                            this.focusCell();
+                        }}"
                         @ss-cell-mousedown="${(e: CustomEvent<{ row: number; col: number; shiftKey: boolean }>) => {
-                    if (e.detail.shiftKey) this.selectionCtrl.selectCell(e.detail.row, e.detail.col, true);
-                    else this.selectionCtrl.startSelection(e.detail.row, e.detail.col);
-                    this.focusCell();
-                }}"
+                            if (e.detail.shiftKey) this.selectionCtrl.selectCell(e.detail.row, e.detail.col, true);
+                            else this.selectionCtrl.startSelection(e.detail.row, e.detail.col);
+                            this.focusCell();
+                        }}"
                         @ss-cell-dblclick="${() => {
-                    this.selectionCtrl.selectCell(r, c);
-                    this.editCtrl.startEditing('');
-                    this.focusCell();
-                }}"
+                            this.selectionCtrl.selectCell(r, c);
+                            this.editCtrl.startEditing('');
+                            this.focusCell();
+                        }}"
                         @ss-cell-input="${(
-                    e: CustomEvent<{ row: number; col: number; target: EventTarget | null }>
-                ) => {
-                    this._handleInput({ target: e.detail.target } as Event);
-                }}"
+                            e: CustomEvent<{ row: number; col: number; target: EventTarget | null }>
+                        ) => {
+                            this._handleInput({ target: e.detail.target } as Event);
+                        }}"
                         @ss-cell-blur="${(e: CustomEvent<{ row: number; col: number; originalEvent: FocusEvent }>) => {
-                    this._handleBlur(e.detail.originalEvent);
-                }}"
+                            this._handleBlur(e.detail.originalEvent);
+                        }}"
                         @ss-cell-keydown="${(
-                    e: CustomEvent<{ row: number; col: number; originalEvent: KeyboardEvent }>
-                ) => {
-                    this._handleKeyDown(e.detail.originalEvent);
-                }}"
+                            e: CustomEvent<{ row: number; col: number; originalEvent: KeyboardEvent }>
+                        ) => {
+                            this._handleKeyDown(e.detail.originalEvent);
+                        }}"
                     ></ss-ghost-cell>
                 `;
-        })}
+            })}
         `;
     }
 
@@ -1025,8 +1111,8 @@ export class SpreadsheetTable extends LitElement {
         minC: number,
         maxC: number
     ): TemplateResult {
-        const isRowSelected = (selCol === -2 &&
-            (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))) ||
+        const isRowSelected =
+            (selCol === -2 && (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))) ||
             (selCol === -1 && selRow === r) ||
             (selCol >= 0 && selRow === r && minR === maxR && minC === maxC);
         const isRowInRange = (minC === -1 || selCol === -2) && r >= minR && r <= maxR;
@@ -1045,37 +1131,35 @@ export class SpreadsheetTable extends LitElement {
 
             <!-- Cells -->
             ${Array.from({ length: colCount }).map((_, c) => {
-            const cell = row[c] !== undefined ? row[c] : '';
-            const isActive = r === selRow && c === selCol;
-            const rangeState = calculateCellRangeState(r, c, minR, maxR, minC, maxC);
-            const isEditingCell = this.editCtrl.isEditing && isActive;
-            const isRangeSelection = minR !== maxR || minC !== maxC;
+                const cell = row[c] !== undefined ? row[c] : '';
+                const isActive = r === selRow && c === selCol;
+                const rangeState = calculateCellRangeState(r, c, minR, maxR, minC, maxC);
+                const isEditingCell = this.editCtrl.isEditing && isActive;
+                const isRangeSelection = minR !== maxR || minC !== maxC;
 
-            // Get alignment and format from metadata
-            const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
-            const columns = visual.columns || {};
-            const colSettings = columns[c.toString()] || {};
-            const align = colSettings.align || 'left';
-            const format = colSettings.format;
-            const wordWrapEnabled = format?.wordWrap !== false;
+                // Get alignment and format from metadata
+                const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
+                const columns = visual.columns || {};
+                const colSettings = columns[c.toString()] || {};
+                const align = colSettings.align || 'left';
+                const format = colSettings.format;
+                const wordWrapEnabled = format?.wordWrap !== false;
 
-            const displayValue = isEditingCell
-                ? cell
-                : this._formatCellValue(cell, format?.numberFormat);
+                const displayValue = isEditingCell ? cell : this._formatCellValue(cell, format?.numberFormat);
 
-            return html`
+                return html`
                     <ss-data-cell
                         .row="${r}"
                         .col="${c}"
                         .value="${isEditingCell && this.editCtrl.pendingEditValue !== null
-                    ? this.editCtrl.pendingEditValue
-                    : cell}"
+                            ? this.editCtrl.pendingEditValue
+                            : cell}"
                         .renderedHtml="${this._renderMarkdown(displayValue)}"
                         .editingHtml="${this._getEditingHtml(
-                        isEditingCell && this.editCtrl.pendingEditValue !== null
-                            ? this.editCtrl.pendingEditValue
-                            : cell
-                    )}"
+                            isEditingCell && this.editCtrl.pendingEditValue !== null
+                                ? this.editCtrl.pendingEditValue
+                                : cell
+                        )}"
                         .isEditing="${isEditingCell}"
                         .isSelected="${r === selRow && c === selCol}"
                         .isInRange="${rangeState.inRange}"
@@ -1094,7 +1178,7 @@ export class SpreadsheetTable extends LitElement {
                         @ss-cell-keydown="${this._onCellKeydown}"
                     ></ss-data-cell>
                 `;
-        })}
+            })}
         `;
     }
 
@@ -1102,37 +1186,77 @@ export class SpreadsheetTable extends LitElement {
         if (!this.table) return html``;
         const table = this.table;
 
-        // Get selection range boundaries
         const { minR, maxR, minC, maxC } = this._getSelectionRange();
-        const selRow = this.selectionCtrl.selectedRow;
-        const selCol = this.selectionCtrl.selectedCol;
+        const editState = {
+            isEditing: this.editCtrl.isEditing,
+            pendingEditValue: this.editCtrl.pendingEditValue
+        };
 
-        const colCount = Math.max(table.headers?.length || 0, table.rows[0]?.length || 0);
+        // Build filter menu state from FilterController
+        const filterMenu = this.filterCtrl.activeFilterMenu
+            ? {
+                  x: this.filterCtrl.activeFilterMenu.x,
+                  y: this.filterCtrl.activeFilterMenu.y,
+                  col: this.filterCtrl.activeFilterMenu.colIndex,
+                  values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
+                  selectedValues: new Set<string>()
+              }
+            : null;
 
         return html`
-            <ss-metadata-editor
-                .description="${table.description || ''}"
-                @ss-metadata-change="${(e: CustomEvent<{ description: string }>) => {
-                this._dispatchAction('metadata-update', { description: e.detail.description });
-            }}"
-            ></ss-metadata-editor>
-
-            <div class="table-container">
-                <div class="grid" style="grid-template-columns: ${this._getColumnTemplate(colCount)};">
-                    ${this._renderColumnHeaders(table, colCount, selRow, selCol, minR, maxR, minC, maxC)}
-
-                    <!-- Rows -->
-                    ${this.rowVisibilityCtrl.visibleRowIndices.map((r) => {
-                const row = table.rows[r];
-                return this._renderDataRow(r, row, colCount, selRow, selCol, minR, maxR, minC, maxC);
-            })}
-
-                    <!-- Ghost Row -->
-                    ${this._renderGhostRow(table, colCount, selRow, selCol, minR, maxR, minC, maxC)}
-                </div>
-            </div>
-
-            ${this._renderMenus()}
+            <spreadsheet-table-view
+                .table="${table}"
+                .visibleRowIndices="${this.rowVisibilityCtrl.visibleRowIndices}"
+                .columnWidths="${this.resizeCtrl.colWidths}"
+                .selectedRow="${this.selectionCtrl.selectedRow}"
+                .selectedCol="${this.selectionCtrl.selectedCol}"
+                .selectionRange="${{ minR, maxR, minC, maxC }}"
+                .editState="${editState}"
+                .contextMenu="${this.contextMenu}"
+                .filterMenu="${filterMenu}"
+                .resizingCol="${this.resizeCtrl.resizingCol}"
+                @view-cell-mousedown="${this._onCellMousedown}"
+                @view-cell-click="${this._onCellClick}"
+                @view-cell-dblclick="${this._onCellDblclick}"
+                @view-cell-input="${this._onCellInput}"
+                @view-cell-blur="${this._onCellBlur}"
+                @view-cell-keydown="${this._onCellKeydown}"
+                @view-cell-mousemove="${this._onCellMousemove}"
+                @view-row-mousedown="${this._onRowMousedown}"
+                @view-row-click="${this._onRowClick}"
+                @view-row-contextmenu="${this._onRowContextMenu}"
+                @view-row-keydown="${this._onRowKeydown}"
+                @view-col-mousedown="${this._onColMousedown}"
+                @view-col-click="${this._onColClick}"
+                @view-col-dblclick="${this._onColDblclick}"
+                @view-col-contextmenu="${this._onColContextMenu}"
+                @view-col-input="${this._onColInput}"
+                @view-col-blur="${this._onColBlur}"
+                @view-col-keydown="${this._onColKeydown}"
+                @view-corner-click="${this._onCornerClick}"
+                @view-menu-action="${this._onMenuAction}"
+                @view-insert-row="${(e: CustomEvent<{ index: number }>) => {
+                    this._dispatchAction('insert-row', { rowIndex: e.detail.index });
+                    this._closeContextMenu();
+                }}"
+                @view-delete-row="${(e: CustomEvent<{ index: number }>) => {
+                    this._dispatchAction('row-delete', { rowIndex: e.detail.index });
+                    this._closeContextMenu();
+                }}"
+                @view-insert-col="${(e: CustomEvent<{ index: number }>) => {
+                    this._dispatchAction('column-insert', { colIndex: e.detail.index });
+                    this._closeContextMenu();
+                }}"
+                @view-delete-col="${(e: CustomEvent<{ index: number }>) => {
+                    this._dispatchAction('column-delete', { colIndex: e.detail.index });
+                    this._closeContextMenu();
+                }}"
+                @view-filter-apply="${this._onFilterApply}"
+                @view-filter-close="${this._onFilterClose}"
+                @view-filter-click="${this._onFilterClick}"
+                @view-resize-start="${this._onResizeStart}"
+                @ss-metadata-change="${this._onMetadataChange}"
+            ></spreadsheet-table-view>
         `;
     }
 

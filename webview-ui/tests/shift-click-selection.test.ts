@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { queryView, queryAllView, awaitView } from './test-helpers';
 import { fixture, html } from '@open-wc/testing';
 import '../components/spreadsheet-table';
 import type { SpreadsheetTable } from '../components/spreadsheet-table';
@@ -22,19 +23,19 @@ describe('Shift+Click Range Selection on Headers', () => {
                 }}"
             ></spreadsheet-table>
         `);
-        await table.updateComplete;
+        await awaitView(table);
     });
 
     describe('Row Header Shift+Click with realistic event flow', () => {
         it('should extend row selection with Shift+mousedown (browser realistic)', async () => {
             // First click row 2 (index 1) - normal click without shift
-            const rowHeaders = table.shadowRoot!.querySelectorAll('.header-row');
+            const rowHeaders = queryAllView(table, '.header-row');
             const row2Header = rowHeaders[1] as HTMLElement;
 
             // Send mousedown then click for first selection
             row2Header.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
             row2Header.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
-            await table.updateComplete;
+            await awaitView(table);
 
             console.log(
                 'After first click: anchor=',
@@ -65,7 +66,7 @@ describe('Shift+Click Range Selection on Headers', () => {
                     shiftKey: true
                 })
             );
-            await table.updateComplete;
+            await awaitView(table);
 
             console.log(
                 'After shift+click: anchor=',
@@ -84,13 +85,13 @@ describe('Shift+Click Range Selection on Headers', () => {
     describe('Column Header Shift+Click with realistic event flow', () => {
         it('should extend column selection with Shift+mousedown (browser realistic)', async () => {
             // First click column B (index 1)
-            const colHeaders = table.shadowRoot!.querySelectorAll('.header-col');
+            const colHeaders = queryAllView(table, '.header-col');
             const colBHeader = colHeaders[1] as HTMLElement;
 
             // Send mousedown then click for first selection
             colBHeader.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true }));
             colBHeader.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
-            await table.updateComplete;
+            await awaitView(table);
 
             console.log(
                 'After first col click: anchorCol=',
@@ -120,7 +121,7 @@ describe('Shift+Click Range Selection on Headers', () => {
                     shiftKey: true
                 })
             );
-            await table.updateComplete;
+            await awaitView(table);
 
             console.log(
                 'After shift+click col: anchorCol=',

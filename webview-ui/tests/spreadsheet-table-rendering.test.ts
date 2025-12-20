@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
+import { queryView, awaitView } from './test-helpers';
 import { html, fixture } from '@open-wc/testing';
 
 describe('SpreadsheetTable Rendering', () => {
@@ -37,9 +38,9 @@ describe('SpreadsheetTable Rendering', () => {
             start_line: 0,
             end_line: 0
         };
-        await el.updateComplete;
+        await awaitView(el);
 
-        const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
         const innerHTML = cell.innerHTML;
 
         console.log('Cell InnerHTML:', innerHTML);

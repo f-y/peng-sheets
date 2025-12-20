@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
+import { queryView, awaitView } from './test-helpers';
 
 describe('SpreadsheetTable Header Commit', () => {
     it('Updates header value on Enter without Lit errors', async () => {
@@ -20,12 +21,12 @@ describe('SpreadsheetTable Header Commit', () => {
         // Update DOM directly since we use _getDOMText now, which reads textContent/nodes
 
         el.table = tableData;
-        await el.updateComplete;
+        await awaitView(el);
 
         // 1. Enter Edit Mode on Header 0
-        const headerCell = el.shadowRoot!.querySelector('.cell.header-col[data-col="0"]') as HTMLElement;
+        const headerCell = queryView(el, '.cell.header-col[data-col="0"]') as HTMLElement;
         headerCell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await el.updateComplete;
+        await awaitView(el);
 
         expect(el.editCtrl.isEditing).toBe(true);
 
@@ -46,7 +47,7 @@ describe('SpreadsheetTable Header Commit', () => {
         // Event bubbles from span to div.
         span.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
 
-        await el.updateComplete;
+        await awaitView(el);
 
         // 4. Verification
         // State should be updated (Optimistic)
@@ -54,7 +55,7 @@ describe('SpreadsheetTable Header Commit', () => {
 
         // UI should reflect it
         // Check if span text content matches
-        const newSpan = el.shadowRoot!.querySelector('.cell.header-col[data-col="0"] .cell-content') as HTMLElement;
+        const newSpan = queryView(el, '.cell.header-col[data-col="0"] .cell-content') as HTMLElement;
         expect(newSpan.textContent?.trim()).toBe('NewColA');
     });
 });

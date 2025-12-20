@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, queryAllView, awaitView } from './test-helpers';
 import { fixture, html } from '@open-wc/testing';
 import '../components/spreadsheet-table';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
@@ -33,7 +34,7 @@ describe('SpreadsheetTable Paste TSV with Newlines', () => {
             start_line: 0,
             end_line: 0
         };
-        await element.updateComplete;
+        await awaitView(element);
     });
 
     afterEach(() => {
@@ -57,9 +58,9 @@ describe('SpreadsheetTable Paste TSV with Newlines', () => {
         element.selectionCtrl.selectionAnchorRow = -1;
         element.selectionCtrl.selectionAnchorCol = -1;
 
-        await element.updateComplete;
+        await awaitView(element);
 
-        const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+        const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
         cell!.dispatchEvent(
             new KeyboardEvent('keydown', {
                 key: 'v',
@@ -69,7 +70,7 @@ describe('SpreadsheetTable Paste TSV with Newlines', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(pasteSpy).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -96,9 +97,9 @@ describe('SpreadsheetTable Paste TSV with Newlines', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
 
-        await element.updateComplete;
+        await awaitView(element);
 
-        const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+        const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
         cell!.dispatchEvent(
             new KeyboardEvent('keydown', {
                 key: 'v',
@@ -108,7 +109,7 @@ describe('SpreadsheetTable Paste TSV with Newlines', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(pasteSpy).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -130,9 +131,9 @@ describe('SpreadsheetTable Paste TSV with Newlines', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
 
-        await element.updateComplete;
+        await awaitView(element);
 
-        const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+        const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
         cell!.dispatchEvent(
             new KeyboardEvent('keydown', {
                 key: 'v',
@@ -142,7 +143,7 @@ describe('SpreadsheetTable Paste TSV with Newlines', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(pasteSpy).toHaveBeenCalledWith(
             expect.objectContaining({

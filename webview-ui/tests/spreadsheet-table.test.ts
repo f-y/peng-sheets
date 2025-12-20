@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
+import '../components/spreadsheet-table';
+import '../components/spreadsheet-table';
+import { queryView, awaitView } from './test-helpers';
 
 // Helper type to access private members for testing
 type TestableSpreadsheetTable = {
@@ -47,7 +50,7 @@ describe('SpreadsheetTable', () => {
         const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table></spreadsheet-table>`);
 
         // Simulate right click on row header
-        const rowHeader = el.shadowRoot!.querySelector('.header-row') as HTMLElement;
+        const rowHeader = queryView(el, '.header-row') as HTMLElement;
         if (rowHeader) {
             rowHeader.dispatchEvent(
                 new MouseEvent('contextmenu', {
@@ -58,9 +61,9 @@ describe('SpreadsheetTable', () => {
                 })
             );
 
-            await el.updateComplete;
+            await awaitView(el);
 
-            const menu = el.shadowRoot!.querySelector('.context-menu');
+            const menu = queryView(el, '.context-menu');
             expect(menu).to.exist;
             expect(menu?.textContent).to.include('Insert Row Above');
         }
@@ -78,21 +81,21 @@ describe('SpreadsheetTable', () => {
             start_line: 0,
             end_line: 0
         };
-        await el.updateComplete;
+        await awaitView(el);
 
         const rowsBefore = el.table.rows.length;
 
         // Ghost row
-        const ghostCell = el.shadowRoot!.querySelector(`.cell[data-row="${rowsBefore}"][data-col="0"]`) as HTMLElement;
+        const ghostCell = queryView(el, `.cell[data-row="${rowsBefore}"][data-col="0"]`) as HTMLElement;
         expect(ghostCell).to.exist;
 
         // 1. Selecting the cell (Click)
         ghostCell.click();
-        await el.updateComplete;
+        await awaitView(el);
 
         // 2. Start Editing (Press key 'a')
         ghostCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, composed: true }));
-        await el.updateComplete; // update request?
+        await awaitView(el); // update request?
 
         // Check if editing
         expect(el.editCtrl.isEditing).to.be.true;
@@ -102,7 +105,7 @@ describe('SpreadsheetTable', () => {
         // We simulate that.
         // Re-query ghostCell as it might have been replaced (though strictly shouldn't if keyed/stable)
         // But let's use the one in DOM
-        const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+        const editingCell = queryView(el, '.cell.editing') as HTMLElement;
         expect(editingCell).to.exist;
         // Update DOM directly for _getDOMText
         editingCell.textContent = 'NewVal';
@@ -111,7 +114,7 @@ describe('SpreadsheetTable', () => {
         // 4. Commit (Enter)
         editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
 
-        await el.updateComplete;
+        await awaitView(el);
 
         // Should have added a row
         expect(el.table.rows.length).to.equal(rowsBefore + 1);
@@ -129,15 +132,15 @@ describe('SpreadsheetTable', () => {
             start_line: 0,
             end_line: 0
         };
-        await el.updateComplete;
+        await awaitView(el);
 
         // Find header A (Col 0)
-        const headerCell = el.shadowRoot!.querySelector('.header-col[data-col="0"]') as HTMLElement;
+        const headerCell = queryView(el, '.header-col[data-col="0"]') as HTMLElement;
         expect(headerCell).to.exist;
 
         // Simulate double click
         headerCell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await el.updateComplete;
+        await awaitView(el);
 
         // Should be editing
         expect(el.editCtrl.isEditing).to.be.true;
@@ -145,7 +148,7 @@ describe('SpreadsheetTable', () => {
         expect(el.selectionCtrl.selectedCol).to.equal(0);
 
         // Re-query header cell content
-        const headerContent = el.shadowRoot!.querySelector('.header-col[data-col="0"] .cell-content') as HTMLElement;
+        const headerContent = queryView(el, '.header-col[data-col="0"] .cell-content') as HTMLElement;
         expect(headerContent).to.exist;
         expect(headerContent.getAttribute('contenteditable')).to.equal('true');
     });
@@ -280,9 +283,9 @@ describe('SpreadsheetTable', () => {
             headers: ['A'],
             rows: [['Data']]
         };
-        await el.updateComplete;
+        await awaitView(el);
 
-        const firstCell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        const firstCell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
         expect(firstCell).to.exist;
 
         // Enter edit mode
@@ -293,9 +296,9 @@ describe('SpreadsheetTable', () => {
                 cancelable: true
             })
         );
-        await el.updateComplete;
+        await awaitView(el);
 
-        const cell = el.shadowRoot!.querySelector('.cell.editing')!;
+        const cell = queryView(el, '.cell.editing')!;
         expect(cell).to.exist;
 
         // Force ensure isEditing is true for the purpose of testing key handler logic

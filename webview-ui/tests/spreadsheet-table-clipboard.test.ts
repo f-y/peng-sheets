@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, queryAllView, awaitView } from './test-helpers';
 import { fixture, html } from '@open-wc/testing';
 import '../components/spreadsheet-table';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
@@ -35,7 +36,7 @@ describe('SpreadsheetTable Clipboard', () => {
             start_line: 0,
             end_line: 0
         };
-        await element.updateComplete;
+        await awaitView(element);
     });
 
     afterEach(() => {
@@ -47,7 +48,7 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
 
-        const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+        const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
         if (!cell) throw new Error('Cell not found');
 
         cell.dispatchEvent(
@@ -60,7 +61,7 @@ describe('SpreadsheetTable Clipboard', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(writeTextSpy).toHaveBeenCalledWith('1');
     });
@@ -72,7 +73,7 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectionAnchorRow = 0;
         element.selectionCtrl.selectionAnchorCol = 0;
 
-        const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+        const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
         if (!cell) throw new Error('Cell not found');
 
         cell.dispatchEvent(
@@ -84,7 +85,7 @@ describe('SpreadsheetTable Clipboard', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(writeTextSpy).toHaveBeenCalledWith('1\t2');
     });
@@ -98,7 +99,7 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectionAnchorRow = 0;
         element.selectionCtrl.selectionAnchorCol = 0;
 
-        const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+        const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
         if (!cell) throw new Error('Cell not found');
 
         cell.dispatchEvent(
@@ -110,7 +111,7 @@ describe('SpreadsheetTable Clipboard', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(writeTextSpy).toHaveBeenCalledWith('1\t2\n4\t5');
     });
@@ -122,9 +123,9 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectedRow = 1;
         element.selectionCtrl.selectedCol = -2;
 
-        await element.updateComplete; // Wait for selection classes to update DOM?
+        await awaitView(element); // Wait for selection classes to update DOM?
 
-        const rowHeader = element.shadowRoot!.querySelector('.cell.header-row[data-row="1"]');
+        const rowHeader = queryView(element, '.cell.header-row[data-row="1"]');
         if (!rowHeader) throw new Error('Row Header not found');
 
         rowHeader.dispatchEvent(
@@ -136,7 +137,7 @@ describe('SpreadsheetTable Clipboard', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         // Row 1 is "4", "5", "6"
         expect(writeTextSpy).toHaveBeenCalledWith('4\t5\t6');
@@ -149,9 +150,9 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectedRow = -2;
         element.selectionCtrl.selectedCol = 1;
 
-        await element.updateComplete;
+        await awaitView(element);
 
-        const colHeader = element.shadowRoot!.querySelector('.cell.header-col[data-col="1"]');
+        const colHeader = queryView(element, '.cell.header-col[data-col="1"]');
         if (!colHeader) throw new Error('Col Header not found');
 
         colHeader.dispatchEvent(
@@ -163,7 +164,7 @@ describe('SpreadsheetTable Clipboard', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         // Col 1 is header "B" + data "2", "5", "8"
         expect(writeTextSpy).toHaveBeenCalledWith('B\n2\n5\n8');
@@ -186,7 +187,7 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
 
-        const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+        const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
         if (!cell) throw new Error('Cell not found');
 
         cell.dispatchEvent(
@@ -198,7 +199,7 @@ describe('SpreadsheetTable Clipboard', () => {
             })
         );
         await new Promise((r) => setTimeout(r, 0));
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(pasteSpy).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -224,7 +225,7 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectedRow = 1;
         element.selectionCtrl.selectedCol = 1;
 
-        const cell = element.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]');
+        const cell = queryView(element, '.cell[data-row="0"][data-col="0"]');
         cell!.dispatchEvent(
             new KeyboardEvent('keydown', {
                 key: 'v',
@@ -263,9 +264,9 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectedRow = 1;
         element.selectionCtrl.selectedCol = -2;
 
-        await element.updateComplete;
+        await awaitView(element);
 
-        const rowHeader = element.shadowRoot!.querySelector('.cell.header-row[data-row="1"]');
+        const rowHeader = queryView(element, '.cell.header-row[data-row="1"]');
         if (!rowHeader) throw new Error('Row Header not found');
 
         rowHeader.dispatchEvent(
@@ -303,9 +304,9 @@ describe('SpreadsheetTable Clipboard', () => {
         element.selectionCtrl.selectedRow = -2;
         element.selectionCtrl.selectedCol = 1;
 
-        await element.updateComplete;
+        await awaitView(element);
 
-        const colHeader = element.shadowRoot!.querySelector('.cell.header-col[data-col="1"]');
+        const colHeader = queryView(element, '.cell.header-col[data-col="1"]');
         if (!colHeader) throw new Error('Col Header not found');
 
         colHeader.dispatchEvent(
@@ -339,7 +340,7 @@ describe('SpreadsheetTable Clipboard', () => {
                 composed: true
             })
         );
-        await element.updateComplete;
+        await awaitView(element);
 
         expect(writeTextSpy).not.toHaveBeenCalled();
     });

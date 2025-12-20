@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, awaitView } from './test-helpers';
 
 // Mock dependencies
 vi.mock('../utils/i18n', () => ({
@@ -36,19 +37,19 @@ describe('Line break display sync tests', () => {
 
     it('should display \\na correctly with leading newline visible', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         // Double-click cell with "\na" to edit
-        const cell00 = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        const cell00 = queryView(table, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
         expect(cell00).toBeTruthy();
 
         console.log('Before dblclick - cell innerHTML:', cell00.innerHTML);
         console.log('Before dblclick - stored value:', table.table.rows[0][0]);
 
         cell00.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
-        const editingCell = table.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
+        const editingCell = queryView(table, '.cell.editing') as HTMLElement;
         expect(editingCell).toBeTruthy();
 
         console.log('After dblclick - editing cell innerHTML:', editingCell.innerHTML);
@@ -62,16 +63,16 @@ describe('Line break display sync tests', () => {
 
     it('should not add extra lines when Option+Enter is pressed in empty cell', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         // Double-click empty cell to edit
-        const cell10 = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        const cell10 = queryView(table, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
         expect(cell10).toBeTruthy();
 
         cell10.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
-        const editingCell = table.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
+        const editingCell = queryView(table, '.cell.editing') as HTMLElement;
         expect(editingCell).toBeTruthy();
 
         console.log('Empty cell editing - initial innerHTML:', editingCell.innerHTML);
@@ -86,7 +87,7 @@ describe('Line break display sync tests', () => {
                 composed: true
             })
         );
-        await table.updateComplete;
+        await awaitView(table);
 
         console.log('After Alt+Enter - innerHTML:', editingCell.innerHTML);
 

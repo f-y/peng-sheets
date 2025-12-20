@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from 'vitest';
+import { queryView, queryAllView, awaitView } from './test-helpers';
 import { fixture, html } from '@open-wc/testing';
 
 // Hoist mocks to ensure they are available before main.ts is imported
@@ -187,7 +188,7 @@ describe('Undo/Redo Key Bindings', () => {
         await new Promise((r) => setTimeout(r, 300));
 
         // Get the SpreadsheetTable inside the editor's shadow DOM
-        const layoutContainer = element.shadowRoot?.querySelector('layout-container');
+        const layoutContainer = queryView(element, 'layout-container');
         if (!layoutContainer) {
             console.log('No layout-container found - skipping');
             return;

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { queryView, awaitView } from './test-helpers';
 
 // Mock dependencies
 vi.mock('../utils/i18n', () => ({
@@ -35,10 +36,10 @@ describe('Deep Debug: Click-away save issue', () => {
 
     it('should trace the exact flow when typing "4" and clicking away', async () => {
         const table = element as any;
-        await table.updateComplete;
+        await awaitView(table);
 
         // Step 1: Click cell to select
-        const cell00 = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        const cell00 = queryView(table, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
         expect(cell00).toBeTruthy();
 
         console.log('=== STEP 1: Before click ===');
@@ -47,7 +48,7 @@ describe('Deep Debug: Click-away save issue', () => {
         console.log('cell innerHTML:', cell00.innerHTML);
 
         cell00.click();
-        await table.updateComplete;
+        await awaitView(table);
 
         console.log('=== STEP 1: After click ===');
         console.log('selectedRow:', table.selectionCtrl.selectedRow);
@@ -64,7 +65,7 @@ describe('Deep Debug: Click-away save issue', () => {
         console.log('isReplacementMode:', table.editCtrl.isReplacementMode);
 
         cell00.dispatchEvent(new KeyboardEvent('keydown', { key: '4', bubbles: true, composed: true }));
-        await table.updateComplete;
+        await awaitView(table);
 
         console.log('=== STEP 2: After keydown + updateComplete ===');
         console.log('isEditing:', table.editCtrl.isEditing);
@@ -72,7 +73,7 @@ describe('Deep Debug: Click-away save issue', () => {
         console.log('isReplacementMode:', table.editCtrl.isReplacementMode);
 
         // Get the editing cell (may be different element after re-render)
-        const editingCell = table.shadowRoot?.querySelector('.cell.editing') as HTMLElement;
+        const editingCell = queryView(table, '.cell.editing') as HTMLElement;
         console.log('editingCell found:', !!editingCell);
         console.log('editingCell innerHTML:', editingCell?.innerHTML);
         console.log('editingCell textContent:', editingCell?.textContent);
@@ -82,16 +83,17 @@ describe('Deep Debug: Click-away save issue', () => {
 
         // Step 3: Click another cell
         console.log('=== STEP 3: Before click cell01 ===');
-        const cell01 = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="1"]') as HTMLElement;
+        const cell01 = queryView(table, '.cell[data-row="0"][data-col="1"]') as HTMLElement;
         expect(cell01).toBeTruthy();
 
         console.log('table.rows[0][0] before click:', table.table.rows[0][0]);
         console.log('isEditing before click:', table.editCtrl.isEditing);
         console.log('pendingEditValue before click:', table.editCtrl.pendingEditValue);
 
-        // Simulate click - this should trigger _commitCurrentEdit
-        cell01.click();
-        await table.updateComplete;
+        // Simulate click via mousedown - this triggers _onCellMousedown which commits
+        cell01.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
+        window.dispatchEvent(new MouseEvent('mouseup'));
+        await awaitView(table);
 
         console.log('=== STEP 3: After click cell01 ===');
         console.log('table.rows[0][0] after click:', table.table.rows[0][0]);

@@ -7,6 +7,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import '../../components/spreadsheet-table';
+import { queryView, awaitView } from '../test-helpers';
 import { SpreadsheetTable, TableJSON } from '../../components/spreadsheet-table';
 
 describe('Editing Verification', () => {
@@ -29,18 +30,18 @@ describe('Editing Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.editCtrl.isEditing).to.be.true;
             expect(el.selectionCtrl.selectedRow).to.equal(1);
             expect(el.selectionCtrl.selectedCol).to.equal(1);
 
             // Verify cell has editing class
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing');
+            const editingCell = queryView(el, '.cell.editing');
             expect(editingCell).to.exist;
             expect(editingCell?.getAttribute('contenteditable')).to.equal('true');
         });
@@ -49,17 +50,17 @@ describe('Editing Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // First select a cell
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
             window.dispatchEvent(new MouseEvent('mouseup'));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press F2
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.editCtrl.isEditing).to.be.true;
             // F2 enters edit mode - not replacement mode
@@ -70,17 +71,17 @@ describe('Editing Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell with value
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
             window.dispatchEvent(new MouseEvent('mouseup'));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Type a character (not F2)
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.editCtrl.isEditing).to.be.true;
             expect(el.editCtrl.isReplacementMode).to.be.true;
@@ -94,24 +95,24 @@ describe('Editing Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const editSpy = vi.fn();
             el.addEventListener('cell-edit', editSpy);
 
             // Double-click to edit
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Modify content
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
             editingCell.textContent = 'new value';
             editingCell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
 
             // Press Enter
             editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify edit mode exited
             expect(el.editCtrl.isEditing).to.be.false;
@@ -127,18 +128,18 @@ describe('Editing Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Enter edit mode on [1, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
 
             // Press Tab
             editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify selection moved to [1, 2]
             expect(el.selectionCtrl.selectedRow).to.equal(1);
@@ -150,20 +151,20 @@ describe('Editing Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Enter edit mode on [1, 2]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="2"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="2"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
 
             // Press Shift+Tab
             editingCell.dispatchEvent(
                 new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, composed: true })
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify selection moved to [1, 1]
             expect(el.selectionCtrl.selectedRow).to.equal(1);
@@ -174,25 +175,25 @@ describe('Editing Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const editSpy = vi.fn();
             el.addEventListener('cell-edit', editSpy);
 
             // Edit cell [1, 1]
-            const cell11 = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            const cell11 = queryView(el, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
             cell11.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
             editingCell.textContent = 'changed';
             editingCell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
 
             // Click different cell [2, 2] - use mousedown which triggers commit
-            const cell22 = el.shadowRoot!.querySelector('.cell[data-row="2"][data-col="2"]') as HTMLElement;
+            const cell22 = queryView(el, '.cell[data-row="2"][data-col="2"]') as HTMLElement;
             cell22.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
             window.dispatchEvent(new MouseEvent('mouseup'));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify [1, 1] edit was committed
             expect(editSpy).toHaveBeenCalled();
@@ -208,22 +209,22 @@ describe('Editing Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             const editSpy = vi.fn();
             el.addEventListener('cell-edit', editSpy);
 
             // Edit cell [0, 0]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
             editingCell.textContent = 'should not save';
 
             // Press Escape
             editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify edit mode exited
             expect(el.editCtrl.isEditing).to.be.false;
@@ -241,14 +242,14 @@ describe('Editing Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Enter edit mode
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
 
             // Mock selection API for Alt+Enter
             const range = document.createRange();
@@ -272,7 +273,7 @@ describe('Editing Verification', () => {
                     cancelable: true
                 })
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Should still be in edit mode (Alt+Enter inserts newline, doesn't commit)
             expect(el.editCtrl.isEditing).to.be.true;
@@ -287,21 +288,21 @@ describe('Editing Verification', () => {
             table.rows[0][0] = 'line1\nline2';
 
             const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify cell displays with newline (as <br>)
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
             expect(cell.innerHTML).to.include('<br>');
 
             // Enter edit mode
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
 
             // Commit without changes
             editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify newline is preserved
             expect(el.table!.rows[0][0]).to.include('\n');

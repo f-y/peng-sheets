@@ -7,6 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import '../../components/spreadsheet-table';
+import { queryView, awaitView } from '../test-helpers';
 import { SpreadsheetTable, TableJSON } from '../../components/spreadsheet-table';
 
 describe('Navigation Verification', () => {
@@ -29,16 +30,16 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [2, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="2"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="2"][data-col="1"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press ArrowUp
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
             expect(el.selectionCtrl.selectedCol).to.equal(1);
@@ -48,16 +49,16 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [0, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="1"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press ArrowDown
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
             expect(el.selectionCtrl.selectedCol).to.equal(1);
@@ -67,16 +68,16 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [1, 2]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="2"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="2"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press ArrowLeft
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
             expect(el.selectionCtrl.selectedCol).to.equal(1);
@@ -86,16 +87,16 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [1, 0]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press ArrowRight
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
             expect(el.selectionCtrl.selectedCol).to.equal(1);
@@ -105,16 +106,16 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [0, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="1"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press ArrowUp (should stay at row 0)
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectedRow).to.equal(0);
         });
@@ -123,16 +124,16 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [1, 0]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press ArrowLeft (should stay at col 0)
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectedCol).to.equal(0);
         });
@@ -141,16 +142,16 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [1, 2] (last column)
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="2"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="2"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press ArrowRight (should stay at col 2)
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectedCol).to.equal(2);
         });
@@ -161,18 +162,18 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [2, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="2"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="2"][data-col="1"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Shift+ArrowUp
             cell.dispatchEvent(
                 new KeyboardEvent('keydown', { key: 'ArrowUp', shiftKey: true, bubbles: true, composed: true })
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Anchor should stay at [2, 1]
             expect(el.selectionCtrl.selectionAnchorRow).to.equal(2);
@@ -180,8 +181,8 @@ describe('Navigation Verification', () => {
             expect(el.selectionCtrl.selectedRow).to.equal(1);
 
             // Verify range selection
-            const cell21 = el.shadowRoot!.querySelector('.cell[data-row="2"][data-col="1"]');
-            const cell11 = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]');
+            const cell21 = queryView(el, '.cell[data-row="2"][data-col="1"]');
+            const cell11 = queryView(el, '.cell[data-row="1"][data-col="1"]');
             expect(cell21?.classList.contains('selected-range')).to.be.true;
             expect(cell11?.classList.contains('selected-range')).to.be.true;
         });
@@ -190,18 +191,18 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [1, 0]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Shift+ArrowRight
             cell.dispatchEvent(
                 new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey: true, bubbles: true, composed: true })
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectionAnchorCol).to.equal(0);
             expect(el.selectionCtrl.selectedCol).to.equal(1);
@@ -213,20 +214,20 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select cell [1, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Enter edit mode first, then Tab
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
             editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
             expect(el.selectionCtrl.selectedCol).to.equal(2);
@@ -236,16 +237,16 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select, edit, and Tab from last column
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="2"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="2"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
             editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Should wrap to next row, first column
             expect(el.selectionCtrl.selectedRow).to.equal(2);
@@ -256,18 +257,18 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select, edit, and Shift+Tab
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="2"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="2"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
             editingCell.dispatchEvent(
                 new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, composed: true })
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
             expect(el.selectionCtrl.selectedCol).to.equal(1);
@@ -277,18 +278,18 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Select, edit, and Shift+Tab from first column
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="0"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
             editingCell.dispatchEvent(
                 new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, composed: true })
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Should wrap to previous row, last column
             expect(el.selectionCtrl.selectedRow).to.equal(0);
@@ -301,16 +302,16 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Edit cell [1, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
             editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Should move to [2, 1]
             expect(el.selectionCtrl.selectedRow).to.equal(2);
@@ -321,18 +322,18 @@ describe('Navigation Verification', () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Edit cell [2, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="2"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="2"][data-col="1"]') as HTMLElement;
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
-            const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
+            const editingCell = queryView(el, '.cell.editing') as HTMLElement;
             editingCell.dispatchEvent(
                 new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, composed: true })
             );
-            await el.updateComplete;
+            await awaitView(el);
 
             // Should move to [1, 1]
             expect(el.selectionCtrl.selectedRow).to.equal(1);
@@ -353,20 +354,20 @@ describe('Navigation Verification', () => {
             };
 
             const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
-            await el.updateComplete;
+            await awaitView(el);
 
             // Verify row 1 is hidden
             const visibleIndices = el.visibleRowIndices;
             expect(visibleIndices).to.deep.equal([0, 2]); // Row 1 should be hidden
 
             // Select cell [0, 1]
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="1"]') as HTMLElement;
+            const cell = queryView(el, '.cell[data-row="0"][data-col="1"]') as HTMLElement;
             cell.click();
-            await el.updateComplete;
+            await awaitView(el);
 
             // Press ArrowDown
             cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }));
-            await el.updateComplete;
+            await awaitView(el);
 
             // Should skip hidden row 1 and land on row 2
             expect(el.selectionCtrl.selectedRow).to.equal(2);
