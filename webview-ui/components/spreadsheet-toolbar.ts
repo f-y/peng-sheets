@@ -46,17 +46,17 @@ export class SpreadsheetToolbar extends LitElement {
             <div class="toolbar">
                 <vscode-button
                     appearance="icon"
-                    aria-label="\${t('toolbarUndo')}"
-                    title="\${t('toolbarUndo')} (\${this._isMac() ? '⌘Z' : 'Ctrl+Z'})"
-                    @click="\${() => this._dispatch('undo')}"
+                    aria-label="${t('toolbarUndo')}"
+                    title="${t('toolbarUndo')} (${this._isMac() ? '⌘Z' : 'Ctrl+Z'})"
+                    @click="${() => this._dispatch('undo')}"
                 >
                     <span class="codicon codicon-discard"></span>
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
-                    aria-label="\${t('toolbarRedo')}"
-                    title="\${t('toolbarRedo')} (\${this._isMac() ? '⌘⇧Z' : 'Ctrl+Y'})"
-                    @click="\${() => this._dispatch('redo')}"
+                    aria-label="${t('toolbarRedo')}"
+                    title="${t('toolbarRedo')} (${this._isMac() ? '⌘⇧Z' : 'Ctrl+Y'})"
+                    @click="${() => this._dispatch('redo')}"
                 >
                     <span class="codicon codicon-redo"></span>
                 </vscode-button>
@@ -65,29 +65,33 @@ export class SpreadsheetToolbar extends LitElement {
 
                 <vscode-button
                     appearance="icon"
-                    aria-label="\${t('toolbarBold')}"
-                    @click="\${() => this._dispatch('bold')}"
+                    aria-label="${t('toolbarBold')}"
+                    title="${t('toolbarBold')} (${this._isMac() ? '⌘B' : 'Ctrl+B'})"
+                    @click="${() => this._dispatch('bold')}"
                 >
                     <span class="codicon codicon-bold"></span>
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
-                    aria-label="\${t('toolbarItalic')}"
-                    @click="\${() => this._dispatch('italic')}"
+                    aria-label="${t('toolbarItalic')}"
+                    title="${t('toolbarItalic')} (${this._isMac() ? '⌘I' : 'Ctrl+I'})"
+                    @click="${() => this._dispatch('italic')}"
                 >
                     <span class="codicon codicon-italic"></span>
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
-                    aria-label="\${t('toolbarStrikethrough')}"
-                    @click="\${() => this._dispatch('strikethrough')}"
+                    aria-label="${t('toolbarStrikethrough')}"
+                    title="${t('toolbarStrikethrough')}"
+                    @click="${() => this._dispatch('strikethrough')}"
                 >
                     <span class="codicon codicon-strikethrough"></span>
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
-                    aria-label="\${t('toolbarUnderline')}"
-                    @click="\${() => this._dispatch('underline')}"
+                    aria-label="${t('toolbarUnderline')}"
+                    title="${t('toolbarUnderline')} (${this._isMac() ? '⌘U' : 'Ctrl+U'})"
+                    @click="${() => this._dispatch('underline')}"
                 >
                     <svg
                         width="16"
@@ -105,6 +109,7 @@ export class SpreadsheetToolbar extends LitElement {
                 <vscode-button
                     appearance="icon"
                     aria-label="${t('toolbarAlignLeft')}"
+                    title="${t('toolbarAlignLeft')}"
                     @click="${() => this._dispatch('align-left')}"
                 >
                     <svg
@@ -120,6 +125,7 @@ export class SpreadsheetToolbar extends LitElement {
                 <vscode-button
                     appearance="icon"
                     aria-label="${t('toolbarAlignCenter')}"
+                    title="${t('toolbarAlignCenter')}"
                     @click="${() => this._dispatch('align-center')}"
                 >
                     <svg
@@ -135,6 +141,7 @@ export class SpreadsheetToolbar extends LitElement {
                 <vscode-button
                     appearance="icon"
                     aria-label="${t('toolbarAlignRight')}"
+                    title="${t('toolbarAlignRight')}"
                     @click="${() => this._dispatch('align-right')}"
                 >
                     <svg
