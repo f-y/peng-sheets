@@ -295,3 +295,46 @@ The application treats a Markdown file as a collection of "Tabs".
     *   When deleting sheets, content before and after the Workbook Section MUST be preserved.
     *   The Workbook Section boundary is determined by the next top-level header (same level as root marker) or end of file.
     *   Example: In a document with `# Tables` followed by `# Appendix`, deleting all sheets removes only the content between these headers.
+
+## 15. Formula Columns (Computed Columns / 算出列)
+This feature implements calculated columns similar to Pivot Table calculated fields or simplified Excel Formulas, but with a unique approach to data persistence suited for Markdown.
+
+### 15.1. Concept & Data Model
+*   **Philosophy**: "**Markdown holds current data; Metadata holds the logic.**"
+*   **Behavior**:
+    *   The spreadsheet does *not* store formulas (e.g., `=A1+B1`) in the cell text content. The Markdown table remains pure static data.
+    *   **Persistence**: The calculation definition/logic is stored in the **Table Metadata** (hidden from the rendered Markdown).
+    *   **Runtime**: The Editor maintains a "Dependency Graph" in memory.
+    *   **Reactivity**: When a "Source" value changes, the Editor automatically calculates the result and updates the *text content* of the "Target" (Formula) column in the Markdown buffer immediately.
+    *   **Benefit**: The Markdown file remains a valid, readable, and portable static table for any other Markdown viewer (GitHub, Obsidian, etc.), while the Editor provides the "smart" behavior.
+
+### 15.2. User Interface
+*   **Entry Points**:
+    *   **Context Menu**: Right-click a Column Header -> **"Set as Formula Column"** (算出列に設定).
+    *   **Toolbar**: **"Add Formula Column"** button (Adds a new column on the right and opens config).
+*   **Configuration Dialog (Modal)**:
+    *   A dedicated modal for defining the column logic.
+    *   **Formula Type Selector**:
+        1.  **Arithmetic / Expression**: `[Quantity] * [Unit Price]`.
+        2.  **Lookup (VLOOKUP-style)**: Reference another table.
+        3.  **Aggregation**: Running totals, etc. (Future).
+    *   **Inputs (Dynamic based on Type)**:
+        *   *Expression*: Simple text input with autocomplete for column names `[Column]`.
+        *   *Lookup*:
+            *   **Master Table**: Dropdown of other tables in the Project.
+            *   **Join Key (Local)**: Column in current table (e.g., `Product ID`).
+            *   **Join Key (Remote)**: Column in Master Table to match (e.g., `ID`).
+            *   **Target Field**: Column in Master Table to retrieve (e.g., `Price`).
+*   **Visual Indication**:
+    *   Formula Columns have a distinct visual style in the header (e.g., a function `fx` icon).
+    *   Cells in Formula Columns are **Read-Only** (or show a warning if user tries to manually edit, as manual edits would be overwritten by the formula).
+
+### 15.3. Execution Logic
+1.  **Linkage**: On load, the Editor parses metadata and establishes listeners on "Source Columns" (e.g., "Quantity", "Price").
+2.  **Trigger**: User edits a cell in a Source Column.
+3.  **Process**:
+    *   The `FormulaController` identifies dependent columns.
+    *   It executes the logic (e.g., `row.Quantity * row.Price`).
+    *   It updates the value of the Formula Column cell in the **same row**.
+    *   **Master Table Changes**: If a record in a linked Master Table is updated, the Editor scans all tables referencing it and updates their Lookup columns.
+4.  **Serialization**: The calculated values are written to the Markdown file as standard text. The logic is saved in the metadata block.
