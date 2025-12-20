@@ -73,3 +73,51 @@ Security: Ensure HTML escaping is performed BEFORE markdown replacement to preve
 ### 5. Toolbar Integration
 The `<spreadsheet-toolbar>` component dispatches `toolbar-action` events.
 These are routed by `main.ts` to the active `SpreadsheetTable` instance via `window.activeSpreadsheetTable`.
+
+### 6. Event Wiring Testing
+
+**Custom events (e.g., `ss-corner-keydown`) can be emitted but silently ignored if not wired in parent components.** TypeScript does NOT type-check event names in Lit templates.
+
+#### The Problem
+
+When a cell component emits an event:
+```typescript
+// ss-corner-cell.ts
+emitCellEvent(this, 'ss-corner-keydown', { originalEvent: e });
+```
+
+If the parent doesn't listen:
+```html
+<!-- No @ss-corner-keydown handler -->
+<ss-corner-cell></ss-corner-cell>
+```
+
+The event just bubbles up and disappears. No error, no warning.
+
+#### The Solution: Integration Tests with Real UI Interactions
+
+Tests that bypass the event chain (e.g., directly calling `keyboardCtrl.handleKeyDown()`) will NOT catch wiring issues.
+
+**Do this**:
+```typescript
+// ✅ Good: Test the full UI interaction chain
+const cornerCell = queryView(element, '.cell.header-corner');
+cornerCell.click();  // Triggers the actual event chain
+await awaitView(element);
+expect(element.selectionCtrl.selectedRow).toBe(-2);
+```
+
+**Avoid this**:
+```typescript
+// ❌ Incomplete: Bypasses event wiring
+element.selectionCtrl.selectedRow = -2;  // Directly set state
+```
+
+#### Checklist for New Cell Components
+
+When adding a new cell type (e.g., `ss-foo-cell`):
+1. Document all emitted events in the component JSDoc
+2. Wire event in View: `@ss-foo-event="${(e) => this._bubbleEvent('view-foo-event', e.detail)}"`
+3. Wire event in Container: `@view-foo-event="${this.eventCtrl.handleFooEvent}"`
+4. Implement handler in EventController
+5. **Write integration test**: Click/interact with the cell → verify state changes
