@@ -1434,9 +1434,22 @@ json.dumps(result)
 
     private _handleToolbarAction(e: CustomEvent) {
         console.log('Main: _handleToolbarAction', e.detail);
+        const action = e.detail.action;
+
+        // Handle undo/redo at main.ts level (not delegated to table)
+        if (action === 'undo') {
+            this._handleUndo();
+            return;
+        }
+        if (action === 'redo') {
+            this._handleRedo();
+            return;
+        }
+
+        // Delegate other actions to active table
         const table = (window as any).activeSpreadsheetTable;
         if (table && table.handleToolbarAction) {
-            table.handleToolbarAction(e.detail.action);
+            table.handleToolbarAction(action);
         } else {
             console.warn('Main: No active table found to handle action');
         }

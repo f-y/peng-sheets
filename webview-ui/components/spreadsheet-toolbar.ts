@@ -85,6 +85,25 @@ export class SpreadsheetToolbar extends LitElement {
 
                 <vscode-button
                     appearance="icon"
+                    aria-label="${t('toolbarUndo')}"
+                    title="${t('toolbarUndo')} (${this._isMac() ? '⌘Z' : 'Ctrl+Z'})"
+                    @click="${() => this._dispatch('undo')}"
+                >
+                    <span class="codicon codicon-discard"></span>
+                </vscode-button>
+                <vscode-button
+                    appearance="icon"
+                    aria-label="${t('toolbarRedo')}"
+                    title="${t('toolbarRedo')} (${this._isMac() ? '⌘⇧Z' : 'Ctrl+Y'})"
+                    @click="${() => this._dispatch('redo')}"
+                >
+                    <span class="codicon codicon-redo"></span>
+                </vscode-button>
+
+                <div class="divider"></div>
+
+                <vscode-button
+                    appearance="icon"
                     aria-label="${t('toolbarAlignLeft')}"
                     @click="${() => this._dispatch('align-left')}"
                 >
@@ -193,5 +212,9 @@ export class SpreadsheetToolbar extends LitElement {
                 composed: true
             })
         );
+    }
+
+    private _isMac(): boolean {
+        return navigator.platform.toLowerCase().includes('mac');
     }
 }

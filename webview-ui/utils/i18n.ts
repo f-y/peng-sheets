@@ -49,7 +49,9 @@ const translations = {
         toolbarPercent: 'Percent Format',
         toolbarWordWrap: 'Toggle Word Wrap',
         toolbarDecimalIncrease: 'Increase Decimals',
-        toolbarDecimalDecrease: 'Decrease Decimals'
+        toolbarDecimalDecrease: 'Decrease Decimals',
+        toolbarUndo: 'Undo',
+        toolbarRedo: 'Redo'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -101,7 +103,9 @@ const translations = {
         toolbarPercent: 'パーセント形式',
         toolbarWordWrap: '折り返し切替',
         toolbarDecimalIncrease: '小数点桁数を増やす',
-        toolbarDecimalDecrease: '小数点桁数を減らす'
+        toolbarDecimalDecrease: '小数点桁数を減らす',
+        toolbarUndo: '元に戻す',
+        toolbarRedo: 'やり直し'
     }
 };
 
