@@ -7,8 +7,8 @@ This is a design document that also contains a spreadsheet.
 We are building a new application.
 
 - test1
-  - test
-  - test
+  - test2
+  - test3
 
 
 | Category | Amount |
@@ -42,7 +42,7 @@ We are building a new application.
 | --- | --- |
 | Server | $500 |
 | Design | $300 |
-| a | a |
+| a |  |
 
 
 # Appendix
