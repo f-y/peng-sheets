@@ -1,0 +1,149 @@
+/**
+ * ss-context-menu - A context menu for row/column operations.
+ *
+ * Shows insert/delete options for rows or columns.
+ *
+ * Events Emitted:
+ * - ss-insert-row: { index, position: 'above' | 'below' }
+ * - ss-delete-row: { index }
+ * - ss-insert-col: { index, position: 'left' | 'right' }
+ * - ss-delete-col: { index }
+ * - ss-menu-close: {}
+ */
+import { LitElement, html, css, unsafeCSS } from 'lit';
+import { customElement, property } from 'lit/decorators.js';
+import { t } from '../../utils/i18n';
+import { contextMenuStyles } from '../../styles/spreadsheet-shared';
+
+@customElement('ss-context-menu')
+export class SSContextMenu extends LitElement {
+    static styles = [
+        css`
+            :host {
+                display: block;
+            }
+        `,
+        unsafeCSS(contextMenuStyles)
+    ];
+
+    @property({ type: Number }) x = 0;
+    @property({ type: Number }) y = 0;
+    @property({ type: String }) menuType: 'row' | 'col' = 'row';
+    @property({ type: Number }) index = 0;
+
+    connectedCallback() {
+        super.connectedCallback();
+        // Close menu on outside click
+        window.addEventListener('click', this._handleOutsideClick);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('click', this._handleOutsideClick);
+    }
+
+    private _handleOutsideClick = () => {
+        this.dispatchEvent(
+            new CustomEvent('ss-menu-close', {
+                bubbles: true,
+                composed: true
+            })
+        );
+    };
+
+    private _handleInsertAbove(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-insert-row', {
+                detail: { index: this.index, position: 'above' },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
+    private _handleInsertBelow(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-insert-row', {
+                detail: { index: this.index + 1, position: 'below' },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
+    private _handleDeleteRow(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-delete-row', {
+                detail: { index: this.index },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
+    private _handleInsertLeft(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-insert-col', {
+                detail: { index: this.index, position: 'left' },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
+    private _handleInsertRight(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-insert-col', {
+                detail: { index: this.index + 1, position: 'right' },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
+    private _handleDeleteCol(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-delete-col', {
+                detail: { index: this.index },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
+    private _stopPropagation(e: MouseEvent) {
+        e.stopPropagation();
+    }
+
+    render() {
+        if (this.menuType === 'row') {
+            return html`
+                <div class="context-menu" style="left: ${this.x}px; top: ${this.y}px" @click="${this._stopPropagation}">
+                    <div class="context-menu-item" @click="${this._handleInsertAbove}">${t('insertRowAbove')}</div>
+                    <div class="context-menu-item" @click="${this._handleInsertBelow}">${t('insertRowBelow')}</div>
+                    <div class="context-menu-item" @click="${this._handleDeleteRow}">${t('deleteRow')}</div>
+                </div>
+            `;
+        } else {
+            return html`
+                <div class="context-menu" style="left: ${this.x}px; top: ${this.y}px" @click="${this._stopPropagation}">
+                    <div class="context-menu-item" @click="${this._handleInsertLeft}">${t('insertColLeft')}</div>
+                    <div class="context-menu-item" @click="${this._handleInsertRight}">${t('insertColRight')}</div>
+                    <div class="context-menu-item" @click="${this._handleDeleteCol}">${t('deleteCol')}</div>
+                </div>
+            `;
+        }
+    }
+}
+
+declare global {
+    interface HTMLElementTagNameMap {
+        'ss-context-menu': SSContextMenu;
+    }
+}
