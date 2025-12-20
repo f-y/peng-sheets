@@ -146,6 +146,7 @@ export class SSColumnHeader extends LitElement {
                 <span
                     class="filter-icon codicon codicon-filter ${this.hasActiveFilter ? 'active' : ''}"
                     @click="${this._onFilterClick}"
+                    @mousedown="${this._stopPropagation}"
                 ></span>
                 <div
                     class="col-resize-handle"

@@ -135,10 +135,13 @@ export function emitContextMenu(host: HTMLElement, type: 'row' | 'col', index: n
 
 export function emitFilterClick(host: HTMLElement, col: number, e: MouseEvent): void {
     e.stopPropagation();
+    // Use the clicked element's bottom edge for menu positioning
+    const target = e.target as HTMLElement;
+    const rect = target.getBoundingClientRect();
     emitCellEvent<FilterEventDetail>(host, 'ss-filter-click', {
         col,
-        x: e.clientX,
-        y: e.clientY
+        x: rect.left,
+        y: rect.bottom
     });
 }
 

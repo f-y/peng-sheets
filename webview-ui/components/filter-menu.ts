@@ -6,7 +6,7 @@ export class FilterMenu extends LitElement {
     static override styles = css`
         :host {
             display: block;
-            position: absolute;
+            position: fixed;
             background: var(--vscode-dropdown-background);
             color: var(--vscode-dropdown-foreground);
             border: 1px solid var(--vscode-dropdown-border);
@@ -89,6 +89,20 @@ export class FilterMenu extends LitElement {
 
     @property({ type: Array })
     hiddenValues: string[] = [];
+
+    @property({ type: Number })
+    x = 0;
+
+    @property({ type: Number })
+    y = 0;
+
+    override updated(changedProperties: Map<string, unknown>) {
+        super.updated(changedProperties);
+        if (changedProperties.has('x') || changedProperties.has('y')) {
+            this.style.left = `${this.x}px`;
+            this.style.top = `${this.y}px`;
+        }
+    }
 
     @state()
     private _searchValue = '';
@@ -211,7 +225,7 @@ export class FilterMenu extends LitElement {
                         .checked=${isSelectAllChecked}
                         .indeterminate=${isIndeterminate}
                         @change=${(e: Event) =>
-                            this._toggleSelectAll((e.target as HTMLInputElement).checked, filteredValues)}
+                this._toggleSelectAll((e.target as HTMLInputElement).checked, filteredValues)}
                         ?disabled=${filteredValues.length === 0}
                     />
                     <span>(Select All)</span>
@@ -223,7 +237,7 @@ export class FilterMenu extends LitElement {
                                 type="checkbox"
                                 .checked=${!this.hiddenValues.includes(value)}
                                 @change=${(e: Event) =>
-                                    this._toggleValue(value, (e.target as HTMLInputElement).checked)}
+                            this._toggleValue(value, (e.target as HTMLInputElement).checked)}
                             />
                             <span>${value === '' ? '(Blanks)' : value}</span>
                         </label>
