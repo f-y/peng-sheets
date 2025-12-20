@@ -12,8 +12,8 @@ export class NavigationController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
     handleKeyDown(e: KeyboardEvent, maxRows: number, maxCols: number) {
         if (e.isComposing) return;
@@ -90,5 +90,35 @@ export class NavigationController implements ReactiveController {
         // Request scroll into view (Host responsibility via callback?)
         // Or controller can trigger updated host checks
         // For now, assume host reacts to selection change
+    }
+
+    /**
+     * Handle Tab key press with wrapping behavior.
+     * Tab at end of row → wrap to next row column 0
+     * Shift+Tab at column 0 → wrap to previous row last column
+     * @returns true if handled
+     */
+    handleTabWrap(shift: boolean, colCount: number): boolean {
+        const currentRow = this.selectionCtrl.selectedRow;
+        const currentCol = this.selectionCtrl.selectedCol;
+
+        if (shift) {
+            // Shift+Tab: move left, wrap to previous row if at column 0
+            if (currentCol === 0) {
+                let newRow = currentRow - 1;
+                if (newRow < -1) newRow = -1; // Clamp to header row
+                this.selectionCtrl.selectCell(newRow, colCount - 1);
+            } else {
+                this.selectionCtrl.selectCell(currentRow, currentCol - 1);
+            }
+        } else {
+            // Tab: move right, wrap to next row if at last column
+            if (currentCol === colCount - 1) {
+                this.selectionCtrl.selectCell(currentRow + 1, 0);
+            } else {
+                this.selectionCtrl.selectCell(currentRow, currentCol + 1);
+            }
+        }
+        return true;
     }
 }

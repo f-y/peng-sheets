@@ -66,4 +66,102 @@ describe('Ghost Cell Direct Input + Click-Away Bug', () => {
         expect(table.table.rows.length).toBe(initialRowCount + 1);
         expect(table.table.rows[1][0]).toBe('X');
     });
+
+    it('should render new row in UI after ghost cell direct input and click-away', async () => {
+        const table = element as any;
+        await table.updateComplete;
+
+        const initialRowCount = table.table.rows.length;
+        expect(initialRowCount).toBe(1);
+
+        // Click ghost cell (row 1, col 0) to select it
+        const ghostCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        expect(ghostCell).toBeTruthy();
+        ghostCell.click();
+        await table.updateComplete;
+
+        // Type "Y" directly
+        ghostCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Y', bubbles: true, composed: true }));
+        await table.updateComplete;
+
+        expect(table.editCtrl.isEditing).toBe(true);
+        expect(table.editCtrl.pendingEditValue).toBe('Y');
+
+        // Click another cell to commit
+        const dataCell = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
+        expect(dataCell).toBeTruthy();
+        dataCell.click();
+        await table.updateComplete;
+
+        // Data should be updated
+        expect(table.table.rows.length).toBe(initialRowCount + 1);
+        expect(table.table.rows[1][0]).toBe('Y');
+
+        // UI should also be updated - the new row should be visible in DOM
+        // After commit, the old ghost row (row 1) should now be a data row with "Y"
+        const newDataCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        expect(newDataCell).toBeTruthy();
+        // The cell should contain "Y" (not be empty like a ghost cell)
+        expect(newDataCell.textContent?.trim()).toBe('Y');
+    });
+
+    it('should NOT show pendingEditValue in other ghost cells while editing', async () => {
+        const table = element as any;
+        await table.updateComplete;
+
+        // Click first ghost cell (row 1, col 0) to select it
+        const ghostCell0 = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        expect(ghostCell0).toBeTruthy();
+        ghostCell0.click();
+        await table.updateComplete;
+
+        // Type "X" directly to enter replacement mode
+        ghostCell0.dispatchEvent(new KeyboardEvent('keydown', { key: 'X', bubbles: true, composed: true }));
+        await table.updateComplete;
+
+        // Verify editing state
+        expect(table.editCtrl.isEditing).toBe(true);
+        expect(table.editCtrl.pendingEditValue).toBe('X');
+
+        // Check the OTHER ghost cell (row 1, col 1) - should NOT contain "X"
+        const ghostCell1 = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
+        expect(ghostCell1).toBeTruthy();
+        // The bug was that pendingEditValue was showing in all empty/ghost cells
+        // The textContent of the non-editing ghost cell should be empty, not "X"
+        expect(ghostCell1.textContent?.trim()).toBe('');
+        expect(ghostCell1.textContent).not.toContain('X');
+    });
+
+    it('should NOT show pendingEditValue in empty data cells while editing ghost cell', async () => {
+        // Create table with an empty cell
+        const table = element as any;
+        table.table = {
+            name: 'test',
+            rows: [['A1', '']],  // Second cell is empty
+            headers: ['A', 'B'],
+            metadata: {}
+        };
+        await table.updateComplete;
+
+        // Click ghost cell (row 1, col 0) to select it
+        const ghostCell = table.shadowRoot?.querySelector('.cell[data-row="1"][data-col="0"]') as HTMLElement;
+        expect(ghostCell).toBeTruthy();
+        ghostCell.click();
+        await table.updateComplete;
+
+        // Type "Y" directly
+        ghostCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Y', bubbles: true, composed: true }));
+        await table.updateComplete;
+
+        // Verify editing state
+        expect(table.editCtrl.isEditing).toBe(true);
+        expect(table.editCtrl.pendingEditValue).toBe('Y');
+
+        // Check the EMPTY data cell (row 0, col 1) - should NOT contain "Y"
+        const emptyDataCell = table.shadowRoot?.querySelector('.cell[data-row="0"][data-col="1"]') as HTMLElement;
+        expect(emptyDataCell).toBeTruthy();
+        // Bug: empty cells were showing pendingEditValue
+        expect(emptyDataCell.textContent?.trim()).toBe('');
+        expect(emptyDataCell.textContent).not.toContain('Y');
+    });
 });
