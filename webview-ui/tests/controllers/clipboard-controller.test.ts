@@ -332,9 +332,9 @@ describe('ClipboardController', () => {
             ];
 
             // Convert to TSV
-            const tsv = original.map((row) =>
-                row.map((cell) => (clipboard as any)._escapeTsvValue(cell)).join('\t')
-            ).join('\n');
+            const tsv = original
+                .map((row) => row.map((cell) => (clipboard as any)._escapeTsvValue(cell)).join('\t'))
+                .join('\n');
 
             // Parse back
             const parsed = clipboard.parseTsv(tsv);
