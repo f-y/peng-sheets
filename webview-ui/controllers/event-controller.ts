@@ -321,6 +321,10 @@ export class EventController implements ReactiveController {
         this.host.focusCell();
     };
 
+    handleCornerKeydown = (e: CustomEvent<{ originalEvent: KeyboardEvent }>) => {
+        this.host.keyboardCtrl.handleKeyDown(e.detail.originalEvent);
+    };
+
     handleMenuAction = (e: CustomEvent<{ action: string; type: string; index: number }>) => {
         const { action, type, index } = e.detail;
         if (action === 'insert') {
