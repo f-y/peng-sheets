@@ -46,29 +46,48 @@ export class SpreadsheetToolbar extends LitElement {
             <div class="toolbar">
                 <vscode-button
                     appearance="icon"
-                    aria-label="${t('toolbarBold')}"
-                    @click="${() => this._dispatch('bold')}"
+                    aria-label="\${t('toolbarUndo')}"
+                    title="\${t('toolbarUndo')} (\${this._isMac() ? '⌘Z' : 'Ctrl+Z'})"
+                    @click="\${() => this._dispatch('undo')}"
+                >
+                    <span class="codicon codicon-discard"></span>
+                </vscode-button>
+                <vscode-button
+                    appearance="icon"
+                    aria-label="\${t('toolbarRedo')}"
+                    title="\${t('toolbarRedo')} (\${this._isMac() ? '⌘⇧Z' : 'Ctrl+Y'})"
+                    @click="\${() => this._dispatch('redo')}"
+                >
+                    <span class="codicon codicon-redo"></span>
+                </vscode-button>
+
+                <div class="divider"></div>
+
+                <vscode-button
+                    appearance="icon"
+                    aria-label="\${t('toolbarBold')}"
+                    @click="\${() => this._dispatch('bold')}"
                 >
                     <span class="codicon codicon-bold"></span>
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
-                    aria-label="${t('toolbarItalic')}"
-                    @click="${() => this._dispatch('italic')}"
+                    aria-label="\${t('toolbarItalic')}"
+                    @click="\${() => this._dispatch('italic')}"
                 >
                     <span class="codicon codicon-italic"></span>
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
-                    aria-label="${t('toolbarStrikethrough')}"
-                    @click="${() => this._dispatch('strikethrough')}"
+                    aria-label="\${t('toolbarStrikethrough')}"
+                    @click="\${() => this._dispatch('strikethrough')}"
                 >
                     <span class="codicon codicon-strikethrough"></span>
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
-                    aria-label="${t('toolbarUnderline')}"
-                    @click="${() => this._dispatch('underline')}"
+                    aria-label="\${t('toolbarUnderline')}"
+                    @click="\${() => this._dispatch('underline')}"
                 >
                     <svg
                         width="16"
@@ -79,25 +98,6 @@ export class SpreadsheetToolbar extends LitElement {
                     >
                         <path d="M13 5h-1v3.5a4 4 0 1 1-8 0V5H3v3.5a5 5 0 1 0 10 0V5zm-2 9H5v1h6v-1z" />
                     </svg>
-                </vscode-button>
-
-                <div class="divider"></div>
-
-                <vscode-button
-                    appearance="icon"
-                    aria-label="${t('toolbarUndo')}"
-                    title="${t('toolbarUndo')} (${this._isMac() ? '⌘Z' : 'Ctrl+Z'})"
-                    @click="${() => this._dispatch('undo')}"
-                >
-                    <span class="codicon codicon-discard"></span>
-                </vscode-button>
-                <vscode-button
-                    appearance="icon"
-                    aria-label="${t('toolbarRedo')}"
-                    title="${t('toolbarRedo')} (${this._isMac() ? '⌘⇧Z' : 'Ctrl+Y'})"
-                    @click="${() => this._dispatch('redo')}"
-                >
-                    <span class="codicon codicon-redo"></span>
                 </vscode-button>
 
                 <div class="divider"></div>
