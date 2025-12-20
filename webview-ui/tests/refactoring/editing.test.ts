@@ -102,6 +102,7 @@ describe('Editing Verification', () => {
 
             // Double-click to edit
             const cell = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            cell.focus();
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
             await awaitView(el);
 
@@ -295,6 +296,7 @@ describe('Editing Verification', () => {
             expect(cell.innerHTML).to.include('<br>');
 
             // Enter edit mode
+            cell.focus();
             cell.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, composed: true }));
             await awaitView(el);
 

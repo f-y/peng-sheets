@@ -137,9 +137,9 @@ export class KeyboardController implements ReactiveController {
                 // "Gets selection from either shadow root (if supported) or window."
                 // Standard Selection API works on document level mostly unless Shadow DOM selection is specific.
                 // If I use `this.host.shadowRoot` it might be fine if selection crosses boundary?
-                // Let's use `this.host.shadowRoot` to match original code, but mindful it might need View's root.
-
-                const selection = getEditSelection(this.host.shadowRoot);
+                // Use View's shadowRoot because cells are rendered there
+                const root = this.host.viewShadowRoot || this.host.shadowRoot;
+                const selection = getEditSelection(root);
                 const element = e.target as HTMLElement;
                 insertLineBreakAtSelection(selection, element);
                 return;

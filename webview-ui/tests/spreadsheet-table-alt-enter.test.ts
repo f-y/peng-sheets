@@ -37,7 +37,7 @@ describe('SpreadsheetTable Alt+Enter', () => {
 
         // Mock getSelection on ShadowRoot for JSDOM
         const range = document.createRange();
-        range.setStart(textNode, 3); // "Ali|ce"
+        range.setStart(textNode, 3);
         range.setEnd(textNode, 3);
 
         const mockSelection = {
@@ -47,7 +47,9 @@ describe('SpreadsheetTable Alt+Enter', () => {
             addRange: (r: Range) => {}
         };
 
-        (el.shadowRoot as any).getSelection = () => mockSelection;
+        // Mock on the VIEW's shadow root to verify Controller uses the correct root
+        const view = el.shadowRoot!.querySelector('spreadsheet-table-view');
+        (view!.shadowRoot as any).getSelection = () => mockSelection;
 
         // Also ensure window.getSelection doesn't interfere/is fallback
         // The component prefers root.getSelection, so this mock should win.
@@ -61,6 +63,8 @@ describe('SpreadsheetTable Alt+Enter', () => {
             composed: true,
             cancelable: true
         });
+
+        cell.focus();
 
         cell.dispatchEvent(event);
         await awaitView(el);
@@ -123,7 +127,7 @@ describe('SpreadsheetTable Alt+Enter', () => {
 
         // Mock getSelection
         const range = document.createRange();
-        range.setStart(textNode, 5); // "Alice|"
+        range.setStart(textNode, 5);
         range.setEnd(textNode, 5);
 
         const mockSelection = {
@@ -132,7 +136,9 @@ describe('SpreadsheetTable Alt+Enter', () => {
             removeAllRanges: () => {},
             addRange: () => {}
         };
-        (el.shadowRoot as any).getSelection = () => mockSelection;
+        // Mock on the VIEW's shadow root to verify Controller uses the correct root
+        const view = el.shadowRoot!.querySelector('spreadsheet-table-view');
+        (view!.shadowRoot as any).getSelection = () => mockSelection;
 
         // 3. Dispatch Alt+Enter
         const event = new KeyboardEvent('keydown', {

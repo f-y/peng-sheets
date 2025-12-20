@@ -62,7 +62,7 @@ export class SpreadsheetTable extends LitElement {
     keyboardCtrl = new KeyboardController(this);
     eventCtrl = new EventController(this);
     focusCtrl = new FocusController({
-        getShadowRoot: () => this.shadowRoot,
+        getShadowRoot: () => this.shadowRoot?.querySelector('spreadsheet-table-view')?.shadowRoot || this.shadowRoot,
         getSelectedRow: () => this.selectionCtrl.selectedRow,
         getSelectedCol: () => this.selectionCtrl.selectedCol,
         isEditing: () => this.editCtrl.isEditing,
@@ -178,12 +178,27 @@ export class SpreadsheetTable extends LitElement {
         }
 
         // Focus Retention Logic
+        // Focus Retention Logic
         if (this._shouldFocusCell) {
-            this.focusCtrl.focusSelectedCell();
+            const view = this.shadowRoot?.querySelector('spreadsheet-table-view');
+            if (view) {
+                (view as any).updateComplete.then(() => {
+                    setTimeout(() => {
+                        this.focusCtrl.focusSelectedCell();
+                    }, 0);
+                });
+            }
             this._shouldFocusCell = false;
             this._wasFocusedBeforeUpdate = false;
         } else if (this._wasFocusedBeforeUpdate) {
-            this.focusCtrl.focusSelectedCell();
+            const view = this.shadowRoot?.querySelector('spreadsheet-table-view');
+            if (view) {
+                (view as any).updateComplete.then(() => {
+                    setTimeout(() => {
+                        this.focusCtrl.focusSelectedCell();
+                    }, 0);
+                });
+            }
             this._wasFocusedBeforeUpdate = false;
         }
     }
@@ -209,6 +224,14 @@ export class SpreadsheetTable extends LitElement {
         // MouseMove/Up handled by SelectionController
         // Register focus tracker
         this.addEventListener('focusin', this._handleFocusIn);
+    }
+
+    /**
+     * Helper to get the View component's shadow root.
+     * This is where the cells actually live.
+     */
+    get viewShadowRoot(): ShadowRoot | null {
+        return this.shadowRoot?.querySelector('spreadsheet-table-view')?.shadowRoot || null;
     }
 
     disconnectedCallback() {

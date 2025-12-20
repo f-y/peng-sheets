@@ -40,9 +40,11 @@ We are building a new application.
 
 | Category | Amount |
 | --- | --- |
-| Server | $500 |
-| Design | $300 |
 | a |  |
+| Design | $300 |
+| Server | $500 |
+
+<!-- md-spreadsheet-metadata: {"filters": {"0": []}} -->
 
 
 # Appendix

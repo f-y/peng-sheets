@@ -18,7 +18,6 @@
 | 10 | Bob | User | 2 |  |
 | 11 | Alice | Admin | 4 |  |
 
-<!-- md-spreadsheet-metadata: {"column_widths": {"0": 65, "1": 205}, "filters": {"3": [""]}} -->
 
 ### User List 2
 

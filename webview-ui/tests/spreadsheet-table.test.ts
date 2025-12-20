@@ -289,6 +289,7 @@ describe('SpreadsheetTable', () => {
         expect(firstCell).to.exist;
 
         // Enter edit mode
+        firstCell.focus();
         firstCell.dispatchEvent(
             new MouseEvent('dblclick', {
                 bubbles: true,
