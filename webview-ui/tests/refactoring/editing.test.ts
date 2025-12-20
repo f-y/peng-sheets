@@ -58,9 +58,7 @@ describe('Editing Verification', () => {
             await el.updateComplete;
 
             // Press F2
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'F2', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'F2', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.editCtrl.isEditing).to.be.true;
@@ -81,9 +79,7 @@ describe('Editing Verification', () => {
             await el.updateComplete;
 
             // Type a character (not F2)
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'n', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'n', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.editCtrl.isEditing).to.be.true;
@@ -114,9 +110,7 @@ describe('Editing Verification', () => {
             editingCell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
 
             // Press Enter
-            editingCell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true })
-            );
+            editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Verify edit mode exited
@@ -143,9 +137,7 @@ describe('Editing Verification', () => {
             const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
 
             // Press Tab
-            editingCell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true })
-            );
+            editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Verify selection moved to [1, 2]
@@ -230,9 +222,7 @@ describe('Editing Verification', () => {
             editingCell.textContent = 'should not save';
 
             // Press Escape
-            editingCell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true })
-            );
+            editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Verify edit mode exited
@@ -296,9 +286,7 @@ describe('Editing Verification', () => {
             const table = createMockTable();
             table.rows[0][0] = 'line1\nline2';
 
-            const el = await fixture<SpreadsheetTable>(
-                html`<spreadsheet-table .table="${table}"></spreadsheet-table>`
-            );
+            const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
             await el.updateComplete;
 
             // Verify cell displays with newline (as <br>)
@@ -312,9 +300,7 @@ describe('Editing Verification', () => {
             const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
 
             // Commit without changes
-            editingCell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true })
-            );
+            editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Verify newline is preserved

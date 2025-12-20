@@ -3,11 +3,27 @@
  *
  * These tests verify the context menu behavior in SpreadsheetTable.
  * They must pass BEFORE refactoring begins and serve as regression tests.
+ *
+ * Note: With component-based architecture, the context menu is now an
+ * ss-context-menu element with its own ShadowRoot.
+ * Note: Light DOM components (ss-row-header, ss-column-header) render their
+ * content as inner divs with .cell.header-row / .cell.header-col classes.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import '../../components/spreadsheet-table';
 import { SpreadsheetTable, TableJSON } from '../../components/spreadsheet-table';
+
+/**
+ * Helper to get the context menu component and its internal elements
+ */
+function getContextMenu(el: SpreadsheetTable) {
+    const contextMenuEl = el.shadowRoot!.querySelector('ss-context-menu');
+    if (!contextMenuEl) return null;
+    const menuContent = contextMenuEl.shadowRoot!.querySelector('.context-menu');
+    const menuItems = contextMenuEl.shadowRoot!.querySelectorAll('.context-menu-item');
+    return { element: contextMenuEl, content: menuContent, items: menuItems };
+}
 
 describe('Context Menu Verification', () => {
     const createMockTable = (): TableJSON => ({
@@ -31,6 +47,7 @@ describe('Context Menu Verification', () => {
             );
             await el.updateComplete;
 
+            // Light DOM: query the inner div, not the custom element
             const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
             rowHeader.dispatchEvent(
                 new MouseEvent('contextmenu', {
@@ -43,8 +60,9 @@ describe('Context Menu Verification', () => {
             );
             await el.updateComplete;
 
-            const contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu).to.exist;
+            const menu = getContextMenu(el);
+            expect(menu).to.exist;
+            expect(menu?.content).to.exist;
         });
 
         it('contains Insert Above item', async () => {
@@ -54,13 +72,11 @@ describe('Context Menu Verification', () => {
             await el.updateComplete;
 
             const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
-            rowHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
-            const contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu?.textContent).to.include('Insert Row Above');
+            const menu = getContextMenu(el);
+            expect(menu?.content?.textContent).to.include('Insert Row Above');
         });
 
         it('contains Insert Below item', async () => {
@@ -70,13 +86,11 @@ describe('Context Menu Verification', () => {
             await el.updateComplete;
 
             const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
-            rowHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
-            const contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu?.textContent).to.include('Insert Row Below');
+            const menu = getContextMenu(el);
+            expect(menu?.content?.textContent).to.include('Insert Row Below');
         });
 
         it('contains Delete Row item', async () => {
@@ -86,13 +100,11 @@ describe('Context Menu Verification', () => {
             await el.updateComplete;
 
             const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
-            rowHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
-            const contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu?.textContent).to.include('Delete Row');
+            const menu = getContextMenu(el);
+            expect(menu?.content?.textContent).to.include('Delete Row');
         });
 
         it('dispatches insert-row event on Insert Above click', async () => {
@@ -106,14 +118,12 @@ describe('Context Menu Verification', () => {
 
             // Open context menu on row 1
             const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
-            rowHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
             // Click Insert Above
-            const menuItems = el.shadowRoot!.querySelectorAll('.context-menu-item');
-            const insertAbove = Array.from(menuItems).find((item) =>
+            const menu = getContextMenu(el);
+            const insertAbove = Array.from(menu?.items || []).find((item) =>
                 item.textContent?.includes('Insert Row Above')
             ) as HTMLElement;
             insertAbove.click();
@@ -135,14 +145,12 @@ describe('Context Menu Verification', () => {
 
             // Open context menu on row 1
             const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
-            rowHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
             // Click Delete Row
-            const menuItems = el.shadowRoot!.querySelectorAll('.context-menu-item');
-            const deleteRow = Array.from(menuItems).find((item) =>
+            const menu = getContextMenu(el);
+            const deleteRow = Array.from(menu?.items || []).find((item) =>
                 item.textContent?.includes('Delete Row')
             ) as HTMLElement;
             deleteRow.click();
@@ -161,6 +169,7 @@ describe('Context Menu Verification', () => {
             );
             await el.updateComplete;
 
+            // Light DOM: query the inner div, not the custom element
             const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
             colHeader.dispatchEvent(
                 new MouseEvent('contextmenu', {
@@ -173,8 +182,9 @@ describe('Context Menu Verification', () => {
             );
             await el.updateComplete;
 
-            const contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu).to.exist;
+            const menu = getContextMenu(el);
+            expect(menu).to.exist;
+            expect(menu?.content).to.exist;
         });
 
         it('contains Insert Left item', async () => {
@@ -184,13 +194,11 @@ describe('Context Menu Verification', () => {
             await el.updateComplete;
 
             const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
-            colHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
-            const contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu?.textContent).to.include('Insert Column Left');
+            const menu = getContextMenu(el);
+            expect(menu?.content?.textContent).to.include('Insert Column Left');
         });
 
         it('contains Insert Right item', async () => {
@@ -200,13 +208,11 @@ describe('Context Menu Verification', () => {
             await el.updateComplete;
 
             const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
-            colHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
-            const contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu?.textContent).to.include('Insert Column Right');
+            const menu = getContextMenu(el);
+            expect(menu?.content?.textContent).to.include('Insert Column Right');
         });
 
         it('contains Delete Column item', async () => {
@@ -216,13 +222,11 @@ describe('Context Menu Verification', () => {
             await el.updateComplete;
 
             const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
-            colHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
-            const contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu?.textContent).to.include('Delete Column');
+            const menu = getContextMenu(el);
+            expect(menu?.content?.textContent).to.include('Delete Column');
         });
 
         it('dispatches column-insert event', async () => {
@@ -236,14 +240,12 @@ describe('Context Menu Verification', () => {
 
             // Open context menu on column 1
             const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
-            colHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
             // Click Insert Left
-            const menuItems = el.shadowRoot!.querySelectorAll('.context-menu-item');
-            const insertLeft = Array.from(menuItems).find((item) =>
+            const menu = getContextMenu(el);
+            const insertLeft = Array.from(menu?.items || []).find((item) =>
                 item.textContent?.includes('Insert Column Left')
             ) as HTMLElement;
             insertLeft.click();
@@ -265,14 +267,12 @@ describe('Context Menu Verification', () => {
 
             // Open context menu on column 1
             const colHeader = el.shadowRoot!.querySelector('.cell.header-col[data-col="1"]') as HTMLElement;
-            colHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            colHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
             // Click Delete Column
-            const menuItems = el.shadowRoot!.querySelectorAll('.context-menu-item');
-            const deleteCol = Array.from(menuItems).find((item) =>
+            const menu = getContextMenu(el);
+            const deleteCol = Array.from(menu?.items || []).find((item) =>
                 item.textContent?.includes('Delete Column')
             ) as HTMLElement;
             deleteCol.click();
@@ -293,22 +293,18 @@ describe('Context Menu Verification', () => {
 
             // Open context menu
             const rowHeader = el.shadowRoot!.querySelector('.cell.header-row[data-row="1"]') as HTMLElement;
-            rowHeader.dispatchEvent(
-                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
-            );
+            rowHeader.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true }));
             await el.updateComplete;
 
-            let contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu).to.exist;
+            let menu = getContextMenu(el);
+            expect(menu).to.exist;
 
-            // Click outside (on a cell)
-            const cell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
-            // Dispatch on window to simulate global click
+            // Click outside (on window to simulate global click)
             window.dispatchEvent(new MouseEvent('click', { bubbles: true }));
             await el.updateComplete;
 
-            contextMenu = el.shadowRoot!.querySelector('.context-menu');
-            expect(contextMenu).to.not.exist;
+            menu = getContextMenu(el);
+            expect(menu).to.be.null;
         });
     });
 });

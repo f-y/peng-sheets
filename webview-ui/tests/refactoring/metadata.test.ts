@@ -3,11 +3,25 @@
  *
  * These tests verify the metadata (description) editing behavior in SpreadsheetTable.
  * They must pass BEFORE refactoring begins and serve as regression tests.
+ *
+ * Note: With component-based architecture, the metadata editor is now an
+ * ss-metadata-editor element with its own ShadowRoot.
  */
 import { describe, it, expect, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import '../../components/spreadsheet-table';
 import { SpreadsheetTable, TableJSON } from '../../components/spreadsheet-table';
+
+/**
+ * Helper to get the metadata editor component and its internal elements
+ */
+function getMetadataEditor(el: SpreadsheetTable) {
+    const editorEl = el.shadowRoot!.querySelector('ss-metadata-editor');
+    if (!editorEl) return null;
+    const descEl = editorEl.shadowRoot!.querySelector('.metadata-desc');
+    const textareaEl = editorEl.shadowRoot!.querySelector('.metadata-input-desc');
+    return { element: editorEl, description: descEl, textarea: textareaEl };
+}
 
 describe('Metadata Editor Verification', () => {
     const createMockTable = (description: string = 'Test Description'): TableJSON => ({
@@ -30,9 +44,9 @@ describe('Metadata Editor Verification', () => {
             );
             await el.updateComplete;
 
-            const descriptionEl = el.shadowRoot!.querySelector('.metadata-desc');
-            expect(descriptionEl).to.exist;
-            expect(descriptionEl?.textContent).to.include('My Description');
+            const editor = getMetadataEditor(el);
+            expect(editor).to.exist;
+            expect(editor?.description?.textContent).to.include('My Description');
         });
 
         it('shows empty container when no description', async () => {
@@ -41,9 +55,11 @@ describe('Metadata Editor Verification', () => {
             );
             await el.updateComplete;
 
-            // The metadata-desc element should still exist (for clicking to add)
-            const descriptionEl = el.shadowRoot!.querySelector('.metadata-desc');
-            expect(descriptionEl).to.exist;
+            // The metadata editor element should still exist
+            const editor = getMetadataEditor(el);
+            expect(editor?.element).to.exist;
+            // The metadata-desc element should exist even when empty
+            expect(editor?.description).to.exist;
         });
     });
 
@@ -54,19 +70,17 @@ describe('Metadata Editor Verification', () => {
             );
             await el.updateComplete;
 
-            const descriptionEl = el.shadowRoot!.querySelector('.metadata-desc') as HTMLElement;
+            let editor = getMetadataEditor(el);
+            const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
             await el.updateComplete;
             // Allow requestAnimationFrame in the handler
-            await new Promise((r) => setTimeout(r, 20));
+            await new Promise((r) => setTimeout(r, 50));
             await el.updateComplete;
 
-            // Should be in metadata editing mode
-            expect(el.editCtrl.editingMetadata).to.be.true;
-
-            // Textarea should appear
-            const textarea = el.shadowRoot!.querySelector('.metadata-input-desc');
-            expect(textarea).to.exist;
+            // Refresh editor reference and check for textarea
+            editor = getMetadataEditor(el);
+            expect(editor?.textarea).to.exist;
         });
 
         it('commits on Enter', async () => {
@@ -76,26 +90,24 @@ describe('Metadata Editor Verification', () => {
             await el.updateComplete;
 
             const metadataSpy = vi.fn();
-            el.addEventListener('metadata-edit', metadataSpy);
+            el.addEventListener('metadata-update', metadataSpy);
 
             // Enter edit mode
-            const descriptionEl = el.shadowRoot!.querySelector('.metadata-desc') as HTMLElement;
+            let editor = getMetadataEditor(el);
+            const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
             await el.updateComplete;
-            await new Promise((r) => setTimeout(r, 20));
+            await new Promise((r) => setTimeout(r, 50));
             await el.updateComplete;
 
-            // Modify the textarea
-            const textarea = el.shadowRoot!.querySelector(
-                '.metadata-input-desc'
-            ) as HTMLTextAreaElement;
+            // Refresh editor reference
+            editor = getMetadataEditor(el);
+            const textarea = editor?.textarea as HTMLTextAreaElement;
             textarea.value = 'New Description';
             textarea.dispatchEvent(new InputEvent('input', { bubbles: true }));
 
             // Press Enter (non-shift)
-            textarea.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true })
-            );
+            textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(metadataSpy).toHaveBeenCalled();
@@ -110,19 +122,19 @@ describe('Metadata Editor Verification', () => {
             await el.updateComplete;
 
             const metadataSpy = vi.fn();
-            el.addEventListener('metadata-edit', metadataSpy);
+            el.addEventListener('metadata-update', metadataSpy);
 
             // Enter edit mode
-            const descriptionEl = el.shadowRoot!.querySelector('.metadata-desc') as HTMLElement;
+            let editor = getMetadataEditor(el);
+            const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
             await el.updateComplete;
-            await new Promise((r) => setTimeout(r, 20));
+            await new Promise((r) => setTimeout(r, 50));
             await el.updateComplete;
 
             // Modify the textarea
-            const textarea = el.shadowRoot!.querySelector(
-                '.metadata-input-desc'
-            ) as HTMLTextAreaElement;
+            editor = getMetadataEditor(el);
+            const textarea = editor?.textarea as HTMLTextAreaElement;
             textarea.value = 'Blurred Description';
             textarea.dispatchEvent(new InputEvent('input', { bubbles: true }));
 
@@ -142,33 +154,32 @@ describe('Metadata Editor Verification', () => {
             await el.updateComplete;
 
             const metadataSpy = vi.fn();
-            el.addEventListener('metadata-edit', metadataSpy);
+            el.addEventListener('metadata-update', metadataSpy);
 
             // Enter edit mode
-            const descriptionEl = el.shadowRoot!.querySelector('.metadata-desc') as HTMLElement;
+            let editor = getMetadataEditor(el);
+            const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
             await el.updateComplete;
-            await new Promise((r) => setTimeout(r, 20));
+            await new Promise((r) => setTimeout(r, 50));
             await el.updateComplete;
 
             // Modify the textarea
-            const textarea = el.shadowRoot!.querySelector(
-                '.metadata-input-desc'
-            ) as HTMLTextAreaElement;
+            editor = getMetadataEditor(el);
+            const textarea = editor?.textarea as HTMLTextAreaElement;
             textarea.value = 'Should Not Save';
             textarea.dispatchEvent(new InputEvent('input', { bubbles: true }));
 
             // Press Escape
-            textarea.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true })
-            );
+            textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Should NOT dispatch event (edit was cancelled)
             expect(metadataSpy).not.toHaveBeenCalled();
 
-            // Should exit edit mode
-            expect(el.editCtrl.editingMetadata).to.be.false;
+            // Textarea should disappear (returned to display mode)
+            editor = getMetadataEditor(el);
+            expect(editor?.textarea).to.be.null;
         });
 
         it('preserves original value on cancel', async () => {
@@ -178,27 +189,25 @@ describe('Metadata Editor Verification', () => {
             await el.updateComplete;
 
             // Enter edit mode
-            const descriptionEl = el.shadowRoot!.querySelector('.metadata-desc') as HTMLElement;
+            let editor = getMetadataEditor(el);
+            const descriptionEl = editor?.description as HTMLElement;
             descriptionEl.click();
             await el.updateComplete;
-            await new Promise((r) => setTimeout(r, 20));
+            await new Promise((r) => setTimeout(r, 50));
             await el.updateComplete;
 
             // Modify the textarea
-            const textarea = el.shadowRoot!.querySelector(
-                '.metadata-input-desc'
-            ) as HTMLTextAreaElement;
+            editor = getMetadataEditor(el);
+            const textarea = editor?.textarea as HTMLTextAreaElement;
             textarea.value = 'Changed';
 
             // Press Escape
-            textarea.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true })
-            );
+            textarea.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Verify original value is shown after exiting edit mode
-            const descriptionAfter = el.shadowRoot!.querySelector('.metadata-desc');
-            expect(descriptionAfter?.textContent).to.include('Keep This');
+            editor = getMetadataEditor(el);
+            expect(editor?.description?.textContent).to.include('Keep This');
         });
     });
 });

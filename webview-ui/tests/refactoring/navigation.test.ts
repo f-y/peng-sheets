@@ -37,9 +37,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             // Press ArrowUp
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
@@ -58,9 +56,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             // Press ArrowDown
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
@@ -79,9 +75,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             // Press ArrowLeft
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
@@ -100,9 +94,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             // Press ArrowRight
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
@@ -121,9 +113,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             // Press ArrowUp (should stay at row 0)
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.selectionCtrl.selectedRow).to.equal(0);
@@ -141,9 +131,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             // Press ArrowLeft (should stay at col 0)
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.selectionCtrl.selectedCol).to.equal(0);
@@ -161,9 +149,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             // Press ArrowRight (should stay at col 2)
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.selectionCtrl.selectedCol).to.equal(2);
@@ -239,9 +225,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
-            editingCell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true })
-            );
+            editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }));
             await el.updateComplete;
 
             expect(el.selectionCtrl.selectedRow).to.equal(1);
@@ -260,9 +244,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
-            editingCell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true })
-            );
+            editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Should wrap to next row, first column
@@ -327,9 +309,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             const editingCell = el.shadowRoot!.querySelector('.cell.editing') as HTMLElement;
-            editingCell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true })
-            );
+            editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Should move to [2, 1]
@@ -372,9 +352,7 @@ describe('Navigation Verification', () => {
                 }
             };
 
-            const el = await fixture<SpreadsheetTable>(
-                html`<spreadsheet-table .table="${table}"></spreadsheet-table>`
-            );
+            const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
             await el.updateComplete;
 
             // Verify row 1 is hidden
@@ -387,9 +365,7 @@ describe('Navigation Verification', () => {
             await el.updateComplete;
 
             // Press ArrowDown
-            cell.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true })
-            );
+            cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Should skip hidden row 1 and land on row 2

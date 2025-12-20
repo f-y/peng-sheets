@@ -110,9 +110,7 @@ describe('Selection Verification', () => {
 
             // Mousedown on [0, 0]
             const startCell = el.shadowRoot!.querySelector('.cell[data-row="0"][data-col="0"]') as HTMLElement;
-            startCell.dispatchEvent(
-                new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 })
-            );
+            startCell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
 
             expect(el.selectionCtrl.isSelecting).to.be.true;
 
@@ -179,9 +177,7 @@ describe('Selection Verification', () => {
             rowHeader2.dispatchEvent(
                 new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0, shiftKey: true })
             );
-            rowHeader2.dispatchEvent(
-                new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true })
-            );
+            rowHeader2.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true }));
             await el.updateComplete;
 
             // Verify rows 0-2 are selected
@@ -238,9 +234,7 @@ describe('Selection Verification', () => {
             colHeader2.dispatchEvent(
                 new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0, shiftKey: true })
             );
-            colHeader2.dispatchEvent(
-                new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true })
-            );
+            colHeader2.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true }));
             await el.updateComplete;
 
             // Verify columns 0-2 are selected

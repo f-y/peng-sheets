@@ -3,6 +3,17 @@ import { fixture, html } from '@open-wc/testing';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import '../components/spreadsheet-table';
 
+/**
+ * Helper to get the metadata editor component and its internal elements
+ */
+function getMetadataEditor(el: SpreadsheetTable) {
+    const editorEl = el.shadowRoot!.querySelector('ss-metadata-editor');
+    if (!editorEl) return null;
+    const descEl = editorEl.shadowRoot!.querySelector('.metadata-desc');
+    const textareaEl = editorEl.shadowRoot!.querySelector('.metadata-input-desc');
+    return { element: editorEl, description: descEl, textarea: textareaEl };
+}
+
 describe('SpreadsheetTable State Persistence', () => {
     it('Resets editing state when switching sheets (component reuse)', async () => {
         const el = (await fixture(html` <spreadsheet-table></spreadsheet-table> `)) as SpreadsheetTable;
@@ -16,12 +27,15 @@ describe('SpreadsheetTable State Persistence', () => {
         await el.updateComplete;
 
         // 2. Start Editing Metadata
-        const descEl = el.shadowRoot!.querySelector('.metadata-desc');
-        descEl!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+        let editor = getMetadataEditor(el);
+        (editor?.description as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+        await el.updateComplete;
+        await new Promise((r) => setTimeout(r, 50));
         await el.updateComplete;
 
-        expect(el.editCtrl.editingMetadata).toBe(true);
-        expect((el.shadowRoot!.querySelector('.metadata-input-desc') as HTMLTextAreaElement).value).toBe('Desc A');
+        editor = getMetadataEditor(el);
+        expect(editor?.textarea).toBeTruthy();
+        expect((editor?.textarea as HTMLTextAreaElement).value).toBe('Desc A');
 
         // 3. Switch Sheet
         el.sheetIndex = 2;
@@ -29,9 +43,9 @@ describe('SpreadsheetTable State Persistence', () => {
         await el.updateComplete;
 
         // 4. Expectation: Editing reset, display updated
-        expect(el.editCtrl.editingMetadata).toBe(false);
-        expect(el.shadowRoot!.querySelector('.metadata-input-desc')).toBeNull();
-        expect(el.shadowRoot!.querySelector('.metadata-desc')!.textContent).toContain('Desc B');
+        editor = getMetadataEditor(el);
+        expect(editor?.textarea).toBeNull();
+        expect(editor?.description?.textContent).toContain('Desc B');
     });
 
     it('Commits metadata edit on blur to external element', async () => {
@@ -40,14 +54,16 @@ describe('SpreadsheetTable State Persistence', () => {
         await el.updateComplete;
 
         // Start edit
-        const descEl = el.shadowRoot!.querySelector('.metadata-desc');
-        descEl!.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
+        let editor = getMetadataEditor(el);
+        (editor?.description as HTMLElement).dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true }));
         await el.updateComplete;
-        expect(el.editCtrl.editingMetadata).toBe(true);
+        await new Promise((r) => setTimeout(r, 50));
+        await el.updateComplete;
 
-        const input = el.shadowRoot!.querySelector('.metadata-input-desc') as HTMLTextAreaElement;
+        editor = getMetadataEditor(el);
+        expect(editor?.textarea).toBeTruthy();
 
-        input.dispatchEvent(
+        (editor?.textarea as HTMLTextAreaElement).dispatchEvent(
             new FocusEvent('blur', {
                 bubbles: true,
                 composed: true,
@@ -57,6 +73,7 @@ describe('SpreadsheetTable State Persistence', () => {
         await el.updateComplete;
 
         // Expect: Edit Mode Closed
-        expect(el.editCtrl.editingMetadata).toBe(false);
+        editor = getMetadataEditor(el);
+        expect(editor?.textarea).toBeNull();
     });
 });

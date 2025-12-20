@@ -123,4 +123,102 @@ describe('Undo/Redo Key Bindings', () => {
 
         expect(postMessage).toHaveBeenCalledWith({ type: 'undo' });
     });
+
+    it('should post redo when dispatched from focused cell element', async () => {
+        // Simulate a cell being focused (similar to after Undo operation)
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.tabIndex = 0;
+        document.body.appendChild(cell);
+        cell.focus();
+
+        // Dispatch Ctrl+Y from the focused cell
+        const event = new KeyboardEvent('keydown', {
+            key: 'y',
+            code: 'KeyY',
+            ctrlKey: true,
+            bubbles: true,
+            composed: true
+        });
+        cell.dispatchEvent(event);
+
+        expect(postMessage).toHaveBeenCalledWith({ type: 'redo' });
+
+        // Cleanup
+        cell.remove();
+    });
+
+    it('should handle Ctrl+Y immediately after Ctrl+Z from same element', async () => {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.tabIndex = 0;
+        document.body.appendChild(cell);
+        cell.focus();
+
+        // First: Ctrl+Z (Undo)
+        const undoEvent = new KeyboardEvent('keydown', {
+            key: 'z',
+            code: 'KeyZ',
+            ctrlKey: true,
+            bubbles: true,
+            composed: true
+        });
+        cell.dispatchEvent(undoEvent);
+        expect(postMessage).toHaveBeenCalledWith({ type: 'undo' });
+
+        postMessage.mockClear();
+
+        // Second: Ctrl+Y (Redo) - this should ALSO work
+        const redoEvent = new KeyboardEvent('keydown', {
+            key: 'y',
+            code: 'KeyY',
+            ctrlKey: true,
+            bubbles: true,
+            composed: true
+        });
+        cell.dispatchEvent(redoEvent);
+        expect(postMessage).toHaveBeenCalledWith({ type: 'redo' });
+
+        cell.remove();
+    });
+
+    it('should handle Ctrl+Y from SpreadsheetTable shadow DOM cell', async () => {
+        // Wait for the editor to be ready
+        await new Promise((r) => setTimeout(r, 300));
+
+        // Get the SpreadsheetTable inside the editor's shadow DOM
+        const layoutContainer = element.shadowRoot?.querySelector('layout-container');
+        if (!layoutContainer) {
+            console.log('No layout-container found - skipping');
+            return;
+        }
+
+        const spreadsheetTable = layoutContainer.shadowRoot?.querySelector('spreadsheet-table');
+        if (!spreadsheetTable) {
+            console.log('No spreadsheet-table found - skipping');
+            return;
+        }
+
+        // Find a cell in the table's shadow DOM
+        const cell = spreadsheetTable.shadowRoot?.querySelector('.cell') as HTMLElement;
+        if (!cell) {
+            console.log('No cell found - skipping');
+            return;
+        }
+
+        postMessage.mockClear();
+        cell.focus();
+
+        // Dispatch Ctrl+Y from the shadow DOM cell
+        const event = new KeyboardEvent('keydown', {
+            key: 'y',
+            code: 'KeyY',
+            ctrlKey: true,
+            bubbles: true,
+            composed: true
+        });
+        cell.dispatchEvent(event);
+
+        expect(postMessage).toHaveBeenCalledWith({ type: 'redo' });
+    });
 });

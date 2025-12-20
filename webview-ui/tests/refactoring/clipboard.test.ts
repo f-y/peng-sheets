@@ -79,9 +79,7 @@ describe('Clipboard Verification', () => {
             await el.updateComplete;
 
             const cell11 = el.shadowRoot!.querySelector('.cell[data-row="1"][data-col="1"]') as HTMLElement;
-            cell11.dispatchEvent(
-                new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true })
-            );
+            cell11.dispatchEvent(new MouseEvent('click', { bubbles: true, composed: true, shiftKey: true }));
             await el.updateComplete;
 
             // Press Ctrl+C
@@ -93,7 +91,8 @@ describe('Clipboard Verification', () => {
 
             // TSV format: "1\t2\n4\t5"
             expect(navigator.clipboard.writeText).toHaveBeenCalled();
-            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock.calls[0][0];
+            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock
+                .calls[0][0];
             expect(writtenText).to.include('1');
             expect(writtenText).to.include('2');
             expect(writtenText).to.include('4');
@@ -119,7 +118,8 @@ describe('Clipboard Verification', () => {
             await new Promise((r) => setTimeout(r, 50));
 
             expect(navigator.clipboard.writeText).toHaveBeenCalled();
-            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock.calls[0][0];
+            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock
+                .calls[0][0];
             // Should include header "A" and data "1", "4", "7"
             expect(writtenText).to.include('A');
         });
@@ -128,9 +128,7 @@ describe('Clipboard Verification', () => {
             const table = createMockTable();
             table.rows[0][0] = 'line1\nline2';
 
-            const el = await fixture<SpreadsheetTable>(
-                html`<spreadsheet-table .table="${table}"></spreadsheet-table>`
-            );
+            const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
             await el.updateComplete;
 
             // Select cell with newline
@@ -146,7 +144,8 @@ describe('Clipboard Verification', () => {
             await new Promise((r) => setTimeout(r, 50));
 
             expect(navigator.clipboard.writeText).toHaveBeenCalled();
-            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock.calls[0][0];
+            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock
+                .calls[0][0];
             // Value with newline should be quoted
             expect(writtenText).to.include('"');
         });
@@ -155,9 +154,7 @@ describe('Clipboard Verification', () => {
             const table = createMockTable();
             table.rows[0][0] = 'col1\tcol2';
 
-            const el = await fixture<SpreadsheetTable>(
-                html`<spreadsheet-table .table="${table}"></spreadsheet-table>`
-            );
+            const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
             await el.updateComplete;
 
             // Select cell with tab
@@ -173,7 +170,8 @@ describe('Clipboard Verification', () => {
             await new Promise((r) => setTimeout(r, 50));
 
             expect(navigator.clipboard.writeText).toHaveBeenCalled();
-            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock.calls[0][0];
+            const writtenText = (navigator.clipboard.writeText as unknown as { mock: { calls: string[][] } }).mock
+                .calls[0][0];
             // Value with tab should be quoted
             expect(writtenText).to.include('"');
         });

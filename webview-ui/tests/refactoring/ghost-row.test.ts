@@ -47,9 +47,7 @@ describe('Ghost Row Verification', () => {
         const ghostRowIndex = table.table.rows.length; // 2
 
         // Verify ghost row cells exist
-        const ghostCell0 = table.shadowRoot?.querySelector(
-            `.cell[data-row="${ghostRowIndex}"][data-col="0"]`
-        );
+        const ghostCell0 = table.shadowRoot?.querySelector(`.cell[data-row="${ghostRowIndex}"][data-col="0"]`);
         expect(ghostCell0).toBeTruthy();
 
         // Ghost cells should be empty
@@ -81,9 +79,7 @@ describe('Ghost Row Verification', () => {
         editingCell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
 
         // Commit edit
-        editingCell.dispatchEvent(
-            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true })
-        );
+        editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
         await table.updateComplete;
 
         // Verify cell-edit event was dispatched for ghost row
@@ -114,9 +110,7 @@ describe('Ghost Row Verification', () => {
         editingCell.textContent = '';
 
         // Commit empty edit
-        editingCell.dispatchEvent(
-            new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true })
-        );
+        editingCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
         await table.updateComplete;
 
         // Verify no cell-edit event for empty ghost cell
@@ -153,9 +147,7 @@ describe('Ghost Row Verification', () => {
         const activeCell = table.shadowRoot?.querySelector(
             `.cell[data-row="${lastDataRow}"][data-col="0"]`
         ) as HTMLElement;
-        activeCell.dispatchEvent(
-            new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true })
-        );
+        activeCell.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, composed: true }));
         await table.updateComplete;
 
         expect(table.selectionCtrl.selectedRow).toBe(ghostRowIndex);

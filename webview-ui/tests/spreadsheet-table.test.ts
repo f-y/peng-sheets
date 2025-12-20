@@ -12,8 +12,10 @@ type TestableSpreadsheetTable = {
         selectedRow: number;
         selectedCol: number;
     };
+    clipboardCtrl: {
+        deleteSelection(): void;
+    };
     _commitEdit(e: unknown): void;
-    _deleteSelection(): void;
     _renderMarkdown(content: string): string;
     _handleKeyDown(e: KeyboardEvent): void;
 };
@@ -194,7 +196,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = -2; // Sentinel for Row Selection
 
-        (element as unknown as TestableSpreadsheetTable)._deleteSelection();
+        (element as unknown as TestableSpreadsheetTable).clipboardCtrl.deleteSelection();
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
@@ -208,7 +210,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
 
-        (element as unknown as TestableSpreadsheetTable)._deleteSelection();
+        (element as unknown as TestableSpreadsheetTable).clipboardCtrl.deleteSelection();
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
@@ -234,7 +236,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = -2; // Sentinel for Col Selection
         element.selectionCtrl.selectedCol = 1;
 
-        (element as unknown as TestableSpreadsheetTable)._deleteSelection();
+        (element as unknown as TestableSpreadsheetTable).clipboardCtrl.deleteSelection();
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
@@ -252,7 +254,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
 
-        (element as unknown as TestableSpreadsheetTable)._deleteSelection();
+        (element as unknown as TestableSpreadsheetTable).clipboardCtrl.deleteSelection();
 
         expect(rowSpy).not.toHaveBeenCalled();
         expect(cellSpy).not.toHaveBeenCalled();

@@ -63,9 +63,7 @@ describe('Headers Verification', () => {
             await el.updateComplete;
 
             // Press Enter without modifying - should commit with current value
-            cellContent.dispatchEvent(
-                new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true })
-            );
+            cellContent.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
             await el.updateComplete;
 
             // Edit mode should be exited
@@ -106,9 +104,7 @@ describe('Headers Verification', () => {
             );
             await el.updateComplete;
 
-            const filterIcon = el.shadowRoot!.querySelector(
-                '.header-col[data-col="0"] .filter-icon'
-            ) as HTMLElement;
+            const filterIcon = el.shadowRoot!.querySelector('.header-col[data-col="0"] .filter-icon') as HTMLElement;
             expect(filterIcon).to.exist;
 
             // Click filter icon
@@ -130,14 +126,10 @@ describe('Headers Verification', () => {
                 }
             };
 
-            const el = await fixture<SpreadsheetTable>(
-                html`<spreadsheet-table .table="${table}"></spreadsheet-table>`
-            );
+            const el = await fixture<SpreadsheetTable>(html`<spreadsheet-table .table="${table}"></spreadsheet-table>`);
             await el.updateComplete;
 
-            const filterIcon = el.shadowRoot!.querySelector(
-                '.header-col[data-col="0"] .filter-icon'
-            ) as HTMLElement;
+            const filterIcon = el.shadowRoot!.querySelector('.header-col[data-col="0"] .filter-icon') as HTMLElement;
             expect(filterIcon.classList.contains('active')).to.be.true;
         });
     });
@@ -155,9 +147,7 @@ describe('Headers Verification', () => {
             expect(resizeHandle).to.exist;
 
             // Mousedown on resize handle
-            resizeHandle.dispatchEvent(
-                new MouseEvent('mousedown', { bubbles: true, composed: true, clientX: 100 })
-            );
+            resizeHandle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, clientX: 100 }));
 
             expect(el.resizeCtrl.resizingCol).to.equal(0);
         });
@@ -176,9 +166,7 @@ describe('Headers Verification', () => {
             ) as HTMLElement;
 
             // Start resize
-            resizeHandle.dispatchEvent(
-                new MouseEvent('mousedown', { bubbles: true, composed: true, clientX: 100 })
-            );
+            resizeHandle.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, clientX: 100 }));
 
             // Move
             document.dispatchEvent(new MouseEvent('mousemove', { clientX: 150 }));
