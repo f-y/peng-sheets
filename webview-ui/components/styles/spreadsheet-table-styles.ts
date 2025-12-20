@@ -313,6 +313,7 @@ export const metadataStyles = css`
 
     .metadata-container {
         margin-bottom: 0;
+        min-height: 8px;
     }
 
     .metadata-desc {

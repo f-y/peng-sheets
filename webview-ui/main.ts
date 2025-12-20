@@ -337,6 +337,41 @@ export class MyEditor extends LitElement {
         });
     }
 
+    /**
+     * Handle description-only updates from ss-metadata-editor
+     */
+    private async _handleMetadataUpdate(detail: any) {
+        if (!this.pyodide || !this.workbook) return;
+        const { sheetIndex, tableIndex, description } = detail;
+
+        // Get current table name from local state
+        const targetTab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
+        let currentName = '';
+        if (targetTab && targetTab.data && targetTab.data.tables) {
+            const table = targetTab.data.tables[tableIndex];
+            if (table) {
+                currentName = table.name || '';
+                // Optimistic update
+                table.description = description;
+                this.requestUpdate();
+            }
+        }
+
+        this._enqueueRequest(async () => {
+            const result = await this.pyodide.runPythonAsync(`
+            import json
+            res = update_table_metadata(
+                ${sheetIndex}, 
+                ${tableIndex}, 
+                ${JSON.stringify(currentName)}, 
+                ${JSON.stringify(description)}
+            )
+            json.dumps(res) if res else "null"
+        `);
+            this._postUpdateMessage(JSON.parse(result));
+        });
+    }
+
     private async _handleVisualMetadataUpdate(detail: any) {
         if (!this.pyodide) return;
         const { sheetIndex, tableIndex, metadata } = detail;
@@ -874,6 +909,7 @@ json.dumps(result)
 
             window.addEventListener('column-resize', (e: any) => this._handleColumnResize(e.detail));
             window.addEventListener('metadata-edit', (e: any) => this._handleMetadataEdit(e.detail));
+            window.addEventListener('metadata-update', (e: any) => this._handleMetadataUpdate(e.detail));
             window.addEventListener('request-add-table', (e: any) => this._handleRequestAddTable(e.detail));
             window.addEventListener('request-rename-table', (e: any) => this._handleRequestRenameTable(e.detail));
             window.addEventListener('request-delete-table', (e: any) => this._handleRequestDeleteTable(e.detail));

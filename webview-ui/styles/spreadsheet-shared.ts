@@ -227,6 +227,7 @@ export const contextMenuStyles = `
 export const metadataEditorStyles = `
     .metadata-container {
         margin-bottom: 0;
+        min-height: 8px;
     }
 
     .metadata-desc {
