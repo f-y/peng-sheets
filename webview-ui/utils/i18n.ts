@@ -129,12 +129,15 @@ const translations = {
 // We fallback to 'en' for any non-ja language for now.
 export type I18nKey = keyof (typeof translations)['en'];
 
-export function t(key: I18nKey, ...args: any[]): string {
+export function t(key: I18nKey, ...args: string[]): string {
     // Expect window.vscodeLanguage to be set by extension
-    const lang = (window as any).vscodeLanguage || 'en';
+    const lang = (window as Window & { vscodeLanguage?: string }).vscodeLanguage || 'en';
     const locale = lang.startsWith('ja') ? 'ja' : 'en';
 
-    let text = (translations as any)[locale]?.[key] || translations['en'][key] || key;
+    let text =
+        translations[locale]?.[key as keyof (typeof translations)['en']] ||
+        translations['en'][key as keyof (typeof translations)['en']] ||
+        key;
 
     args.forEach((arg, i) => {
         text = text.replace(`{${i}}`, arg);

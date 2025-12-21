@@ -27,6 +27,17 @@
         "no-unused-vars": "off",
         "@typescript-eslint/explicit-module-boundary-types": "off"
     },
+    "overrides": [
+        {
+            "files": [
+                "**/*.test.ts",
+                "**/tests/**/*.ts"
+            ],
+            "rules": {
+                "@typescript-eslint/no-explicit-any": "off"
+            }
+        }
+    ],
     "ignorePatterns": [
         "out",
         "dist",

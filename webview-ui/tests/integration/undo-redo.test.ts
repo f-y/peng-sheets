@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi, beforeAll } from 'vitest';
-import { queryView, queryAllView, awaitView } from '../helpers/test-helpers';
+import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
+import { queryView } from '../helpers/test-helpers';
 import { fixture, html } from '@open-wc/testing';
 
 // Hoist mocks to ensure they are available before main.ts is imported
@@ -43,12 +43,12 @@ vi.stubGlobal('loadPyodide', async () => ({
 
 describe('Undo/Redo Key Bindings', () => {
     let element: any;
-    let MyEditor: any;
+    let _MyEditor: typeof import('../../main').MyEditor;
 
     beforeAll(async () => {
         // Dynamically import main.ts so top-level acquireVsCodeApi() uses our mock
         const module = await import('../../main');
-        MyEditor = module.MyEditor;
+        _MyEditor = module.MyEditor;
     });
 
     beforeEach(async () => {

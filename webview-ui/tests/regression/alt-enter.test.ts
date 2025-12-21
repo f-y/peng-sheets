@@ -42,9 +42,9 @@ describe('SpreadsheetTable Alt+Enter', () => {
 
         const mockSelection = {
             rangeCount: 1,
-            getRangeAt: (index: number) => range,
+            getRangeAt: (_index: number) => range,
             removeAllRanges: () => {},
-            addRange: (r: Range) => {}
+            addRange: (_r: Range) => {}
         };
 
         // Mock on the VIEW's shadow root to verify Controller uses the correct root

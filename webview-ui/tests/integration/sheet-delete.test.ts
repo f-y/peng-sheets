@@ -1,5 +1,5 @@
 import { expect, fixture, html } from '@open-wc/testing';
-import { describe, it, beforeEach, vi } from 'vitest';
+import { describe, it, beforeEach } from 'vitest';
 import { MyEditor } from '../../main';
 import '../../main'; // Ensure custom element is defined
 import '../../components/confirmation-modal'; // Ensure modal is defined
@@ -10,7 +10,7 @@ describe('MyEditor Sheet Deletion', () => {
 
     beforeEach(async () => {
         // Stub _parseWorkbook to prevent it from resetting tabs
-        const originalParse = (MyEditor.prototype as any)._parseWorkbook;
+        const _originalParse = (MyEditor.prototype as any)._parseWorkbook;
         (MyEditor.prototype as any)._parseWorkbook = async () => {};
 
         try {
@@ -47,7 +47,7 @@ describe('MyEditor Sheet Deletion', () => {
         let deleteSheetCalled = false;
         // Mock spreadsheetService
         (el as any).spreadsheetService = {
-            deleteSheet: (sheetIdx: number) => {
+            deleteSheet: (_sheetIdx: number) => {
                 deleteSheetCalled = true;
             }
         };
