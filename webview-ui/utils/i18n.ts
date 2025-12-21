@@ -57,7 +57,9 @@ const translations = {
         clearFilter: 'Clear Filter',
         searchPlaceholder: 'Search',
         clickToEdit: 'Click to edit',
-        pressEscapeToCancel: 'Press Escape to cancel'
+        pressEscapeToCancel: 'Press Escape to cancel',
+        addNewSheet: 'Add New Sheet',
+        newSpreadsheet: 'New Spreadsheet'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -117,7 +119,9 @@ const translations = {
         clearFilter: 'フィルターをクリア',
         searchPlaceholder: '検索',
         clickToEdit: 'クリックして編集',
-        pressEscapeToCancel: 'Escキーでキャンセル'
+        pressEscapeToCancel: 'Escキーでキャンセル',
+        addNewSheet: '新しいシートを追加',
+        newSpreadsheet: '新しいスプレッドシート'
     }
 };
 

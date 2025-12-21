@@ -931,7 +931,7 @@ json.dumps(result)
                                 @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, index, tab)}"
                                 @dragstart="${(e: DragEvent) => this._handleSheetDragStart(e, index)}"
                                 @dragend="${this._handleSheetDragEnd}"
-                                title="${tab.type === 'add-sheet' ? 'Add New Sheet' : ''}"
+                                title="${tab.type === 'add-sheet' ? t('addNewSheet') : ''}"
                                 data-index="${index}"
                             >
                                 ${this._renderTabIcon(tab)}
@@ -1266,7 +1266,7 @@ json.dumps(result)
                         // Empty workbook placeholder
                         newTabs.push({
                             type: 'onboarding',
-                            title: 'New Spreadsheet',
+                            title: t('newSpreadsheet'),
                             index: newTabs.length
                         });
                     }
@@ -1277,7 +1277,7 @@ json.dumps(result)
                 // If no workbook marker found, add empty placeholder at end
                 newTabs.push({
                     type: 'onboarding',
-                    title: 'New Spreadsheet',
+                    title: t('newSpreadsheet'),
                     index: newTabs.length
                 });
             }
