@@ -6,11 +6,11 @@
 
 | ID | Name | Role | Age | Sex |
 | --- | --- | --- | --- | --- |
-| 1 | Alice | Admin<br>**AAA**<br>BBB | 1 | 1 |
+| 1 | **<u>~~*Alice*~~</u>** | Admin<br>**AAA**<br>BBB | 1 | 1 |
 | 2 | Bob | User | 2 | Male |
 | 3 | Alice | Admin | 4 | Female |
 | 4 | Bob | User |  |  |
-| 5 | Alice | Admin |  |  |
+| 5 | Alice | Admin | a |  |
 | 6 | Bob | User |  |  |
 | 7 | Alice | Admin |  |  |
 | 8 | Bob | User |  |  |
@@ -18,6 +18,7 @@
 | 10 | Bob | User | 2 |  |
 | 11 | Alice | Admin | 4 |  |
 
+<!-- md-spreadsheet-metadata: {"columns": {"2": {"align": "center"}, "1": {"align": "right"}}} -->
 
 ### User List 2
 
@@ -26,6 +27,8 @@
 | 1 | Alice | Admin |
 | 2 | Bob | User |
 | 3 | Alice | Admin |
+
+<!-- md-spreadsheet-metadata: {"column_widths": {"1": 156}} -->
 
 ### User List 3
 

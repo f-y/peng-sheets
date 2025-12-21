@@ -1,4 +1,4 @@
-# Markdown Spreadsheet Suite Showcase
+# Markdown Spreadsheet Overview
 
 このドキュメントは、**VS Code Extension** と **Python Parser** の機能をデモンストレーションするためのハイブリッド・ノートブックです。
 ドキュメントとしての記述（コンテキスト）と、スプレッドシートとしてのデータ（テーブル）を同一ファイルで管理できることの強力さを示します。
@@ -74,7 +74,7 @@ Markdown Spreadsheet Suite と一般的なスプレッドシート（Excel）の
 | **Automation** | VBA / Macros | Python Scripting | `uv` エコシステムやPandasを直接活用可能。 |
 | **Version Control** | Difficult (Binary) | Native (Git) | PRレビューが可能。コンフリクト解消も容易。 |
 
-<!-- md-spreadsheet-metadata: {"columnWidths": [120, 150, 150, 250]} -->
+<!-- md-spreadsheet-metadata: {"columnWidths": [120, 150, 150, 250], "column_widths": {"3": 203, "2": 140}} -->
 
 ### Keyboard Shortcuts
 
@@ -91,9 +91,9 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | **Select All** | `Ctrl+A` | `Cmd+A` | Grid |
 | **Find** | `Ctrl+F` | `Cmd+F` | Grid |
 
-<!-- md-spreadsheet-metadata: {"columnWidths": [120, 150, 150, 100]} -->
+<!-- md-spreadsheet-metadata: {"columnWidths": [120, 150, 150, 100], "column_widths": {"1": 154, "3": 74}} -->
 
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "bj8Sel_MhOaOgSSPa37Az", "direction": "horizontal", "sizes": [50, 50], "children": [{"type": "pane", "id": "root", "tables": [0], "activeTableIndex": 0}, {"type": "pane", "id": "IoTJSjtjfMDHHr7_gUszt", "tables": [1], "activeTableIndex": 0}]}} -->
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "bj8Sel_MhOaOgSSPa37Az", "direction": "horizontal", "sizes": [54.6875, 45.3125], "children": [{"type": "pane", "id": "root", "tables": [0], "activeTableIndex": 0}, {"type": "pane", "id": "IoTJSjtjfMDHHr7_gUszt", "tables": [1], "activeTableIndex": 0}]}} -->
 
 ## Project Status
 
@@ -159,7 +159,7 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 
 <!-- md-spreadsheet-metadata: {"columnWidths": [100, 100, 120, 150, 100, 100]} -->
 
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VZdoVuAp4BkC0IUeVll1Q", "direction": "vertical", "sizes": [50, 50], "children": [{"type": "pane", "id": "root", "tables": [0], "activeTableIndex": 0}, {"type": "pane", "id": "YAH8An6xc74WWoWVeZvs6", "tables": [1], "activeTableIndex": 0}]}} -->
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VZdoVuAp4BkC0IUeVll1Q", "direction": "vertical", "sizes": [44.315245478036175, 55.684754521963825], "children": [{"type": "pane", "id": "root", "tables": [0], "activeTableIndex": 0}, {"type": "pane", "id": "YAH8An6xc74WWoWVeZvs6", "tables": [1], "activeTableIndex": 0}]}} -->
 
 
 # Appendix
