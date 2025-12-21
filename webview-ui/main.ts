@@ -14,9 +14,12 @@ import './components/layout-container';
 import { TableJSON } from './components/spreadsheet-table';
 
 // Register the VS Code Design System components
+import { SpreadsheetService } from './services/spreadsheet-service';
+
+// Register the VS Code Design System components
 provideVSCodeDesignSystem().register();
 
-declare const loadPyodide: any;
+// declare const loadPyodide: any; // Moved to service usage
 
 interface SheetJSON {
     name: string;
@@ -60,8 +63,7 @@ import pythonCore from '../python-modules/headless_editor.py?raw';
 export class MyEditor extends LitElement {
     static styles = [mainStyles];
 
-    @state()
-    pyodide: any = null;
+    private spreadsheetService = new SpreadsheetService(pythonCore, vscode);
 
     @state()
     output: string = t('initializing');
@@ -95,66 +97,14 @@ export class MyEditor extends LitElement {
 
     @state()
     isScrollableRight = false;
-    @state()
-    private _isSyncing = false;
-    private _requestQueue: Array<() => Promise<void>> = [];
-    private _previousSheetCount = 0; // Track sheet count for add detection
 
-    private _debounceTimer: any = null;
-    private _isBatching = false;
-    private _pendingUpdateSpec: any = null;
+    // Track sheet count for add detection
+    private _previousSheetCount = 0;
 
-    private _enqueueRequest(task: () => Promise<void>) {
-        this._requestQueue.push(task);
-        if (!this._isSyncing) {
-            this._scheduleProcessQueue();
-        }
-    }
 
-    private _scheduleProcessQueue() {
-        if (this._debounceTimer) clearTimeout(this._debounceTimer);
-        this._debounceTimer = setTimeout(() => {
-            this._processQueue();
-        }, 100);
-    }
-
-    private async _processQueue() {
-        this._debounceTimer = null;
-        if (this._isSyncing || this._requestQueue.length === 0) return;
-
-        this._isSyncing = true;
-        this._isBatching = true;
-        this._pendingUpdateSpec = null;
-
-        // Process ALL pending tasks to batch updates
-        const tasks = [...this._requestQueue];
-        this._requestQueue = [];
-
-        for (const task of tasks) {
-            try {
-                await task();
-            } catch (e) {
-                console.error('Queue task failed', e);
-            }
-        }
-
-        this._isBatching = false;
-
-        if (this._pendingUpdateSpec) {
-            vscode.postMessage(this._pendingUpdateSpec);
-            this._pendingUpdateSpec = null;
-        } else {
-            // No valid updates produced (or all failed)
-            this._isSyncing = false;
-            // Check if new items arrived while processing
-            if (this._requestQueue.length > 0) {
-                this._scheduleProcessQueue();
-            }
-        }
-    }
 
     private async _handleMetadataEdit(detail: any) {
-        if (!this.pyodide || !this.workbook) return;
+        if (!this.workbook) return;
         const { sheetIndex, tableIndex, name, description } = detail;
 
         // Optimistic Update: Update local state immediately to avoid UI flicker
@@ -171,26 +121,17 @@ export class MyEditor extends LitElement {
             }
         }
 
-        this._enqueueRequest(async () => {
-            const result = await this.pyodide.runPythonAsync(`
-            import json
-            res = update_table_metadata(
-                ${sheetIndex}, 
-                ${tableIndex}, 
-                ${JSON.stringify(name)}, 
-                ${JSON.stringify(description)}
-            )
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(result));
-        });
+        this.spreadsheetService.updateTableMetadata(sheetIndex, tableIndex, name, description);
     }
 
     /**
      * Handle description-only updates from ss-metadata-editor
      */
+    /**
+     * Handle description-only updates from ss-metadata-editor
+     */
     private async _handleMetadataUpdate(detail: any) {
-        if (!this.pyodide || !this.workbook) return;
+        if (!this.workbook) return;
         const { sheetIndex, tableIndex, description } = detail;
 
         // Get current table name from local state
@@ -206,40 +147,15 @@ export class MyEditor extends LitElement {
             }
         }
 
-        this._enqueueRequest(async () => {
-            const result = await this.pyodide.runPythonAsync(`
-            import json
-            res = update_table_metadata(
-                ${sheetIndex}, 
-                ${tableIndex}, 
-                ${JSON.stringify(currentName)}, 
-                ${JSON.stringify(description)}
-            )
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(result));
-        });
+        this.spreadsheetService.updateTableMetadata(sheetIndex, tableIndex, currentName, description);
     }
 
     private async _handleVisualMetadataUpdate(detail: any) {
-        if (!this.pyodide) return;
-        const { sheetIndex, tableIndex, metadata } = detail;
-        this._enqueueRequest(async () => {
-            const result = await this.pyodide.runPythonAsync(`
-            import json
-            res = update_visual_metadata(
-                ${sheetIndex}, 
-                ${tableIndex}, 
-                ${JSON.stringify(metadata)}
-            )
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(result));
-        });
+        const { sheetIndex, tableIndex, visual } = detail;
+        this.spreadsheetService.updateVisualMetadata(sheetIndex, tableIndex, visual);
     }
 
     private async _handleSheetMetadataUpdate(detail: any) {
-        if (!this.pyodide) return;
         const { sheetIndex, metadata } = detail;
         // Optimistic Update: Update local state immediately
         const targetTab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
@@ -251,80 +167,32 @@ export class MyEditor extends LitElement {
             this.requestUpdate();
         }
 
-        this._enqueueRequest(async () => {
-            try {
-                const metadataJson = JSON.stringify(metadata);
-                // Escape backslashes and single quotes/newlines for Python string literal
-                const escapedJson = metadataJson.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
-
-                const result = await this.pyodide.runPythonAsync(`
-            import json
-            output_json = "null"
-            try:
-                data = json.loads('${escapedJson}')
-                res = update_sheet_metadata(${sheetIndex}, data)
-                output_json = json.dumps(res) if res else "null"
-            except Exception as e:
-                output_json = json.dumps({"error": str(e)})
-            output_json
-        `);
-                const parsed = JSON.parse(result);
-                if (parsed && parsed.error) {
-                    console.error('Python metadata update error:', parsed.error);
-                } else {
-                    this._postUpdateMessage(parsed);
-                }
-            } catch (e) {
-                console.error('Failed to run python metadata update:', e);
-            }
-        });
+        this.spreadsheetService.updateSheetMetadata(sheetIndex, metadata);
     }
 
     private async _handleRequestAddTable(detail: any) {
-        if (!this.pyodide) return;
         const { sheetIndex } = detail;
-        this._enqueueRequest(async () => {
-            const result = await this.pyodide.runPythonAsync(`
-            import json
-            res = add_table(${sheetIndex})
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(result));
-        });
+        this.spreadsheetService.addTable(sheetIndex, t('newTable'));
     }
 
     private async _handleRequestRenameTable(detail: any) {
-        if (!this.pyodide || !this.workbook) return;
+        if (!this.workbook) return;
         const { sheetIndex, tableIndex, newName } = detail;
 
-        // Find current description from local state
-        let currentDesc = '';
-        const targetTab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
-        if (targetTab && targetTab.data && targetTab.data.tables) {
-            const table = targetTab.data.tables[tableIndex];
-            if (table) currentDesc = table.description || '';
-        }
-
-        // Reuse existing metadata edit logic which handles optimistic updates
-        this._handleMetadataEdit({
-            sheetIndex,
-            tableIndex,
-            name: newName,
-            description: currentDesc
-        });
+        this.spreadsheetService.renameTable(sheetIndex, tableIndex, newName);
     }
 
     private async _handleRequestDeleteTable(detail: any) {
-        if (!this.pyodide) return;
         const { sheetIndex, tableIndex } = detail;
-        this._enqueueRequest(async () => {
-            const result = await this.pyodide.runPythonAsync(`
-            import json
-            res = delete_table(${sheetIndex}, ${tableIndex})
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(result));
-        });
+
+        // Optimistic update
+        const tab = this.tabs.find(t => t.type === 'sheet' && t.sheetIndex === sheetIndex);
+        if (tab && tab.data && tab.data.tables) {
+            tab.data.tables.splice(tableIndex, 1);
+            this.requestUpdate();
+        }
+
+        this.spreadsheetService.deleteTable(sheetIndex, tableIndex);
     }
 
     private _onMetadataChange(e: CustomEvent) {
@@ -350,159 +218,52 @@ export class MyEditor extends LitElement {
         endCol: number,
         newValue: string
     ) {
-        if (!this.pyodide) return;
-
-        // Handle multi-cell range: update each cell individually
-        this._enqueueRequest(async () => {
-            let lastResult: any = null;
-            for (let r = startRow; r <= endRow; r++) {
-                for (let c = startCol; c <= endCol; c++) {
-                    const resultJson = await this.pyodide.runPythonAsync(`
-                    import json
-                    res = update_cell(${sheetIdx}, ${tableIdx}, ${r}, ${c}, ${JSON.stringify(newValue)})
-                    json.dumps(res) if res else "null"
-                `);
-                    lastResult = JSON.parse(resultJson);
-                }
-            }
-            // Only post update message once with the final result (which contains the full workbook state)
-            this._postUpdateMessage(lastResult);
-        });
+        this.spreadsheetService.updateRange(sheetIdx, tableIdx, startRow, endRow, startCol, endCol, newValue);
     }
 
     private async _handleDeleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
-        if (!this.pyodide) return;
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-            import json
-            res = delete_row(${sheetIdx}, ${tableIdx}, ${rowIndex})
-            json.dumps(res) if res else "null"
-       `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.deleteRow(sheetIdx, tableIdx, rowIndex);
     }
 
     private async _handleDeleteColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
-        if (!this.pyodide) return;
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-            import json
-            res = delete_column(${sheetIdx}, ${tableIdx}, ${colIndex})
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.deleteColumn(sheetIdx, tableIdx, colIndex);
     }
 
     private async _handleInsertRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
-        if (!this.pyodide) return;
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-            import json
-            res = insert_row(${sheetIdx}, ${tableIdx}, ${rowIndex})
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.insertRow(sheetIdx, tableIdx, rowIndex);
     }
 
     private async _handleInsertColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
-        if (!this.pyodide) return;
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-            import json
-            res = insert_column(${sheetIdx}, ${tableIdx}, ${colIndex})
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.insertColumn(sheetIdx, tableIdx, colIndex);
     }
 
     private async _handleClearColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
-        if (!this.pyodide) return;
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-            import json
-            res = clear_column(${sheetIdx}, ${tableIdx}, ${colIndex})
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.clearColumn(sheetIdx, tableIdx, colIndex);
     }
 
     private async _handlePasteCells(detail: any) {
-        if (!this.pyodide) return;
         const { sheetIndex, tableIndex, startRow, startCol, data, includeHeaders } = detail;
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-            import json
-            res = paste_cells(${sheetIndex}, ${tableIndex}, ${startRow}, ${startCol}, ${JSON.stringify(data)}, ${includeHeaders ? 'True' : 'False'})
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.pasteCells(sheetIndex, tableIndex, startRow, startCol, data, includeHeaders);
     }
 
     private async _handleUpdateColumnFilter(detail: any) {
-        if (!this.pyodide) return;
         const { sheetIndex, tableIndex, colIndex, hiddenValues } = detail;
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-             import json
-             res = update_column_filter(${sheetIndex}, ${tableIndex}, ${colIndex}, ${JSON.stringify(hiddenValues)})
-             json.dumps(res) if res else "null"
-         `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.updateColumnFilter(sheetIndex, tableIndex, colIndex, hiddenValues);
     }
 
     private async _handleSortRows(detail: any) {
-        if (!this.pyodide) return;
         const { sheetIndex, tableIndex, colIndex, ascending } = detail;
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-             import json
-             # Python implementation uses True/False which JSON handles
-             res = sort_rows(${sheetIndex}, ${tableIndex}, ${colIndex}, ${ascending ? 'True' : 'False'})
-             json.dumps(res) if res else "null"
-         `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.sortRows(sheetIndex, tableIndex, colIndex, ascending ? 'asc' : 'desc');
     }
 
     private async _handleUpdateColumnAlign(detail: any) {
-        if (!this.pyodide) return;
         const { sheetIndex, tableIndex, colIndex, alignment } = detail;
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-              import json
-              res = update_column_align(${sheetIndex}, ${tableIndex}, ${colIndex}, ${JSON.stringify(alignment)})
-              json.dumps(res) if res else "null"
-          `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.updateColumnAlign(sheetIndex, tableIndex, colIndex, alignment);
     }
 
     private async _handleUpdateColumnFormat(detail: any) {
-        if (!this.pyodide) return;
         const { sheetIndex, tableIndex, colIndex, format } = detail;
-        // Convert null to Python None, otherwise use JSON with Python boolean conversion
-        let formatArg = 'None';
-        if (format !== null) {
-            // Convert JSON to Python-compatible format:
-            // - true -> True, false -> False
-            formatArg = JSON.stringify(format)
-                .replace(/\btrue\b/g, 'True')
-                .replace(/\bfalse\b/g, 'False');
-        }
-        this._enqueueRequest(async () => {
-            const resultJson = await this.pyodide.runPythonAsync(`
-              import json
-              res = update_column_format(${sheetIndex}, ${tableIndex}, ${colIndex}, ${formatArg})
-              json.dumps(res) if res else "null"
-          `);
-            this._postUpdateMessage(JSON.parse(resultJson));
-        });
+        this.spreadsheetService.updateColumnFormat(sheetIndex, tableIndex, colIndex, format);
     }
 
     private _handlePostMessage(detail: any) {
@@ -543,17 +304,12 @@ export class MyEditor extends LitElement {
 
         try {
             // Get the document section range from Python using docIndex
-            const result = this.pyodide?.runPython(`
-import json
-result = get_document_section_range(workbook, ${docIndex})
-json.dumps(result)
-            `);
+            const range = await this.spreadsheetService.getDocumentSectionRange(docIndex);
 
-            console.log('Python result:', result);
+            console.log('Python result:', range);
 
-            if (result) {
-                const range = JSON.parse(result);
-                if (range && range.start_line !== undefined && range.end_line !== undefined) {
+            if (range) {
+                if (range.start_line !== undefined && range.end_line !== undefined) {
                     // Use title from event (may have been edited) or fall back to existing
                     const newTitle = detail.title || activeTab.title;
                     const header = `# ${newTitle}`;
@@ -580,7 +336,7 @@ json.dumps(result)
                         title: newTitle,
                         content: fullContent.substring(0, 50) + '...'
                     });
-                } else if (range && range.error) {
+                } else if (range.error) {
                     console.error('Python error:', range.error);
                 }
             }
@@ -619,34 +375,7 @@ json.dumps(result)
         }, 500);
     }
 
-    private _postUpdateMessage(updateSpec: any) {
-        if (this._isBatching) {
-            if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
-                this._pendingUpdateSpec = {
-                    type: 'updateRange',
-                    startLine: updateSpec.startLine,
-                    endLine: updateSpec.endLine,
-                    content: updateSpec.content
-                };
-            }
-            return;
-        }
 
-        if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
-            vscode.postMessage({
-                type: 'updateRange',
-                startLine: updateSpec.startLine,
-                endLine: updateSpec.endLine,
-                endCol: updateSpec.endCol, // Forward endCol if present
-                content: updateSpec.content
-            });
-            // _isSyncing remains true until Extension sends 'update'
-        } else {
-            console.error('Operation failed: ', updateSpec?.error);
-            this._isSyncing = false; // Reset if we didn't send
-            this._scheduleProcessQueue();
-        }
-    }
 
     connectedCallback() {
         super.connectedCallback();
@@ -696,26 +425,8 @@ json.dumps(result)
 
     async firstUpdated() {
         try {
-            this.pyodide = await loadPyodide();
-            console.log('Loading micropip...');
-            await this.pyodide.loadPackage('micropip');
-            console.log('Micropip loaded.');
-
-            const micropip = this.pyodide.pyimport('micropip');
-            const wheelUri = (window as any).wheelUri;
-            console.log('Installing wheel from:', wheelUri);
-
-            try {
-                await micropip.install(wheelUri);
-                console.log('Wheel installed successfully.');
-            } catch (err) {
-                console.error('Micropip install failed:', err);
-                throw err;
-            }
-
-            console.log('Loading Python Core...');
-            await this.pyodide.runPythonAsync(pythonCore);
-            console.log('Python Core loaded.');
+            await this.spreadsheetService.initialize();
+            console.log('Spreadsheet Service initialized.');
 
             window.addEventListener('cell-edit', (e: any) => {
                 this._handleRangeEdit(
@@ -779,8 +490,7 @@ json.dumps(result)
                     case 'update':
                         this.markdownInput = message.content;
                         await this._parseWorkbook();
-                        this._isSyncing = false;
-                        this._processQueue();
+                        this.spreadsheetService.notifyUpdateReceived();
                         break;
                     case 'configUpdate':
                         this.config = message.config;
@@ -789,8 +499,7 @@ json.dumps(result)
                     case 'sync-failed':
                         // Error recovery
                         console.warn('Sync failed, resetting queue state.');
-                        this._isSyncing = false;
-                        this._processQueue(); // Try next? or clear?
+                        this.spreadsheetService.notifyUpdateReceived();
                         break;
                 }
             });
@@ -882,7 +591,7 @@ json.dumps(result)
                 : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet'
-                    ? html`
+                ? html`
                           <div class="sheet-container" style="height: 100%">
                               <layout-container
                                   .layout="${activeTab.data.metadata?.layout}"
@@ -892,21 +601,21 @@ json.dumps(result)
                               ></layout-container>
                           </div>
                       `
-                    : activeTab.type === 'document'
-                      ? html`
+                : activeTab.type === 'document'
+                    ? html`
                             <spreadsheet-document-view
                                 .title="${activeTab.title}"
                                 .content="${activeTab.data.content}"
                             ></spreadsheet-document-view>
                         `
-                      : html``}
+                    : html``}
                 ${activeTab.type === 'onboarding'
-                    ? html`
+                ? html`
                           <spreadsheet-onboarding
                               @create-spreadsheet="${this._onCreateSpreadsheet}"
                           ></spreadsheet-onboarding>
                       `
-                    : html``}
+                : html``}
             </div>
 
             <div class="bottom-tabs-container">
@@ -918,15 +627,15 @@ json.dumps(result)
                     @dragleave="${this._handleSheetDragLeave}"
                 >
                     ${this.tabs.map(
-                        (tab, index) => html`
+                    (tab, index) => html`
                             <div
                                 class="tab-item ${this.activeTabIndex === index ? 'active' : ''} ${tab.type ===
-                                'add-sheet'
-                                    ? 'add-sheet-tab'
-                                    : ''}"
+                            'add-sheet'
+                            ? 'add-sheet-tab'
+                            : ''}"
                                 draggable="${tab.type !== 'add-sheet' && this.editingTabIndex !== index}"
                                 @click="${() =>
-                                    tab.type === 'add-sheet' ? this._handleAddSheet() : (this.activeTabIndex = index)}"
+                            tab.type === 'add-sheet' ? this._handleAddSheet() : (this.activeTabIndex = index)}"
                                 @dblclick="${() => this._handleTabDoubleClick(index, tab)}"
                                 @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, index, tab)}"
                                 @dragstart="${(e: DragEvent) => this._handleSheetDragStart(e, index)}"
@@ -936,7 +645,7 @@ json.dumps(result)
                             >
                                 ${this._renderTabIcon(tab)}
                                 ${this.editingTabIndex === index
-                                    ? html`
+                            ? html`
                                           <input
                                               class="tab-input"
                                               .value="${tab.title}"
@@ -944,17 +653,17 @@ json.dumps(result)
                                               @dblclick="${(e: Event) => e.stopPropagation()}"
                                               @keydown="${(e: KeyboardEvent) => this._handleTabInputKey(e, index, tab)}"
                                               @blur="${(e: Event) =>
-                                                  this._handleTabRename(
-                                                      index,
-                                                      tab,
-                                                      (e.target as HTMLInputElement).value
-                                                  )}"
+                                    this._handleTabRename(
+                                        index,
+                                        tab,
+                                        (e.target as HTMLInputElement).value
+                                    )}"
                                           />
                                       `
-                                    : html` ${tab.type !== 'add-sheet' ? tab.title : ''} `}
+                            : html` ${tab.type !== 'add-sheet' ? tab.title : ''} `}
                             </div>
                         `
-                    )}
+                )}
                 </div>
                 <div class="scroll-indicator-right ${this.isScrollableRight ? 'visible' : ''}"></div>
             </div>
@@ -963,14 +672,14 @@ json.dumps(result)
                 ? html`
                       <div
                           style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
-                              .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
+                        .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
                       >
                           <div
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
                               @mouseover="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
+                        ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
                               @mouseout="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'transparent')}"
+                        ((e.target as HTMLElement).style.background = 'transparent')}"
                               @click="${() => this._renameSheet(this.tabContextMenu!.index)}"
                           >
                               ${t('renameSheet')}
@@ -978,9 +687,9 @@ json.dumps(result)
                           <div
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
                               @mouseover="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
+                        ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
                               @mouseout="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'transparent')}"
+                        ((e.target as HTMLElement).style.background = 'transparent')}"
                               @click="${() => this._deleteSheet(this.tabContextMenu!.index)}"
                           >
                               ${t('deleteSheet')}
@@ -1006,10 +715,9 @@ json.dumps(result)
                 ${unsafeHTML(
                     t(
                         'deleteSheetConfirm',
-                        `<span style="color: var(--vscode-textPreformat-foreground);">${
-                            this.confirmDeleteIndex !== null
-                                ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
-                                : ''
+                        `<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null
+                            ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
+                            : ''
                         }</span>`
                     )
                 )}
@@ -1119,28 +827,7 @@ json.dumps(result)
 
         const tab = this.tabs[index];
         if (tab && tab.type === 'sheet' && typeof tab.sheetIndex === 'number') {
-            if (!this.pyodide) return;
-            try {
-                const result = await this.pyodide.runPythonAsync(`
-                    import json
-                    res = delete_sheet(${tab.sheetIndex})
-                    json.dumps(res) if res else "null"
-                `);
-                const updateSpec = JSON.parse(result);
-                if (updateSpec && !updateSpec.error) {
-                    vscode.postMessage({
-                        type: 'updateRange',
-                        startLine: updateSpec.startLine,
-                        endLine: updateSpec.endLine,
-                        endCol: updateSpec.endCol,
-                        content: updateSpec.content
-                    });
-                } else if (updateSpec.error) {
-                    console.error('Delete failed:', updateSpec.error);
-                }
-            } catch (e) {
-                console.error('Python error:', e);
-            }
+            this.spreadsheetService.deleteSheet(tab.sheetIndex);
         }
     }
 
@@ -1149,67 +836,20 @@ json.dumps(result)
         this.editingTabIndex = null; // Exit edit mode
 
         if (!newName || newName === tab.title) return;
-        if (!this.pyodide || !this.workbook) return;
 
         if (tab.type === 'sheet' && typeof tab.sheetIndex === 'number') {
-            try {
-                const result = await this.pyodide.runPythonAsync(`
-                import json
-                res = rename_sheet(${tab.sheetIndex}, ${JSON.stringify(newName)})
-                json.dumps(res) if res else "null"
-            `);
-                const updateSpec = JSON.parse(result);
-                if (updateSpec && !updateSpec.error) {
-                    vscode.postMessage({
-                        type: 'updateRange',
-                        startLine: updateSpec.startLine,
-                        endLine: updateSpec.endLine,
-                        content: updateSpec.content
-                    });
-                } else if (updateSpec.error) {
-                    console.error('Rename failed:', updateSpec.error);
-                }
-            } catch (e) {
-                console.error(e);
-            }
+            this.spreadsheetService.renameSheet(tab.sheetIndex, newName);
         }
     }
 
     private async _handleAddSheet() {
-        if (!this.pyodide) return;
-
         this.pendingAddSheet = true;
 
         let newSheetName = 'Sheet 1';
         if (this.workbook && this.workbook.sheets) {
             newSheetName = `Sheet ${this.workbook.sheets.length + 1}`;
         }
-
-        try {
-            const result = await this.pyodide.runPythonAsync(`
-            import json
-            res = add_sheet(${JSON.stringify(newSheetName)})
-            json.dumps(res) if res else "null"
-        `);
-
-            const updateSpec = JSON.parse(result);
-
-            if (updateSpec) {
-                if (updateSpec.error) {
-                    console.error('Add Sheet failed:', updateSpec.error);
-                    return;
-                }
-
-                vscode.postMessage({
-                    type: 'updateRange',
-                    startLine: updateSpec.startLine,
-                    endLine: updateSpec.endLine,
-                    content: updateSpec.content
-                });
-            }
-        } catch (err) {
-            console.error('Failed to add sheet:', err);
-        }
+        this.spreadsheetService.addSheet(newSheetName);
     }
 
     private _onCreateSpreadsheet() {
@@ -1217,20 +857,12 @@ json.dumps(result)
     }
 
     private async _parseWorkbook() {
-        if (!this.pyodide) return;
         try {
             // 2. Initialization Phase
-            this.pyodide.globals.set('md_text', this.markdownInput);
-            this.pyodide.globals.set('config', JSON.stringify(this.config));
+            const result = await this.spreadsheetService.initializeWorkbook(this.markdownInput, this.config);
 
-            const resultJson = await this.pyodide.runPythonAsync(`
-        initialize_workbook(md_text, config)
-        get_state()
-      `);
+            if (!result) return;
 
-            if (!resultJson) return;
-
-            const result = JSON.parse(resultJson);
             this.workbook = result.workbook;
 
             const structure: StructureItem[] = result.structure;
@@ -1411,41 +1043,12 @@ json.dumps(result)
             to -= 1;
         }
 
-        this._enqueueRequest(async () => {
-            const result = await this.pyodide.runPythonAsync(`
-              res = move_sheet(${from}, ${to})
-              json.dumps(res) if res else "null"
-          `);
-            const updateSpec = JSON.parse(result);
-            if (updateSpec && !updateSpec.error) {
-                vscode.postMessage({
-                    type: 'updateRange',
-                    startLine: updateSpec.startLine,
-                    endLine: updateSpec.endLine,
-                    content: updateSpec.content
-                });
-            } else if (updateSpec && updateSpec.error) {
-                console.error('Move Sheet Error:', updateSpec.error);
-            }
-        });
+        this.spreadsheetService.moveSheet(from, to);
     }
 
     private async _handleColumnResize(detail: any) {
-        if (!this.pyodide) return;
         const { sheetIndex, tableIndex, col, width } = detail;
-        this._enqueueRequest(async () => {
-            const result = await this.pyodide.runPythonAsync(`
-            import json
-            res = update_column_width(
-                ${sheetIndex}, 
-                ${tableIndex}, 
-                ${col}, 
-                ${width}
-            )
-            json.dumps(res) if res else "null"
-        `);
-            this._postUpdateMessage(JSON.parse(result));
-        });
+        this.spreadsheetService.updateColumnWidth(sheetIndex, tableIndex, col, width);
     }
 
     private _handleToolbarAction(e: CustomEvent) {
