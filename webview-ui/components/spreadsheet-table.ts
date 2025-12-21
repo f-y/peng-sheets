@@ -356,12 +356,12 @@ export class SpreadsheetTable extends LitElement {
         // Build filter menu state from FilterController
         const filterMenu = this.filterCtrl.activeFilterMenu
             ? {
-                  x: this.filterCtrl.activeFilterMenu.x,
-                  y: this.filterCtrl.activeFilterMenu.y,
-                  col: this.filterCtrl.activeFilterMenu.colIndex,
-                  values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
-                  hiddenValues: this.filterCtrl.getHiddenValues(this.filterCtrl.activeFilterMenu.colIndex)
-              }
+                x: this.filterCtrl.activeFilterMenu.x,
+                y: this.filterCtrl.activeFilterMenu.y,
+                col: this.filterCtrl.activeFilterMenu.colIndex,
+                values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
+                hiddenValues: this.filterCtrl.getHiddenValues(this.filterCtrl.activeFilterMenu.colIndex)
+            }
             : null;
 
         return html`
@@ -376,6 +376,7 @@ export class SpreadsheetTable extends LitElement {
                 .contextMenu="${this.contextMenu}"
                 .filterMenu="${filterMenu}"
                 .resizingCol="${this.resizeCtrl.resizingCol}"
+                .rowCount="${table.rows.length}"
             }}"
                 @view-insert-row="${this.eventCtrl.handleInsertRow}"
                 @view-delete-row="${this.eventCtrl.handleDeleteRow}"
