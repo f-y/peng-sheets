@@ -11,7 +11,7 @@
 | 3 | Alice | Admin | 4 | Female |
 | 4 | Bob | User |  |  |
 | 5 | Alice | Admin | a |  |
-| 6 | Bob | User |  |  |
+| 6 | Bob | User | a |  |
 | 7 | Alice | Admin |  |  |
 | 8 | Bob | User |  |  |
 | 9 | Alice | Admin | 1 | 1 |

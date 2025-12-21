@@ -8,192 +8,255 @@ This document defines the "Excel-like" user experience targeted for `vscode-md-s
 *   **Instant Feedback**: Operations like selection, editing, and resizing must feel instantaneous.
 *   **Safe**: Undo/Redo must be robust and reliable.
 
+## 0. Implementation Status Key
+This specification follows the [GitHub Task List](https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/about-task-lists) standard for tracking feature implementation status.
+
+- [x] **Implemented**: Feature is fully functional and merged.
+- [ ] **Pending**: Feature is specified but not yet implemented.
+- [-] **Out of Scope**: Feature is considered but explicitly delayed or rejected for MVP.
+
 ## 2. Grid Visualization
 ### 2.1. Basic Layout
 *   **Headers**:
-    *   **Column Headers**: A, B, C... (Fixed/Sticky at top).
-    *   **Row Headers**: 1, 2, 3... (Fixed/Sticky at left).
-    *   **Highlighting**: Active row/column headers should be highlighted to indicate cursor position.
-*   **Grid Lines**: Subtle but clear separation between cells.
+    - [x] **Column Headers**: A, B, C... (Fixed/Sticky at top).
+    - [x] **Row Headers**: 1, 2, 3... (Fixed/Sticky at left).
+    - [x] **Highlighting**: Active row/column headers should be highlighted to indicate cursor position.
+- [x] **Grid Lines**: Subtle but clear separation between cells.
 *   **Cell Styling**:
-    *   **Padding**: Comfortable whitespace within cells.
-    *   **Text Alignment**: Respect Markdown alignment (Left/Center/Right).
-    *   **Overflow**: Text should wrap or be truncated with an ellipsis (configurable), expanding on focus.
+    - [x] **Padding**: Comfortable whitespace within cells.
+    - [x] **Text Alignment**: Respect Markdown alignment (Left/Center/Right).
+    - [x] **Overflow**: Text should wrap or be truncated with an ellipsis (configurable), expanding on focus.
 
 ### 2.2. Visual Feedback
-*   **Focus Ring**: A distinct border (usually blue/green) around the currently active cell.
-*   **Selection Overlay**: A semi-transparent overlay indicating the selected range(s).
-*   **Fill Handle**: A small square at the bottom-right of the active cell/range for drag-to-fill operations.
+- [x] **Focus Ring**: A distinct border (usually blue/green) around the currently active cell.
+- [x] **Selection Overlay**: A semi-transparent overlay indicating the selected range(s).
+- [ ] **Fill Handle**: A small square at the bottom-right of the active cell/range for drag-to-fill operations.
 
 ## 3. Navigation & Selection
 ### 3.1. Navigation (Navigation Mode)
-*   `Arrow Keys`: Move focus one cell in the direction.
-*   `Tab`: Move right. If at end of row, move to start of next row (optional).
-*   `Shift + Tab`: Move left.
-*   `Enter`: Move down.
-*   `Shift + Enter`: Move up.
-*   `Home`: Move to the first column of the current row.
-*   `End`: Move to the last column of the current row (or last data cell).
-*   `Ctrl/Cmd + Home`: Move to A1.
-*   `Ctrl/Cmd + End`: Move to the last used cell in the sheet.
-*   `Ctrl/Cmd + Arrow`: Jump to the edge of the data region.
-*   `Page Up / Page Down`: Scroll up/down by one screen height.
-*   `Alt + Page Up / Page Down`: Scroll left/right by one screen width.
+- [x] `Arrow Keys`: Move focus one cell in the direction.
+- [x] `Tab`: Move right. If at end of row, move to start of next row (optional).
+- [x] `Shift + Tab`: Move left.
+- [x] `Enter`: Move down.
+- [x] `Shift + Enter`: Move up.
+- [x] `Home`: Move to the first column of the current row.
+- [x] `End`: Move to the last column of the current row (or last data cell).
+- [x] `Ctrl/Cmd + Home`: Move to A1.
+- [x] `Ctrl/Cmd + End`: Move to the last used cell in the sheet.
+- [x] `Ctrl/Cmd + Arrow`: Jump to the edge of the data region.
+- [x] `Page Up / Page Down`: Scroll up/down by one screen height.
+- [x] `Alt + Page Up / Page Down`: Scroll left/right by one screen width.
 
 ### 3.2. Selection
-*   **Click**: Select single cell.
-*   **Shift + Click**: Extend selection from active cell to clicked cell (Range Selection).
-*   **Click Row Header**: Select entire row.
-*   **Click Column Header**: Select entire column.
-*   **Ctrl/Cmd + Click**: Add non-contiguous cells/ranges to selection (Multi-selection).
-*   **Shift + Arrow Keys**: Extend selection range by one cell.
-*   **Ctrl/Cmd + Shift + Arrow**: Extend selection to edge of data.
-*   **Ctrl/Cmd + A**: Select all data. Press again to select entire grid.
+- [x] **Click**: Select single cell.
+- [x] **Shift + Click**: Extend selection from active cell to clicked cell (Range Selection).
+- [x] **Click Row Header**: Select entire row.
+- [x] **Click Column Header**: Select entire column.
+- [ ] **Ctrl/Cmd + Click**: Add non-contiguous cells/ranges to selection (Multi-selection).
+- [x] **Shift + Arrow Keys**: Extend selection range by one cell.
+- [x] **Ctrl/Cmd + Shift + Arrow**: Extend selection to edge of data.
+- [x] **Ctrl/Cmd + A**: Select all data. Press again to select entire grid.
 
 ## 4. Editing Experience
 ### 4.1. Modes
-*   **Navigation Mode**: Default. Typing replaces cell content immediately.
-*   **Edit Mode**: Entered via `Enter`, `F2`, or `Double Click`. Typing inserts at cursor position.
+- [x] **Navigation Mode**: Default. Typing replaces cell content immediately.
+- [x] **Edit Mode**: Entered via `Enter`, `F2`, or `Double Click`. Typing inserts at cursor position.
 
 ### 4.2. Entering Edit Mode
-*   `Typing (Nav Mode)`: **Excel-like Behavior**: Immediately enters Edit Mode and *overwrites* existing cell content with the typed character.
-*   `F2`: Enters Edit Mode, cursor at end of text.
-*   `Double Click`: Enters Edit Mode, cursor at clicked position (or select word).
-*   `Enter`: Moves focus down (Navigation). *Standard Excel behavior.*
+- [x] `Typing (Nav Mode)`: **Excel-like Behavior**: Immediately enters Edit Mode and *overwrites* existing cell content with the typed character.
+- [x] `F2`: Enters Edit Mode, cursor at end of text.
+- [x] `Double Click`: Enters Edit Mode, cursor at clicked position (or select word).
+- [x] `Enter`: Moves focus down (Navigation). *Standard Excel behavior.*
 
 ### 4.3. While in Edit Mode
-*   `Arrow Keys`: Move cursor within text.
-*   `Home/End`: Move cursor to start/end of text.
-*   `Enter`: Commit changes and move down.
-*   `Tab`: Commit changes and move right.
-*   `Esc`: Cancel changes and revert to Navigation Mode.
-*   `Alt + Enter`: Insert newline.
-    *   **Persistence**: Converted to `<br>` tag in Markdown table cells to preserve structure.
-    *   **Display**: Rendered as a line break within the cell.
+- [x] `Arrow Keys`: Move cursor within text.
+- [x] `Home/End`: Move cursor to start/end of text.
+- [x] `Enter`: Commit changes and move down.
+- [x] `Tab`: Commit changes and move right.
+- [x] `Esc`: Cancel changes and revert to Navigation Mode.
+- [x] `Alt + Enter`: Insert newline.
+    - [x] **Persistence**: Converted to `<br>` tag in Markdown table cells to preserve structure.
+    - [x] **Display**: Rendered as a line break within the cell.
 
-## 5. Structural Manipulation
-### 5.1. Rows & Columns
-*   **Insert**:
-    *   Right-click context menu: "Insert Row Above/Below", "Insert Column Left/Right".
-    *   Shortcuts: `Ctrl/Cmd + +` (with row/col selected).
-*   **Delete**:
-    *   Right-click context menu: "Delete Row", "Delete Column".
-    *   Shortcuts: `Ctrl/Cmd + -` (with row/col selected).
-*   **Resize**:
-    *   Drag boundaries between column headers to resize width.
-    *   Double-click boundary to "Auto-fit" width to content.
-*   **Move**:
-    *   Drag & Drop rows/columns by grabbing the header.
-
-### 5.2. Sorting
-*   Clicking a sort icon in the column header (Toggle: Asc -> Desc -> Off).
+## 5. Undo / Redo
+*   **Global History**:
+    - [x] `Ctrl/Cmd + Z`: Undo last action (edit, structure change, paste, etc.).
+    - [x] `Ctrl/Cmd + Shift + Z` / `Ctrl/Cmd + Y`: Redo.
+- [x] **Granularity**: Each "commit" (Enter, Tab, Paste) is one undo step. Typing characters in Edit Mode is *not* separate steps.
 
 ## 6. Clipboard Operations
-
 ### 6.1. Standard Copy (`Ctrl/Cmd + C`)
 *   **Source**:
-    *   **Range**: Copies TSV data of selected cells.
-    *   **Row/Column**: If Headers are selected, copies the entire row/column data.
-*   **Format**: Text/Plain (TSV) for maximum compatibility.
+    - [x] **Range**: Copies TSV data of selected cells.
+    - [x] **Row/Column**: If Headers are selected, copies the entire row/column data.
+- [x] **Format**: Text/Plain (TSV) for maximum compatibility.
 
 ### 6.2. Standard Paste (`Ctrl/Cmd + V`)
-*   **Behavior**: Overwrites existing content starting from the active cell (Top-Left of selection).
+- [x] **Behavior**: Overwrites existing content starting from the active cell (Top-Left of selection).
 *   **Scenarios**:
-    *   **Single Cell Source -> Single Cell Target**: Overwrites target.
-    *   **Single Cell Source -> Range Target**: Fills the entire target range with the source value.
-    *   **Range Source (NxM) -> Single Cell Target**: Pastes the NxM grid starting at Target. Overwrites existing data. **Expands Selection** to match the pasted range.
+    - [x] **Single Cell Source -> Single Cell Target**: Overwrites target.
+    - [x] **Single Cell Source -> Range Target**: Fills the entire target range with the source value.
+    - [x] **Range Source (NxM) -> Single Cell Target**: Pastes the NxM grid starting at Target. Overwrites existing data. **Expands Selection** to match the pasted range.
     *   **Range Source -> Range Target**:
-        *   If Source Size same as Target: 1:1 Paste.
-        *   If Source is smaller: Tiles/Repeats source to fill target? (Excel behavior). *MVP: Just paste top-left.*
-    *   **Row Source -> Row Target**: Overwrites the target row(s).
-    *   **External Table (Excel/Web)**: Parsed as TSV.
+        - [x] If Source Size same as Target: 1:1 Paste.
+        - [x] If Source is smaller: Tiles/Repeats source to fill target? (Excel behavior). *MVP: Just paste top-left.*
+    - [x] **Row Source -> Row Target**: Overwrites the target row(s).
+    - [x] **External Table (Excel/Web)**: Parsed as TSV.
 *   **Grid Expansion**:
-    *   **Rows**: If pasting N rows exceeds current table height, **automatically add new rows**.
-    *   **Columns**: If pasting M columns exceeds current table width:
-        *   **Automatically add new columns**.
-        *   **Header Generation**: New columns need headers. Auto-generate (e.g., `Column 4`, `Column 5` or empty).
-        *   **Constraint**: Cannot paste if it breaks valid table structure (rare in Markdown, mostly just expansion).
+    - [x] **Rows**: If pasting N rows exceeds current table height, **automatically add new rows**.
+    - [x] **Columns**: If pasting M columns exceeds current table width:
+        - [x] **Automatically add new columns**.
+        - [x] **Header Generation**: New columns need headers. Auto-generate (e.g., `Column 4`, `Column 5` or empty).
+        - [x] **Constraint**: Cannot paste if it breaks valid table structure (rare in Markdown, mostly just expansion).
 
 ### 6.3. Insert Paste ("Insert Copied Cells")
-*   **Concept**: Analogous to Excel's `Ctrl/Cmd + +` (Insert) when clipboard has content.
-*   **Trigger**: Context Menu -> "Insert Copied Cells" or Shortcut (if implemented).
+- [ ] **Concept**: Analogous to Excel's `Ctrl/Cmd + +` (Insert) when clipboard has content.
+- [ ] **Trigger**: Context Menu -> "Insert Copied Cells" or Shortcut (if implemented).
 *   **Behavior**:
-    *   **Row Mode** (Clipboard is full rows): Inserts N rows *at* the current selection index. Existing rows shift down. Pastes data into new rows.
-    *   **Column Mode** (Clipboard is full cols): Inserts N cols *at* current selection. Shift right.
+    - [ ] **Row Mode** (Clipboard is full rows): Inserts N rows *at* the current selection index. Existing rows shift down. Pastes data into new rows.
+    - [ ] **Column Mode** (Clipboard is full cols): Inserts N cols *at* current selection. Shift right.
     *   **Range Mode**:
-        *   Shift Cells Right vs Shift Cells Down (Dialog or default based on shape).
-        *   *MVP*: Only support "Insert Copied Rows" default if full rows copied.
+        - [ ] Shift Cells Right vs Shift Cells Down (Dialog or default based on shape).
+        - [ ] *MVP*: Only support "Insert Copied Rows" default if full rows copied.
 
 ### 6.4. Special Cases
 *   **Pasting Full Table into Editor**:
     *   If user copies an entire table (headers + data) from Excel:
-    *   **Action**: Paste at cursor.
+    - [x] **Action**: Paste at cursor.
     *   **Handling**:
-        *   If pasted inside existing table: Treat headers as just another data row? Or try to "smart match"?
-        *   **Rule**: `Ctrl+V` is raw data paste. If source has headers, they become data in the destination.
-    *   **Future**: "Paste as New Table" command (creates new Markdown table structure).
+        - [x] If pasted inside existing table: Treat headers as just another data row? Or try to "smart match"?
+        - [x] **Rule**: `Ctrl+V` is raw data paste. If source has headers, they become data in the destination.
+    - [ ] **Future**: "Paste as New Table" command (creates new Markdown table structure).
 
-## 7. Undo / Redo
-*   **Global History**:
-    *   `Ctrl/Cmd + Z`: Undo last action (edit, structure change, paste, etc.).
-    *   `Ctrl/Cmd + Shift + Z` / `Ctrl/Cmd + Y`: Redo.
-*   **Granularity**: Each "commit" (Enter, Tab, Paste) is one undo step. Typing characters in Edit Mode is *not* separate steps.
+## 7. Table Management
+*   **Explicit Creation**:
+    - [x] Tables are not infinite. They are distinct entities.
+    - [ ] **UI**: "Add Table" button (e.g., in a toolbar or below the last table).
+    *   **Constraints**:
+        - [x] **Header Row Mandatory**: Every table MUST have a header row.
+        - [x] **Strict Boundaries**: Empty lines in the grid do not split the table. The table size is explicit.
+        - [x] **No "Magic" Splitting**: We do not infer multiple tables from a single grid based on empty rows.
 
-## 8. Markdown Specific Features
+## 8. App & File Structure Integration
+### 8.1. Hybrid Document Model (Sheets + Docs)
+The application treats a Markdown file as a collection of "Tabs".
+- [x] **Workbook Section**: A specific top-level header (default `# Tables`) acts as the container for Spreadsheet Sheets.
+    - [x] Sub-headers (default `## SheetName`) within this section are parsed as individual **Sheet Tabs**.
+- [x] **Document Sections**: All *other* top-level headers (e.g., `# Introduction`, `# Appendix`) are treated as **Document Tabs**.
+    - [x] These tabs display the Markdown text content effectively as a "Text Sheet".
+    - [x] Users can switch between Sheet Tabs and Document Tabs seamlessly in the same bottom tab bar.
+    - [x] **Visual Distinction**: Tabs have icons indicating their type (e.g., Grid icon for Sheets, Document icon for Text).
+
+### 8.2. Empty State (Onboarding)
+- [x] **Condition**: If the Markdown file does not contain the Workbook Section (`# Tables`).
+- [x] **UI**: specific "Home" view is displayed instead of a blank grid.
+*   **Actions**:
+    - [x] "Create Spreadsheet": Appends the Workbook Section (`# Tables`) and an initial Sheet (`## Sheet 1`) to the file.
+
+### 8.3. Flexible Persistence
+- [x] **Reading**: The parser identifies tables regardless of their location in the file (scanning for Workbook Section).
+*   **Writing**:
+    - [x] **In-Place Update**: If a table already exists, edits update the corresponding lines in the file, preserving the table's location relative to other content.
+    - [x] **Append**: New tables are typically appended to the Workbook Section.
+*   **Content Preservation**:
+    - [x] When deleting sheets, content before and after the Workbook Section MUST be preserved.
+    - [x] The Workbook Section boundary is determined by the next top-level header (same level as root marker) or end of file.
+    - [x] Example: In a document with `# Tables` followed by `# Appendix`, deleting all sheets removes only the content between these headers.
+
+## 9. Markdown Specific Features
 These features are specific to the Markdown context but should be integrated into the UI.
 
 *   **Alignment Control**:
-    *   Toolbar buttons or Context menu to set Column Alignment (Left, Center, Right).
-    *   Visual indicator in Column Header (e.g., icon).
+    - [x] Toolbar buttons or Context menu to set Column Alignment (Left, Center, Right).
+    - [ ] Visual indicator in Column Header (e.g., icon).
 *   **Formatting Shortcuts**:
-    *   `Ctrl/Cmd + B`: Bold (`**text**`).
-    *   `Ctrl/Cmd + I`: Italic (`*text*`).
-    *   `Ctrl/Cmd + K`: Insert Link (`[text](url)`).
+    - [x] `Ctrl/Cmd + B`: Bold (`**text**`).
+    - [x] `Ctrl/Cmd + I`: Italic (`*text*`).
+    - [ ] `Ctrl/Cmd + K`: Insert Link (`[text](url)`).
 *   **Escaping**:
-    *   Automatically handle pipe `|` characters in text (escape as `\|`).
-    *   Handle newlines (escape or `<br>`).
+    - [x] Automatically handle pipe `|` characters in text (escape as `\|`).
+    - [x] Handle newlines (escape or `<br>`).
 
-## 9. Advanced / Future
-*   **Search & Replace (`Ctrl/Cmd + F`)**: Search within the grid.
-*   **Filter**: Excel-like filter dropdowns in headers.
-*   **Formulas**: Basic math (Sum, Average) support? (Would need to decide how to persist in Markdown - likely not persisted, just calculated).
-*   **Context Menu**: Comprehensive right-click menu.
-
-## 10. Technical Architecture Implications (Separation of Concerns)
-To achieve this, the implementation must be modular:
-
-*   **Grid Model**: Pure state management (Cells, Rows, Cols, Selection). Independent of rendering.
-*   **Selection Model**: Handles complex selection logic (Ranges, Multi-select).
-*   **Command System**: All actions (Edit, Move, Resize) should be Commands to support Undo/Redo easily.
-*   **Renderer**: Dumb component that just renders the Model. (Canvas-based or Virtual DOM based for performance).
-*   **Input Controller**: Handles keyboard/mouse events and dispatches Commands.
-*   **Clipboard Manager**: Handles serialization/deserialization.
-
-## 11. Markdown-Specific Data Structures
+## 10. Markdown-Specific Data Structures
 Unlike Excel, our data model includes metadata specific to the Markdown context.
 
 *   **Table Name**:
-    *   **Concept**: A title for the table (parsed from preceding Header).
-    *   **UI**: An editable input field prominently displayed above the grid.
-    *   **Behavior**: Optional. If empty, the header is removed from Markdown.
+    - [x] **Concept**: A title for the table (parsed from preceding Header).
+    - [ ] **UI**: An editable input field prominently displayed above the grid.
+    - [x] **Behavior**: Optional. If empty, the header is removed from Markdown.
 *   **Description**:
-    *   **Concept**: Text describing the table (parsed from text between Header and Table).
-    *   **UI**: An editable text area or input field between the Table Name and the Grid.
-    *   **Behavior**: Optional.
+    - [x] **Concept**: Text describing the table (parsed from text between Header and Table).
+    - [x] **UI**: An editable text area or input field between the Table Name and the Grid.
+    - [x] **Behavior**: Optional.
 
-## 12. Table Management
-*   **Explicit Creation**:
-    *   Tables are not infinite. They are distinct entities.
-    *   **UI**: "Add Table" button (e.g., in a toolbar or below the last table).
-    *   **Constraints**:
-        *   **Header Row Mandatory**: Every table MUST have a header row.
-        *   **Strict Boundaries**: Empty lines in the grid do not split the table. The table size is explicit.
-        *   **No "Magic" Splitting**: We do not infer multiple tables from a single grid based on empty rows.
+## 11. Structural Manipulation
+### 11.1. Rows & Columns
+*   **Insert**:
+    - [x] Right-click context menu: "Insert Row Above/Below", "Insert Column Left/Right".
+    - [x] Shortcuts: `Ctrl/Cmd + +` (with row/col selected).
+*   **Delete**:
+    - [x] Right-click context menu: "Delete Row", "Delete Column".
+    - [x] Shortcuts: `Ctrl/Cmd + -` (with row/col selected).
+*   **Resize**:
+    - [x] Drag boundaries between column headers to resize width.
+    - [x] Double-click boundary to "Auto-fit" width to content.
+*   **Move**:
+    - [ ] **Drag & Drop rows/columns by grabbing the header**. (High Priority)
 
-## 13. Visual Formatting & Excel Compatibility Roadmap
+### 11.2. Sorting
+- [ ] Clicking a sort icon in the column header (Toggle: Asc -> Desc -> Off).
+
+## 12. Auto Fill (Fill Handle)
+The "Fill Handle" is the small square at the bottom-right of the active cell or selection. Dragging it allows for rapid data entry and pattern extension.
+
+### 12.1. Basic Behavior (Drag)
+- [ ] **Trigger**: Click and drag the Fill Handle over adjacent cells (Down/Right for typical use, Up/Left for removing/reverse).
+*   **Logic**:
+    - [ ] **Single Number** (`1`): **Copy** (1, 1, 1). *(Excel Default)*.
+        - [ ] *Modifier*: Hold `Ctrl/Alt` (platform dependent) to **Fill Series** (1, 2, 3).
+    - [ ] **Single Number-String** (`Day 1`): **Fill Series** (Day 2, Day 3).
+    - [ ] **Date/Time** (`2024-01-01`): **Fill Series** (2024-01-02, ...).
+    - [ ] **Single String** (`Apple`): **Copy**.
+    *   **Multi-Cell Selection (Pattern)**:
+        - [ ] If `1, 2` selected: Detect linear trend -> **3, 4, 5**.
+        - [ ] If `Jan, Mar` selected: Detect interval -> **May, Jul**.
+        - [ ] If no clear pattern: **Repeat Sequence** (A, B, A, B).
+
+### 12.2. Advanced Behavior
+*   **Double Click**:
+    - [ ] If the Fill Handle is double-clicked from a cell (or range) with data in the *adjacent left column*.
+    - [ ] **Action**: Automatically fill down to match the height of the adjacent column's data.
+*   **Flash Fill (Future)**:
+    - [ ] Detect string manipulation patterns (e.g., extracting "John" from "John Doe") - *Out of Scope for MVP*.
+
+### 12.3. Implementation Nuances
+- [ ] **Markdown Persistence**: All filled data is written as plain text. No formulae or dynamic links.
+- [ ] **Undo**: The entire fill operation is a single undo step.
+
+## 13. Data Validation (Input Rules)
+- [ ] **Goal**: Restrict input to maintain data integrity, similar to Excel's Data Validation.
+*   **Excel Features vs Extension**:
+    - [ ] **List (Dropdown)**:
+        - *Excel*: Defined comma-separated list or cell range.
+        - *Extension*: Defined in metadata (e.g., `["Open", "Closed"]`). Renders as a dropdown in edit mode.
+    - [ ] **Data Type validation**:
+        - *Excel*: Whole Number, Decimal, Date, Time, Text Length.
+        - *Extension*: Schema-based validation. If a column is defined as `int`, warn or block non-integer input.
+    - [ ] **Custom Formula**:
+        - *Excel*: `A1 > 5`.
+        - *Extension*: Likely via Python expression or Regex in metadata.
+    - [ ] **Error Alert**:
+        - *Excel*: Popup blocking execution.
+        - *Extension*: Toast notification or red cell border (non-blocking preferred).
+    - [ ] **Input Message**:
+        - *Excel*: Tooltip when cell is selected.
+        - *Extension*: Tooltip or Status Bar message.
+- [ ] **Metadata Persistence**: Validation rules must be stored in the table metadata (JSON/YAML in comments) to persist across sessions.
+
+## 14. Visual Formatting & Excel Compatibility Roadmap
 Excel has a vast array of formatting options. Since Markdown is plain text, we cannot support everything natively. We will implement support in phases, potentially using metadata (HTML comments or YAML frontmatter) to persist non-standard attributes.
 
-### 13.1. Excel Formatting Features (Reference)
+### 14.1. Excel Formatting Features (Reference)
 *   **Number Formats**: General, Number, Currency, Accounting, Date, Time, Percentage, Fraction, Scientific, Text, Custom.
 *   **Font**: Family, Size, Bold, Italic, Underline, Strikethrough, Color, Sub/Superscript.
 *   **Fill**: Background Color, Pattern Style/Color, Gradients.
@@ -207,7 +270,7 @@ Excel has a vast array of formatting options. Since Markdown is plain text, we c
 *   **Conditional Formatting**: Data Bars, Color Scales, Icon Sets, Rules.
 *   **Protection**: Locked, Hidden.
 
-### 13.2. Implementation Roadmap
+### 14.2. Implementation Roadmap
 
 #### Phase 1: Core Editing & Native Markdown - [Completed]
 *   [x] **Hybrid Structure**: Support for Document Tabs (read-only text views) alongside Sheet Tabs.
@@ -250,91 +313,72 @@ Excel has a vast array of formatting options. Since Markdown is plain text, we c
 *   **Merge Cells**: Fundamentally incompatible with Markdown tables.
 *   **Arbitrary Cell Styling**: Ad-hoc background colors (cell-by-cell painting) are discouraged in favor of rule-based Conditional Formatting to keep Markdown clean.
 
-#### Phase 6: Data Validation (Input Rules)
-*   **Goal**: Restrict input to maintain data integrity, similar to Excel's Data Validation.
-*   **Excel Features vs Extension**:
-    *   **List (Dropdown)**:
-        *   *Excel*: Defined comma-separated list or cell range.
-        *   *Extension*: Defined in metadata (e.g., `["Open", "Closed"]`). Renders as a dropdown in edit mode.
-    *   **Data Type validation**:
-        *   *Excel*: Whole Number, Decimal, Date, Time, Text Length.
-        *   *Extension*: Schema-based validation. If a column is defined as `int`, warn or block non-integer input.
-    *   **Custom Formula**:
-        *   *Excel*: `A1 > 5`.
-        *   *Extension*: Likely via Python expression or Regex in metadata.
-    *   **Error Alert**:
-        *   *Excel*: Popup blocking execution.
-        *   *Extension*: Toast notification or red cell border (non-blocking preferred).
-    *   **Input Message**:
-        *   *Excel*: Tooltip when cell is selected.
-        *   *Extension*: Tooltip or Status Bar message.
-*   **Metadata Persistence**: Validation rules must be stored in the table metadata (JSON/YAML in comments) to persist across sessions.
+## 15. Conditional Formatting
+We support rule-based formatting to visually distinguish rows or cells based on their values.
 
-## 14. App & File Structure Integration
-### 14.1. Hybrid Document Model (Sheets + Docs)
-The application treats a Markdown file as a collection of "Tabs".
-*   **Workbook Section**: A specific top-level header (default `# Tables`) acts as the container for Spreadsheet Sheets.
-    *   Sub-headers (default `## SheetName`) within this section are parsed as individual **Sheet Tabs**.
-*   **Document Sections**: All *other* top-level headers (e.g., `# Introduction`, `# Appendix`) are treated as **Document Tabs**.
-    *   These tabs display the Markdown text content effectively as a "Text Sheet".
-    *   Users can switch between Sheet Tabs and Document Tabs seamlessly in the same bottom tab bar.
-    *   **Visual Distinction**: Tabs have icons indicating their type (e.g., Grid icon for Sheets, Document icon for Text).
+### 15.1. Supported Scenarios (MVP)
+- [ ] **Row Highlighting based on Column Value**:
+    - **Rule**: `IF [ColumnName] == "Value" THEN RowBackground = Color`
+    - **Use Case**: "If Status is 'N/A', make the row gray."
+    - **Persistence**: Rules are stored in Table Metadata.
 
-### 14.2. Empty State (Onboarding)
-*   **Condition**: If the Markdown file does not contain the Workbook Section (`# Tables`).
-*   **UI**: specific "Home" view is displayed instead of a blank grid.
-*   **Actions**:
-    *   "Create Spreadsheet": Appends the Workbook Section (`# Tables`) and an initial Sheet (`## Sheet 1`) to the file.
+### 15.2. Usage
+- [ ] **UI**: "Conditional Formatting" button in Toolbar.
+- [ ] **Dialog**: Simple builder: "Where [Column] is [Value] set row color [Color]".
 
-### 14.3. Flexible Persistence
-*   **Reading**: The parser identifies tables regardless of their location in the file (scanning for Workbook Section).
-*   **Writing**:
-    *   **In-Place Update**: If a table already exists, edits update the corresponding lines in the file, preserving the table's location relative to other content.
-    *   **Append**: New tables are typically appended to the Workbook Section.
-*   **Content Preservation**:
-    *   When deleting sheets, content before and after the Workbook Section MUST be preserved.
-    *   The Workbook Section boundary is determined by the next top-level header (same level as root marker) or end of file.
-    *   Example: In a document with `# Tables` followed by `# Appendix`, deleting all sheets removes only the content between these headers.
+## 16. Advanced / Future
+- [ ] **Search & Replace (`Ctrl/Cmd + F`)**: Search within the grid.
+- [x] **Context Menu**: Comprehensive right-click menu.
 
-## 15. Formula Columns (Computed Columns / 算出列)
+## 17. Formula Columns (Computed Columns / 算出列)
 This feature implements calculated columns similar to Pivot Table calculated fields or simplified Excel Formulas, but with a unique approach to data persistence suited for Markdown.
 
-### 15.1. Concept & Data Model
-*   **Philosophy**: "**Markdown holds current data; Metadata holds the logic.**"
+### 17.1. Concept & Data Model
+- [ ] **Philosophy**: "**Markdown holds current data; Metadata holds the logic.**"
 *   **Behavior**:
-    *   The spreadsheet does *not* store formulas (e.g., `=A1+B1`) in the cell text content. The Markdown table remains pure static data.
-    *   **Persistence**: The calculation definition/logic is stored in the **Table Metadata** (hidden from the rendered Markdown).
-    *   **Runtime**: The Editor maintains a "Dependency Graph" in memory.
-    *   **Reactivity**: When a "Source" value changes, the Editor automatically calculates the result and updates the *text content* of the "Target" (Formula) column in the Markdown buffer immediately.
-    *   **Benefit**: The Markdown file remains a valid, readable, and portable static table for any other Markdown viewer (GitHub, Obsidian, etc.), while the Editor provides the "smart" behavior.
+    - [ ] The spreadsheet does *not* store formulas (e.g., `=A1+B1`) in the cell text content. The Markdown table remains pure static data.
+    - [ ] **Persistence**: The calculation definition/logic is stored in the **Table Metadata** (hidden from the rendered Markdown).
+    - [ ] **Runtime**: The Editor maintains a "Dependency Graph" in memory.
+    - [ ] **Reactivity**: When a "Source" value changes, the Editor automatically calculates the result and updates the *text content* of the "Target" (Formula) column in the Markdown buffer immediately.
+    - [ ] **Benefit**: The Markdown file remains a valid, readable, and portable static table for any other Markdown viewer (GitHub, Obsidian, etc.), while the Editor provides the "smart" behavior.
 
-### 15.2. User Interface
+### 17.2. User Interface
 *   **Entry Points**:
-    *   **Context Menu**: Right-click a Column Header -> **"Set as Formula Column"** (算出列に設定).
-    *   **Toolbar**: **"Add Formula Column"** button (Adds a new column on the right and opens config).
+    - [ ] **Context Menu**: Right-click a Column Header -> **"Set as Formula Column"** (算出列に設定).
+    - [ ] **Toolbar**: **"Add Formula Column"** button (Adds a new column on the right and opens config).
 *   **Configuration Dialog (Modal)**:
-    *   A dedicated modal for defining the column logic.
+    - [ ] A dedicated modal for defining the column logic.
     *   **Formula Type Selector**:
-        1.  **Arithmetic / Expression**: `[Quantity] * [Unit Price]`.
-        2.  **Lookup (VLOOKUP-style)**: Reference another table.
-        3.  **Aggregation**: Running totals, etc. (Future).
+        1.  [ ] **Arithmetic / Expression**: `[Quantity] * [Unit Price]`.
+        2.  [ ] **Lookup (VLOOKUP-style)**: Reference another table.
+        3.  [ ] **Aggregation**: Running totals, etc. (Future).
     *   **Inputs (Dynamic based on Type)**:
-        *   *Expression*: Simple text input with autocomplete for column names `[Column]`.
-        *   *Lookup*:
-            *   **Master Table**: Dropdown of other tables in the Project.
-            *   **Join Key (Local)**: Column in current table (e.g., `Product ID`).
-            *   **Join Key (Remote)**: Column in Master Table to match (e.g., `ID`).
-            *   **Target Field**: Column in Master Table to retrieve (e.g., `Price`).
+        - [ ] *Expression*: Simple text input with autocomplete for column names `[Column]`.
+        - [ ] *Lookup*:
+            - [ ] **Master Table**: Dropdown of other tables in the Project.
+            - [ ] **Join Key (Local)**: Column in current table (e.g., `Product ID`).
+            - [ ] **Join Key (Remote)**: Column in Master Table to match (e.g., `ID`).
+            - [ ] **Target Field**: Column in Master Table to retrieve (e.g., `Price`).
 *   **Visual Indication**:
-    *   Formula Columns have a distinct visual style in the header (e.g., a function `fx` icon).
-    *   Cells in Formula Columns are **Read-Only** (or show a warning if user tries to manually edit, as manual edits would be overwritten by the formula).
+    - [ ] Formula Columns have a distinct visual style in the header (e.g., a function `fx` icon).
+    - [ ] Cells in Formula Columns are **Read-Only** (or show a warning if user tries to manually edit, as manual edits would be overwritten by the formula).
 
-### 15.3. Execution Logic
-1.  **Linkage**: On load, the Editor parses metadata and establishes listeners on "Source Columns" (e.g., "Quantity", "Price").
-2.  **Trigger**: User edits a cell in a Source Column.
-3.  **Process**:
-    *   The `FormulaController` identifies dependent columns.
-    *   It executes the logic (e.g., `row.Quantity * row.Price`).
-    *   It updates the value of the Formula Column cell in the **same row**.
-    *   **Master Table Changes**: If a record in a linked Master Table is updated, the Editor scans all tables referencing it and updates their Lookup columns.
-4.  **Serialization**: The calculated values are written to the Markdown file as standard text. The logic is saved in the metadata block.
+### 17.3. Execution Logic
+1.  [ ] **Linkage**: On load, the Editor parses metadata and establishes listeners on "Source Columns" (e.g., "Quantity", "Price").
+2.  [ ] **Trigger**: User edits a cell in a Source Column.
+3.  [ ] **Process**:
+    - [ ] The `FormulaController` identifies dependent columns.
+    - [ ] It executes the logic (e.g., `row.Quantity * row.Price`).
+    - [ ] It updates the value of the Formula Column cell in the **same row**.
+    - [ ] **Master Table Changes**: If a record in a linked Master Table is updated, the Editor scans all tables referencing it and updates their Lookup columns.
+4.  [ ] **Serialization**: The calculated values are written to the Markdown file as standard text. The logic is saved in the metadata block.
+
+## 18. Technical Architecture Implications (Separation of Concerns)
+To achieve this, the implementation must be modular:
+
+*   **Grid Model**: Pure state management (Cells, Rows, Cols, Selection). Independent of rendering.
+*   **Selection Model**: Handles complex selection logic (Ranges, Multi-select).
+*   **Command System**: All actions (Edit, Move, Resize) should be Commands to support Undo/Redo easily.
+*   **Renderer**: Dumb component that just renders the Model. (Canvas-based or Virtual DOM based for performance).
+*   **Input Controller**: Handles keyboard/mouse events and dispatches Commands.
+*   **Clipboard Manager**: Handles serialization/deserialization.
