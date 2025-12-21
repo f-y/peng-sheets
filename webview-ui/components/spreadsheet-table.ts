@@ -245,6 +245,9 @@ export class SpreadsheetTable extends LitElement {
      */
     public async commitEdit(e: Event) {
         if (this._isCommitting) return;
+        // Guard: Do not commit if we are not in edit mode (prevent ghost commits from stale events)
+        if (!this.editCtrl.isEditing && !this.editCtrl.isReplacementMode) return;
+
         this._isCommitting = true;
 
         try {
@@ -353,12 +356,12 @@ export class SpreadsheetTable extends LitElement {
         // Build filter menu state from FilterController
         const filterMenu = this.filterCtrl.activeFilterMenu
             ? {
-                  x: this.filterCtrl.activeFilterMenu.x,
-                  y: this.filterCtrl.activeFilterMenu.y,
-                  col: this.filterCtrl.activeFilterMenu.colIndex,
-                  values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
-                  hiddenValues: this.filterCtrl.getHiddenValues(this.filterCtrl.activeFilterMenu.colIndex)
-              }
+                x: this.filterCtrl.activeFilterMenu.x,
+                y: this.filterCtrl.activeFilterMenu.y,
+                col: this.filterCtrl.activeFilterMenu.colIndex,
+                values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
+                hiddenValues: this.filterCtrl.getHiddenValues(this.filterCtrl.activeFilterMenu.colIndex)
+            }
             : null;
 
         return html`

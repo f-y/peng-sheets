@@ -11,6 +11,7 @@ import { ClipboardController } from '../../controllers/clipboard-controller';
 import { SelectionController } from '../../controllers/selection-controller';
 import { createMockHost } from './controller-test-helpers';
 import type { ReactiveControllerHost } from 'lit';
+import { EditController } from '../../controllers/edit-controller';
 
 // Extended mock host for clipboard tests
 interface ClipboardMockHost extends ReactiveControllerHost {
@@ -18,6 +19,7 @@ interface ClipboardMockHost extends ReactiveControllerHost {
     sheetIndex: number;
     tableIndex: number;
     selectionCtrl: SelectionController;
+    editCtrl: EditController;
     dispatchEvent: (event: Event) => boolean;
 }
 
@@ -29,6 +31,10 @@ const createClipboardHost = (): ClipboardMockHost => {
         selectionAnchorCol: 0,
         getSelectionRange: vi.fn(() => ({ minR: 0, maxR: 0, minC: 0, maxC: 0 }))
     } as unknown as SelectionController;
+
+    const mockEdit = {
+        cancelEditing: vi.fn()
+    } as unknown as EditController;
 
     return {
         ...createMockHost(),
@@ -42,6 +48,7 @@ const createClipboardHost = (): ClipboardMockHost => {
         sheetIndex: 0,
         tableIndex: 0,
         selectionCtrl: mockSelection,
+        editCtrl: mockEdit,
         dispatchEvent: vi.fn(() => true)
     };
 };

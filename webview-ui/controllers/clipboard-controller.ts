@@ -6,11 +6,14 @@ interface TableData {
     rows: string[][];
 }
 
+import { EditController } from './edit-controller';
+
 interface ClipboardHost extends ReactiveControllerHost {
     table: TableData | null;
     sheetIndex: number;
     tableIndex: number;
     selectionCtrl: SelectionController;
+    editCtrl: EditController;
     dispatchEvent(event: Event): boolean;
     requestUpdate(): void;
 }
@@ -32,8 +35,8 @@ export class ClipboardController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
     /**
      * Parse TSV text that may contain quoted values with embedded newlines, tabs, or escaped quotes.
@@ -317,6 +320,9 @@ export class ClipboardController implements ReactiveController {
     deleteSelection(): void {
         const { table, selectionCtrl, sheetIndex, tableIndex } = this.host;
         if (!table) return;
+
+        // Ensure any pending edit state is cleared to prevent ghost commits later
+        this.host.editCtrl.cancelEditing();
 
         const rowCount = table.rows.length;
         const colCount = table.headers ? table.headers.length : table.rows[0]?.length || 0;
