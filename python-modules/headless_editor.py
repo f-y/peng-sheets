@@ -60,9 +60,12 @@ def get_workbook_range(md_text, root_marker, sheet_header_level):
     start_line = 0
     found = False
 
+    in_code_block = False
     if root_marker:
         for i, line in enumerate(lines):
-            if line.strip() == root_marker:
+            if line.strip().startswith("```"):
+                in_code_block = not in_code_block
+            if not in_code_block and line.strip() == root_marker:
                 start_line = i
                 found = True
                 break
@@ -81,9 +84,20 @@ def get_workbook_range(md_text, root_marker, sheet_header_level):
                 break
         return lvl
 
+    # Start scanning from start_line to keep track of code blocks if needed?
+    # Actually, since start_line is a header (or 0/EOF), we can assume in_code_block is False at start_line.
+    # But if start_line is 0 and we didn't check root_marker (found=False), line 0 might be start of code block.
+    # However, if found=False, start_line=len(lines), so loop doesn't run.
+    # If found=True, start_line is the root marker (a header). So it's not in a code block.
+    # So resetting in_code_block = False is safe.
+
+    in_code_block = False
     for i in range(start_line + 1, len(lines)):
         line = lines[i].strip()
-        if line.startswith("#"):
+        if line.startswith("```"):
+            in_code_block = not in_code_block
+            
+        if not in_code_block and line.startswith("#"):
             lvl = get_level(line)
             if lvl < sheet_header_level:
                 end_line = i
@@ -350,9 +364,13 @@ def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_
 
     # Find root marker first to replicate parse_workbook skip logic
     start_index = 0
+    in_code_block = False
+    
     if root_marker:
         for i, line in enumerate(lines):
-            if line.strip() == root_marker:
+            if line.strip().startswith("```"):
+                in_code_block = not in_code_block
+            if not in_code_block and line.strip() == root_marker:
                 start_index = i + 1
                 break
 
@@ -362,8 +380,19 @@ def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_
 
     # Simple scan for sheet headers
     # We assume parse_workbook found them in order.
+    # Reset in_code_block for the second pass?
+    # If we broke at start_index, we know start_index-1 was the root marker (not in code block).
+    # So start_index starts with in_code_block=False (unless the line itself is ```?)
+    in_code_block = False
+    
     for idx, line in enumerate(lines[start_index:], start=start_index):
         stripped = line.strip()
+        
+        if stripped.startswith("```"):
+            in_code_block = not in_code_block
+
+        if in_code_block:
+            continue
 
         # Check for higher-level headers that would break workbook parsing
         if stripped.startswith("#"):
@@ -393,8 +422,13 @@ def extract_structure(md_text, root_marker):
     current_title = None
     current_lines = []
 
+    in_code_block = False
+
     for line in lines:
-        if line.startswith("# ") and not line.startswith("##"):
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+
+        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
             if current_title and current_type == "document":
                 sections.append(
                     {
@@ -449,9 +483,14 @@ def get_document_section_range(wb, section_index):
     sections = []
     current_section = None
     current_start = None
+    
+    in_code_block = False
 
     for i, line in enumerate(lines):
-        if line.startswith("# ") and not line.startswith("##"):
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+
+        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
             # End previous section
             if current_section is not None:
                 sections.append(
