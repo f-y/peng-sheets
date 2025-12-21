@@ -54,7 +54,8 @@ const translations = {
         toolbarRedo: 'Redo',
         sortAsc: 'Sort A to Z',
         sortDesc: 'Sort Z to A',
-        clearFilter: 'Clear Filter'
+        clearFilter: 'Clear Filter',
+        searchPlaceholder: 'Search'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -111,7 +112,8 @@ const translations = {
         toolbarRedo: 'やり直し',
         sortAsc: '昇順で並べ替え',
         sortDesc: '降順で並べ替え',
-        clearFilter: 'フィルターをクリア'
+        clearFilter: 'フィルターをクリア',
+        searchPlaceholder: '検索'
     }
 };
 

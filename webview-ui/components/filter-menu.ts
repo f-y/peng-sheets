@@ -210,7 +210,7 @@ export class FilterMenu extends LitElement {
                 <input
                     class="search-input"
                     type="text"
-                    placeholder="Search"
+                    placeholder="${t('searchPlaceholder')}"
                     .value=${this._searchValue}
                     @input=${this._handleSearchInput}
                 />
