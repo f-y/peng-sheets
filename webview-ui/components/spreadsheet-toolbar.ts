@@ -66,7 +66,7 @@ export class SpreadsheetToolbar extends LitElement {
                 <vscode-button
                     appearance="icon"
                     aria-label="${t('toolbarBold')}"
-                    title="${t('toolbarBold')} (${this._isMac() ? '⌘B' : 'Ctrl+B'})"
+                    title="${t('toolbarBold')}"
                     @click="${() => this._dispatch('bold')}"
                 >
                     <span class="codicon codicon-bold"></span>
@@ -74,7 +74,7 @@ export class SpreadsheetToolbar extends LitElement {
                 <vscode-button
                     appearance="icon"
                     aria-label="${t('toolbarItalic')}"
-                    title="${t('toolbarItalic')} (${this._isMac() ? '⌘I' : 'Ctrl+I'})"
+                    title="${t('toolbarItalic')}"
                     @click="${() => this._dispatch('italic')}"
                 >
                     <span class="codicon codicon-italic"></span>
@@ -90,7 +90,7 @@ export class SpreadsheetToolbar extends LitElement {
                 <vscode-button
                     appearance="icon"
                     aria-label="${t('toolbarUnderline')}"
-                    title="${t('toolbarUnderline')} (${this._isMac() ? '⌘U' : 'Ctrl+U'})"
+                    title="${t('toolbarUnderline')}"
                     @click="${() => this._dispatch('underline')}"
                 >
                     <svg
