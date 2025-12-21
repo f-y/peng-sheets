@@ -1081,8 +1081,12 @@ json.dumps(result)
     }
 
     private _handleTabContextMenu(e: MouseEvent, index: number, tab: TabDefinition) {
-        if (tab.type !== 'sheet') return;
+        // Prevent default context menu for all tab types
         e.preventDefault();
+
+        // Only show custom context menu for sheet tabs
+        if (tab.type !== 'sheet') return;
+
         this.tabContextMenu = { x: e.clientX, y: e.clientY - 80, index: index }; // Simple offset or just clientY
         // Adjust Y if too low?
     }
