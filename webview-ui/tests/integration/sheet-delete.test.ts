@@ -44,19 +44,18 @@ describe('MyEditor Sheet Deletion', () => {
     });
 
     it('performs delete and clears state when _performDelete is called', async () => {
-        let pyodideCalled = false;
-        // Mock Pyodide
-        (el as any).pyodide = {
-            runPythonAsync: async (code: string) => {
-                pyodideCalled = true;
-                return JSON.stringify({ startLine: 0, endLine: 1, content: '' });
+        let deleteSheetCalled = false;
+        // Mock spreadsheetService
+        (el as any).spreadsheetService = {
+            deleteSheet: (sheetIdx: number) => {
+                deleteSheetCalled = true;
             }
         };
 
         (el as any).confirmDeleteIndex = 1;
         await (el as any)._performDelete();
 
-        expect(pyodideCalled).to.be.true;
+        expect(deleteSheetCalled).to.be.true;
         expect((el as any).confirmDeleteIndex).to.be.null;
     });
 

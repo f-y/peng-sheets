@@ -38,7 +38,7 @@ describe('Sheet Rename Logic', () => {
         vi.clearAllMocks();
     });
 
-    it('Rename Sheet correctly replaces the header line', async () => {
+    it('Rename Sheet correctly calls spreadsheetService.renameSheet', async () => {
         // Setup State
         // Tab Definition: { type: 'sheet', title: 'OldName', index: 0, sheetIndex: 0, data: { header_line: 10 } }
         const tabs: any[] = [
@@ -56,15 +56,16 @@ describe('Sheet Rename Logic', () => {
         // Mock Config (default header level 2)
         el.config = { sheetHeaderLevel: 2 };
 
-        // Mock Pyodide and Workbook
-        (el as any).pyodide = {
-            runPythonAsync: vi.fn().mockResolvedValue(
-                JSON.stringify({
-                    startLine: 10,
-                    endLine: 11,
-                    content: '## NewName\n'
-                })
-            )
+        // Mock spreadsheetService
+        let renameSheetCalled = false;
+        let calledSheetIdx: number | null = null;
+        let calledNewName: string | null = null;
+        (el as any).spreadsheetService = {
+            renameSheet: (sheetIdx: number, newName: string) => {
+                renameSheetCalled = true;
+                calledSheetIdx = sheetIdx;
+                calledNewName = newName;
+            }
         };
         (el as any).workbook = {}; // Truthy
 
@@ -72,17 +73,10 @@ describe('Sheet Rename Logic', () => {
         // Private method: _handleTabRename(index, tab, newName)
         await (el as any)._handleTabRename(0, tabs[0], 'NewName');
 
-        // Verify vscode.postMessage calls
-        expect(postMessageSpy).toHaveBeenCalled();
-
-        const callArgs = postMessageSpy.mock.calls[0][0];
-
-        // Assert: Type is updateRange
-        expect(callArgs.type).toBe('updateRange');
-
-        // Assert: Content has new name AND newline
-        // ## NewName\n
-        expect(callArgs.content).toBe('## NewName\n');
+        // Verify spreadsheetService.renameSheet was called
+        expect(renameSheetCalled).toBe(true);
+        expect(calledSheetIdx).toBe(0);
+        expect(calledNewName).toBe('NewName');
     });
 
     it('Rename Sheet does nothing if name unchanged', async () => {
