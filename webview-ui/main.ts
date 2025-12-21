@@ -98,6 +98,7 @@ export class MyEditor extends LitElement {
     @state()
     private _isSyncing = false;
     private _requestQueue: Array<() => Promise<void>> = [];
+    private _previousSheetCount = 0; // Track sheet count for add detection
 
     private _debounceTimer: any = null;
     private _isBatching = false;
@@ -805,9 +806,12 @@ json.dumps(result)
     willUpdate(changedProperties: Map<string, any>) {
         if (changedProperties.has('tabs')) {
             const tabs = this.tabs;
+            const currentSheetCount = tabs.filter((t) => t.type === 'sheet').length;
+            const sheetWasAdded = currentSheetCount === this._previousSheetCount + 1;
 
             // Handle Add Sheet Selection
-            if (this.pendingAddSheet) {
+            // Use pendingAddSheet flag OR detect sheet count increase as fallback
+            if (this.pendingAddSheet || (sheetWasAdded && this._previousSheetCount > 0)) {
                 // Find the 'add-sheet' button and select the tab immediately before it
                 // (which is the newly added sheet). This handles cases where Documents
                 // appear after the Workbook in the tabs array.
@@ -846,6 +850,9 @@ json.dumps(result)
                     this.activeTabIndex = this.activeTabIndex - 1;
                 }
             }
+
+            // Update previous sheet count for next comparison
+            this._previousSheetCount = currentSheetCount;
         }
     }
 
@@ -875,7 +882,7 @@ json.dumps(result)
                 : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet'
-                ? html`
+                    ? html`
                           <div class="sheet-container" style="height: 100%">
                               <layout-container
                                   .layout="${activeTab.data.metadata?.layout}"
@@ -885,21 +892,21 @@ json.dumps(result)
                               ></layout-container>
                           </div>
                       `
-                : activeTab.type === 'document'
-                    ? html`
+                    : activeTab.type === 'document'
+                      ? html`
                             <spreadsheet-document-view
                                 .title="${activeTab.title}"
                                 .content="${activeTab.data.content}"
                             ></spreadsheet-document-view>
                         `
-                    : html``}
+                      : html``}
                 ${activeTab.type === 'onboarding'
-                ? html`
+                    ? html`
                           <spreadsheet-onboarding
                               @create-spreadsheet="${this._onCreateSpreadsheet}"
                           ></spreadsheet-onboarding>
                       `
-                : html``}
+                    : html``}
             </div>
 
             <div class="bottom-tabs-container">
@@ -911,15 +918,15 @@ json.dumps(result)
                     @dragleave="${this._handleSheetDragLeave}"
                 >
                     ${this.tabs.map(
-                    (tab, index) => html`
+                        (tab, index) => html`
                             <div
                                 class="tab-item ${this.activeTabIndex === index ? 'active' : ''} ${tab.type ===
-                            'add-sheet'
-                            ? 'add-sheet-tab'
-                            : ''}"
+                                'add-sheet'
+                                    ? 'add-sheet-tab'
+                                    : ''}"
                                 draggable="${tab.type !== 'add-sheet' && this.editingTabIndex !== index}"
                                 @click="${() =>
-                            tab.type === 'add-sheet' ? this._handleAddSheet() : (this.activeTabIndex = index)}"
+                                    tab.type === 'add-sheet' ? this._handleAddSheet() : (this.activeTabIndex = index)}"
                                 @dblclick="${() => this._handleTabDoubleClick(index, tab)}"
                                 @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, index, tab)}"
                                 @dragstart="${(e: DragEvent) => this._handleSheetDragStart(e, index)}"
@@ -929,7 +936,7 @@ json.dumps(result)
                             >
                                 ${this._renderTabIcon(tab)}
                                 ${this.editingTabIndex === index
-                            ? html`
+                                    ? html`
                                           <input
                                               class="tab-input"
                                               .value="${tab.title}"
@@ -937,17 +944,17 @@ json.dumps(result)
                                               @dblclick="${(e: Event) => e.stopPropagation()}"
                                               @keydown="${(e: KeyboardEvent) => this._handleTabInputKey(e, index, tab)}"
                                               @blur="${(e: Event) =>
-                                    this._handleTabRename(
-                                        index,
-                                        tab,
-                                        (e.target as HTMLInputElement).value
-                                    )}"
+                                                  this._handleTabRename(
+                                                      index,
+                                                      tab,
+                                                      (e.target as HTMLInputElement).value
+                                                  )}"
                                           />
                                       `
-                            : html` ${tab.type !== 'add-sheet' ? tab.title : ''} `}
+                                    : html` ${tab.type !== 'add-sheet' ? tab.title : ''} `}
                             </div>
                         `
-                )}
+                    )}
                 </div>
                 <div class="scroll-indicator-right ${this.isScrollableRight ? 'visible' : ''}"></div>
             </div>
@@ -956,14 +963,14 @@ json.dumps(result)
                 ? html`
                       <div
                           style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
-                        .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
+                              .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
                       >
                           <div
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
                               @mouseover="${(e: MouseEvent) =>
-                        ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
+                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
                               @mouseout="${(e: MouseEvent) =>
-                        ((e.target as HTMLElement).style.background = 'transparent')}"
+                                  ((e.target as HTMLElement).style.background = 'transparent')}"
                               @click="${() => this._renameSheet(this.tabContextMenu!.index)}"
                           >
                               ${t('renameSheet')}
@@ -971,9 +978,9 @@ json.dumps(result)
                           <div
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
                               @mouseover="${(e: MouseEvent) =>
-                        ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
+                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
                               @mouseout="${(e: MouseEvent) =>
-                        ((e.target as HTMLElement).style.background = 'transparent')}"
+                                  ((e.target as HTMLElement).style.background = 'transparent')}"
                               @click="${() => this._deleteSheet(this.tabContextMenu!.index)}"
                           >
                               ${t('deleteSheet')}
@@ -999,9 +1006,10 @@ json.dumps(result)
                 ${unsafeHTML(
                     t(
                         'deleteSheetConfirm',
-                        `<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null
-                            ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
-                            : ''
+                        `<span style="color: var(--vscode-textPreformat-foreground);">${
+                            this.confirmDeleteIndex !== null
+                                ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
+                                : ''
                         }</span>`
                     )
                 )}
