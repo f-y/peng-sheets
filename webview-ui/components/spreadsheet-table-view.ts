@@ -253,6 +253,7 @@ export class SpreadsheetTableView extends LitElement {
                         .isEditing="${isColEditing}"
                         .isResizing="${this.resizingCol === c}"
                         .hasActiveFilter="${hasActiveFilter}"
+                        .width="${this.columnWidths[c] ?? 100}"
                         @ss-col-click="${(e: CustomEvent) => this._bubbleEvent('view-col-click', e.detail)}"
                         @ss-col-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-col-mousedown', e.detail)}"
                         @ss-col-dblclick="${(e: CustomEvent) => this._bubbleEvent('view-col-dblclick', e.detail)}"
