@@ -877,7 +877,7 @@ json.dumps(result)
         if (!activeTab) return html``;
 
         return html`
-            ${activeTab.type !== 'document'
+            ${activeTab.type !== 'document' && activeTab.type !== 'onboarding'
                 ? html` <spreadsheet-toolbar @toolbar-action="${this._handleToolbarAction}"></spreadsheet-toolbar> `
                 : html``}
             <div class="content-area">
