@@ -144,7 +144,7 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | 2024-03-05 | JP-East | Support Add-on | 3 | $50 | $150 |
 | 2024-03-20 | US-West | Pro License | 5 | $300 | $1,500 |
 
-<!-- md-spreadsheet-metadata: {"columnWidths": [100, 100, 150, 80, 100, 100]} -->
+<!-- md-spreadsheet-metadata: {"columnWidths": [100, 100, 150, 80, 100, 100], "column_widths": {"5": 80}} -->
 
 ### Q2 Forecast
 
@@ -157,7 +157,7 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | **June** | US-Region | +8% | $12,000 | High | 50% |
 | **Total** | - | - | $35,000 | - | - |
 
-<!-- md-spreadsheet-metadata: {"columnWidths": [100, 100, 120, 150, 100, 100]} -->
+<!-- md-spreadsheet-metadata: {"columnWidths": [100, 100, 120, 150, 100, 100], "column_widths": {"2": 130, "3": 164}} -->
 
 <!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VZdoVuAp4BkC0IUeVll1Q", "direction": "vertical", "sizes": [44.315245478036175, 55.684754521963825], "children": [{"type": "pane", "id": "root", "tables": [0], "activeTableIndex": 0}, {"type": "pane", "id": "YAH8An6xc74WWoWVeZvs6", "tables": [1], "activeTableIndex": 0}]}} -->
 

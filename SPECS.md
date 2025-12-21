@@ -131,7 +131,7 @@ This specification follows the [GitHub Task List](https://docs.github.com/en/get
 ## 7. Table Management
 *   **Explicit Creation**:
     - [x] Tables are not infinite. They are distinct entities.
-    - [ ] **UI**: "Add Table" button (e.g., in a toolbar or below the last table).
+    - [x] **UI**: "Add Table" button (e.g., in a toolbar or below the last table).
     *   **Constraints**:
         - [x] **Header Row Mandatory**: Every table MUST have a header row.
         - [x] **Strict Boundaries**: Empty lines in the grid do not split the table. The table size is explicit.
