@@ -1,6 +1,5 @@
 import json
 
-import pytest
 from headless_editor import get_state, initialize_workbook
 
 
