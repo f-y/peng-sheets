@@ -24,6 +24,59 @@ export function activate(context: vscode.ExtensionContext) {
         })
     );
 
+    // New Workbook command: create a new .md file with workbook template
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-md-spreadsheet.newWorkbook', async () => {
+            // Get workspace folder
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+
+            let uri: vscode.Uri | undefined;
+
+            if (workspaceFolder) {
+                // Prompt for filename if in workspace
+                const fileName = await vscode.window.showInputBox({
+                    prompt: 'Enter filename for new workbook',
+                    value: 'workbook.md',
+                    validateInput: (value) => {
+                        if (!value) {
+                            return 'Filename is required';
+                        }
+                        if (!value.endsWith('.md')) {
+                            return 'Filename must end with .md';
+                        }
+                        return null;
+                    }
+                });
+
+                if (!fileName) return;
+                uri = vscode.Uri.joinPath(workspaceFolder.uri, fileName);
+            } else {
+                // No workspace: use save dialog
+                const saveUri = await vscode.window.showSaveDialog({
+                    defaultUri: vscode.Uri.file('workbook.md'),
+                    filters: { Markdown: ['md'] }
+                });
+                if (!saveUri) return;
+                uri = saveUri;
+            }
+
+            // Create template content
+            const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
+            const rootMarker = config.get<string>('rootMarker') || '# Tables';
+            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B | C |\n|---|---|---|\n|   |   |   |\n`;
+
+            // Write file
+            await vscode.workspace.fs.writeFile(uri, Buffer.from(template, 'utf8'));
+
+            // Open document and show in editor
+            const doc = await vscode.workspace.openTextDocument(uri);
+            await vscode.window.showTextDocument(doc);
+
+            // Open spreadsheet editor
+            await vscode.commands.executeCommand('vscode-md-spreadsheet.openEditor');
+        })
+    );
+
     // Switch context when active editor changes
     context.subscriptions.push(
         vscode.window.onDidChangeActiveTextEditor((editor) => {
@@ -358,4 +411,4 @@ function getWebviewContent(
     </html>`;
 }
 
-export function deactivate() {}
+export function deactivate() { }

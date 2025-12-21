@@ -16,11 +16,16 @@
     },
     "activationEvents": [],
     "main": "./out/extension.js",
+    "l10n": "./l10n",
     "contributes": {
         "commands": [
             {
                 "command": "vscode-md-spreadsheet.openEditor",
-                "title": "Markdown: Open Spreadsheet Editor"
+                "title": "%command.openEditor.title%"
+            },
+            {
+                "command": "vscode-md-spreadsheet.newWorkbook",
+                "title": "%command.newWorkbook.title%"
             }
         ],
         "menus": {
