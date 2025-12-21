@@ -308,13 +308,14 @@ export class SpreadsheetService {
 
     public sortRows(sheetIdx: number, tableIdx: number, colIndex: number, direction: 'asc' | 'desc') {
         this._enqueueRequest(async () => {
+            const ascending = direction === 'asc' ? 'True' : 'False';
             const resultJson = await this.runPythonAsync(`
                 import json
                 res = sort_rows(
                     ${sheetIdx},
                     ${tableIdx},
                     ${colIndex},
-                    ${JSON.stringify(direction)}
+                    ${ascending}
                 )
                 json.dumps(res) if res else "null"
             `);
