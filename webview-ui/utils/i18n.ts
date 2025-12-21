@@ -55,7 +55,9 @@ const translations = {
         sortAsc: 'Sort A to Z',
         sortDesc: 'Sort Z to A',
         clearFilter: 'Clear Filter',
-        searchPlaceholder: 'Search'
+        searchPlaceholder: 'Search',
+        clickToEdit: 'Click to edit',
+        pressEscapeToCancel: 'Press Escape to cancel'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -113,7 +115,9 @@ const translations = {
         sortAsc: '昇順で並べ替え',
         sortDesc: '降順で並べ替え',
         clearFilter: 'フィルターをクリア',
-        searchPlaceholder: '検索'
+        searchPlaceholder: '検索',
+        clickToEdit: 'クリックして編集',
+        pressEscapeToCancel: 'Escキーでキャンセル'
     }
 };
 

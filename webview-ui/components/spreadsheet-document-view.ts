@@ -2,6 +2,7 @@ import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { marked } from 'marked';
+import { t } from '../utils/i18n';
 
 @customElement('spreadsheet-document-view')
 export class SpreadsheetDocumentView extends LitElement {
@@ -277,7 +278,7 @@ export class SpreadsheetDocumentView extends LitElement {
 
     private _getRenderedContent(): string {
         const fullContent = this._getFullContent();
-        if (!fullContent.trim()) return '<p><em>Click to edit...</em></p>';
+        if (!fullContent.trim()) return `<p><em>${t('clickToEdit')}...</em></p>`;
 
         marked.setOptions({
             gfm: true,
@@ -378,7 +379,7 @@ export class SpreadsheetDocumentView extends LitElement {
                 ${this._isEditing
                     ? html`
                           <div class="edit-container">
-                              <div class="edit-hint visible">Press Escape to cancel</div>
+                              <div class="edit-hint visible">${t('pressEscapeToCancel')}</div>
                               <textarea
                                   class="editor"
                                   .value=${this._editContent}
@@ -400,7 +401,7 @@ export class SpreadsheetDocumentView extends LitElement {
                           <div class="output" @click=${this._enterEditMode}>
                               ${unsafeHTML(this._getRenderedContent())}
                           </div>
-                          <div class="edit-hint">Click to edit</div>
+                          <div class="edit-hint">${t('clickToEdit')}</div>
                       `}
             </div>
         `;
