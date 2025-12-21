@@ -36,14 +36,16 @@ export const containerStyles = css`
         overflow: auto;
         width: 100%;
         height: 100%;
-        border: 1px solid var(--border-color);
         position: relative;
     }
 
     .grid {
         display: grid;
+        width: fit-content;
+        min-width: 100%;
         transform-style: preserve-3d;
         padding-bottom: 24px; /* Ensure Ghost Row is fully visible when scrolled to bottom */
+        padding-right: 24px; /* Ensure last column is fully visible when scrolled to right */
     }
 `;
 
@@ -209,6 +211,7 @@ export const headerStyles = css`
         top: 0;
         z-index: 1000;
         transform: translateZ(10px);
+        border-top: 1px solid var(--border-color);
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
         padding: 0 20px;
@@ -239,6 +242,7 @@ export const headerStyles = css`
         z-index: 1002;
         transform: translateZ(15px);
         user-select: none;
+        border-left: 1px solid var(--border-color);
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
         padding: 0;
@@ -271,6 +275,8 @@ export const headerStyles = css`
         position: sticky;
         top: 0;
         left: 0;
+        border-top: 1px solid var(--border-color);
+        border-left: 1px solid var(--border-color);
         border-right: 1px solid var(--border-color);
         border-bottom: 1px solid var(--border-color);
         text-align: center;

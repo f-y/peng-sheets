@@ -196,7 +196,15 @@ export class SpreadsheetService {
         });
     }
 
-    public updateRange(sheetIdx: number, tableIdx: number, startRow: number, endRow: number, startCol: number, endCol: number, newValue: string) {
+    public updateRange(
+        sheetIdx: number,
+        tableIdx: number,
+        startRow: number,
+        endRow: number,
+        startCol: number,
+        endCol: number,
+        newValue: string
+    ) {
         this._enqueueRequest(async () => {
             let lastResult: any = null;
             // Handle multi-cell range: update each cell individually
@@ -272,7 +280,14 @@ export class SpreadsheetService {
         });
     }
 
-    public pasteCells(sheetIdx: number, tableIdx: number, startRow: number, startCol: number, rows: string[][], includeHeaders: boolean = false) {
+    public pasteCells(
+        sheetIdx: number,
+        tableIdx: number,
+        startRow: number,
+        startCol: number,
+        rows: string[][],
+        includeHeaders: boolean = false
+    ) {
         this._enqueueRequest(async () => {
             const resultJson = await this.runPythonAsync(`
                 import json
@@ -323,7 +338,12 @@ export class SpreadsheetService {
         });
     }
 
-    public updateColumnAlign(sheetIdx: number, tableIdx: number, colIndex: number, align: 'left' | 'center' | 'right' | null) {
+    public updateColumnAlign(
+        sheetIdx: number,
+        tableIdx: number,
+        colIndex: number,
+        align: 'left' | 'center' | 'right' | null
+    ) {
         this._enqueueRequest(async () => {
             const resultJson = await this.runPythonAsync(`
                 import json
@@ -432,7 +452,7 @@ export class SpreadsheetService {
     }
 
     public async initializeWorkbook(mdText: string, config: any) {
-        if (!this.pyodide) throw new Error("Pyodide not initialized");
+        if (!this.pyodide) throw new Error('Pyodide not initialized');
         this.pyodide.globals.set('md_text', mdText);
         this.pyodide.globals.set('config', JSON.stringify(config));
 
