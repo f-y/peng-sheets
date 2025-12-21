@@ -35,8 +35,8 @@ export class ClipboardController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() { }
-    hostDisconnected() { }
+    hostConnected() {}
+    hostDisconnected() {}
 
     /**
      * Parse TSV text that may contain quoted values with embedded newlines, tabs, or escaped quotes.

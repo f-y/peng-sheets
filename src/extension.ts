@@ -411,4 +411,4 @@ function getWebviewContent(
     </html>`;
 }
 
-export function deactivate() { }
+export function deactivate() {}

@@ -50,7 +50,9 @@ describe('Range Delete Regression', () => {
         // Select B2 with Shift (making it a range)
         const cellB2 = queryView(table, '.cell[data-row="1"][data-col="1"]') as HTMLElement;
         expect(cellB2).toBeTruthy();
-        cellB2.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, buttons: 1, shiftKey: true }));
+        cellB2.dispatchEvent(
+            new MouseEvent('mousedown', { bubbles: true, composed: true, buttons: 1, shiftKey: true })
+        );
         await awaitView(table);
 
         expect(table.selectionCtrl.selectedRow).toBe(1);
