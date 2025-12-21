@@ -1,5 +1,6 @@
 import { LitElement, html, css, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { t } from '../utils/i18n';
 
 @customElement('filter-menu')
 export class FilterMenu extends LitElement {
@@ -194,14 +195,14 @@ export class FilterMenu extends LitElement {
 
         return html`
             <div class="actions">
-                <button class="action-btn" @click=${this._handleSortAsc}>Sort A to Z</button>
-                <button class="action-btn" @click=${this._handleSortDesc}>Sort Z to A</button>
+                <button class="action-btn" @click=${this._handleSortAsc}>${t('sortAsc')}</button>
+                <button class="action-btn" @click=${this._handleSortDesc}>${t('sortDesc')}</button>
                 <button
                     class="action-btn"
                     @click=${this._handleClearFilter}
                     ?disabled=${this.hiddenValues.length === 0}
                 >
-                    Clear Filter
+                    ${t('clearFilter')}
                 </button>
             </div>
 

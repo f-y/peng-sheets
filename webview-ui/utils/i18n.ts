@@ -51,7 +51,10 @@ const translations = {
         toolbarDecimalIncrease: 'Increase Decimals',
         toolbarDecimalDecrease: 'Decrease Decimals',
         toolbarUndo: 'Undo',
-        toolbarRedo: 'Redo'
+        toolbarRedo: 'Redo',
+        sortAsc: 'Sort A to Z',
+        sortDesc: 'Sort Z to A',
+        clearFilter: 'Clear Filter'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -105,7 +108,10 @@ const translations = {
         toolbarDecimalIncrease: '小数点桁数を増やす',
         toolbarDecimalDecrease: '小数点桁数を減らす',
         toolbarUndo: '元に戻す',
-        toolbarRedo: 'やり直し'
+        toolbarRedo: 'やり直し',
+        sortAsc: '昇順で並べ替え',
+        sortDesc: '降順で並べ替え',
+        clearFilter: 'フィルターをクリア'
     }
 };
 
