@@ -43,6 +43,7 @@ export const containerStyles = css`
     .grid {
         display: grid;
         transform-style: preserve-3d;
+        padding-bottom: 24px; /* Ensure Ghost Row is fully visible when scrolled to bottom */
     }
 `;
 
