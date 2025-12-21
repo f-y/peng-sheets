@@ -16,7 +16,6 @@
     },
     "activationEvents": [],
     "main": "./out/extension.js",
-    "l10n": "./l10n",
     "contributes": {
         "commands": [
             {
