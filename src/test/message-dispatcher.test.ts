@@ -39,14 +39,12 @@ suite('MessageDispatcher Test Suite', () => {
         // Spy on private methods by casting to any
         const saveSpy = sandbox.spy(dispatcher as any, 'handleSave');
 
-
         // Dispatch invalid messages
         await dispatcher.dispatch(null);
         await dispatcher.dispatch({});
         await dispatcher.dispatch({ type: 'unknownType' });
 
         assert.ok(saveSpy.notCalled, 'handleSave should not be called for invalid messages');
-
     });
 
     // Undo/Redo tests removed as logic is handled by VS Code Native Undo

@@ -992,12 +992,6 @@ export class MyEditor extends LitElement {
 
             // Update output message if successful
             this.output = 'Parsed successfully!';
-
-            // Send structure to host
-            vscode.postMessage({
-                type: 'updateStructure',
-                structure: result.structure
-            });
         } catch (err: unknown) {
             console.error(err);
             this.output = `Error parsing: ${(err as Error).message}`;

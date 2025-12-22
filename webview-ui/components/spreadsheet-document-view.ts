@@ -27,7 +27,8 @@ export class SpreadsheetDocumentView extends LitElement {
 
     private _debounceTimer: number | null = null;
 
-    protected updated(changedProperties: PropertyValues): void {
+    protected willUpdate(changedProperties: PropertyValues): void {
+        super.willUpdate(changedProperties);
         if (changedProperties.has('content') && !this._isEditing) {
             this._editContent = this.content;
         }
