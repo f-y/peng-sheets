@@ -2,7 +2,7 @@ const translations = {
     en: {
         renameSheet: 'Rename Sheet',
         deleteSheet: 'Delete Sheet',
-        deleteSheetConfirm: 'Are you sure you want to delete sheet "{0}"? This action cannot be undone.',
+        deleteSheetConfirm: 'Are you sure you want to delete sheet "{0}"?',
         cancel: 'Cancel',
         delete: 'Delete',
         addDescription: 'Add description...',
@@ -64,7 +64,7 @@ const translations = {
     ja: {
         renameSheet: 'シート名の変更',
         deleteSheet: 'シートを削除',
-        deleteSheetConfirm: 'シート "{0}" を削除してもよろしいですか？この操作は取り消せません。',
+        deleteSheetConfirm: 'シート "{0}" を削除してもよろしいですか？',
         cancel: 'キャンセル',
         delete: '削除',
         addDescription: '説明を追加...',
