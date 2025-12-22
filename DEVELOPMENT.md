@@ -47,12 +47,26 @@ npm run test:webview
 npx vitest run webview-ui/tests/spreadsheet-table-header-edit.test.ts
 ```
 
-### Running Extension Tests
-These integration tests launch a VS Code instance.
+### Running Extension Tests (Integration)
+These tests launch a real VS Code instance (Extension Host) to verify the full extension logic.
+We use a custom test runner (`src/test/runTest.ts`) based on `@vscode/test-electron` and `Mocha`.
 
 ```bash
+# Run extension integration tests
 npm test
 ```
+
+### Code Coverage (c8)
+We support collecting code coverage for the extension process using `c8` and `NODE_V8_COVERAGE`.
+
+```bash
+# Run tests with coverage reporting
+npm run test:coverage
+```
+
+*   **HTML Report**: Generates `coverage/index.html`.
+*   **Text Report**: Outputs summary to terminal.
+*   **Configuration**: managed via `.c8rc.json` (excludes webview UI code).
 
 ## Setup & Commands
 

@@ -1,0 +1,21 @@
+{
+    "all": true,
+    "src": [
+        "out"
+    ],
+    "include": [
+        "out/**/*.js"
+    ],
+    "exclude": [
+        "node_modules",
+        "test",
+        "out/test",
+        "webview-ui",
+        "out/webview"
+    ],
+    "reporter": [
+        "text",
+        "html"
+    ],
+    "check-coverage": false
+}
