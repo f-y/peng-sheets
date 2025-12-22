@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import * as vscode from 'vscode';
 import * as sinon from 'sinon';
-import { getWebviewContent, newWorkbookHandler, activate } from '../extension';
+import { getWebviewContent, newWorkbookHandler } from '../extension';
 
 suite('Extension Test Suite', () => {
     vscode.window.showInformationMessage('Start all tests.');
