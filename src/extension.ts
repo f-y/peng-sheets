@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { MessageDispatcher } from './message-dispatcher';
 
 export function activate(context: vscode.ExtensionContext) {
     let currentPanel: vscode.WebviewPanel | undefined = undefined;
@@ -152,180 +153,15 @@ export function activate(context: vscode.ExtensionContext) {
 
         currentPanel.webview.onDidReceiveMessage(
             async (message) => {
-                console.log('[Extension] Received message from webview:', message.type);
-                if (!activeDocument) {
-                    console.error('No active document!');
-                    return;
-                }
-                console.log('[Extension] Processing message:', message.type);
-                switch (message.type) {
-                    case 'updateRange': {
-                        const startPosition = new vscode.Position(message.startLine, 0);
-                        const endPosition = new vscode.Position(message.endLine, message.endCol ?? 0);
-                        const range = new vscode.Range(startPosition, endPosition);
-
-                        // Find editor
-                        const editor = vscode.window.visibleTextEditors.find(
-                            (e) => e.document.uri.toString() === activeDocument?.uri.toString()
-                        );
-
-                        // Internal validation
-                        let targetRange = range;
-                        if (activeDocument) {
-                            const validatedRange = activeDocument.validateRange(range);
-                            if (!validatedRange.isEqual(range)) {
-                                console.log(
-                                    `Adjusting invalid range: ${range.start.line}-${range.end.line} -> ${validatedRange.start.line}-${validatedRange.end.line}`
-                                );
-                            }
-                            targetRange = validatedRange;
-                        }
-
-                        if (editor) {
-                            editor
-                                .edit((editBuilder) => {
-                                    editBuilder.replace(targetRange, message.content);
-                                })
-                                .then((success) => {
-                                    if (!success) {
-                                        console.warn('TextEditor.edit failed. Retrying with WorkspaceEdit...');
-                                        const edit = new vscode.WorkspaceEdit();
-                                        edit.replace(activeDocument!.uri, targetRange, message.content);
-                                        vscode.workspace.applyEdit(edit).then((wsSuccess) => {
-                                            if (!wsSuccess) {
-                                                console.error('Fallback WorkspaceEdit failed.');
-                                                vscode.window.showErrorMessage(
-                                                    'Failed to update spreadsheet: Sync error.'
-                                                );
-                                            }
-                                        });
-                                    }
-                                });
-                        } else if (activeDocument) {
-                            // Fallback to WorkspaceEdit
-                            const edit = new vscode.WorkspaceEdit();
-                            edit.replace(activeDocument.uri, targetRange, message.content);
-                            vscode.workspace.applyEdit(edit).then((success) => {
-                                if (!success) {
-                                    // This often fails if file changed "in the meantime" (version mismatch implicit)
-                                    console.error('Workspace edit failed');
-                                    vscode.window.showErrorMessage(
-                                        'Failed to update spreadsheet: Document version conflict.'
-                                    );
-                                }
-                            });
-                        }
-                        return;
+                const dispatcher = new MessageDispatcher({
+                    activeDocument,
+                    webviewPanel: currentPanel,
+                    getSavingState: () => isSaving,
+                    setSavingState: (state) => {
+                        isSaving = state;
                     }
-                    case 'undo': {
-                        const editorForUndo = vscode.window.visibleTextEditors.find(
-                            (e) => e.document.uri.toString() === activeDocument?.uri.toString()
-                        );
-                        if (editorForUndo) {
-                            await vscode.window.showTextDocument(editorForUndo.document, {
-                                viewColumn: editorForUndo.viewColumn,
-                                preserveFocus: false
-                            });
-                            await vscode.commands.executeCommand('undo');
-                            // Optional: Return focus to webview?
-                            // currentPanel?.reveal(vscode.ViewColumn.Beside, true);
-                            // But maybe syncing focus is confusing. Let's start with just executing it.
-                        }
-                        return;
-                    }
-                    case 'redo': {
-                        const editorForRedo = vscode.window.visibleTextEditors.find(
-                            (e) => e.document.uri.toString() === activeDocument?.uri.toString()
-                        );
-                        if (editorForRedo) {
-                            await vscode.window.showTextDocument(editorForRedo.document, {
-                                viewColumn: editorForRedo.viewColumn,
-                                preserveFocus: false
-                            });
-                            await vscode.commands.executeCommand('redo');
-                        }
-                        return;
-                    }
-                    case 'createSpreadsheet': {
-                        const wsEdit = new vscode.WorkspaceEdit();
-                        const docText = activeDocument.getText();
-                        const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
-                        const rootMarker = config.get<string>('rootMarker') || '# Tables';
-
-                        // Robust check: allow flexible whitespace in matched marker
-                        // Escape regex characters
-                        const escapedRoot = rootMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        // Allow one or more spaces where single spaces exist
-                        const pattern = escapedRoot.replace(/\\ /g, '\\s+').replace(/\s+/g, '\\s+');
-                        const rootRegex = new RegExp(pattern);
-
-                        const hasRoot = rootRegex.test(docText);
-                        const isZombie = docText.trim().match(new RegExp(`^${pattern}$`));
-
-                        // Case 1: Document is effectively just the root marker (Zombie State) -> Replace All
-                        if (isZombie) {
-                            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
-                            const fullRange = new vscode.Range(
-                                activeDocument.positionAt(0),
-                                activeDocument.positionAt(docText.length)
-                            );
-                            wsEdit.replace(activeDocument.uri, fullRange, template);
-                        }
-                        // Case 2: Document contains root marker -> Append Sheet
-                        else if (hasRoot) {
-                            const template = `## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
-                            const prefix =
-                                docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : docText.length > 0 ? '\n' : '';
-                            const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
-                            wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
-                        }
-                        // Case 3: No root marker -> Append Full Structure
-                        else {
-                            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
-                            const prefix =
-                                docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : docText.length > 0 ? '\n' : '';
-                            const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
-                            wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
-                        }
-
-                        vscode.workspace.applyEdit(wsEdit);
-                        return;
-                    }
-                    case 'save': {
-                        console.log('Received save request');
-                        // Prevent concurrent save requests using a simple lock
-                        if (isSaving) {
-                            console.log('Save already in progress, skipping');
-                            return;
-                        }
-                        isSaving = true;
-
-                        try {
-                            if (activeDocument) {
-                                if (activeDocument.isDirty) {
-                                    const saved = await activeDocument.save();
-                                    console.log(`Document saved: ${saved}`);
-                                    if (!saved) {
-                                        console.warn(
-                                            'Save returned false, but document may have been saved by another process'
-                                        );
-                                    }
-                                } else {
-                                    console.log('Document is not dirty, nothing to save');
-                                }
-                            } else {
-                                console.error('No active document to save');
-                                vscode.window.showErrorMessage('No active document to save.');
-                            }
-                        } catch (error) {
-                            console.error('Error saving document:', error);
-                            vscode.window.showErrorMessage('Failed to save document.');
-                        } finally {
-                            isSaving = false;
-                        }
-                        return;
-                    }
-                }
+                });
+                await dispatcher.dispatch(message);
             },
             undefined,
             context.subscriptions
@@ -414,4 +250,4 @@ function getWebviewContent(
     </html>`;
 }
 
-export function deactivate() { }
+export function deactivate() {}
