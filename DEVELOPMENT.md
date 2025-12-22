@@ -152,8 +152,6 @@ When adding a new cell type (e.g., `ss-foo-cell`):
 2. Wire event in View: `@ss-foo-event="${(e) => this._bubbleEvent('view-foo-event', e.detail)}"`
 3. Wire event in Container: `@view-foo-event="${this.eventCtrl.handleFooEvent}"`
 4. Implement handler in EventController
-3. Wire event in Container: `@view-foo-event="${this.eventCtrl.handleFooEvent}"`
-4. Implement handler in EventController
 5. **Write integration test**: Click/interact with the cell → verify state changes
 
 ## Test & Coverage Workflow
