@@ -25,7 +25,19 @@
                 "title": "%command.newWorkbook.title%"
             }
         ],
-        "menus": {}
+        "menus": {},
+        "customEditors": [
+            {
+                "viewType": "vscode-md-spreadsheet.editor",
+                "displayName": "Markdown Spreadsheet",
+                "selector": [
+                    {
+                        "filenamePattern": "*.md"
+                    }
+                ],
+                "priority": "option"
+            }
+        ]
     },
     "configuration": {
         "title": "Markdown Spreadsheet",
@@ -85,18 +97,6 @@
             }
         }
     },
-    "customEditors": [
-        {
-            "viewType": "vscode-md-spreadsheet.editor",
-            "displayName": "Markdown Spreadsheet",
-            "selector": [
-                {
-                    "filenamePattern": "*.md"
-                }
-            ],
-            "priority": "option"
-        }
-    ],
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "npm run build:webview && tsc -p ./",
