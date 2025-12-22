@@ -1,5 +1,6 @@
 import * as path from 'path';
 import { runTests } from '@vscode/test-electron';
+import * as fs from 'fs';
 
 async function main() {
     try {
@@ -13,6 +14,12 @@ async function main() {
 
         // Coverage directory
         const coveragePath = path.resolve(__dirname, '../../coverage/tmp');
+
+        // Clean coverage directory
+        if (fs.existsSync(coveragePath)) {
+            fs.rmSync(coveragePath, { recursive: true, force: true });
+        }
+        fs.mkdirSync(coveragePath, { recursive: true });
 
         // Download VS Code, unzip it and run the integration test
         await runTests({

@@ -11,8 +11,9 @@ suite('Extension Test Suite', () => {
         sandbox = sinon.createSandbox();
     });
 
-    teardown(() => {
+    teardown(async () => {
         sandbox.restore();
+        await vscode.commands.executeCommand('workbench.action.closeAllEditors');
     });
 
     test('Extension should be present', () => {
