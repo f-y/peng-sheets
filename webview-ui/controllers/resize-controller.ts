@@ -13,7 +13,7 @@ export class ResizeController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
+    hostConnected() { }
     hostDisconnected() {
         this._cleanup();
     }
@@ -44,7 +44,7 @@ export class ResizeController implements ReactiveController {
         this.host.requestUpdate();
     };
 
-    private _handleMouseUp = (e: MouseEvent) => {
+    private _handleMouseUp = (_e: MouseEvent) => {
         if (this.resizingCol === -1) return;
 
         const finalWidth = this.colWidths[this.resizingCol];
