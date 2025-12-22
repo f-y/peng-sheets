@@ -49,43 +49,7 @@ suite('MessageDispatcher Test Suite', () => {
         assert.ok(undoSpy.notCalled, 'handleUndo should not be called for invalid messages');
     });
 
-    test('Undo: Should execute vscode undo command', async () => {
-        // Mock visibleTextEditors to find our document
-        const showTextDocumentStub = sandbox.stub(vscode.window, 'showTextDocument').resolves({} as vscode.TextEditor);
-        const executeCommandStub = sandbox.stub(vscode.commands, 'executeCommand').resolves();
-
-        // Stub visibleTextEditors getter
-        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => [
-            {
-                document: mockContext.activeDocument,
-                viewColumn: vscode.ViewColumn.One
-            } as vscode.TextEditor
-        ]);
-
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'undo' });
-
-        assert.ok(showTextDocumentStub.calledOnce, 'Should focus text document');
-        assert.ok(executeCommandStub.calledWith('undo'), 'Should execute "undo" command');
-    });
-
-    test('Redo: Should execute vscode redo command', async () => {
-        const showTextDocumentStub = sandbox.stub(vscode.window, 'showTextDocument').resolves({} as vscode.TextEditor);
-        const executeCommandStub = sandbox.stub(vscode.commands, 'executeCommand').resolves();
-
-        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => [
-            {
-                document: mockContext.activeDocument,
-                viewColumn: vscode.ViewColumn.One
-            } as vscode.TextEditor
-        ]);
-
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'redo' });
-
-        assert.ok(showTextDocumentStub.calledOnce, 'Should focus text document');
-        assert.ok(executeCommandStub.calledWith('redo'), 'Should execute "redo" command');
-    });
+    // Undo/Redo tests removed as logic is handled by VS Code Native Undo
 
     test('Save: Should call save() on dirty document', async () => {
         // Setup dirty document
@@ -334,24 +298,7 @@ suite('MessageDispatcher Test Suite', () => {
         assert.ok(showErrorMessageSpy.calledWith('Failed to update spreadsheet: Document version conflict.'));
     });
 
-    test('Undo/Redo: Should handle null activeDocument', async () => {
-        mockContext.activeDocument = undefined;
-        const dispatcher = new MessageDispatcher(mockContext);
-
-        // Should not throw
-        await dispatcher.dispatch({ type: 'undo' });
-        await dispatcher.dispatch({ type: 'redo' });
-    });
-
-    test('Undo/Redo: Should handle editor not found (no error)', async () => {
-        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => []); // No editors
-        const executeCommandStub = sandbox.stub(vscode.commands, 'executeCommand');
-
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'undo' });
-
-        assert.ok(executeCommandStub.notCalled, 'Should not execute undo if editor not found');
-    });
+    // Undo/Redo null/error handling tests removed
 
     test('CreateSpreadsheet: Should handle null activeDocument', async () => {
         mockContext.activeDocument = undefined;
