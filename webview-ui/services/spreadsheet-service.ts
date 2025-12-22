@@ -340,7 +340,7 @@ export class SpreadsheetService {
         });
     }
 
-    public updateColumnFilter(sheetIdx: number, tableIdx: number, colIndex: number, filter: Record<string, unknown> | null) {
+    public updateColumnFilter(sheetIdx: number, tableIdx: number, colIndex: number, filter: string[] | null) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
                 res = update_column_filter(
@@ -391,7 +391,12 @@ export class SpreadsheetService {
         });
     }
 
-    public updateColumnFormat(sheetIdx: number, tableIdx: number, colIndex: number, format: Record<string, unknown> | null) {
+    public updateColumnFormat(
+        sheetIdx: number,
+        tableIdx: number,
+        colIndex: number,
+        format: Record<string, unknown> | null
+    ) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
                 res = update_column_format(

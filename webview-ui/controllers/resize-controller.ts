@@ -13,7 +13,7 @@ export class ResizeController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() { }
+    hostConnected() {}
     hostDisconnected() {
         this._cleanup();
     }

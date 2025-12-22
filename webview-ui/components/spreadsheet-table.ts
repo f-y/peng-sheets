@@ -29,15 +29,7 @@ import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
-export interface TableJSON {
-    name: string | null;
-    description: string | null;
-    headers: string[] | null;
-    rows: string[][];
-    metadata: Record<string, unknown>;
-    start_line: number | null;
-    end_line: number | null;
-}
+import { TableJSON } from '../types';
 
 @customElement('spreadsheet-table')
 export class SpreadsheetTable extends LitElement {

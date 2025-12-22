@@ -1,4 +1,4 @@
-import { html, LitElement } from 'lit';
+import { html, LitElement, PropertyValues } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem } from '@vscode/webview-ui-toolkit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
@@ -11,7 +11,35 @@ import './components/spreadsheet-onboarding';
 import './components/spreadsheet-document-view';
 import './components/confirmation-modal';
 import './components/layout-container';
-import { TableJSON } from './components/spreadsheet-table';
+import './components/layout-container';
+import {
+    SheetJSON,
+    DocumentJSON,
+    WorkbookJSON,
+    TabDefinition,
+    StructureItem,
+    PostMessageCommand,
+    IParseResult,
+    isSheetJSON,
+    isDocumentJSON,
+    isIDocumentSectionRange,
+    IMetadataEditDetail,
+    IMetadataUpdateDetail,
+    ISortRowsDetail,
+    IColumnUpdateDetail,
+    IVisualMetadataUpdateDetail,
+    ISheetMetadataUpdateDetail,
+    IRequestAddTableDetail,
+    IRequestRenameTableDetail,
+    IRequestDeleteTableDetail,
+    IPasteCellsDetail,
+    ICellEditDetail,
+    IRangeEditDetail,
+    IRowOperationDetail,
+    IColumnOperationDetail,
+    IColumnResizeDetail,
+    IColumnFilterDetail
+} from './types';
 
 // Register the VS Code Design System components
 import { SpreadsheetService } from './services/spreadsheet-service';
@@ -19,39 +47,16 @@ import { SpreadsheetService } from './services/spreadsheet-service';
 // Register the VS Code Design System components
 provideVSCodeDesignSystem().register();
 
+declare global {
+    interface Window {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        activeSpreadsheetTable?: any;
+        initialContent?: string;
+        initialConfig?: Record<string, unknown>;
+    }
+}
+
 // declare const loadPyodide: any; // Moved to service usage
-
-interface SheetJSON {
-    name: string;
-    header_line?: number;
-    tables: TableJSON[];
-    metadata?: any;
-}
-
-interface DocumentJSON {
-    type: 'document';
-    title: string;
-    content: string;
-}
-
-interface WorkbookJSON {
-    sheets: SheetJSON[];
-}
-
-interface TabDefinition {
-    type: 'sheet' | 'document' | 'onboarding' | 'add-sheet';
-    title: string;
-    index: number;
-    sheetIndex?: number;
-    docIndex?: number; // Document section index for document tabs
-    data?: any;
-}
-
-interface StructureItem {
-    type: 'workbook' | 'document';
-    title?: string;
-    content?: string;
-}
 
 // Acquire VS Code API
 const vscode = acquireVsCodeApi();
@@ -72,7 +77,7 @@ export class MyEditor extends LitElement {
     markdownInput: string = '';
 
     @state()
-    config: any = {};
+    config: Record<string, unknown> = {};
 
     @state()
     workbook: WorkbookJSON | null = null;
@@ -101,13 +106,13 @@ export class MyEditor extends LitElement {
     // Track sheet count for add detection
     private _previousSheetCount = 0;
 
-    private async _handleMetadataEdit(detail: any) {
+    private async _handleMetadataEdit(detail: IMetadataEditDetail) {
         if (!this.workbook) return;
         const { sheetIndex, tableIndex, name, description } = detail;
 
         // Optimistic Update: Update local state immediately to avoid UI flicker
         const targetTab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
-        if (targetTab && targetTab.data && targetTab.data.tables) {
+        if (targetTab && isSheetJSON(targetTab.data)) {
             const table = targetTab.data.tables[tableIndex];
             if (table) {
                 // Update values directly
@@ -128,14 +133,14 @@ export class MyEditor extends LitElement {
     /**
      * Handle description-only updates from ss-metadata-editor
      */
-    private async _handleMetadataUpdate(detail: any) {
+    private async _handleMetadataUpdate(detail: IMetadataUpdateDetail) {
         if (!this.workbook) return;
         const { sheetIndex, tableIndex, description } = detail;
 
         // Get current table name from local state
         const targetTab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
         let currentName = '';
-        if (targetTab && targetTab.data && targetTab.data.tables) {
+        if (targetTab && isSheetJSON(targetTab.data)) {
             const table = targetTab.data.tables[tableIndex];
             if (table) {
                 currentName = table.name || '';
@@ -148,16 +153,16 @@ export class MyEditor extends LitElement {
         this.spreadsheetService.updateTableMetadata(sheetIndex, tableIndex, currentName, description);
     }
 
-    private async _handleVisualMetadataUpdate(detail: any) {
+    private async _handleVisualMetadataUpdate(detail: IVisualMetadataUpdateDetail) {
         const { sheetIndex, tableIndex, visual } = detail;
         this.spreadsheetService.updateVisualMetadata(sheetIndex, tableIndex, visual);
     }
 
-    private async _handleSheetMetadataUpdate(detail: any) {
+    private async _handleSheetMetadataUpdate(detail: ISheetMetadataUpdateDetail) {
         const { sheetIndex, metadata } = detail;
         // Optimistic Update: Update local state immediately
         const targetTab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
-        if (targetTab && targetTab.data) {
+        if (targetTab && isSheetJSON(targetTab.data)) {
             targetTab.data.metadata = {
                 ...(targetTab.data.metadata || {}),
                 ...metadata
@@ -168,24 +173,24 @@ export class MyEditor extends LitElement {
         this.spreadsheetService.updateSheetMetadata(sheetIndex, metadata);
     }
 
-    private async _handleRequestAddTable(detail: any) {
+    private async _handleRequestAddTable(detail: IRequestAddTableDetail) {
         const { sheetIndex } = detail;
         this.spreadsheetService.addTable(sheetIndex, t('newTable'));
     }
 
-    private async _handleRequestRenameTable(detail: any) {
+    private async _handleRequestRenameTable(detail: IRequestRenameTableDetail) {
         if (!this.workbook) return;
         const { sheetIndex, tableIndex, newName } = detail;
 
         this.spreadsheetService.renameTable(sheetIndex, tableIndex, newName);
     }
 
-    private async _handleRequestDeleteTable(detail: any) {
+    private async _handleRequestDeleteTable(detail: IRequestDeleteTableDetail) {
         const { sheetIndex, tableIndex } = detail;
 
         // Optimistic update
         const tab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
-        if (tab && tab.data && tab.data.tables) {
+        if (tab && isSheetJSON(tab.data)) {
             tab.data.tables.splice(tableIndex, 1);
             this.requestUpdate();
         }
@@ -239,32 +244,32 @@ export class MyEditor extends LitElement {
         this.spreadsheetService.clearColumn(sheetIdx, tableIdx, colIndex);
     }
 
-    private async _handlePasteCells(detail: any) {
+    private async _handlePasteCells(detail: IPasteCellsDetail) {
         const { sheetIndex, tableIndex, startRow, startCol, data, includeHeaders } = detail;
         this.spreadsheetService.pasteCells(sheetIndex, tableIndex, startRow, startCol, data, includeHeaders);
     }
 
-    private async _handleUpdateColumnFilter(detail: any) {
+    private async _handleUpdateColumnFilter(detail: IColumnFilterDetail) {
         const { sheetIndex, tableIndex, colIndex, hiddenValues } = detail;
         this.spreadsheetService.updateColumnFilter(sheetIndex, tableIndex, colIndex, hiddenValues);
     }
 
-    private async _handleSortRows(detail: any) {
+    private async _handleSortRows(detail: ISortRowsDetail) {
         const { sheetIndex, tableIndex, colIndex, ascending } = detail;
         this.spreadsheetService.sortRows(sheetIndex, tableIndex, colIndex, ascending ? 'asc' : 'desc');
     }
 
-    private async _handleUpdateColumnAlign(detail: any) {
+    private async _handleUpdateColumnAlign(detail: IColumnUpdateDetail) {
         const { sheetIndex, tableIndex, colIndex, alignment } = detail;
-        this.spreadsheetService.updateColumnAlign(sheetIndex, tableIndex, colIndex, alignment);
+        this.spreadsheetService.updateColumnAlign(sheetIndex, tableIndex, colIndex, alignment ?? null);
     }
 
-    private async _handleUpdateColumnFormat(detail: any) {
+    private async _handleUpdateColumnFormat(detail: IColumnUpdateDetail) {
         const { sheetIndex, tableIndex, colIndex, format } = detail;
-        this.spreadsheetService.updateColumnFormat(sheetIndex, tableIndex, colIndex, format);
+        this.spreadsheetService.updateColumnFormat(sheetIndex, tableIndex, colIndex, format ?? null);
     }
 
-    private _handlePostMessage(detail: any) {
+    private _handlePostMessage(detail: PostMessageCommand) {
         switch (detail.command) {
             case 'update_column_filter':
                 this._handleUpdateColumnFilter(detail);
@@ -279,7 +284,7 @@ export class MyEditor extends LitElement {
                 this._handleUpdateColumnFormat(detail);
                 break;
             default:
-                console.warn('Unknown post-message command:', detail.command);
+                console.warn('Unknown post-message command:', (detail as any).command);
         }
     }
 
@@ -306,7 +311,7 @@ export class MyEditor extends LitElement {
 
             console.log('Python result:', range);
 
-            if (range) {
+            if (range && isIDocumentSectionRange(range)) {
                 if (range.start_line !== undefined && range.end_line !== undefined) {
                     // Use title from event (may have been edited) or fall back to existing
                     const newTitle = detail.title || activeTab.title;
@@ -326,7 +331,16 @@ export class MyEditor extends LitElement {
 
                     // Update local state including title
                     activeTab.title = newTitle;
-                    activeTab.data.content = detail.content;
+                    if (isDocumentJSON(activeTab.data)) {
+                        activeTab.data.content = detail.content;
+                    } else {
+                        // Initialize if missing or wrong type
+                        activeTab.data = {
+                            type: 'document',
+                            title: newTitle,
+                            content: detail.content
+                        };
+                    }
                     this.requestUpdate();
 
                     console.log('Document updated:', {
@@ -344,7 +358,15 @@ export class MyEditor extends LitElement {
             if (detail.title) {
                 activeTab.title = detail.title;
             }
-            activeTab.data.content = detail.content;
+            if (isDocumentJSON(activeTab.data)) {
+                activeTab.data.content = detail.content;
+            } else {
+                activeTab.data = {
+                    type: 'document',
+                    title: detail.title || activeTab.title,
+                    content: detail.content
+                };
+            }
             this.requestUpdate();
         }
     }
@@ -376,12 +398,12 @@ export class MyEditor extends LitElement {
     connectedCallback() {
         super.connectedCallback();
         try {
-            const initialContent = (window as any).initialContent;
+            const initialContent = window.initialContent;
             if (initialContent) {
                 this.markdownInput = initialContent;
             }
 
-            const initialConfig = (window as any).initialConfig;
+            const initialConfig = window.initialConfig;
             if (initialConfig) {
                 this.config = initialConfig;
             }
@@ -424,61 +446,92 @@ export class MyEditor extends LitElement {
             await this.spreadsheetService.initialize();
             console.log('Spreadsheet Service initialized.');
 
-            window.addEventListener('cell-edit', (e: any) => {
+            window.addEventListener('cell-edit', (e: Event) => {
+                const detail = (e as CustomEvent<ICellEditDetail>).detail;
                 this._handleRangeEdit(
-                    e.detail.sheetIndex,
-                    e.detail.tableIndex,
-                    e.detail.rowIndex,
-                    e.detail.rowIndex,
-                    e.detail.colIndex,
-                    e.detail.colIndex,
-                    e.detail.newValue
+                    detail.sheetIndex,
+                    detail.tableIndex,
+                    detail.rowIndex,
+                    detail.rowIndex,
+                    detail.colIndex,
+                    detail.colIndex,
+                    detail.newValue
                 );
             });
 
-            window.addEventListener('range-edit', (e: any) => {
+            window.addEventListener('range-edit', (e: Event) => {
+                const detail = (e as CustomEvent<IRangeEditDetail>).detail;
                 this._handleRangeEdit(
-                    e.detail.sheetIndex,
-                    e.detail.tableIndex,
-                    e.detail.startRow,
-                    e.detail.endRow,
-                    e.detail.startCol,
-                    e.detail.endCol,
-                    e.detail.newValue
+                    detail.sheetIndex,
+                    detail.tableIndex,
+                    detail.startRow,
+                    detail.endRow,
+                    detail.startCol,
+                    detail.endCol,
+                    detail.newValue
                 );
             });
 
-            window.addEventListener('row-delete', (e: any) => {
-                this._handleDeleteRow(e.detail.sheetIndex, e.detail.tableIndex, e.detail.rowIndex);
+            window.addEventListener('row-delete', (e: Event) => {
+                const detail = (e as CustomEvent<IRowOperationDetail>).detail;
+                this._handleDeleteRow(detail.sheetIndex, detail.tableIndex, detail.rowIndex);
             });
 
-            window.addEventListener('row-insert', (e: any) => {
-                this._handleInsertRow(e.detail.sheetIndex, e.detail.tableIndex, e.detail.rowIndex);
+            window.addEventListener('row-insert', (e: Event) => {
+                const detail = (e as CustomEvent<IRowOperationDetail>).detail;
+                this._handleInsertRow(detail.sheetIndex, detail.tableIndex, detail.rowIndex);
             });
 
-            window.addEventListener('column-delete', (e: any) => {
-                this._handleDeleteColumn(e.detail.sheetIndex, e.detail.tableIndex, e.detail.colIndex);
+            window.addEventListener('column-delete', (e: Event) => {
+                const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
+                this._handleDeleteColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
             });
 
-            window.addEventListener('column-insert', (e: any) => {
-                this._handleInsertColumn(e.detail.sheetIndex, e.detail.tableIndex, e.detail.colIndex);
+            window.addEventListener('column-insert', (e: Event) => {
+                const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
+                this._handleInsertColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
             });
 
-            window.addEventListener('column-clear', (e: any) => {
-                this._handleClearColumn(e.detail.sheetIndex, e.detail.tableIndex, e.detail.colIndex);
+            window.addEventListener('column-clear', (e: Event) => {
+                const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
+                this._handleClearColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
             });
 
-            window.addEventListener('column-resize', (e: any) => this._handleColumnResize(e.detail));
-            window.addEventListener('metadata-edit', (e: any) => this._handleMetadataEdit(e.detail));
-            window.addEventListener('metadata-update', (e: any) => this._handleMetadataUpdate(e.detail));
-            window.addEventListener('request-add-table', (e: any) => this._handleRequestAddTable(e.detail));
-            window.addEventListener('request-rename-table', (e: any) => this._handleRequestRenameTable(e.detail));
-            window.addEventListener('request-delete-table', (e: any) => this._handleRequestDeleteTable(e.detail));
-            window.addEventListener('metadata-change', (e: any) => this._handleVisualMetadataUpdate(e.detail));
-            window.addEventListener('sheet-metadata-update', (e: any) => this._handleSheetMetadataUpdate(e.detail));
-            window.addEventListener('paste-cells', (e: any) => this._handlePasteCells(e.detail));
-            window.addEventListener('post-message', (e: any) => this._handlePostMessage(e.detail));
-            window.addEventListener('document-change', (e: any) => this._handleDocumentChange(e.detail));
+            window.addEventListener('column-resize', (e: Event) =>
+                this._handleColumnResize((e as CustomEvent<IColumnResizeDetail>).detail)
+            );
+            window.addEventListener('metadata-edit', (e: Event) =>
+                this._handleMetadataEdit((e as CustomEvent<IMetadataEditDetail>).detail)
+            );
+            window.addEventListener('metadata-update', (e: Event) =>
+                this._handleMetadataUpdate((e as CustomEvent<IMetadataUpdateDetail>).detail)
+            );
+            window.addEventListener('request-add-table', (e: Event) =>
+                this._handleRequestAddTable((e as CustomEvent<IRequestAddTableDetail>).detail)
+            );
+            window.addEventListener('request-rename-table', (e: Event) =>
+                this._handleRequestRenameTable((e as CustomEvent<IRequestRenameTableDetail>).detail)
+            );
+            window.addEventListener('request-delete-table', (e: Event) =>
+                this._handleRequestDeleteTable((e as CustomEvent<IRequestDeleteTableDetail>).detail)
+            );
+            window.addEventListener('metadata-change', (e: Event) =>
+                this._handleVisualMetadataUpdate((e as CustomEvent<IVisualMetadataUpdateDetail>).detail)
+            );
+            window.addEventListener('sheet-metadata-update', (e: Event) =>
+                this._handleSheetMetadataUpdate((e as CustomEvent<ISheetMetadataUpdateDetail>).detail)
+            );
+            window.addEventListener('paste-cells', (e: Event) =>
+                this._handlePasteCells((e as CustomEvent<IPasteCellsDetail>).detail)
+            );
+            window.addEventListener('post-message', (e: Event) =>
+                this._handlePostMessage((e as CustomEvent<PostMessageCommand>).detail)
+            );
+            window.addEventListener('document-change', (e: Event) =>
+                this._handleDocumentChange(
+                    (e as CustomEvent<{ sectionIndex: number; content: string; title?: string }>).detail
+                )
+            );
 
             window.addEventListener('message', async (event) => {
                 const message = event.data;
@@ -502,13 +555,13 @@ export class MyEditor extends LitElement {
 
             console.log('Pyodide initialized. Parsing initial content...');
             await this._parseWorkbook();
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('Error initializing Pyodide:', e);
             this.output = `Error initializing Pyodide: ${e}`;
         }
     }
 
-    willUpdate(changedProperties: Map<string, any>) {
+    willUpdate(changedProperties: PropertyValues<this>) {
         if (changedProperties.has('tabs')) {
             const tabs = this.tabs;
             const currentSheetCount = tabs.filter((t) => t.type === 'sheet').length;
@@ -586,22 +639,27 @@ export class MyEditor extends LitElement {
                 ? html` <spreadsheet-toolbar @toolbar-action="${this._handleToolbarAction}"></spreadsheet-toolbar> `
                 : html``}
             <div class="content-area">
-                ${activeTab.type === 'sheet'
+                ${activeTab.type === 'sheet' && isSheetJSON(activeTab.data)
                     ? html`
                           <div class="sheet-container" style="height: 100%">
                               <layout-container
-                                  .layout="${activeTab.data.metadata?.layout}"
-                                  .tables="${activeTab.data.tables}"
+                                  .layout="${(activeTab.data as SheetJSON).metadata?.layout}"
+                                  .tables="${(activeTab.data as SheetJSON).tables}"
                                   .sheetIndex="${activeTab.sheetIndex}"
                                   @save-requested="${this._handleSave}"
                               ></layout-container>
                           </div>
                       `
-                    : activeTab.type === 'document'
+                    : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
                       ? html`
                             <spreadsheet-document-view
                                 .title="${activeTab.title}"
-                                .content="${activeTab.data.content}"
+                                .content="${(activeTab.data as DocumentJSON).content}"
+                                @input="${(e: InputEvent) =>
+                                    this._handleDocumentChangeInput(
+                                        activeTab.sheetIndex || 0,
+                                        (e.target as HTMLTextAreaElement).value
+                                    )}"
                             ></spreadsheet-document-view>
                         `
                       : html``}
@@ -647,7 +705,7 @@ export class MyEditor extends LitElement {
                                               .value="${tab.title}"
                                               @click="${(e: Event) => e.stopPropagation()}"
                                               @dblclick="${(e: Event) => e.stopPropagation()}"
-                                              @keydown="${(e: KeyboardEvent) => this._handleTabInputKey(e, index, tab)}"
+                                              @keydown="${(e: KeyboardEvent) => this._handleTabInputKey(e)}"
                                               @blur="${(e: Event) =>
                                                   this._handleTabRename(
                                                       index,
@@ -777,7 +835,17 @@ export class MyEditor extends LitElement {
         }
     }
 
-    private _handleTabInputKey(e: KeyboardEvent, index: number, tab: TabDefinition) {
+    private _handleDocumentChangeInput(sheetIndex: number, content: string) {
+        // Update local state directly for document view
+        const tab = this.tabs.find((t) => t.sheetIndex === sheetIndex && t.type === 'document');
+        if (tab && isDocumentJSON(tab.data)) {
+            tab.data.content = content;
+            this.requestUpdate();
+            // TODO: Debounce and send update to backend if persistence is needed
+        }
+    }
+
+    private _handleTabInputKey(e: KeyboardEvent) {
         if (e.key === 'Enter') {
             (e.target as HTMLInputElement).blur(); // Trigger blur handler
         } else if (e.key === 'Escape') {
@@ -815,7 +883,7 @@ export class MyEditor extends LitElement {
         this.confirmDeleteIndex = null;
     }
 
-    private async _performDelete() {
+    private _performDelete() {
         const index = this.confirmDeleteIndex;
         if (index === null) return;
 
@@ -856,13 +924,16 @@ export class MyEditor extends LitElement {
     private async _parseWorkbook() {
         try {
             // 2. Initialization Phase
-            const result = await this.spreadsheetService.initializeWorkbook(this.markdownInput, this.config);
+            const result = (await this.spreadsheetService.initializeWorkbook(
+                this.markdownInput,
+                this.config
+            )) as unknown as IParseResult;
 
             if (!result) return;
 
             this.workbook = result.workbook;
 
-            const structure: StructureItem[] = result.structure;
+            const structure: StructureItem[] = result.structure as unknown as StructureItem[];
             const newTabs: TabDefinition[] = [];
             let workbookFound = false;
             let docIndex = 0; // Track document section index separately
@@ -880,7 +951,7 @@ export class MyEditor extends LitElement {
                 } else if (section.type === 'workbook') {
                     workbookFound = true;
                     if (this.workbook && this.workbook.sheets.length > 0) {
-                        this.workbook.sheets.forEach((sheet: any, shIdx: number) => {
+                        this.workbook.sheets.forEach((sheet, shIdx: number) => {
                             newTabs.push({
                                 type: 'sheet',
                                 title: sheet.name || `Sheet ${shIdx + 1}`,
@@ -927,9 +998,9 @@ export class MyEditor extends LitElement {
                 type: 'updateStructure',
                 structure: result.structure
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             console.error(err);
-            this.output = `Error parsing: ${err.message}`;
+            this.output = `Error parsing: ${(err as Error).message}`;
             this.workbook = null;
             this.tabs = [];
         }
@@ -961,7 +1032,7 @@ export class MyEditor extends LitElement {
         }
     }
 
-    private _handleSheetDragLeave(e: DragEvent) {
+    private _handleSheetDragLeave() {
         // Optional cleanup
     }
 
@@ -1043,7 +1114,7 @@ export class MyEditor extends LitElement {
         this.spreadsheetService.moveSheet(from, to);
     }
 
-    private async _handleColumnResize(detail: any) {
+    private async _handleColumnResize(detail: IColumnResizeDetail) {
         const { sheetIndex, tableIndex, col, width } = detail;
         this.spreadsheetService.updateColumnWidth(sheetIndex, tableIndex, col, width);
     }
@@ -1063,7 +1134,7 @@ export class MyEditor extends LitElement {
         }
 
         // Delegate other actions to active table
-        const table = (window as any).activeSpreadsheetTable;
+        const table = window.activeSpreadsheetTable;
         if (table && table.handleToolbarAction) {
             table.handleToolbarAction(action);
         } else {
@@ -1071,7 +1142,7 @@ export class MyEditor extends LitElement {
         }
     }
 
-    updated(changedProperties: Map<string, any>) {
+    updated(changedProperties: PropertyValues<this>) {
         if (changedProperties.has('tabs') || changedProperties.has('activeTabIndex')) {
             // Defer to ensure layout is complete
             setTimeout(() => this._checkScrollOverflow(), 0);
@@ -1099,4 +1170,5 @@ export class MyEditor extends LitElement {
 }
 
 // Add global definition for acquireVsCodeApi
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare function acquireVsCodeApi(): any;

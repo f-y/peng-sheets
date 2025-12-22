@@ -1,4 +1,14 @@
-import { TableJSON } from './components/spreadsheet-table';
+import { IVisualMetadata } from './services/spreadsheet-service';
+
+export interface TableJSON {
+    name: string | null;
+    description: string | null;
+    headers: string[] | null;
+    rows: string[][];
+    metadata: Record<string, unknown>;
+    start_line: number | null;
+    end_line: number | null;
+}
 
 export type LayoutNode = SplitNode | LeafNode;
 
@@ -35,4 +45,177 @@ export interface TabData {
         tables: TableJSON[];
     };
     metadata?: SheetMetadata;
+}
+
+export interface SheetJSON {
+    name: string;
+    header_line?: number;
+    tables: TableJSON[];
+    metadata?: Record<string, unknown>;
+}
+
+export interface DocumentJSON {
+    type: 'document';
+    title: string;
+    content: string;
+}
+
+export interface WorkbookJSON {
+    sheets: SheetJSON[];
+}
+
+export interface TabDefinition {
+    type: 'sheet' | 'document' | 'onboarding' | 'add-sheet';
+    title: string;
+    index: number;
+    sheetIndex?: number;
+    docIndex?: number; // Document section index for document tabs
+    data?: SheetJSON | DocumentJSON | unknown;
+}
+
+export interface StructureItem {
+    type: 'workbook' | 'document';
+    title?: string;
+    content?: string;
+}
+
+export interface IDocumentSectionRange {
+    start_line?: number;
+    end_line?: number;
+    end_col?: number;
+    error?: string;
+}
+
+export interface IMetadataEditDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    name: string;
+    description: string;
+}
+
+export interface IMetadataUpdateDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    description: string;
+}
+
+export interface ISortRowsDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    colIndex: number;
+    ascending: boolean;
+}
+
+export interface IColumnUpdateDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    colIndex: number;
+    alignment?: 'left' | 'center' | 'right' | null;
+    format?: Record<string, unknown> | null;
+    filter?: Record<string, unknown> | null;
+}
+
+export interface IVisualMetadataUpdateDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    visual: IVisualMetadata;
+}
+
+export interface ISheetMetadataUpdateDetail {
+    sheetIndex: number;
+    metadata: Record<string, unknown>;
+}
+
+export interface IRequestAddTableDetail {
+    sheetIndex: number;
+}
+
+export interface IRequestRenameTableDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    newName: string;
+}
+
+export interface IRequestDeleteTableDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    newName?: string; // Potential fix for rename/delete confusion, but strictly mirroring main.ts
+}
+
+export interface IPasteCellsDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    startRow: number;
+    startCol: number;
+    data: string[][];
+    includeHeaders: boolean;
+}
+
+export interface ICellEditDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    rowIndex: number;
+    colIndex: number;
+    newValue: string;
+}
+
+export interface IRangeEditDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    startRow: number;
+    endRow: number;
+    startCol: number;
+    endCol: number;
+    newValue: string;
+}
+
+export interface IRowOperationDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    rowIndex: number;
+}
+
+export interface IColumnOperationDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    colIndex: number;
+}
+
+export interface IColumnResizeDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    col: number;
+    width: number;
+}
+
+export interface IColumnFilterDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    colIndex: number;
+    hiddenValues: string[];
+}
+
+export type PostMessageCommand =
+    | ({ command: 'update_column_filter' } & IColumnFilterDetail)
+    | ({ command: 'sort_rows' } & ISortRowsDetail)
+    | ({ command: 'update_column_align' } & IColumnUpdateDetail)
+    | ({ command: 'update_column_format' } & IColumnUpdateDetail);
+
+export interface IParseResult {
+    workbook: {
+        sheets: SheetJSON[];
+    };
+    structure: unknown;
+}
+
+export function isSheetJSON(data: unknown): data is SheetJSON {
+    return typeof data === 'object' && data !== null && 'tables' in data;
+}
+
+export function isDocumentJSON(data: unknown): data is DocumentJSON {
+    return typeof data === 'object' && data !== null && (data as DocumentJSON).type === 'document';
+}
+
+export function isIDocumentSectionRange(data: unknown): data is IDocumentSectionRange {
+    return typeof data === 'object' && data !== null && ('start_line' in data || 'error' in data);
 }
