@@ -4,7 +4,7 @@ import * as path from 'path';
 export function activate(context: vscode.ExtensionContext) {
     let currentPanel: vscode.WebviewPanel | undefined = undefined;
     let activeDocument: vscode.TextDocument | undefined = undefined;
-    const isSaving = false;
+    let isSaving = false;
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-md-spreadsheet.openEditor', () => {
@@ -414,4 +414,4 @@ function getWebviewContent(
     </html>`;
 }
 
-export function deactivate() {}
+export function deactivate() { }
