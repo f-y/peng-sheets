@@ -8,3 +8,15 @@ tsconfig.json
 vite.config.ts
 **/*.map
 .DS_Store
+
+# Build & Test Artifacts
+coverage/**
+python-modules/**
+sample-workspace/**
+out/test/**
+
+# Config Files
+.c8rc.json
+vitest.config.ts
+test-setup.ts
+*.vsix
