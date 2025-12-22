@@ -5,7 +5,7 @@
 ### User List
 
 | ID | Name | Role | Age | Sex |
-| --- | --- | --- | --- | --- |
+| :--- | ---: | :---: | --- | --- |
 | 1 | **<u>~~*Alice*~~</u>** | Admin<br>**AAA**<br>BBB | 1 | 1 |
 | 2 | Bob | User | 2 | Male |
 | 3 | Alice | Admin | 4 | Female |
@@ -18,7 +18,7 @@
 | 10 | Bob | User | 2 |  |
 | 11 | Alice | Admin | 4 |  |
 
-<!-- md-spreadsheet-metadata: {"columns": {"2": {"align": "center"}, "1": {"align": "right"}}} -->
+<!-- md-spreadsheet-metadata: {"column_widths": {"2": 123}} -->
 
 ### User List 2
 
@@ -49,7 +49,7 @@
 | 2 | Bob | User |
 | 3 | Alice | Admin |
 
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "CR62pM-6igDeN9BDkOOyI", "direction": "vertical", "sizes": [42.63565891472869, 57.36434108527131], "children": [{"type": "pane", "id": "root", "tables": [0, 2], "activeTableIndex": 0}, {"type": "split", "id": "6gSwvkPm03J5msUKxZpT8", "direction": "horizontal", "sizes": [36.12132352941177, 63.87867647058823], "children": [{"type": "pane", "id": "oRaw2lUmE-apcts5k8244", "tables": [3], "activeTableIndex": 0}, {"type": "pane", "id": "jQSimYara8kTO7GxmOytj", "tables": [1], "activeTableIndex": 0}]}]}} -->
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "GRnl0SizCRS26cqCNniQt", "direction": "vertical", "sizes": [50, 50], "children": [{"type": "pane", "id": "root", "tables": [0, 1, 3], "activeTableIndex": 0}, {"type": "pane", "id": "W3TprxHoFKwaHtaQcHktx", "tables": [2], "activeTableIndex": 0}]}} -->
 
 ## Products
 

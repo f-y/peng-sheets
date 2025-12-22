@@ -1,5 +1,7 @@
 import { IVisualMetadata } from './services/spreadsheet-service';
 
+export type AlignmentType = 'left' | 'center' | 'right' | 'default';
+
 export interface TableJSON {
     name: string | null;
     description: string | null;
@@ -8,6 +10,7 @@ export interface TableJSON {
     metadata: Record<string, unknown>;
     start_line: number | null;
     end_line: number | null;
+    alignments: AlignmentType[] | null;
 }
 
 export type LayoutNode = SplitNode | LeafNode;

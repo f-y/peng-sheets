@@ -138,7 +138,7 @@ export function getWebviewContent(
     if (isProduction) {
         scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js'));
         wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.3.2-py3-none-any.whl')
+            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.5.0-py3-none-any.whl')
         );
         codiconFontUri = webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'codicon.ttf')
@@ -150,7 +150,7 @@ export function getWebviewContent(
         scriptUri = 'http://localhost:5173/webview-ui/main.ts';
         // Use local resource for wheel even in dev mode to bypass Vite 404/MIME issues
         wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.3.2-py3-none-any.whl')
+            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.5.0-py3-none-any.whl')
         );
         // In dev, we can try to point to the file in node_modules if served, or fallback to the local file if copied?
         // Vite dev server might not serve node_modules assets at root.

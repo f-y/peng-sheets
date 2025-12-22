@@ -96,7 +96,7 @@ def get_workbook_range(md_text, root_marker, sheet_header_level):
         line = lines[i].strip()
         if line.startswith("```"):
             in_code_block = not in_code_block
-            
+
         if not in_code_block and line.startswith("#"):
             lvl = get_level(line)
             if lvl < sheet_header_level:
@@ -232,9 +232,48 @@ def update_table_metadata(sheet_idx, table_idx, new_name, new_desc):
     )
 
 
+def _escape_pipe(value):
+    """Escape pipe characters for GFM table cells.
+
+    Converts | to \\| so the parser treats it as literal pipe.
+    Note: Pipes inside backticks are handled by the parser, but raw pipes need escaping.
+    """
+    if not value or "|" not in value:
+        return value
+
+    # Don't escape pipes that are already escaped or inside backticks
+    result = []
+    in_code = False
+    i = 0
+    n = len(value)
+
+    while i < n:
+        char = value[i]
+
+        if char == "`":
+            in_code = not in_code
+            result.append(char)
+            i += 1
+        elif char == "\\" and i + 1 < n:
+            # Already escaped, keep as is
+            result.append(char)
+            result.append(value[i + 1])
+            i += 2
+        elif char == "|" and not in_code:
+            # Escape the pipe
+            result.append("\\|")
+            i += 1
+        else:
+            result.append(char)
+            i += 1
+
+    return "".join(result)
+
+
 def update_cell(sheet_idx, table_idx, row_idx, col_idx, value):
+    escaped_value = _escape_pipe(value)
     return apply_table_update(
-        sheet_idx, table_idx, lambda t: t.update_cell(row_idx, col_idx, value)
+        sheet_idx, table_idx, lambda t: t.update_cell(row_idx, col_idx, escaped_value)
     )
 
 
@@ -333,7 +372,7 @@ def paste_cells(
 
             for c_offset, val in enumerate(row_data):
                 target_c = start_col + c_offset
-                current_rows[target_r][target_c] = val
+                current_rows[target_r][target_c] = _escape_pipe(val)
 
         # 3. Homogenize row lengths and headers
         global_max_width = 0
@@ -365,7 +404,7 @@ def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_
     # Find root marker first to replicate parse_workbook skip logic
     start_index = 0
     in_code_block = False
-    
+
     if root_marker:
         for i, line in enumerate(lines):
             if line.strip().startswith("```"):
@@ -384,10 +423,10 @@ def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_
     # If we broke at start_index, we know start_index-1 was the root marker (not in code block).
     # So start_index starts with in_code_block=False (unless the line itself is ```?)
     in_code_block = False
-    
+
     for idx, line in enumerate(lines[start_index:], start=start_index):
         stripped = line.strip()
-        
+
         if stripped.startswith("```"):
             in_code_block = not in_code_block
 
@@ -483,7 +522,7 @@ def get_document_section_range(wb, section_index):
     sections = []
     current_section = None
     current_start = None
-    
+
     in_code_block = False
 
     for i, line in enumerate(lines):
@@ -613,27 +652,20 @@ def update_column_filter(sheet_idx, table_idx, col_idx, hidden_values):
 
 
 def update_column_align(sheet_idx, table_idx, col_idx, alignment):
+    """Update GFM alignment for a specific column.
+
+    Updates table.alignments directly instead of metadata.
+    """
+
     def _update_logic(t):
-        current_md = t.metadata or {}
-        new_md = current_md.copy()
+        current_alignments = list(t.alignments) if t.alignments else []
 
-        current_visual = new_md.get("visual", {})
-        updated_visual = current_visual.copy()
+        # Extend if needed
+        while len(current_alignments) <= col_idx:
+            current_alignments.append("default")
 
-        # Ensure 'columns' dict exists
-        current_columns = updated_visual.get("columns", {})
-        updated_columns = current_columns.copy()
-
-        # Update specific column
-        col_key = str(col_idx)
-        col_data = updated_columns.get(col_key, {}).copy()
-        col_data["align"] = alignment
-        updated_columns[col_key] = col_data
-
-        updated_visual["columns"] = updated_columns
-        new_md["visual"] = updated_visual
-
-        return replace(t, metadata=new_md)
+        current_alignments[col_idx] = alignment if alignment else "default"
+        return replace(t, alignments=current_alignments)
 
     return apply_table_update(sheet_idx, table_idx, _update_logic)
 

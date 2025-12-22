@@ -15,6 +15,8 @@ import { getEditingHtml, formatCellValue, renderMarkdown, NumberFormat } from '.
 import { calculateCellRangeState } from '../utils/edit-mode-helpers';
 import { VisualMetadata } from '../controllers/row-visibility-controller';
 
+export type AlignmentType = 'left' | 'center' | 'right' | 'default';
+
 // Re-export for convenience
 export interface TableJSON {
     name: string | null;
@@ -24,6 +26,7 @@ export interface TableJSON {
     metadata: Record<string, unknown>;
     start_line: number | null;
     end_line: number | null;
+    alignments: AlignmentType[] | null;
 }
 
 export interface SelectionRange {
@@ -311,11 +314,13 @@ export class SpreadsheetTableView extends LitElement {
                 const isEditingCell = this.editState.isEditing && isActive;
                 const isRangeSelection = minR !== maxR || minC !== maxC;
 
-                // Get alignment and format from metadata
+                // Get alignment from GFM alignments
+                const align = this.table!.alignments?.[c] ?? 'left';
+
+                // Get format settings from metadata
                 const visual = (this.table!.metadata?.['visual'] as VisualMetadata) || {};
                 const columns = visual.columns || {};
                 const colSettings = columns[c.toString()] || {};
-                const align = colSettings.align || 'left';
                 const format = colSettings.format;
                 const wordWrapEnabled = format?.wordWrap !== false;
 

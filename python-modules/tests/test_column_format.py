@@ -123,23 +123,29 @@ def test_update_column_format_clear():
 
 
 def test_update_column_format_preserves_existing_column_settings():
-    """Test that format update preserves existing column settings like align."""
+    """Test that format update preserves existing column settings.
+
+    Note: Since GFM alignment is now stored in table.alignments (not metadata),
+    this test verifies that alignment and format coexist in their respective locations.
+    """
     initialize_workbook(MOCK_MD, MOCK_CONFIG)
 
-    # First set alignment
+    # First set alignment (stored in table.alignments for GFM)
     update_column_align(0, 0, 0, "center")
 
-    # Then set format
+    # Then set format (stored in metadata)
     format_config = {"wordWrap": False}
     res = update_column_format(0, 0, 0, format_config)
 
     assert "content" in res
 
     table = headless_editor.workbook.sheets[0].tables[0]
-    col_0 = table.metadata["visual"]["columns"]["0"]
 
-    # Both settings should exist
-    assert col_0.get("align") == "center"
+    # Alignment should be in table.alignments (GFM)
+    assert table.alignments[0] == "center"
+
+    # Format should be in metadata
+    col_0 = table.metadata["visual"]["columns"]["0"]
     assert col_0.get("format") == {"wordWrap": False}
 
 
