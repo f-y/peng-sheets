@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { queryView, queryAllView, awaitView } from '../../helpers/test-helpers';
+import { queryView, awaitView } from '../../helpers/test-helpers';
 import { SpreadsheetTable } from '../../../components/spreadsheet-table';
 import '../../../components/spreadsheet-table';
 
@@ -23,7 +23,6 @@ describe('SpreadsheetTable Edit Rendering', () => {
         await awaitView(element);
 
         // Enter edit mode
-        const cell = queryView(element, '.cell.selected') as HTMLElement;
         element.editCtrl.startEditing(element.table.rows[0][0]);
         await awaitView(element);
 

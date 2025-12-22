@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { queryView, queryAllView, awaitView } from '../../helpers/test-helpers';
+import { queryView, awaitView } from '../../helpers/test-helpers';
 import { fixture, html } from '@open-wc/testing';
 import '../../../components/spreadsheet-table';
 import { SpreadsheetTable } from '../../../components/spreadsheet-table';

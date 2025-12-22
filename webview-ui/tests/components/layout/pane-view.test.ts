@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import '../../../components/pane-view';
 import { PaneView } from '../../../components/pane-view';
-import { TableJSON, LeafNode } from '../types';
+import { TableJSON } from '../types';
 
 describe('PaneView', () => {
     let element: PaneView;

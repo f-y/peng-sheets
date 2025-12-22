@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { queryView, queryAllView, awaitView } from '../../helpers/test-helpers';
+import { queryView, awaitView } from '../../helpers/test-helpers';
 import { SpreadsheetTable } from '../../../components/spreadsheet-table';
 import '../../../components/spreadsheet-table';
 

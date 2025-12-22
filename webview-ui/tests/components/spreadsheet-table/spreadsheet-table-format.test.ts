@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { awaitView } from '../../helpers/test-helpers';
 import '../../../components/spreadsheet-table';
 import { SpreadsheetTable } from '../../../components/spreadsheet-table';

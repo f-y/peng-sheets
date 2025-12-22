@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { queryView, queryAllView, awaitView } from '../../helpers/test-helpers';
 import '../../../components/filter-menu';
 import { FilterMenu } from '../../../components/filter-menu';
 

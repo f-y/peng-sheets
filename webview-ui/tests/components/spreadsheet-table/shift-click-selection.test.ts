@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { queryView, queryAllView, awaitView } from '../../helpers/test-helpers';
+import { queryAllView, awaitView } from '../../helpers/test-helpers';
 import { fixture, html } from '@open-wc/testing';
 import '../../../components/spreadsheet-table';
 import type { SpreadsheetTable } from '../../../components/spreadsheet-table';
@@ -21,7 +21,8 @@ describe('Shift+Click Range Selection on Headers', () => {
                     ],
                     metadata: {}
                 }}"
-            ></spreadsheet-table>
+            >
+            </spreadsheet-table>
         `);
         await awaitView(table);
     });

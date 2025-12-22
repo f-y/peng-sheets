@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import { SpreadsheetTable } from '../../../components/spreadsheet-table';
 import '../../../components/spreadsheet-table';
