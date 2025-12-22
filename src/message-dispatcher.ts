@@ -9,7 +9,7 @@ export interface HandlerContext {
 }
 
 export class MessageDispatcher {
-    constructor(private context: HandlerContext) {}
+    constructor(private context: HandlerContext) { }
 
     public async dispatch(message: unknown): Promise<void> {
         if (!this.isValidMessage(message)) {
@@ -102,30 +102,73 @@ export class MessageDispatcher {
 
     private async handleUndo() {
         if (this.context.activeDocument) {
-            const editorForUndo = vscode.window.visibleTextEditors.find(
+            const visibleEditors = vscode.window.visibleTextEditors;
+            let editorForUndo = visibleEditors.find(
                 (e) => e.document.uri.toString() === this.context.activeDocument?.uri.toString()
             );
-            if (editorForUndo) {
-                await vscode.window.showTextDocument(editorForUndo.document, {
-                    viewColumn: editorForUndo.viewColumn,
-                    preserveFocus: false
-                });
-                await vscode.commands.executeCommand('undo');
+
+            try {
+                if (!editorForUndo) {
+                    // No visible text editor for this document (custom editor only)
+                    // Open the document in a text editor to enable undo
+                    const editor = await vscode.window.showTextDocument(this.context.activeDocument, {
+                        viewColumn: vscode.ViewColumn.Active,
+                        preserveFocus: false,
+                        preview: true
+                    });
+                    editorForUndo = editor;
+                }
+
+                if (editorForUndo) {
+                    await vscode.window.showTextDocument(editorForUndo.document, {
+                        viewColumn: editorForUndo.viewColumn,
+                        preserveFocus: false
+                    });
+                    await vscode.commands.executeCommand('undo');
+
+                    // Return focus to webview
+                    if (this.context.webviewPanel) {
+                        this.context.webviewPanel.reveal(undefined, true);
+                    }
+                }
+            } catch (error) {
+                console.error('Error during undo:', error);
             }
         }
     }
 
     private async handleRedo() {
         if (this.context.activeDocument) {
-            const editorForRedo = vscode.window.visibleTextEditors.find(
+            const visibleEditors = vscode.window.visibleTextEditors;
+            let editorForRedo = visibleEditors.find(
                 (e) => e.document.uri.toString() === this.context.activeDocument?.uri.toString()
             );
-            if (editorForRedo) {
-                await vscode.window.showTextDocument(editorForRedo.document, {
-                    viewColumn: editorForRedo.viewColumn,
-                    preserveFocus: false
-                });
-                await vscode.commands.executeCommand('redo');
+
+            try {
+                if (!editorForRedo) {
+                    // No visible text editor for this document (custom editor only)
+                    const editor = await vscode.window.showTextDocument(this.context.activeDocument, {
+                        viewColumn: vscode.ViewColumn.Active,
+                        preserveFocus: false,
+                        preview: true
+                    });
+                    editorForRedo = editor;
+                }
+
+                if (editorForRedo) {
+                    await vscode.window.showTextDocument(editorForRedo.document, {
+                        viewColumn: editorForRedo.viewColumn,
+                        preserveFocus: false
+                    });
+                    await vscode.commands.executeCommand('redo');
+
+                    // Return focus to webview
+                    if (this.context.webviewPanel) {
+                        this.context.webviewPanel.reveal(undefined, true);
+                    }
+                }
+            } catch (error) {
+                console.error('Error during redo:', error);
             }
         }
     }

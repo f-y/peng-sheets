@@ -5,7 +5,7 @@
 ### Table 1
 
 | ID | Name | Value | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 1 | Item 1 | 10 | Description for item 1 |
 | 2 | Item 2 | 20 | Description for item 2 |
 | 3 | Item 3 | 30 | Description for item 3 |
@@ -1006,3 +1006,6 @@
 | 998 | Item 998 | 9980 | Description for item 998 |
 | 999 | Item 999 | 9990 | Description for item 999 |
 | 1000 | Item 1000 | 10000 | Description for item 1000 |
+
+<!-- md-spreadsheet-metadata: {"column_widths": {"3": 237}} -->
+
