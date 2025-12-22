@@ -373,4 +373,46 @@ suite('MessageDispatcher Test Suite', () => {
 
         assert.ok(showErrorMessageSpy.calledWith('Failed to save document.'));
     });
+
+    test('Concurrency: Should process messages sequentially (Queue Check)', async () => {
+        const executionOrder: string[] = [];
+
+        // Mock slow updateRange
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').callsFake(async () => {
+            executionOrder.push('start-edit');
+            await new Promise((resolve) => setTimeout(resolve, 50));
+            executionOrder.push('end-edit');
+            return true;
+        });
+
+        // Mock fast save
+        const saveStub = sandbox.stub().callsFake(async () => {
+            executionOrder.push('save');
+            return true;
+        });
+        (mockContext.activeDocument as any).save = saveStub;
+        (mockContext.activeDocument as any).isDirty = true;
+
+        const dispatcher = new MessageDispatcher(mockContext);
+
+        // Dispatch mixed messages without awaiting immediately
+        // Note: dispatch is async. We start them "in parallel" from event loop perspective
+        const p1 = dispatcher.dispatch({
+            type: 'updateRange',
+            startLine: 0,
+            endLine: 0,
+            content: 'test'
+        });
+        const p2 = dispatcher.dispatch({ type: 'save' });
+
+        await Promise.all([p1, p2]);
+
+        // Expected if queued: start-edit -> end-edit -> save
+        // If race: start-edit -> save -> end-edit (or similar)
+        assert.deepStrictEqual(
+            executionOrder,
+            ['start-edit', 'end-edit', 'save'],
+            'Messages should be processed sequentially'
+        );
+    });
 });

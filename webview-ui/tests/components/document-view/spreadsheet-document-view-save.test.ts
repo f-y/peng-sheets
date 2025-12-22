@@ -114,4 +114,33 @@ describe('SpreadsheetDocumentView save functionality', () => {
         const outputDivAfter = shadowRoot!.querySelector('.output');
         expect(outputDivAfter).toBeTruthy();
     });
+    it('should set save: true in document-change when Save button is clicked, ignoring subsequent blur', async () => {
+        const eventSpy = vi.fn();
+        element.addEventListener('document-change', eventSpy);
+
+        const shadowRoot = element.shadowRoot;
+        (shadowRoot!.querySelector('.output') as HTMLElement).click();
+        await (element as any).updateComplete;
+
+        const textarea = shadowRoot!.querySelector('textarea') as HTMLTextAreaElement;
+        const saveButton = shadowRoot!.querySelector('.save-button') as HTMLElement;
+
+        // Change content
+        textarea.value = '# Changed\n\nContent';
+        textarea.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // Click Save (this calls _exitEditMode(true))
+        saveButton.click();
+
+        // Simulate blur that happens when element is removed or focus changes
+        textarea.dispatchEvent(new FocusEvent('blur'));
+
+        // Wait for debounce
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+        expect(eventSpy).toHaveBeenCalledTimes(1);
+        const detail = eventSpy.mock.calls[0][0].detail;
+        expect(detail.content).toContain('Content');
+        expect(detail.save).toBe(true);
+    });
 });

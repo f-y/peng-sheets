@@ -9,6 +9,8 @@ export interface HandlerContext {
 }
 
 export class MessageDispatcher {
+    private _messageQueue: Promise<void> = Promise.resolve();
+
     constructor(private context: HandlerContext) {}
 
     public async dispatch(message: unknown): Promise<void> {
@@ -17,8 +19,21 @@ export class MessageDispatcher {
             return;
         }
 
-        console.log('[Extension] Processing message:', message.type);
+        // process message sequentially
+        const processingPromise = this._messageQueue
+            .then(async () => {
+                console.log('[Extension] Processing message:', message.type);
+                await this._dispatchInner(message);
+            })
+            .catch((err) => {
+                console.error('Error processing message:', err);
+            });
 
+        this._messageQueue = processingPromise;
+        return processingPromise;
+    }
+
+    private async _dispatchInner(message: WebviewMessage): Promise<void> {
         switch (message.type) {
             case 'updateRange':
                 await this.handleUpdateRange(message);

@@ -18,6 +18,17 @@ export class SpreadsheetToolbar extends LitElement {
             <div class="toolbar">
                 <vscode-button
                     appearance="icon"
+                    aria-label="${t('toolbarSave')}"
+                    title="${t('toolbarSave')} (${this._isMac() ? '⌘S' : 'Ctrl+S'})"
+                    @click="${() => this._dispatch('save')}"
+                >
+                    <span class="codicon codicon-save"></span>
+                </vscode-button>
+
+                <div class="divider"></div>
+
+                <vscode-button
+                    appearance="icon"
                     aria-label="${t('toolbarUndo')}"
                     title="${t('toolbarUndo')} (${this._isMac() ? '⌘Z' : 'Ctrl+Z'})"
                     @click="${() => this._dispatch('undo')}"

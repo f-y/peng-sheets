@@ -288,7 +288,12 @@ export class MyEditor extends LitElement {
         }
     }
 
-    private async _handleDocumentChange(detail: { sectionIndex: number; content: string; title?: string }) {
+    private async _handleDocumentChange(detail: {
+        sectionIndex: number;
+        content: string;
+        title?: string;
+        save?: boolean;
+    }) {
         console.log('Document change received:', detail);
 
         // Find the active document tab
@@ -348,6 +353,10 @@ export class MyEditor extends LitElement {
                         title: newTitle,
                         content: fullContent.substring(0, 50) + '...'
                     });
+
+                    if (detail.save) {
+                        this._handleSave();
+                    }
                 } else if (range.error) {
                     console.error('Python error:', range.error);
                 }
@@ -529,7 +538,14 @@ export class MyEditor extends LitElement {
             );
             window.addEventListener('document-change', (e: Event) =>
                 this._handleDocumentChange(
-                    (e as CustomEvent<{ sectionIndex: number; content: string; title?: string }>).detail
+                    (
+                        e as CustomEvent<{
+                            sectionIndex: number;
+                            content: string;
+                            title?: string;
+                            save?: boolean;
+                        }>
+                    ).detail
                 )
             );
 
@@ -655,11 +671,7 @@ export class MyEditor extends LitElement {
                             <spreadsheet-document-view
                                 .title="${activeTab.title}"
                                 .content="${(activeTab.data as DocumentJSON).content}"
-                                @input="${(e: InputEvent) =>
-                                    this._handleDocumentChangeInput(
-                                        activeTab.sheetIndex || 0,
-                                        (e.target as HTMLTextAreaElement).value
-                                    )}"
+                                @toolbar-action="${this._handleToolbarAction}"
                             ></spreadsheet-document-view>
                         `
                       : html``}
@@ -832,16 +844,6 @@ export class MyEditor extends LitElement {
                     input.select();
                 }
             }, 0);
-        }
-    }
-
-    private _handleDocumentChangeInput(sheetIndex: number, content: string) {
-        // Update local state directly for document view
-        const tab = this.tabs.find((t) => t.sheetIndex === sheetIndex && t.type === 'document');
-        if (tab && isDocumentJSON(tab.data)) {
-            tab.data.content = content;
-            this.requestUpdate();
-            // TODO: Debounce and send update to backend if persistence is needed
         }
     }
 
@@ -1117,7 +1119,11 @@ export class MyEditor extends LitElement {
         console.log('Main: _handleToolbarAction', e.detail);
         const action = e.detail.action;
 
-        // Handle undo/redo at main.ts level (not delegated to table)
+        // Handle undo/redo/save at main.ts level (not delegated to table)
+        if (action === 'save') {
+            this._handleSave();
+            return;
+        }
         if (action === 'undo') {
             this._handleUndo();
             return;

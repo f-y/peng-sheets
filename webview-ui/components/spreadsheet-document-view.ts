@@ -71,12 +71,21 @@ export class SpreadsheetDocumentView extends LitElement {
         });
     }
 
-    private _exitEditMode(): void {
+    private _exitEditMode(shouldSave: boolean = false): void {
+        if (!this._isEditing) return;
         this._isEditing = false;
 
         // Only save if content changed (compare full content including title)
         if (this._editContent !== this._getFullContent()) {
-            this._saveContent();
+            this._saveContent(shouldSave);
+        } else if (shouldSave) {
+            this.dispatchEvent(
+                new CustomEvent('toolbar-action', {
+                    bubbles: true,
+                    composed: true,
+                    detail: { action: 'save' }
+                })
+            );
         }
     }
 
@@ -114,7 +123,7 @@ export class SpreadsheetDocumentView extends LitElement {
         return { title, body };
     }
 
-    private _saveContent(): void {
+    private _saveContent(shouldSave: boolean = false): void {
         if (this._debounceTimer) {
             window.clearTimeout(this._debounceTimer);
         }
@@ -129,7 +138,8 @@ export class SpreadsheetDocumentView extends LitElement {
                     detail: {
                         sectionIndex: this.sectionIndex,
                         content: body,
-                        title: title
+                        title: title,
+                        save: shouldSave
                     }
                 })
             );
@@ -147,14 +157,14 @@ export class SpreadsheetDocumentView extends LitElement {
                                   class="editor"
                                   .value=${this._editContent}
                                   @input=${this._handleInput}
-                                  @blur=${this._exitEditMode}
+                                  @blur=${() => this._exitEditMode(false)}
                                   @keydown=${this._handleKeyDown}
                               ></textarea>
                           </div>
                           <button
                               class="save-button"
                               @mousedown=${(e: MouseEvent) => e.preventDefault()}
-                              @click=${this._exitEditMode}
+                              @click=${() => this._exitEditMode(true)}
                           >
                               <span class="codicon codicon-check"></span>
                               Save
