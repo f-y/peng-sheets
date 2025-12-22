@@ -9,7 +9,7 @@ export interface HandlerContext {
 }
 
 export class MessageDispatcher {
-    constructor(private context: HandlerContext) { }
+    constructor(private context: HandlerContext) {}
 
     public async dispatch(message: unknown): Promise<void> {
         if (!this.isValidMessage(message)) {

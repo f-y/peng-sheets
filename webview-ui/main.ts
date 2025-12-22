@@ -533,6 +533,14 @@ export class MyEditor extends LitElement {
                 )
             );
 
+            window.addEventListener('undo-requested', () => {
+                this._handleUndo();
+            });
+
+            window.addEventListener('redo-requested', () => {
+                this._handleRedo();
+            });
+
             window.addEventListener('message', async (event) => {
                 const message = event.data;
                 switch (message.type) {
