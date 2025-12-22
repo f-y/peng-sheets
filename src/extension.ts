@@ -4,6 +4,7 @@ import * as path from 'path';
 export function activate(context: vscode.ExtensionContext) {
     let currentPanel: vscode.WebviewPanel | undefined = undefined;
     let activeDocument: vscode.TextDocument | undefined = undefined;
+    const isSaving = false;
 
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-md-spreadsheet.openEditor', () => {
@@ -293,15 +294,15 @@ export function activate(context: vscode.ExtensionContext) {
                     case 'save': {
                         console.log('Received save request');
                         // Prevent concurrent save requests using a simple lock
-                        if ((message as any)._saveLock) {
+                        if (isSaving) {
                             console.log('Save already in progress, skipping');
                             return;
                         }
-                        (message as any)._saveLock = true;
+                        isSaving = true;
 
-                        if (activeDocument) {
-                            if (activeDocument.isDirty) {
-                                try {
+                        try {
+                            if (activeDocument) {
+                                if (activeDocument.isDirty) {
                                     const saved = await activeDocument.save();
                                     console.log(`Document saved: ${saved}`);
                                     if (!saved) {
@@ -309,16 +310,18 @@ export function activate(context: vscode.ExtensionContext) {
                                             'Save returned false, but document may have been saved by another process'
                                         );
                                     }
-                                } catch (error) {
-                                    console.error('Error saving document:', error);
-                                    vscode.window.showErrorMessage('Failed to save document.');
+                                } else {
+                                    console.log('Document is not dirty, nothing to save');
                                 }
                             } else {
-                                console.log('Document is not dirty, nothing to save');
+                                console.error('No active document to save');
+                                vscode.window.showErrorMessage('No active document to save.');
                             }
-                        } else {
-                            console.error('No active document to save');
-                            vscode.window.showErrorMessage('No active document to save.');
+                        } catch (error) {
+                            console.error('Error saving document:', error);
+                            vscode.window.showErrorMessage('Failed to save document.');
+                        } finally {
+                            isSaving = false;
                         }
                         return;
                     }
