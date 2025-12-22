@@ -47,7 +47,23 @@ suite('MessageDispatcher Test Suite', () => {
         assert.ok(saveSpy.notCalled, 'handleSave should not be called for invalid messages');
     });
 
-    // Undo/Redo tests removed as logic is handled by VS Code Native Undo
+    test('Undo: Should call vscode.commands.executeCommand("undo")', async () => {
+        const executeCommandStub = sandbox.stub(vscode.commands, 'executeCommand').resolves();
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'undo' });
+
+        assert.ok(executeCommandStub.calledWith('undo'), 'Should execute "undo" command');
+    });
+
+    test('Redo: Should call vscode.commands.executeCommand("redo")', async () => {
+        const executeCommandStub = sandbox.stub(vscode.commands, 'executeCommand').resolves();
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'redo' });
+
+        assert.ok(executeCommandStub.calledWith('redo'), 'Should execute "redo" command');
+    });
 
     test('Save: Should call save() on dirty document', async () => {
         // Setup dirty document

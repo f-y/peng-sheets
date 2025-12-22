@@ -29,6 +29,12 @@ export class MessageDispatcher {
             case 'save':
                 await this.handleSave();
                 break;
+            case 'undo':
+                await this.handleUndo();
+                break;
+            case 'redo':
+                await this.handleRedo();
+                break;
         }
     }
 
@@ -38,7 +44,8 @@ export class MessageDispatcher {
             !!message &&
             typeof message === 'object' &&
             typeof msg.type === 'string' &&
-            ['updateRange', 'createSpreadsheet', 'save'].includes(msg.type)
+            typeof msg.type === 'string' &&
+            ['updateRange', 'createSpreadsheet', 'save', 'undo', 'redo'].includes(msg.type)
         );
     }
 
@@ -160,5 +167,13 @@ export class MessageDispatcher {
         } finally {
             this.context.setSavingState(false);
         }
+    }
+
+    private async handleUndo() {
+        await vscode.commands.executeCommand('undo');
+    }
+
+    private async handleRedo() {
+        await vscode.commands.executeCommand('redo');
     }
 }
