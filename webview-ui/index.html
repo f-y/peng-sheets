@@ -1,14 +1,23 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Markdown Spreadsheet</title>
-    </head>
 
-    <body>
-        <md-spreadsheet-editor></md-spreadsheet-editor>
-        <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
-        <script type="module" src="./main.ts"></script>
-    </body>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Markdown Spreadsheet</title>
+</head>
+
+<body>
+    <md-spreadsheet-editor></md-spreadsheet-editor>
+    <script>
+        // Mock initialization for standalone dev
+        window.wheelUri = ""; // No wheel in standalone
+        window.pyodideIndexUrl = "https://cdn.jsdelivr.net/pyodide/v0.26.2/full/";
+        if (!window.initialContent) window.initialContent = "";
+        if (!window.initialConfig) window.initialConfig = {};
+    </script>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+    <script type="module" src="./main.ts"></script>
+</body>
+
 </html>

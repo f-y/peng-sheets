@@ -163,3 +163,29 @@ To fix bugs or add features reliably:
 3.  **Verification**: Run tests (`npm test` or `npm run test:webview`).
 4.  **Coverage Check**: Run `npm run test:coverage` to ensure no dead code remains and critical paths are covered.
     *   *Tip*: Use `c8 report --reporter=text` to see file-by-file breakdown if summary is insufficient.
+
+### 7. Pyodide Integration (Local Bundling)
+
+We bundle **Pyodide** locally instead of loading it from a CDN to ensure:
+*   **Offline Support**: The extension works without an internet connection.
+*   **Performance**: Faster initialization by avoiding network requests.
+*   **Stability**: Consistent versioning rooted in `package.json`.
+
+#### Architecture
+1.  **Dependencies**:
+    *   `pyodide` (npm package): Source of core assets.
+    *   `vite-plugin-static-copy`: Copies assets to the output directory during build.
+
+2.  **Build Process (`vite.config.mts`)**:
+    *   Files are copied from `node_modules/pyodide` to `out/webview/pyodide`.
+    *   **Crucial Assets**:
+        *   `pyodide.js`: Entry point.
+        *   `pyodide.asm.wasm`, `pyodide.asm.js`: WebAssembly core.
+        *   `python_stdlib.zip`: Standard Python library (CRITICAL: without this, `import encodings` fails).
+        *   `pyodide-lock.json`: Dependency manifest.
+    *   **Wheels**:
+        *   `micropip` and `packaging` wheels are also bundled (copied from `node_modules` or `resources/pyodide_pkgs`) because `md-spreadsheet-parser` requires them to perform the install.
+
+3.  **Initialization (`spreadsheet-service.ts`)**:
+    *   `window.pyodideIndexUrl` is injected by the Extension Host pointing to the local `out/webview/pyodide` directory.
+    *   Pyodide loads all resources relative to this local URL.

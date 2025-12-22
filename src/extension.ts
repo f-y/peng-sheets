@@ -28,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }
 
 export async function newWorkbookHandler() {
     // Get workspace folder
@@ -86,6 +86,7 @@ export function getWebviewContent(
     let scriptUri: vscode.Uri | string;
     let wheelUri: vscode.Uri | string;
     let codiconFontUri: vscode.Uri | string;
+    let pyodideUri: vscode.Uri | string;
     let cspScriptSrc: string;
     let cspConnectSrc: string;
     let cspFontSrc: string;
@@ -99,25 +100,23 @@ export function getWebviewContent(
         codiconFontUri = webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'codicon.ttf')
         );
-        cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net ${webview.cspSource}`;
-        cspConnectSrc = `https://cdn.jsdelivr.net ${webview.cspSource}`;
+        pyodideUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide')
+        );
+
+        cspScriptSrc = `'unsafe-eval' ${webview.cspSource}`;
+        cspConnectSrc = `${webview.cspSource}`;
         cspFontSrc = `${webview.cspSource}`;
     } else {
         scriptUri = 'http://localhost:5173/webview-ui/main.ts';
-        // Use local resource for wheel even in dev mode to bypass Vite 404/MIME issues
         wheelUri = webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.5.0-py3-none-any.whl')
         );
-        // In dev, we can try to point to the file in node_modules if served, or fallback to the local file if copied?
-        // Vite dev server might not serve node_modules assets at root.
-        // For simplicity in dev, we might assume it works or point to localhost if possible.
-        // Actually, let's use the production logic for font even in dev if it exists in out, OR rely on localhost.
-        // But out/webview might not be populated in dev.
-        // Let's fallback to specific path if straightforward, or just 'self' http://localhost:5173.
         codiconFontUri = 'http://localhost:5173/node_modules/@vscode/codicons/dist/codicon.ttf';
+        pyodideUri = 'http://localhost:5173/pyodide';
 
-        cspScriptSrc = `'unsafe-eval' https://cdn.jsdelivr.net http://localhost:5173`;
-        cspConnectSrc = `https://cdn.jsdelivr.net http://localhost:5173 ws://localhost:5173 ${webview.cspSource}`;
+        cspScriptSrc = `'unsafe-eval' http://localhost:5173`;
+        cspConnectSrc = `http://localhost:5173 ws://localhost:5173 ${webview.cspSource}`;
         cspFontSrc = `http://localhost:5173 ${webview.cspSource}`;
         viteClient = '<script type="module" src="http://localhost:5173/@vite/client"></script>';
     }
@@ -147,11 +146,12 @@ export function getWebviewContent(
         <md-spreadsheet-editor></md-spreadsheet-editor>
         <script>
             window.wheelUri = "${wheelUri}";
+            window.pyodideIndexUrl = "${pyodideUri}";
             window.vscodeLanguage = ${JSON.stringify(extensionLanguage)};
             window.initialContent = \`${escapedContent}\`;
             window.initialConfig = ${JSON.stringify(config)};
         </script>
-        <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+        <script src="${pyodideUri}/pyodide.js"></script>
         ${viteClient}
         <script type="module" src="${scriptUri}"></script>
     </body>

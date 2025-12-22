@@ -43,12 +43,22 @@ export class SpreadsheetService {
 
     public async initialize() {
         if (typeof (globalThis as unknown as { loadPyodide: unknown }).loadPyodide === 'function') {
+            const indexURL =
+                (window as unknown as { pyodideIndexUrl?: string }).pyodideIndexUrl ||
+                'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/';
+
             this.pyodide = await (
                 globalThis as unknown as {
-                    loadPyodide: (config: { indexURL: string }) => Promise<IPyodide>;
+                    loadPyodide: (config: {
+                        indexURL: string;
+                        stdout?: (text: string) => void;
+                        stderr?: (text: string) => void;
+                    }) => Promise<IPyodide>;
                 }
             ).loadPyodide({
-                indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/'
+                indexURL: indexURL,
+                stdout: (text: string) => console.log('Pyodide stdout:', text),
+                stderr: (text: string) => console.error('Pyodide stderr:', text)
             });
 
             if (this.pyodide) {
