@@ -1,128 +1,64 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { MessageDispatcher } from './message-dispatcher';
 import { SpreadsheetEditorProvider } from './spreadsheet-editor-provider';
 
 export function activate(context: vscode.ExtensionContext) {
     // Register Custom Editor Provider
     context.subscriptions.push(SpreadsheetEditorProvider.register(context));
 
-    let currentPanel: vscode.WebviewPanel | undefined = undefined;
-    let activeDocument: vscode.TextDocument | undefined = undefined;
-    let isSaving = false;
-
-    context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-md-spreadsheet.openEditor', () => {
-            const editor = vscode.window.activeTextEditor;
-            if (!editor || editor.document.languageId !== 'markdown') {
-                vscode.window.showErrorMessage('No active Markdown editor found');
-                return;
-            }
-
-            if (currentPanel) {
-                currentPanel.reveal(vscode.ViewColumn.Beside);
-                if (activeDocument !== editor.document) {
-                    updatePanel(editor.document);
-                }
-            } else {
-                createPanel(editor.document);
-            }
-        })
-    );
-
     // New Workbook command: create a new .md file with workbook template
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-md-spreadsheet.newWorkbook', newWorkbookHandler)
     );
+}
 
-    // Switch context when active editor changes
-    context.subscriptions.push(
-        vscode.window.onDidChangeActiveTextEditor((editor) => {
-            if (currentPanel && editor && editor.document.languageId === 'markdown') {
-                if (activeDocument !== editor.document) {
-                    updatePanel(editor.document);
+export function deactivate() {}
+
+export async function newWorkbookHandler() {
+    // Get workspace folder
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+
+    let uri: vscode.Uri | undefined;
+
+    if (workspaceFolder) {
+        // Prompt for filename if in workspace
+        const fileName = await vscode.window.showInputBox({
+            prompt: 'Enter filename for new workbook',
+            value: 'workbook.md',
+            validateInput: (value) => {
+                if (!value) {
+                    return 'Filename is required';
                 }
+                if (!value.endsWith('.md')) {
+                    return 'Filename must end with .md';
+                }
+                return null;
             }
-        })
-    );
-
-    // Detect content changes
-    context.subscriptions.push(
-        vscode.workspace.onDidChangeTextDocument((e) => {
-            if (currentPanel && activeDocument && e.document.uri.toString() === activeDocument.uri.toString()) {
-                currentPanel.webview.postMessage({
-                    type: 'update',
-                    content: e.document.getText()
-                });
-            }
-        })
-    );
-
-    // Detect config changes
-    context.subscriptions.push(
-        vscode.workspace.onDidChangeConfiguration((e) => {
-            if (currentPanel && e.affectsConfiguration('mdSpreadsheet.parsing')) {
-                currentPanel.webview.postMessage({
-                    type: 'configUpdate',
-                    config: vscode.workspace.getConfiguration('mdSpreadsheet.parsing')
-                });
-            }
-        })
-    );
-
-    function updatePanel(document: vscode.TextDocument) {
-        if (!currentPanel) return;
-        activeDocument = document;
-        currentPanel.title = `MD Spreadsheet - ${path.basename(document.fileName)}`;
-        currentPanel.webview.postMessage({
-            type: 'update',
-            content: document.getText()
         });
+
+        if (!fileName) return;
+        uri = vscode.Uri.joinPath(workspaceFolder.uri, fileName);
+    } else {
+        // No workspace: use save dialog
+        const saveUri = await vscode.window.showSaveDialog({
+            defaultUri: vscode.Uri.file('workbook.md'),
+            filters: { Markdown: ['md'] }
+        });
+        if (!saveUri) return;
+        uri = saveUri;
     }
 
-    function createPanel(document: vscode.TextDocument) {
-        activeDocument = document;
-        currentPanel = vscode.window.createWebviewPanel(
-            'mdSpreadsheet',
-            `MD Spreadsheet - ${path.basename(document.fileName)}`,
-            vscode.ViewColumn.Beside,
-            {
-                enableScripts: true,
-                retainContextWhenHidden: true, // Keep Pyodide alive when switching tabs
-                localResourceRoots: [
-                    vscode.Uri.joinPath(context.extensionUri, 'out', 'webview'),
-                    vscode.Uri.joinPath(context.extensionUri, 'resources')
-                ]
-            }
-        );
+    // Create template content
+    const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
+    const rootMarker = config.get<string>('rootMarker') || '# Tables';
+    const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B | C |\n|---|---|---|\n|   |   |   |\n`;
 
-        currentPanel.webview.html = getWebviewContent(currentPanel.webview, context, document);
+    // Write file
+    await vscode.workspace.fs.writeFile(uri, Buffer.from(template, 'utf8'));
 
-        currentPanel.onDidDispose(
-            () => {
-                currentPanel = undefined;
-                activeDocument = undefined;
-            },
-            null,
-            context.subscriptions
-        );
-
-        currentPanel.webview.onDidReceiveMessage(
-            async (message) => {
-                const dispatcher = new MessageDispatcher({
-                    activeDocument,
-                    webviewPanel: currentPanel,
-                    getSavingState: () => isSaving,
-                    setSavingState: (state) => {
-                        isSaving = state;
-                    }
-                });
-                await dispatcher.dispatch(message);
-            },
-            undefined,
-            context.subscriptions
-        );
-    }
+    // Open using Custom Editor
+    // This assumes the user wants to edit it immediately in the spreadsheet view.
+    await vscode.commands.executeCommand('vscode.openWith', uri, SpreadsheetEditorProvider.viewType);
 }
 
 export function getWebviewContent(
@@ -204,56 +140,4 @@ export function getWebviewContent(
         <script type="module" src="${scriptUri}"></script>
     </body>
     </html>`;
-}
-
-export function deactivate() {}
-
-export async function newWorkbookHandler() {
-    // Get workspace folder
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-
-    let uri: vscode.Uri | undefined;
-
-    if (workspaceFolder) {
-        // Prompt for filename if in workspace
-        const fileName = await vscode.window.showInputBox({
-            prompt: 'Enter filename for new workbook',
-            value: 'workbook.md',
-            validateInput: (value) => {
-                if (!value) {
-                    return 'Filename is required';
-                }
-                if (!value.endsWith('.md')) {
-                    return 'Filename must end with .md';
-                }
-                return null;
-            }
-        });
-
-        if (!fileName) return;
-        uri = vscode.Uri.joinPath(workspaceFolder.uri, fileName);
-    } else {
-        // No workspace: use save dialog
-        const saveUri = await vscode.window.showSaveDialog({
-            defaultUri: vscode.Uri.file('workbook.md'),
-            filters: { Markdown: ['md'] }
-        });
-        if (!saveUri) return;
-        uri = saveUri;
-    }
-
-    // Create template content
-    const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
-    const rootMarker = config.get<string>('rootMarker') || '# Tables';
-    const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B | C |\n|---|---|---|\n|   |   |   |\n`;
-
-    // Write file
-    await vscode.workspace.fs.writeFile(uri, Buffer.from(template, 'utf8'));
-
-    // Open document and show in editor
-    const doc = await vscode.workspace.openTextDocument(uri);
-    await vscode.window.showTextDocument(doc);
-
-    // Open spreadsheet editor
-    await vscode.commands.executeCommand('vscode-md-spreadsheet.openEditor');
 }

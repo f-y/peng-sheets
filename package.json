@@ -14,28 +14,18 @@
         "type": "git",
         "url": "https://github.com/f-y/vscode-md-spreadsheet.git"
     },
-    "activationEvents": [],
+    "activationEvents": [
+        "onCustomEditor:vscode-md-spreadsheet.editor"
+    ],
     "main": "./out/extension.js",
     "contributes": {
         "commands": [
-            {
-                "command": "vscode-md-spreadsheet.openEditor",
-                "title": "%command.openEditor.title%"
-            },
             {
                 "command": "vscode-md-spreadsheet.newWorkbook",
                 "title": "%command.newWorkbook.title%"
             }
         ],
-        "menus": {
-            "editor/title": [
-                {
-                    "command": "vscode-md-spreadsheet.openEditor",
-                    "when": "resourceLangId == markdown",
-                    "group": "navigation"
-                }
-            ]
-        }
+        "menus": {}
     },
     "configuration": {
         "title": "Markdown Spreadsheet",
