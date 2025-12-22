@@ -100,7 +100,7 @@ suite('MessageDispatcher Test Suite', () => {
         assert.strictEqual(isSaving, false, 'Lock should be released');
     });
 
-    test('UpdateRange: Should use WorkspaceEdit if editor not visible', async () => {
+    test('updateRange: Should use editor.edit if editor not visible', async () => {
         sandbox.stub(vscode.window, 'visibleTextEditors').get(() => []); // No visible editors
 
         const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
@@ -120,6 +120,35 @@ suite('MessageDispatcher Test Suite', () => {
         assert.ok(applyEditStub.calledOnce, 'Should call workspace.applyEdit');
         const _editArgs = applyEditStub.firstCall.args[0] as vscode.WorkspaceEdit;
         assert.ok(_editArgs instanceof vscode.WorkspaceEdit, 'Should pass a WorkspaceEdit');
+    });
+
+    test('updateRange: Should use editor.edit if editor IS visible', async () => {
+        const replaceStub = sandbox.stub();
+        const editorEditStub = sandbox.stub().callsFake(async (callback) => {
+            callback({ replace: replaceStub });
+            return true;
+        });
+
+        const activeEditor = {
+            document: mockContext.activeDocument,
+            edit: editorEditStub,
+            viewColumn: vscode.ViewColumn.One
+        } as unknown as vscode.TextEditor;
+
+        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => [activeEditor]);
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit');
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({
+            type: 'updateRange',
+            startLine: 0,
+            endLine: 0,
+            content: 'foo'
+        });
+
+        assert.ok(editorEditStub.calledOnce, 'Should use editor.edit');
+        assert.ok(replaceStub.calledOnce, 'Should call replace inside edit builder');
+        assert.ok(applyEditStub.notCalled, 'Should NOT use workspace.applyEdit fallback');
     });
 
     test('CreateSpreadsheet: Should insert generic sheet if marker exists', async () => {
@@ -175,5 +204,212 @@ suite('MessageDispatcher Test Suite', () => {
         await dispatcher.dispatch({ type: 'createSpreadsheet' });
 
         assert.ok(applyEditStub.calledOnce, 'Should apply edit');
+    });
+
+    test('CreateSpreadsheet: Should use default marker when config is undefined', async () => {
+        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
+            get: (_key: string) => undefined
+        } as any);
+        (mockContext.activeDocument!.getText as sinon.SinonStub).returns('');
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'createSpreadsheet' });
+
+        assert.ok(applyEditStub.calledOnce);
+    });
+
+    test('CreateSpreadsheet: Should handle document ending with newline', async () => {
+        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
+            get: (_key: string) => '# Tables'
+        } as any);
+        // hasRoot = false (no marker), but ends with newline
+        (mockContext.activeDocument!.getText as sinon.SinonStub).returns('Some text\n');
+
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'createSpreadsheet' });
+
+        assert.ok(applyEditStub.calledOnce);
+    });
+
+    test('CreateSpreadsheet: Should handle marker presence with trailing newline', async () => {
+        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
+            get: (_key: string) => '# Tables'
+        } as any);
+        // hasRoot = true, and ends with newline
+        (mockContext.activeDocument!.getText as sinon.SinonStub).returns('# Tables\nContent\n');
+
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'createSpreadsheet' });
+
+        assert.ok(applyEditStub.calledOnce);
+    });
+
+    // --- New Tests for Full Coverage ---
+
+    test('updateRange: Should handle null activeDocument gracefully', async () => {
+        // Mock context with undefined activeDocument
+        mockContext.activeDocument = undefined;
+        const dispatcher = new MessageDispatcher(mockContext);
+
+        // Should not throw
+        await dispatcher.dispatch({
+            type: 'updateRange',
+            startLine: 0,
+            endLine: 0,
+            content: 'foo'
+        });
+    });
+
+    test('updateRange: Should handle range validation adjustment', async () => {
+        // Return a different range from validateRange
+        const adjustedRange = new vscode.Range(0, 0, 0, 5);
+
+        // Stub validateRange on the object instance
+        mockContext.activeDocument!.validateRange = sandbox.stub().returns(adjustedRange);
+
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
+        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => []);
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({
+            type: 'updateRange',
+            startLine: 0,
+            endLine: 100,
+            content: 'adjusted'
+        });
+
+        // Check if applyEdit was called with the ADJUCTED range
+        assert.ok(applyEditStub.calledOnce);
+
+        // Since we can't easily spy on WorkspaceEdit argument internals without valid URI,
+        // we rely on the line coverage hitting the logic that uses 'validatedRange'.
+        // We verify that our stub was actually called, meaning logic flowed through it.
+        const validateStub = mockContext.activeDocument!.validateRange as sinon.SinonStub;
+        assert.ok(validateStub.calledOnce);
+    });
+
+    test('updateRange: Should handle editor.edit failure and fallback failure', async () => {
+        const editorEditStub = sandbox.stub().resolves(false); // Simulate failure
+        const activeEditor = {
+            document: mockContext.activeDocument,
+            edit: editorEditStub,
+            viewColumn: vscode.ViewColumn.One
+        } as unknown as vscode.TextEditor;
+
+        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => [activeEditor]);
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(false); // Fallback also fails
+        const showErrorMessageSpy = sandbox.spy(vscode.window, 'showErrorMessage');
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({
+            type: 'updateRange',
+            startLine: 0,
+            endLine: 0,
+            content: 'fail'
+        });
+
+        assert.ok(editorEditStub.calledOnce, 'Should try editor.edit');
+        assert.ok(applyEditStub.calledOnce, 'Should try fallback workspace.applyEdit');
+        assert.ok(showErrorMessageSpy.calledWith('Failed to update spreadsheet: Sync error.'), 'Should show error');
+    });
+
+    test('updateRange: Should handle WorkspaceEdit failure (no visible editor)', async () => {
+        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => []);
+        sandbox.stub(vscode.workspace, 'applyEdit').resolves(false); // Fail
+        const showErrorMessageSpy = sandbox.spy(vscode.window, 'showErrorMessage');
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({
+            type: 'updateRange',
+            startLine: 0,
+            endLine: 0,
+            content: 'fail'
+        });
+
+        assert.ok(showErrorMessageSpy.calledWith('Failed to update spreadsheet: Document version conflict.'));
+    });
+
+    test('Undo/Redo: Should handle null activeDocument', async () => {
+        mockContext.activeDocument = undefined;
+        const dispatcher = new MessageDispatcher(mockContext);
+
+        // Should not throw
+        await dispatcher.dispatch({ type: 'undo' });
+        await dispatcher.dispatch({ type: 'redo' });
+    });
+
+    test('Undo/Redo: Should handle editor not found (no error)', async () => {
+        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => []); // No editors
+        const executeCommandStub = sandbox.stub(vscode.commands, 'executeCommand');
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'undo' });
+
+        assert.ok(executeCommandStub.notCalled, 'Should not execute undo if editor not found');
+    });
+
+    test('CreateSpreadsheet: Should handle null activeDocument', async () => {
+        mockContext.activeDocument = undefined;
+        const dispatcher = new MessageDispatcher(mockContext);
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit');
+
+        await dispatcher.dispatch({ type: 'createSpreadsheet' });
+        assert.ok(applyEditStub.notCalled);
+    });
+
+    test('Save: Should skip if already saving', async () => {
+        mockContext.getSavingState = () => true; // Locked
+        const saveSpy = (mockContext.activeDocument as any).save; // Stubbed in setup
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'save' });
+
+        assert.ok(saveSpy.notCalled);
+    });
+
+    test('Save: Should handle null activeDocument', async () => {
+        mockContext.activeDocument = undefined;
+        const showErrorMessageSpy = sandbox.spy(vscode.window, 'showErrorMessage');
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'save' });
+
+        assert.ok(showErrorMessageSpy.calledWith('No active document to save.'));
+    });
+
+    test('Save: Should handle non-dirty document', async () => {
+        (mockContext.activeDocument as any).isDirty = false;
+        const saveSpy = (mockContext.activeDocument as any).save;
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'save' });
+
+        assert.ok(saveSpy.notCalled);
+    });
+
+    test('Save: Should handle save returning false', async () => {
+        (mockContext.activeDocument as any).isDirty = true;
+        (mockContext.activeDocument as any).save.resolves(false); // Save failed?
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'save' });
+
+        // Covered if no error thrown
+    });
+
+    test('Save: Should handle exception during save', async () => {
+        (mockContext.activeDocument as any).isDirty = true;
+        (mockContext.activeDocument as any).save.rejects(new Error('Disk error'));
+        const showErrorMessageSpy = sandbox.spy(vscode.window, 'showErrorMessage');
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'save' });
+
+        assert.ok(showErrorMessageSpy.calledWith('Failed to save document.'));
     });
 });

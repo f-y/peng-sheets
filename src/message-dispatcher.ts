@@ -152,7 +152,7 @@ export class MessageDispatcher {
             wsEdit.replace(activeDocument.uri, fullRange, template);
         } else if (hasRoot) {
             const template = `## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
-            const prefix = docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : docText.length > 0 ? '\n' : '';
+            const prefix = !docText.endsWith('\n') ? '\n\n' : '\n';
             const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
             wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
         } else {
