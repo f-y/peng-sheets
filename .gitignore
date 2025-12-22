@@ -1,9 +1,9 @@
-out
-node_modules
-.vscode-test
+/out/
+/node_modules/
+/.vscode-test/
 *.vsix
 .DS_Store
-.venv
-__pycache__
+/.venv/
+/__pycache__/
 *.pyc
-coverage
+/coverage/
