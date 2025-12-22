@@ -1,13 +1,14 @@
-import { html, LitElement, PropertyValues } from 'lit';
+import { html, LitElement, PropertyValues, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { marked } from 'marked';
-import { documentViewStyles } from './styles/document-view-styles';
+// @ts-expect-error CSS import
+import documentViewStyles from './styles/document-view.css?inline';
 import { t } from '../utils/i18n';
 
 @customElement('spreadsheet-document-view')
 export class SpreadsheetDocumentView extends LitElement {
-    static styles = documentViewStyles;
+    static styles = unsafeCSS(documentViewStyles);
 
     @property({ type: String })
     title: string = '';

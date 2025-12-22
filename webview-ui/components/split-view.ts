@@ -1,12 +1,13 @@
-import { html, LitElement } from 'lit';
+import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { SplitNode, TableJSON } from '../types';
-import { splitViewStyles } from './styles/split-view-styles';
+// @ts-expect-error CSS import
+import splitViewStyles from './styles/split-view.css?inline';
 import './pane-view';
 
 @customElement('split-view')
 export class SplitView extends LitElement {
-    static styles = splitViewStyles;
+    static styles = unsafeCSS(splitViewStyles);
 
     @property({ type: Object })
     node!: SplitNode;

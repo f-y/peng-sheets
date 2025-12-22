@@ -1,16 +1,17 @@
 import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem, vsCodeButton, vsCodeDivider } from '@vscode/webview-ui-toolkit';
-import { spreadsheetToolbarStyles as baseToolbarStyles } from './styles/toolbar-styles';
 import { t } from '../utils/i18n';
-// @ts-expect-error type import
+// @ts-expect-error CSS import
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
+// @ts-expect-error CSS import
+import toolbarStyles from './styles/toolbar.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton(), vsCodeDivider());
 
 @customElement('spreadsheet-toolbar')
 export class SpreadsheetToolbar extends LitElement {
-    static styles = [unsafeCSS(codiconsStyles), ...baseToolbarStyles];
+    static styles = [unsafeCSS(codiconsStyles), unsafeCSS(toolbarStyles)];
 
     render() {
         return html`

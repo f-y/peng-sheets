@@ -1,6 +1,7 @@
 import { html, LitElement, nothing, unsafeCSS, TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { spreadsheetTableStyles } from './styles/spreadsheet-table-styles';
+// @ts-expect-error CSS import
+import spreadsheetTableStyles from './styles/spreadsheet-table.css?inline';
 import './cells/ss-data-cell';
 import './cells/ss-corner-cell';
 import './cells/ss-row-header';
@@ -9,7 +10,7 @@ import './cells/ss-ghost-cell';
 import './menus/ss-context-menu';
 import './menus/ss-metadata-editor';
 import './filter-menu';
-// @ts-expect-error type import
+// @ts-expect-error CSS import
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 import { getEditingHtml, formatCellValue, renderMarkdown, NumberFormat } from '../utils/spreadsheet-helpers';
 import { calculateCellRangeState } from '../utils/edit-mode-helpers';
@@ -64,7 +65,7 @@ export interface EditState {
  */
 @customElement('spreadsheet-table-view')
 export class SpreadsheetTableView extends LitElement {
-    static styles = [unsafeCSS(codiconsStyles), ...spreadsheetTableStyles];
+    static styles = [unsafeCSS(codiconsStyles), unsafeCSS(spreadsheetTableStyles)];
 
     // Data
     @property({ type: Object }) table: TableJSON | null = null;
@@ -74,7 +75,7 @@ export class SpreadsheetTableView extends LitElement {
     // Selection state
     @property({ type: Number }) selectedRow: number = 0;
     @property({ type: Number }) selectedCol: number = 0;
-    @property({ type: Object }) selectionRange: SelectionRange = { minR: 0, maxR: 0, minC: 0, maxC: 0 };
+    @property({ type: Object }) selectionRange: SelectionRange = { minR: -1, maxR: -1, minC: -1, maxC: -1 };
 
     // Edit state
     @property({ type: Object }) editState: EditState = { isEditing: false, pendingEditValue: null };
@@ -235,7 +236,7 @@ export class SpreadsheetTableView extends LitElement {
                     (selCol === -2 && (selRow === -2 || ((minR === -1 || selRow === -2) && c >= minC && c <= maxC))) ||
                     (selRow === -2 && selCol === c) ||
                     (selRow === -1 && selCol === c && minR === maxR && minC === maxC);
-                const isColInRange = (minR === -1 || selRow === -2) && c >= minC && c <= maxC;
+                const isColInRange = minC >= 0 && maxC >= 0 && c >= minC && c <= maxC;
                 const isColEditing = this.editState.isEditing && selRow === -1 && selCol === c;
                 const editValue =
                     isColEditing && this.editState.pendingEditValue !== null
@@ -291,8 +292,8 @@ export class SpreadsheetTableView extends LitElement {
         const isRowSelected =
             (selCol === -2 && (selRow === r || ((minC === -1 || selCol === -2) && r >= minR && r <= maxR))) ||
             (selCol === -1 && selRow === r) ||
-            (selCol >= 0 && selRow === r && minR === maxR && minC === maxC);
-        const isRowInRange = (minC === -1 || selCol === -2) && r >= minR && r <= maxR;
+            (selCol >= 0 && selRow === r && minR >= 0 && minR === maxR && minC === maxC);
+        const isRowInRange = minR >= 0 && maxR >= 0 && r >= minR && r <= maxR;
 
         return html`
             <!-- Row Header -->

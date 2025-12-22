@@ -270,4 +270,107 @@ describe('Selection Verification', () => {
             expect(corner.classList.contains('selected')).to.be.true;
         });
     });
+
+    describe('Header Highlight on Cell Selection', () => {
+        it('highlights corresponding column header when data cell is selected', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await awaitView(el);
+
+            // Click data cell at [1, 2]
+            const cell = queryView(el, '.cell[data-row="1"][data-col="2"]') as HTMLElement;
+            cell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
+            window.dispatchEvent(new MouseEvent('mouseup'));
+            await awaitView(el);
+
+            // Verify column header for column 2 has selected-range class
+            const colHeader = queryView(el, '.cell.header-col[data-col="2"]');
+            expect(colHeader?.classList.contains('selected-range')).to.be.true;
+
+            // Verify other column headers do NOT have selected-range class
+            const colHeader0 = queryView(el, '.cell.header-col[data-col="0"]');
+            const colHeader1 = queryView(el, '.cell.header-col[data-col="1"]');
+            expect(colHeader0?.classList.contains('selected-range')).to.be.false;
+            expect(colHeader1?.classList.contains('selected-range')).to.be.false;
+        });
+
+        it('highlights corresponding row header when data cell is selected', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await awaitView(el);
+
+            // Click data cell at [1, 2]
+            const cell = queryView(el, '.cell[data-row="1"][data-col="2"]') as HTMLElement;
+            cell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
+            window.dispatchEvent(new MouseEvent('mouseup'));
+            await awaitView(el);
+
+            // Verify row header for row 1 has selected-range class
+            const rowHeader = queryView(el, '.cell.header-row[data-row="1"]');
+            expect(rowHeader?.classList.contains('selected-range')).to.be.true;
+
+            // Verify other row headers do NOT have selected-range class
+            const rowHeader0 = queryView(el, '.cell.header-row[data-row="0"]');
+            const rowHeader2 = queryView(el, '.cell.header-row[data-row="2"]');
+            expect(rowHeader0?.classList.contains('selected-range')).to.be.false;
+            expect(rowHeader2?.classList.contains('selected-range')).to.be.false;
+        });
+
+        it('highlights multiple column headers for range selection', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await awaitView(el);
+
+            // Click cell [0, 0]
+            const cell00 = queryView(el, '.cell[data-row="0"][data-col="0"]') as HTMLElement;
+            cell00.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0 }));
+            window.dispatchEvent(new MouseEvent('mouseup'));
+            await awaitView(el);
+
+            // Shift+click cell [1, 2] to extend selection
+            const cell12 = queryView(el, '.cell[data-row="1"][data-col="2"]') as HTMLElement;
+            cell12.dispatchEvent(
+                new MouseEvent('mousedown', { bubbles: true, composed: true, button: 0, shiftKey: true })
+            );
+            window.dispatchEvent(new MouseEvent('mouseup'));
+            await awaitView(el);
+
+            // Verify all column headers in range have selected-range class
+            const colHeader0 = queryView(el, '.cell.header-col[data-col="0"]');
+            const colHeader1 = queryView(el, '.cell.header-col[data-col="1"]');
+            const colHeader2 = queryView(el, '.cell.header-col[data-col="2"]');
+            expect(colHeader0?.classList.contains('selected-range')).to.be.true;
+            expect(colHeader1?.classList.contains('selected-range')).to.be.true;
+            expect(colHeader2?.classList.contains('selected-range')).to.be.true;
+        });
+
+        it('does not highlight any headers on initial load (no selection)', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await awaitView(el);
+
+            // No cell has been clicked yet - verify NO headers have selected-range class
+            // Column headers should NOT be highlighted
+            const allColHeaders = Array.from(el.shadowRoot?.querySelectorAll('.cell.header-col') || []);
+            for (const header of allColHeaders) {
+                expect(
+                    header.classList.contains('selected-range'),
+                    `Column header ${header.getAttribute('data-col')} should not be highlighted`
+                ).to.be.false;
+            }
+
+            // Row headers should NOT be highlighted
+            const allRowHeaders = Array.from(el.shadowRoot?.querySelectorAll('.cell.header-row') || []);
+            for (const header of allRowHeaders) {
+                expect(
+                    header.classList.contains('selected-range'),
+                    `Row header ${header.getAttribute('data-row')} should not be highlighted`
+                ).to.be.false;
+            }
+        });
+    });
 });

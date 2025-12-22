@@ -1,14 +1,15 @@
-import { html, LitElement } from 'lit';
+import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem } from '@vscode/webview-ui-toolkit';
-import { onboardingStyles } from './styles/onboarding-styles';
+// @ts-expect-error CSS import
+import onboardingStyles from './styles/onboarding.css?inline';
 import { t } from '../utils/i18n';
 
 provideVSCodeDesignSystem().register();
 
 @customElement('spreadsheet-onboarding')
 export class SpreadsheetOnboarding extends LitElement {
-    static styles = onboardingStyles;
+    static styles = unsafeCSS(onboardingStyles);
 
     render() {
         return html`

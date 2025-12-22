@@ -14,7 +14,8 @@ import { EventController } from '../controllers/event-controller';
 import { RowVisibilityController, VisualMetadata } from '../controllers/row-visibility-controller';
 import { getDOMText } from '../utils/spreadsheet-helpers';
 import { normalizeEditContent, findEditingCell } from '../utils/edit-mode-helpers';
-import { spreadsheetTableStyles } from './styles/spreadsheet-table-styles';
+// @ts-expect-error CSS import
+import spreadsheetTableStyles from './styles/spreadsheet-table.css?inline';
 import './filter-menu';
 import './cells/ss-data-cell';
 import './cells/ss-corner-cell';
@@ -24,7 +25,7 @@ import './cells/ss-ghost-cell';
 import './menus/ss-context-menu';
 import './menus/ss-metadata-editor';
 import './spreadsheet-table-view';
-// @ts-expect-error type import
+// @ts-expect-error CSS import
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
@@ -33,7 +34,7 @@ import { TableJSON } from '../types';
 
 @customElement('spreadsheet-table')
 export class SpreadsheetTable extends LitElement {
-    static styles = [unsafeCSS(codiconsStyles), ...spreadsheetTableStyles];
+    static styles = [unsafeCSS(codiconsStyles), unsafeCSS(spreadsheetTableStyles)];
 
     @property({ type: Object })
     table: TableJSON | null = null;

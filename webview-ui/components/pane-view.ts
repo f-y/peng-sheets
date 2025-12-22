@@ -1,13 +1,14 @@
-import { html, LitElement } from 'lit';
+import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { TableJSON, LeafNode } from '../types';
-import { paneViewStyles } from './styles/pane-view-styles';
+// @ts-expect-error CSS import
+import paneViewStyles from './styles/pane-view.css?inline';
 import './spreadsheet-table';
 import { t } from '../utils/i18n';
 
 @customElement('pane-view')
 export class PaneView extends LitElement {
-    static styles = paneViewStyles;
+    static styles = unsafeCSS(paneViewStyles);
 
     @property({ type: Object })
     node!: LeafNode;
