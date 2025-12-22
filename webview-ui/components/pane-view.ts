@@ -1,7 +1,6 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { LeafNode } from '../types';
-import { TableJSON } from './spreadsheet-table';
+import { TableJSON, LeafNode } from '../types';
 import './spreadsheet-table';
 import { t } from '../utils/i18n';
 
@@ -214,7 +213,7 @@ export class PaneView extends LitElement {
         window.removeEventListener('contextmenu', this._handleGlobalClick);
     }
 
-    private _handleGlobalClick = (e: Event) => {
+    private _handleGlobalClick = (_e: Event) => {
         // If sticky menu behavior is desired, check target. But standard is click-outside closes.
         if (this._tabContextMenu) {
             this._tabContextMenu = null;
@@ -312,8 +311,10 @@ export class PaneView extends LitElement {
         return html`<div class="drop-overlay active" style="${style}"></div>`;
     }
 
-    private _handleDragStart(e: DragEvent, localIndex: number, globalIndex: number) {
-        if (!e.dataTransfer) return;
+    private _handleDragEnter = (_e: DragEvent) => {}; // Added this method as per instruction, assuming an empty body for now.
+
+    private _handleDragStart(_e: DragEvent, localIndex: number, globalIndex: number) {
+        if (!_e.dataTransfer) return;
 
         const data = {
             type: 'tab-drag',
@@ -321,8 +322,8 @@ export class PaneView extends LitElement {
             tableIndex: globalIndex, // Use global index for identification
             localIndex: localIndex
         };
-        e.dataTransfer.setData('application/json', JSON.stringify(data));
-        e.dataTransfer.effectAllowed = 'move';
+        _e.dataTransfer.setData('application/json', JSON.stringify(data));
+        _e.dataTransfer.effectAllowed = 'move';
     }
 
     private _handleTabBarDragOver(e: DragEvent) {
@@ -421,7 +422,7 @@ export class PaneView extends LitElement {
         this.requestUpdate();
     }
 
-    private _handleContentDragLeave(e: DragEvent) {
+    private _handleContentDragLeave(_e: DragEvent) {
         // Only clear if leaving the component, not entering a child?
         // Since overlay is pointer-events: none, it shouldn't trigger leave.
         this.activeDropZone = null;

@@ -1,5 +1,5 @@
 import { html, css, LitElement } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem } from '@vscode/webview-ui-toolkit';
 import { t } from '../utils/i18n';
 

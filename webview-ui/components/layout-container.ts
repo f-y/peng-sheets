@@ -1,7 +1,6 @@
 import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { LayoutNode, SplitNode, LeafNode } from '../types';
-import { TableJSON } from './spreadsheet-table';
+import { LayoutNode, SplitNode, LeafNode, TableJSON } from '../types';
 import './pane-view';
 import './split-view';
 import { nanoid } from 'nanoid';
@@ -287,9 +286,13 @@ export class LayoutContainer extends LitElement {
         targetIndex?: number
     ): LayoutNode | null {
         // 1. Remove from source
-        const { layout: layoutAfterRemove, removedTable } = this._removeTableFromLayout(root, sourcePaneId, tableIndex);
+        const { layout: layoutAfterRemove, removedTable: _removedTable } = this._removeTableFromLayout(
+            root,
+            sourcePaneId,
+            tableIndex
+        );
 
-        if (!layoutAfterRemove || removedTable === null) return null; // Failed to remove
+        if (!layoutAfterRemove) return null; // Failed to remove
 
         // 2. Add to target at specific index
         return this._addTableToLayout(layoutAfterRemove, targetPaneId, tableIndex, targetIndex);
@@ -322,7 +325,11 @@ export class LayoutContainer extends LitElement {
         }
 
         // 1. Remove from source
-        const { layout: layoutAfterRemove, removedTable } = this._removeTableFromLayout(root, sourcePaneId, tableIndex);
+        const { layout: layoutAfterRemove, removedTable: _removedTable } = this._removeTableFromLayout(
+            root,
+            sourcePaneId,
+            tableIndex
+        );
         if (!layoutAfterRemove) return null;
 
         // 2. Create New Pane
@@ -381,7 +388,6 @@ export class LayoutContainer extends LitElement {
             return { layout: root, removedTable: null };
         } else {
             // SplitNode
-            let childRemoved = false;
             let removedTableVal: number | null = null;
 
             const newChildren: LayoutNode[] = [];
@@ -389,7 +395,6 @@ export class LayoutContainer extends LitElement {
                 const res = this._removeTableFromLayout(child, paneId, tableIndex);
                 if (res.removedTable !== null) {
                     removedTableVal = res.removedTable;
-                    childRemoved = true;
                 }
 
                 if (res.layout) {

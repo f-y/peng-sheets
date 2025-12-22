@@ -284,7 +284,7 @@ export class MyEditor extends LitElement {
                 this._handleUpdateColumnFormat(detail);
                 break;
             default:
-                console.warn('Unknown post-message command:', (detail as any).command);
+                console.warn('Unknown post-message command:', (detail as PostMessageCommand).command);
         }
     }
 

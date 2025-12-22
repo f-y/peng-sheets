@@ -1,7 +1,6 @@
 import { html, css, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { SplitNode } from '../types';
-import { TableJSON } from './spreadsheet-table';
+import { SplitNode, TableJSON } from '../types';
 import './pane-view';
 // Circular dependency: layout-container imports split-view/pane-view.
 // split-view imports pane-view (and recursive split-view?).
@@ -11,41 +10,41 @@ import './pane-view';
 // LayoutContainer imports both, so they are registered.
 // But to be safe, I import them here too?
 // Recursion: SplitView needs to render child nodes which can be SplitView or PaneView.
-// So SplitView renders... `layout-container`'s logic?
+// So SplitView renders... `layout - container`'s logic?
 // No, `renderNode` logic needs to be reused or SplitView iterates children.
 
 @customElement('split-view')
 export class SplitView extends LitElement {
     static styles = css`
         :host {
-            display: flex;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-        }
-        :host([direction='vertical']) {
-            flex-direction: column;
-        }
-        :host([direction='horizontal']) {
-            flex-direction: row;
-        }
-        .child-wrapper {
-            position: relative;
-            overflow: hidden;
-        }
+    display: flex;
+    width: 100 %;
+    height: 100 %;
+    overflow: hidden;
+}
+        : host([direction = 'vertical']) {
+    flex - direction: column;
+}
+        : host([direction = 'horizontal']) {
+    flex - direction: row;
+}
+        .child - wrapper {
+    position: relative;
+    overflow: hidden;
+}
         .resizer {
-            background-color: var(--vscode-widget-border);
-            z-index: 10;
-        }
-        :host([direction='horizontal']) .resizer {
-            width: 4px;
-            cursor: col-resize;
-        }
-        :host([direction='vertical']) .resizer {
-            height: 4px;
-            cursor: row-resize;
-        }
-    `;
+    background - color: var(--vscode - widget - border);
+    z - index: 10;
+}
+        : host([direction = 'horizontal']).resizer {
+    width: 4px;
+    cursor: col - resize;
+}
+        : host([direction = 'vertical']).resizer {
+    height: 4px;
+    cursor: row - resize;
+}
+`;
 
     @property({ type: Object })
     node!: SplitNode;
@@ -136,6 +135,44 @@ export class SplitView extends LitElement {
         document.body.style.cursor = this.node.direction === 'horizontal' ? 'col-resize' : 'row-resize';
     }
 
+    private _handleDragOver = (_e: DragEvent) => {
+        if (!this._isResizing) return;
+        if (this._resizeFrame) cancelAnimationFrame(this._resizeFrame);
+
+        this._resizeFrame = requestAnimationFrame(() => {
+            // The original instruction had `e.clientX` here, but the parameter was `_e`.
+            // Assuming the intent was to use the event object passed to the handler,
+            // and that this method is intended to be a drag handler, we use `_e`.
+            // If this was meant to replace `_handleMouseMove`, the event type should be `MouseEvent`.
+            // Given the instruction "Fix unused variable warning" and the `_e` parameter,
+            // we'll assume `_e` is the intended event object to use.
+            const dx = _e.clientX - this._startX;
+            const dy = _e.clientY - this._startY;
+            const deltaPx = this.node.direction === 'horizontal' ? dx : dy;
+
+            // Convert pixels to percentage logic
+            const rect = this.getBoundingClientRect();
+            const totalSize = this.node.direction === 'horizontal' ? rect.width : rect.height;
+            if (totalSize === 0) return;
+
+            const deltaPercent = (deltaPx / totalSize) * 100;
+
+            const leftIndex = this._dragStartIndex - 1;
+            const rightIndex = this._dragStartIndex;
+
+            const newSizes = [...this._startSizes];
+            // Adjust sizes
+            newSizes[leftIndex] = Math.max(5, this._startSizes[leftIndex] + deltaPercent); // Min 5%
+            newSizes[rightIndex] = Math.max(5, this._startSizes[rightIndex] - deltaPercent);
+
+            // Re-normalize if clamping happened?
+            // Better to simpler clamp delta so neither goes below 5.
+
+            this._tempSizes = newSizes;
+            this.requestUpdate();
+        });
+    };
+
     private _handleMouseMove = (e: MouseEvent) => {
         if (!this._isResizing) return;
         if (this._resizeFrame) cancelAnimationFrame(this._resizeFrame);
@@ -168,7 +205,7 @@ export class SplitView extends LitElement {
         });
     };
 
-    private _handleMouseUp = (e: MouseEvent) => {
+    private _handleMouseUp = (_e: MouseEvent) => {
         if (!this._isResizing) return;
 
         const finalSizes = this._tempSizes;

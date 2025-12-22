@@ -1,5 +1,5 @@
-import { LitElement, html, PropertyValues, css, unsafeCSS } from 'lit';
-import { customElement, property, query, state } from 'lit/decorators.js';
+import { LitElement, html, PropertyValues, unsafeCSS } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem, vsCodeButton } from '@vscode/webview-ui-toolkit';
 import { SelectionController, SelectionRange } from '../controllers/selection-controller';
 import { EditController } from '../controllers/edit-controller';
@@ -174,7 +174,7 @@ export class SpreadsheetTable extends LitElement {
         if (this._shouldFocusCell) {
             const view = this.shadowRoot?.querySelector('spreadsheet-table-view');
             if (view) {
-                (view as any).updateComplete.then(() => {
+                (view as LitElement).updateComplete.then(() => {
                     setTimeout(() => {
                         this.focusCtrl.focusSelectedCell();
                     }, 0);
@@ -185,7 +185,7 @@ export class SpreadsheetTable extends LitElement {
         } else if (this._wasFocusedBeforeUpdate) {
             const view = this.shadowRoot?.querySelector('spreadsheet-table-view');
             if (view) {
-                (view as any).updateComplete.then(() => {
+                (view as LitElement).updateComplete.then(() => {
                     setTimeout(() => {
                         this.focusCtrl.focusSelectedCell();
                     }, 0);

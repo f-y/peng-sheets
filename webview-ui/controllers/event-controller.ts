@@ -1,7 +1,7 @@
 import { ReactiveController } from 'lit';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import { getDOMText } from '../utils/spreadsheet-helpers';
-import { normalizeEditContent, findEditingCell } from '../utils/edit-mode-helpers';
+// import { normalizeEditContent, findEditingCell } from '../utils/edit-mode-helpers';
 
 export class EventController implements ReactiveController {
     host: SpreadsheetTable;
@@ -18,6 +18,17 @@ export class EventController implements ReactiveController {
     hostDisconnected() {
         window.removeEventListener('click', this.handleGlobalClick);
     }
+
+    private _handleDragOver = (_e: DragEvent) => {
+        const path = _e.composedPath();
+        if (this.host.contextMenu) {
+            // Check if click source is the context menu itself
+            const isInside = path.some((el) => (el as HTMLElement).classList?.contains('context-menu'));
+            if (!isInside) {
+                this.closeContextMenu();
+            }
+        }
+    };
 
     private handleGlobalClick = (e: MouseEvent) => {
         const path = e.composedPath();
@@ -67,14 +78,14 @@ export class EventController implements ReactiveController {
         this.host.keyboardCtrl.handleKeyDown(e);
     };
 
-    handleFocusOut = (e: FocusEvent) => {
+    handleFocusOut = (_e: FocusEvent) => {
         // Delegate to specific logic if needed, or remove listener if unused
         // Currently SpreadsheetTable had _handleFocusIn?
         // _handleBlur logic was removed?
         // Let's assume generic blur handling if any
     };
 
-    handleMouseDown = (e: MouseEvent) => {
+    handleMouseDown = (_e: MouseEvent) => {
         // Global mousedown handling if needed
     };
 
@@ -86,7 +97,7 @@ export class EventController implements ReactiveController {
         this.host.selectionCtrl.handleMouseMove(e);
     };
 
-    handleDblClick = (e: MouseEvent) => {
+    handleDblClick = (_e: MouseEvent) => {
         // Global dblclick
     };
 
@@ -103,7 +114,7 @@ export class EventController implements ReactiveController {
     };
 
     // Public wrapper for context menu
-    handleContextMenuGlobal = (e: MouseEvent) => {
+    handleContextMenuGlobal = (_e: MouseEvent) => {
         // Logic for global context menu if any
     };
 
@@ -369,6 +380,15 @@ export class EventController implements ReactiveController {
 
     handleDeleteCol = (e: CustomEvent<{ index: number }>) => {
         this.dispatchAction('column-delete', { colIndex: e.detail.index });
+    };
+
+    private _handleDrop = (_e: DragEvent) => {
+        const inputEvent = _e as unknown as InputEvent;
+        // const target = _e.target as HTMLElement;
+
+        if (inputEvent.inputType === 'insertLineBreak') {
+            this.host.editCtrl.hasUserInsertedNewline = true;
+        }
     };
 
     // Helper: Input

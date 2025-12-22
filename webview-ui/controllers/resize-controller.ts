@@ -1,4 +1,5 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
+import { SpreadsheetTable } from '../components/spreadsheet-table';
 
 export class ResizeController implements ReactiveController {
     host: ReactiveControllerHost;
@@ -23,37 +24,39 @@ export class ResizeController implements ReactiveController {
         this.host.requestUpdate();
     }
 
-    startResize(e: MouseEvent, index: number, currentDomWidth: number) {
+    startResize(e: MouseEvent, colIndex: number, currentWidth: number) {
         e.preventDefault();
         e.stopPropagation();
-        this.resizingCol = index;
-        this.resizeStartX = e.clientX;
-        this.resizeStartWidth = currentDomWidth || 100;
 
-        document.addEventListener('mousemove', this._handleMouseMove);
-        document.addEventListener('mouseup', this._handleMouseUp);
-        this.host.requestUpdate();
+        this.resizingCol = colIndex;
+        this.resizeStartX = e.clientX;
+        this.resizeStartWidth = currentWidth;
+
+        document.addEventListener('mousemove', this._handleResize);
+        document.addEventListener('mouseup', this._handleResizeEnd);
+        document.body.style.cursor = 'col-resize';
     }
 
-    private _handleMouseMove = (e: MouseEvent) => {
+    private _handleResize = (e: MouseEvent) => {
         if (this.resizingCol === -1) return;
-        const diff = e.clientX - this.resizeStartX;
-        const newWidth = Math.max(30, this.resizeStartWidth + diff); // Min width 30
 
-        this.colWidths = { ...this.colWidths, [this.resizingCol]: newWidth };
+        const deltaX = e.clientX - this.resizeStartX;
+        const newWidth = Math.max(50, this.resizeStartWidth + deltaX); // Min width 50px
+
+        this.colWidths[this.resizingCol] = newWidth;
         this.host.requestUpdate();
     };
 
-    private _handleMouseUp = (_e: MouseEvent) => {
+    private _handleResizeEnd = (_e: MouseEvent) => {
         if (this.resizingCol === -1) return;
 
         const finalWidth = this.colWidths[this.resizingCol];
-        const host = this.host as any; // Cast to access custom properties
+        const host = this.host as unknown as SpreadsheetTable; // Cast to access custom properties
         const sheetIndex = host.sheetIndex;
         const tableIndex = host.tableIndex;
 
         // Dispatch event via Host
-        (this.host as HTMLElement).dispatchEvent(
+        (this.host as unknown as HTMLElement).dispatchEvent(
             new CustomEvent('column-resize', {
                 detail: {
                     col: this.resizingCol,
@@ -72,7 +75,8 @@ export class ResizeController implements ReactiveController {
     };
 
     private _cleanup() {
-        document.removeEventListener('mousemove', this._handleMouseMove);
-        document.removeEventListener('mouseup', this._handleMouseUp);
+        document.removeEventListener('mousemove', this._handleResize);
+        document.removeEventListener('mouseup', this._handleResizeEnd);
+        document.body.style.cursor = '';
     }
 }

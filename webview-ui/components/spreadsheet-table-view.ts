@@ -117,6 +117,8 @@ export class SpreadsheetTableView extends LitElement {
         return formatCellValue(value, format);
     }
 
+    private _handleFocusIn(_e: FocusEvent) {}
+
     private _renderMarkdown(content: string): string {
         return renderMarkdown(content);
     }
@@ -181,7 +183,7 @@ export class SpreadsheetTableView extends LitElement {
                                   })
                               );
                           }}"
-                          @clear-filter="${(e: CustomEvent<{ column: string }>) => {
+                          @clear-filter="${(_e: CustomEvent<{ column: string }>) => {
                               this.dispatchEvent(
                                   new CustomEvent('view-clear-filter', {
                                       detail: { col: filterMenu.col },
