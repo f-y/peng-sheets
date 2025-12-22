@@ -14,9 +14,6 @@
         "type": "git",
         "url": "https://github.com/f-y/vscode-md-spreadsheet.git"
     },
-    "activationEvents": [
-        "onCustomEditor:vscode-md-spreadsheet.editor"
-    ],
     "main": "./out/extension.js",
     "contributes": {
         "commands": [
