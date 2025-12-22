@@ -179,6 +179,4 @@ suite('Extension Test Suite', () => {
             assert.ok(writeFileStub.notCalled);
         });
     });
-
 });
-

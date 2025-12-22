@@ -38,7 +38,7 @@ suite('MessageDispatcher Test Suite', () => {
 
         // Spy on private methods by casting to any
         const saveSpy = sandbox.spy(dispatcher as any, 'handleSave');
-        const undoSpy = sandbox.spy(dispatcher as any, 'handleUndo');
+
 
         // Dispatch invalid messages
         await dispatcher.dispatch(null);
@@ -46,7 +46,7 @@ suite('MessageDispatcher Test Suite', () => {
         await dispatcher.dispatch({ type: 'unknownType' });
 
         assert.ok(saveSpy.notCalled, 'handleSave should not be called for invalid messages');
-        assert.ok(undoSpy.notCalled, 'handleUndo should not be called for invalid messages');
+
     });
 
     // Undo/Redo tests removed as logic is handled by VS Code Native Undo
