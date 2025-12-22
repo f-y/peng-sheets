@@ -137,12 +137,12 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 
 | Date | Region | Product | Quantity | Unit Price | Total |
 | --- | --- | --- | --- | --- | --- |
-| 2024-01-15 | JP-East | Standard License | 5 | $100 | $500 |
-| 2024-01-16 | JP-West | Pro License | 2 | $300 | $600 |
 | 2024-02-01 | US-North | Enterprise | 1 | $1,500 | $1,500 |
-| 2024-02-10 | EU-Central | Standard License | 10 | $100 | $1,000 |
+| 2024-01-16 | JP-West | Pro License | 2 | $300 | $600 |
 | 2024-03-05 | JP-East | Support Add-on | 3 | $50 | $150 |
+| 2024-01-15 | JP-East | Standard License | 5 | $100 | $500 |
 | 2024-03-20 | US-West | Pro License | 5 | $300 | $1,500 |
+| 2024-02-10 | EU-Central | Standard License | 10 | $100 | $1,000 |
 
 <!-- md-spreadsheet-metadata: {"columnWidths": [100, 100, 150, 80, 100, 100], "column_widths": {"5": 80}} -->
 
