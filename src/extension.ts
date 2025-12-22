@@ -10,9 +10,21 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-md-spreadsheet.newWorkbook', newWorkbookHandler)
     );
+
+    // Open Editor command (wrapper for vscode.openWith)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-md-spreadsheet.openEditor', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (editor) {
+                await vscode.commands.executeCommand('vscode.openWith', editor.document.uri, SpreadsheetEditorProvider.viewType);
+            } else {
+                vscode.window.showErrorMessage('No active editor found to open.');
+            }
+        })
+    );
 }
 
-export function deactivate() {}
+export function deactivate() { }
 
 export async function newWorkbookHandler() {
     // Get workspace folder

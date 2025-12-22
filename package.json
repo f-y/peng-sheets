@@ -21,11 +21,23 @@
     "contributes": {
         "commands": [
             {
+                "command": "vscode-md-spreadsheet.openEditor",
+                "title": "%command.openEditor.title%"
+            },
+            {
                 "command": "vscode-md-spreadsheet.newWorkbook",
                 "title": "%command.newWorkbook.title%"
             }
         ],
-        "menus": {},
+        "menus": {
+            "editor/title": [
+                {
+                    "command": "vscode-md-spreadsheet.openEditor",
+                    "when": "resourceLangId == markdown",
+                    "group": "navigation"
+                }
+            ]
+        },
         "customEditors": [
             {
                 "viewType": "vscode-md-spreadsheet.editor",
