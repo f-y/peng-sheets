@@ -1,6 +1,7 @@
-import { html, css, LitElement, unsafeCSS } from 'lit';
+import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem, vsCodeButton, vsCodeDivider } from '@vscode/webview-ui-toolkit';
+import { spreadsheetToolbarStyles as baseToolbarStyles } from './styles/toolbar-styles';
 import { t } from '../utils/i18n';
 // @ts-expect-error type import
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
@@ -9,37 +10,7 @@ provideVSCodeDesignSystem().register(vsCodeButton(), vsCodeDivider());
 
 @customElement('spreadsheet-toolbar')
 export class SpreadsheetToolbar extends LitElement {
-    static styles = [
-        unsafeCSS(codiconsStyles),
-        css`
-            :host {
-                display: block;
-                margin-bottom: 0;
-                background: var(--vscode-editor-background);
-                padding: 0.25rem;
-                border-bottom: 1px solid var(--vscode-widget-border);
-            }
-            .toolbar {
-                display: flex;
-                gap: 0.25rem;
-                align-items: center;
-            }
-            vscode-button {
-                /* Fix alignment of codicons inside button */
-            }
-            .codicon {
-                font-size: 16px;
-                /* Ensure it inherits color */
-                color: inherit;
-            }
-            .divider {
-                width: 1px;
-                height: 16px;
-                background-color: var(--vscode-widget-border);
-                margin: 0 4px;
-            }
-        `
-    ];
+    static styles = [unsafeCSS(codiconsStyles), ...baseToolbarStyles];
 
     render() {
         return html`

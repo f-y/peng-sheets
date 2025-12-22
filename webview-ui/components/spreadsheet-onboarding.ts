@@ -1,43 +1,14 @@
-import { html, css, LitElement } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem } from '@vscode/webview-ui-toolkit';
+import { onboardingStyles } from './styles/onboarding-styles';
 import { t } from '../utils/i18n';
 
 provideVSCodeDesignSystem().register();
 
 @customElement('spreadsheet-onboarding')
 export class SpreadsheetOnboarding extends LitElement {
-    static styles = css`
-        :host {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100%;
-            gap: 1.5rem;
-            color: var(--vscode-foreground);
-            font-family: var(--vscode-font-family);
-        }
-
-        h2 {
-            margin: 0;
-            font-weight: 500;
-            font-size: 1.5em;
-        }
-
-        p {
-            margin: 0;
-            opacity: 0.8;
-            max-width: 400px;
-            text-align: center;
-            line-height: 1.5;
-        }
-
-        .icon-container {
-            font-size: 4rem;
-            opacity: 0.5;
-        }
-    `;
+    static styles = onboardingStyles;
 
     render() {
         return html`
