@@ -6,11 +6,24 @@ This document outlines the development practices, directory structure, and testi
 
 *   **`src/`**: Extension Host Code (Node.js). Handles VS Code API interactions, file system operations, and communication with the webview.
     *   `extension.ts`: Main entry point.
+    *   `src/spreadsheet-editor-provider.ts`: Custom Editor implementation.
+    *   `src/message-dispatcher.ts`: Handles messages between Extension and Webview.
     *   `test/`: Extension integration tests (using `@vscode/test-electron`).
 *   **`webview-ui/`**: Webview Frontend Code (Lit, Vite). Runs inside the webview iframe.
     *   `components/`: UI components (e.g., `spreadsheet-table.ts`).
     *   `tests/`: Unit and Component tests for the webview (using Vitest).
     *   `main.ts`: Webview entry point.
+
+## Architecture: Custom Text Editor
+
+We use the **Custom Text Editor API** (`CustomTextEditorProvider`) instead of a raw `WebviewPanel`.
+
+*   **Why?**: To leverage VS Code's native **Undo/Redo** stack.
+*   **How it works**:
+    *   `SpreadsheetEditorProvider` creates the webview.
+    *   User edits in Webview -> Message sent to `Extension` -> `WorkspaceEdit` applied to Document.
+    *   User presses Undo (Ctrl+Z) -> VS Code undoes the generic TextDocument change -> `onDidChangeTextDocument` fires -> Extension sends `update` message to Webview -> Webview rerenders.
+*   **Crucial Benefit**: This avoids the flickering issues caused by manually managing undo stacks or opening hidden text editors. **Do not use `WebviewPanel` for document editing unless necessary.**
 
 ## Development Philosophy
 
@@ -57,6 +70,7 @@ npm test
 ```
 
 ### Code Coverage (c8)
+
 We support collecting code coverage for the extension process using `c8` and `NODE_V8_COVERAGE`.
 
 ```bash
@@ -67,6 +81,10 @@ npm run test:coverage
 *   **HTML Report**: Generates `coverage/index.html`.
 *   **Text Report**: Outputs summary to terminal.
 *   **Configuration**: managed via `.c8rc.json` (excludes webview UI code).
+
+**Note on Stability**: Coverage collection relies on writing V8 coverage data to disk on process exit. If tests crash or do not close editors properly, `c8` may fail to generate a report.
+*   Ensure `workbench.action.closeAllEditors` is called in test teardown.
+*   `npm run test:coverage` script cleans `coverage/tmp` before running to prevent corruption.
 
 ## Setup & Commands
 
@@ -134,4 +152,16 @@ When adding a new cell type (e.g., `ss-foo-cell`):
 2. Wire event in View: `@ss-foo-event="${(e) => this._bubbleEvent('view-foo-event', e.detail)}"`
 3. Wire event in Container: `@view-foo-event="${this.eventCtrl.handleFooEvent}"`
 4. Implement handler in EventController
+3. Wire event in Container: `@view-foo-event="${this.eventCtrl.handleFooEvent}"`
+4. Implement handler in EventController
 5. **Write integration test**: Click/interact with the cell → verify state changes
+
+## Test & Coverage Workflow
+
+To fix bugs or add features reliably:
+
+1.  **Reproduction**: Create a failing test case (Window/Integration level if involving VS Code API, or Webview/Unit level for UI logic).
+2.  **Implementation**: Fix the code.
+3.  **Verification**: Run tests (`npm test` or `npm run test:webview`).
+4.  **Coverage Check**: Run `npm run test:coverage` to ensure no dead code remains and critical paths are covered.
+    *   *Tip*: Use `c8 report --reporter=text` to see file-by-file breakdown if summary is insufficient.

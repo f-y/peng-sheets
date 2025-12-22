@@ -102,7 +102,7 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 架空のテスト実行レポートデータです。条件付き書式や集計のテストに使用できます。
 
 | Module | Total Cases | Passed | Failed | Skipped | Coverage | Status |
-| --- | --- | --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- | :---: |
 | **Core Parsing Engine** | 150 | 150 | 0 | 0 | 98.5% | ✅ Stable |
 | **Type Validation** | 65 | 62 | 3 | 0 | 92.0% | ⚠️ Review |
 | **Webview Controller** | 80 | 78 | 2 | 0 | 88.5% | ✅ Stable |
