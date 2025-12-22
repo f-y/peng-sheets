@@ -1,8 +1,12 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { MessageDispatcher } from './message-dispatcher';
+import { SpreadsheetEditorProvider } from './spreadsheet-editor-provider';
 
 export function activate(context: vscode.ExtensionContext) {
+    // Register Custom Editor Provider
+    context.subscriptions.push(SpreadsheetEditorProvider.register(context));
+
     let currentPanel: vscode.WebviewPanel | undefined = undefined;
     let activeDocument: vscode.TextDocument | undefined = undefined;
     let isSaving = false;

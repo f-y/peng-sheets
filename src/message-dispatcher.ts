@@ -23,12 +23,6 @@ export class MessageDispatcher {
             case 'updateRange':
                 await this.handleUpdateRange(message);
                 break;
-            case 'undo':
-                await this.handleUndo();
-                break;
-            case 'redo':
-                await this.handleRedo();
-                break;
             case 'createSpreadsheet':
                 await this.handleCreateSpreadsheet();
                 break;
@@ -44,7 +38,7 @@ export class MessageDispatcher {
             !!message &&
             typeof message === 'object' &&
             typeof msg.type === 'string' &&
-            ['updateRange', 'undo', 'redo', 'createSpreadsheet', 'save'].includes(msg.type)
+            ['updateRange', 'createSpreadsheet', 'save'].includes(msg.type)
         );
     }
 

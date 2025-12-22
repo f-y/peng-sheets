@@ -14,8 +14,8 @@ export class KeyboardController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
     handleKeyDown(e: KeyboardEvent) {
         if (this.host.editCtrl.isEditing) {
@@ -26,23 +26,6 @@ export class KeyboardController implements ReactiveController {
         if (e.isComposing) return;
 
         const isControl = e.ctrlKey || e.metaKey || e.altKey;
-
-        // Undo
-        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
-            e.preventDefault();
-            this.host.dispatchEvent(new CustomEvent('undo-requested', { bubbles: true, composed: true }));
-            return;
-        }
-
-        // Redo
-        if (
-            ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')) ||
-            ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'Y'))
-        ) {
-            e.preventDefault();
-            this.host.dispatchEvent(new CustomEvent('redo-requested', { bubbles: true, composed: true }));
-            return;
-        }
 
         // Header Edit
         if (
