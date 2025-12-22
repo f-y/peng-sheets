@@ -29,7 +29,7 @@
 
 1.  Open any Markdown file (`.md`) containing tables.
 2.  Open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`).
-3.  Run the command: **`Markdown: Open Spreadsheet Editor`**.
+3.  Run the command: **`Markdown Spreadsheet: Open Editor`**.
     - *Tip: You can also find this command in the editor title menu.*
 4.  A new tab will open with the spreadsheet view.
 5.  Edit your Markdown file, and watch the spreadsheet update in real-time!
