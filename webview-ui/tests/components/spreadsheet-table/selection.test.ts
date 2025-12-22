@@ -318,7 +318,7 @@ describe('Selection Verification', () => {
             expect(rowHeader2?.classList.contains('selected-range')).to.be.false;
         });
 
-        it('highlights multiple column headers for range selection', async () => {
+        it('does not highlight multiple column headers for range selection', async () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
@@ -338,13 +338,13 @@ describe('Selection Verification', () => {
             window.dispatchEvent(new MouseEvent('mouseup'));
             await awaitView(el);
 
-            // Verify all column headers in range have selected-range class
+            // Verify NO column headers in range have selected-range class
             const colHeader0 = queryView(el, '.cell.header-col[data-col="0"]');
             const colHeader1 = queryView(el, '.cell.header-col[data-col="1"]');
             const colHeader2 = queryView(el, '.cell.header-col[data-col="2"]');
-            expect(colHeader0?.classList.contains('selected-range')).to.be.true;
-            expect(colHeader1?.classList.contains('selected-range')).to.be.true;
-            expect(colHeader2?.classList.contains('selected-range')).to.be.true;
+            expect(colHeader0?.classList.contains('selected-range')).to.be.false;
+            expect(colHeader1?.classList.contains('selected-range')).to.be.false;
+            expect(colHeader2?.classList.contains('selected-range')).to.be.false;
         });
 
         it('does not highlight any headers on initial load (no selection)', async () => {

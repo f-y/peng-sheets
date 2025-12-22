@@ -227,6 +227,7 @@
 }
 
 .header-row {
+    font-size: 0.8em;
     background-color: var(--header-bg);
     text-align: center;
     font-weight: normal;
