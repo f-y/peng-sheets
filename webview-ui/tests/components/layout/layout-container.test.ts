@@ -227,4 +227,134 @@ describe('LayoutContainer', () => {
         expect(layout.id).to.equal(rightId); // Should be the surviving pane
         expect(layout.tables).to.deep.equal([1, 0]); // T2, T1
     });
+
+    it('handles split-pane from single-table pane to another pane (BUG: table should not disappear)', async () => {
+        // Setup: Split view with:
+        // Left: [0] (T1 only - single table)
+        // Right: [1] (T2)
+        const leftId = 'left-pane';
+        const rightId = 'right-pane';
+        element.layout = {
+            type: 'split',
+            id: 'split1',
+            direction: 'horizontal',
+            sizes: [50, 50],
+            children: [
+                { type: 'pane', id: leftId, tables: [0], activeTableIndex: 0 },
+                { type: 'pane', id: rightId, tables: [1], activeTableIndex: 0 }
+            ]
+        };
+        element.tables = [
+            { name: 'T1', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
+            { name: 'T2', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 }
+        ];
+        await element.updateComplete;
+
+        // Attempt to split T1 from Left to a new pane (vertical split on Right pane)
+        // This should:
+        // 1. Remove T1 from Left pane (which becomes empty and removed)
+        // 2. Create a new pane with T1 next to Right pane
+        const root = element.shadowRoot!.querySelector('split-view')!;
+        root.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'split-pane',
+                    sourcePaneId: leftId,
+                    targetPaneId: rightId, // Different from source!
+                    tableIndex: 0, // T1
+                    direction: 'vertical',
+                    placement: 'after'
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
+        await element.updateComplete;
+
+        const layout = (element as any)._currentLayout;
+
+        // After the operation, we should have:
+        // - Left pane removed (was single table)
+        // - Right pane now split into [T2] and [T1]
+        // The layout should be a split (or a pane, but with all tables preserved)
+
+        // Count all table indices in the layout
+        const allTables: number[] = [];
+        const collectTables = (node: any) => {
+            if (node.type === 'pane') {
+                allTables.push(...node.tables);
+            } else if (node.type === 'split') {
+                node.children.forEach(collectTables);
+            }
+        };
+        collectTables(layout);
+
+        // CRITICAL: Both tables (0 and 1) must be present - no table should disappear!
+        expect(allTables).to.include(0);
+        expect(allTables).to.include(1);
+        expect(allTables.length).to.equal(2);
+    });
+
+    it('handles split-pane from single-table pane to multi-table pane (standard_workbook scenario)', async () => {
+        // Setup: Matches standard_workbook.md initial layout
+        // Top: [0, 1, 3]
+        // Bottom: [2] (single table)
+        const topId = 'top-pane';
+        const bottomId = 'bottom-pane';
+        element.layout = {
+            type: 'split',
+            id: 'split1',
+            direction: 'vertical',
+            sizes: [50, 50],
+            children: [
+                { type: 'pane', id: topId, tables: [0, 1, 3], activeTableIndex: 0 },
+                { type: 'pane', id: bottomId, tables: [2], activeTableIndex: 0 }
+            ]
+        };
+        element.tables = [
+            { name: 'T0', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
+            { name: 'T1', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
+            { name: 'T2', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 },
+            { name: 'T3', rows: [], headers: [], metadata: {}, start_line: 0, end_line: 0 }
+        ];
+        await element.updateComplete;
+
+        // User drags Table 2 from Bottom pane to Top pane (vertical split, after)
+        const root = element.shadowRoot!.querySelector('split-view')!;
+        root.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'split-pane',
+                    sourcePaneId: bottomId, // Single table pane [2]
+                    targetPaneId: topId, // Multi table pane [0, 1, 3]
+                    tableIndex: 2, // T2
+                    direction: 'vertical',
+                    placement: 'after'
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
+        await element.updateComplete;
+
+        const layout = (element as any)._currentLayout;
+
+        // Count all table indices in the layout
+        const allTables: number[] = [];
+        const collectTables = (node: any) => {
+            if (node.type === 'pane') {
+                allTables.push(...node.tables);
+            } else if (node.type === 'split') {
+                node.children.forEach(collectTables);
+            }
+        };
+        collectTables(layout);
+
+        // ALL tables (0, 1, 2, 3) must be present - Table 2 MUST NOT disappear!
+        expect(allTables).to.include(0);
+        expect(allTables).to.include(1);
+        expect(allTables).to.include(2);
+        expect(allTables).to.include(3);
+        expect(allTables.length).to.equal(4);
+    });
 });

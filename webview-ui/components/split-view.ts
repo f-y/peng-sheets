@@ -1,6 +1,7 @@
-import { html, css, LitElement } from 'lit';
+import { html, LitElement } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { SplitNode, TableJSON } from '../types';
+import { splitViewStyles } from './styles/split-view-styles';
 import './pane-view';
 // Circular dependency: layout-container imports split-view/pane-view.
 // split-view imports pane-view (and recursive split-view?).
@@ -15,36 +16,7 @@ import './pane-view';
 
 @customElement('split-view')
 export class SplitView extends LitElement {
-    static styles = css`
-        :host {
-    display: flex;
-    width: 100 %;
-    height: 100 %;
-    overflow: hidden;
-}
-        : host([direction = 'vertical']) {
-    flex - direction: column;
-}
-        : host([direction = 'horizontal']) {
-    flex - direction: row;
-}
-        .child - wrapper {
-    position: relative;
-    overflow: hidden;
-}
-        .resizer {
-    background - color: var(--vscode - widget - border);
-    z - index: 10;
-}
-        : host([direction = 'horizontal']).resizer {
-    width: 4px;
-    cursor: col - resize;
-}
-        : host([direction = 'vertical']).resizer {
-    height: 4px;
-    cursor: row - resize;
-}
-`;
+    static styles = splitViewStyles;
 
     @property({ type: Object })
     node!: SplitNode;

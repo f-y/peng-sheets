@@ -1,0 +1,148 @@
+/**
+ * Styles for PaneView component.
+ * Extracted to enable CSS linting and improve maintainability.
+ */
+import { css } from 'lit';
+
+/** Host styles */
+export const hostStyles = css`
+    :host {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background-color: var(--vscode-editor-background);
+        position: relative;
+    }
+`;
+
+/** Tab bar styles */
+export const tabBarStyles = css`
+    .tab-bar {
+        display: flex;
+        background-color: var(--vscode-editorGroupHeader-tabsBackground);
+        border-bottom: 1px solid var(--vscode-editorGroup-border);
+        overflow-x: auto;
+        min-height: 35px;
+    }
+
+    .tab-bar.drag-over {
+        background-color: var(--vscode-editorGroup-dropBackground);
+    }
+`;
+
+/** Tab styles */
+export const tabStyles = css`
+    .tab {
+        padding: 8px 12px;
+        cursor: pointer;
+        color: var(--vscode-tab-inactiveForeground);
+        background-color: var(--vscode-tab-inactiveBackground);
+        border-right: 1px solid var(--vscode-tab-border);
+        white-space: nowrap;
+        user-select: none;
+        display: flex;
+        align-items: center;
+    }
+
+    .tab.active {
+        color: var(--vscode-tab-activeForeground);
+        background-color: var(--vscode-tab-activeBackground);
+        border-top: 1px solid var(--vscode-tab-activeBorderTop);
+    }
+
+    .tab:hover {
+        background-color: var(--vscode-tab-hoverBackground);
+    }
+
+    .tab-add {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        cursor: pointer;
+        color: var(--vscode-foreground);
+        font-size: 16px;
+        border-right: 1px solid var(--vscode-tab-border);
+    }
+
+    .tab-add:hover {
+        background-color: var(--vscode-toolbar-hoverBackground);
+    }
+
+    .tab-input {
+        background: var(--vscode-input-background);
+        color: var(--vscode-input-foreground);
+        border: 1px solid var(--vscode-input-border);
+        outline: none;
+        font-family: inherit;
+        font-size: inherit;
+        padding: 2px 4px;
+        width: 100px;
+    }
+`;
+
+/** Content area styles */
+export const contentStyles = css`
+    .content {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+`;
+
+/** Drop overlay styles for splitting */
+export const dropOverlayStyles = css`
+    .drop-overlay {
+        position: absolute;
+        background-color: var(--vscode-editorGroup-dropBackground);
+        pointer-events: none;
+        z-index: 10;
+        display: none;
+    }
+
+    .drop-overlay.active {
+        display: block;
+    }
+`;
+
+/** Context menu styles */
+export const contextMenuStyles = css`
+    .context-menu {
+        position: fixed;
+        background: var(--vscode-menu-background);
+        color: var(--vscode-menu-foreground);
+        border: 1px solid var(--vscode-menu-border);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        z-index: 1000;
+        min-width: 150px;
+        padding: 4px 0;
+        font-family: var(--vscode-font-family);
+    }
+
+    .context-menu-item {
+        padding: 6px 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+    }
+
+    .context-menu-item:hover {
+        background: var(--vscode-menu-selectionBackground);
+        color: var(--vscode-menu-selectionForeground);
+    }
+`;
+
+/** Combined styles array for PaneView */
+export const paneViewStyles = [
+    hostStyles,
+    tabBarStyles,
+    tabStyles,
+    contentStyles,
+    dropOverlayStyles,
+    contextMenuStyles
+];
