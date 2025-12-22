@@ -3,16 +3,6 @@ import { customElement, property } from 'lit/decorators.js';
 import { SplitNode, TableJSON } from '../types';
 import { splitViewStyles } from './styles/split-view-styles';
 import './pane-view';
-// Circular dependency: layout-container imports split-view/pane-view.
-// split-view imports pane-view (and recursive split-view?).
-// Yes, recursive.
-// Lit handles this if we just use tag names, but we need import for side effects (registration).
-// Since they are registered globally, it should be fine as long as they are imported once.
-// LayoutContainer imports both, so they are registered.
-// But to be safe, I import them here too?
-// Recursion: SplitView needs to render child nodes which can be SplitView or PaneView.
-// So SplitView renders... `layout - container`'s logic?
-// No, `renderNode` logic needs to be reused or SplitView iterates children.
 
 @customElement('split-view')
 export class SplitView extends LitElement {
