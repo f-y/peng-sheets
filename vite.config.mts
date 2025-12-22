@@ -33,6 +33,10 @@ export default defineConfig({
                 {
                     src: 'resources/pyodide_pkgs/*.whl',
                     dest: 'pyodide'
+                },
+                {
+                    src: 'resources/md_spreadsheet_parser-0.5.0-py3-none-any.whl',
+                    dest: 'pyodide'
                 }
             ]
         })

@@ -95,7 +95,7 @@ export function getWebviewContent(
     if (isProduction) {
         scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js'));
         wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.5.0-py3-none-any.whl')
+            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide', 'md_spreadsheet_parser-0.5.0-py3-none-any.whl')
         );
         codiconFontUri = webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'codicon.ttf')
