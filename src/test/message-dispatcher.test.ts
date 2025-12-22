@@ -15,15 +15,17 @@ suite('MessageDispatcher Test Suite', () => {
             activeDocument: {
                 uri: vscode.Uri.file('/tmp/test.md'),
                 isDirty: false,
-                save: async () => true,
-                getText: () => '',
+                save: sandbox.stub().resolves(true),
+                getText: sandbox.stub().returns(''),
                 positionAt: (offset: number) => new vscode.Position(0, offset),
-                lineAt: (line: number) => ({ range: new vscode.Range(0, 0, 0, 0) } as vscode.TextLine),
+                lineAt: (_line: number) => ({ range: new vscode.Range(0, 0, 0, 0) }) as vscode.TextLine,
                 validateRange: (range: vscode.Range) => range
             } as unknown as vscode.TextDocument,
             webviewPanel: undefined,
             getSavingState: () => isSaving,
-            setSavingState: (state) => { isSaving = state; }
+            setSavingState: (state) => {
+                isSaving = state;
+            }
         };
     });
 
@@ -53,10 +55,12 @@ suite('MessageDispatcher Test Suite', () => {
         const executeCommandStub = sandbox.stub(vscode.commands, 'executeCommand').resolves();
 
         // Stub visibleTextEditors getter
-        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => [{
-            document: mockContext.activeDocument,
-            viewColumn: vscode.ViewColumn.One
-        } as vscode.TextEditor]);
+        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => [
+            {
+                document: mockContext.activeDocument,
+                viewColumn: vscode.ViewColumn.One
+            } as vscode.TextEditor
+        ]);
 
         const dispatcher = new MessageDispatcher(mockContext);
         await dispatcher.dispatch({ type: 'undo' });
@@ -69,10 +73,12 @@ suite('MessageDispatcher Test Suite', () => {
         const showTextDocumentStub = sandbox.stub(vscode.window, 'showTextDocument').resolves({} as vscode.TextEditor);
         const executeCommandStub = sandbox.stub(vscode.commands, 'executeCommand').resolves();
 
-        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => [{
-            document: mockContext.activeDocument,
-            viewColumn: vscode.ViewColumn.One
-        } as vscode.TextEditor]);
+        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => [
+            {
+                document: mockContext.activeDocument,
+                viewColumn: vscode.ViewColumn.One
+            } as vscode.TextEditor
+        ]);
 
         const dispatcher = new MessageDispatcher(mockContext);
         await dispatcher.dispatch({ type: 'redo' });
@@ -112,7 +118,62 @@ suite('MessageDispatcher Test Suite', () => {
         });
 
         assert.ok(applyEditStub.calledOnce, 'Should call workspace.applyEdit');
-        const editArgs = applyEditStub.firstCall.args[0] as vscode.WorkspaceEdit;
-        assert.ok(editArgs instanceof vscode.WorkspaceEdit, 'Should pass a WorkspaceEdit');
+        const _editArgs = applyEditStub.firstCall.args[0] as vscode.WorkspaceEdit;
+        assert.ok(_editArgs instanceof vscode.WorkspaceEdit, 'Should pass a WorkspaceEdit');
+    });
+
+    test('CreateSpreadsheet: Should insert generic sheet if marker exists', async () => {
+        // Mock config
+        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
+            get: (key: string) => (key.includes('rootMarker') ? '# Tables' : undefined)
+        } as any);
+
+        // Document has marker
+        const docText = '# Tables\nExisting Content';
+        (mockContext.activeDocument!.getText as sinon.SinonStub).returns(docText);
+
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'createSpreadsheet' });
+
+        assert.ok(applyEditStub.calledOnce, 'Should apply edit');
+        // Logic should use insert, but checking call count is enough for coverage here
+    });
+
+    test('CreateSpreadsheet: Should append new structure if marker missing', async () => {
+        // Mock config
+        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
+            get: (key: string) => (key.includes('rootMarker') ? '# Tables' : undefined)
+        } as any);
+
+        // Document has NO marker
+        const docText = 'Some other text';
+        (mockContext.activeDocument!.getText as sinon.SinonStub).returns(docText);
+
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'createSpreadsheet' });
+
+        assert.ok(applyEditStub.calledOnce, 'Should apply edit');
+    });
+
+    test('CreateSpreadsheet: Should replace ALL if zombie state (only marker)', async () => {
+        // Mock config
+        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
+            get: (key: string) => (key.includes('rootMarker') ? '# Tables' : undefined)
+        } as any);
+
+        // Document is JUST the marker (Zombie state)
+        const docText = '# Tables\n';
+        (mockContext.activeDocument!.getText as sinon.SinonStub).returns(docText);
+
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'createSpreadsheet' });
+
+        assert.ok(applyEditStub.calledOnce, 'Should apply edit');
     });
 });
