@@ -436,18 +436,10 @@ export class MyEditor extends LitElement {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
             e.preventDefault();
             this._handleSave();
-        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-            console.log('Likely Undo detected');
-            e.preventDefault();
-            this._handleUndo();
-        } else if (
-            ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && e.shiftKey) ||
-            ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y')
-        ) {
-            console.log('Likely Redo detected');
-            e.preventDefault();
-            this._handleRedo();
         }
+        // Undo/Redo are handled natively by VS Code to prevent double-execution
+        // when Webview has focus. See ghost-row-undo-bug resolution.
+
     }
 
     async firstUpdated() {
