@@ -209,6 +209,15 @@ export class SpreadsheetService {
         return await this.pyodide.runPythonAsync(code);
     }
 
+    private _getDefaultColumnHeaders(): string[] {
+        // Use global window variable injected by extension
+        const lang = (window as unknown as { vscodeLanguage?: string }).vscodeLanguage || 'en';
+        if (lang.startsWith('ja')) {
+            return ['列名1', '列名2', '列名3'];
+        }
+        return ['Column 1', 'Column 2', 'Column 3'];
+    }
+
     // --- Operations ---
 
     public updateTableMetadata(sheetIdx: number, tableIdx: number, name: string, description: string) {
@@ -253,10 +262,11 @@ export class SpreadsheetService {
         });
     }
 
-    public addTable(sheetIdx: number, tableName: string) {
+    public addTable(sheetIdx: number, _tableName: string) {
+        const headers = this._getDefaultColumnHeaders();
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
-                res = add_table(${sheetIdx}, ${JSON.stringify(tableName)})
+                res = add_table(${sheetIdx}, ${JSON.stringify(headers)})
                 json.dumps(res) if res else "null"
             `);
             if (result) this._postUpdateMessage(result);
@@ -482,9 +492,10 @@ export class SpreadsheetService {
     }
 
     public addSheet(newSheetName: string) {
+        const headers = this._getDefaultColumnHeaders();
         this._enqueueRequest(async () => {
             const updateSpec = await this.runPython<IUpdateSpec>(`
-                res = add_sheet(${JSON.stringify(newSheetName)})
+                res = add_sheet(${JSON.stringify(newSheetName)}, ${JSON.stringify(headers)})
                 json.dumps(res) if res else "null"
             `);
 

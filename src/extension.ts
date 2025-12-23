@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 
 import { SpreadsheetEditorProvider } from './spreadsheet-editor-provider';
+import { getDefaultColumnNames } from './i18n-utils';
 
 export function activate(context: vscode.ExtensionContext) {
     // Register Custom Editor Provider
@@ -78,7 +79,8 @@ export async function newWorkbookHandler() {
     // Create template content
     const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
     const rootMarker = config.get<string>('rootMarker') || '# Tables';
-    const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B | C |\n|---|---|---|\n|   |   |   |\n`;
+    const [col1, col2, col3] = getDefaultColumnNames();
+    const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| ${col1} | ${col2} | ${col3} |\n|---|---|---|\n|   |   |   |\n`;
 
     // Write file
     await vscode.workspace.fs.writeFile(uri, Buffer.from(template, 'utf8'));

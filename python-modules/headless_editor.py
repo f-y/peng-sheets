@@ -3,6 +3,7 @@ from dataclasses import replace
 
 from md_spreadsheet_parser import (
     MultiTableParsingSchema,
+    Sheet,
     Workbook,
     generate_workbook_markdown,
     parse_workbook,
@@ -156,26 +157,42 @@ def generate_and_get_range():
     }
 
 
-def add_sheet(new_name):
+def add_sheet(new_name, column_names=None):
     # Handle add_sheet separately as it handles None workbook
     global workbook
     if workbook is None:
         workbook = Workbook(sheets=[])
+
+    if column_names is None:
+        column_names = ["Column 1", "Column 2", "Column 3"]
+
     try:
-        workbook = workbook.add_sheet(new_name)
+        # Create new sheet manually with custom headers
+        new_table = Table(
+            headers=column_names, rows=[["" for _ in column_names]], metadata={}
+        )
+        new_sheet = Sheet(name=new_name, tables=[new_table])
+
+        new_sheets = list(workbook.sheets)
+        new_sheets.append(new_sheet)
+
+        workbook = replace(workbook, sheets=new_sheets)
         return generate_and_get_range()
     except Exception as e:
         return {"error": str(e)}
 
 
-def add_table(sheet_idx):
+def add_table(sheet_idx, column_names=None):
+    if column_names is None:
+        column_names = ["Column 1", "Column 2", "Column 3"]
+
     def sheet_transform(sheet):
         new_tables = list(sheet.tables)
         new_table = Table(
             name=f"New Table {len(new_tables) + 1}",
             description="",
-            headers=["A", "B", "C"],
-            rows=[["", "", ""]],
+            headers=column_names,
+            rows=[["" for _ in column_names]],
             metadata={},
         )
         new_tables.append(new_table)

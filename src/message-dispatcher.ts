@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { WebviewMessage, UpdateRangeMessage } from './types/messages';
+import { getDefaultColumnNames } from './i18n-utils';
 
 export interface HandlerContext {
     activeDocument: vscode.TextDocument | undefined;
@@ -135,17 +136,19 @@ export class MessageDispatcher {
         const hasRoot = rootRegex.test(docText);
         const isZombie = docText.trim().match(new RegExp(`^${pattern}$`));
 
+        const [col1, col2] = getDefaultColumnNames();
+
         if (isZombie) {
-            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
+            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| ${col1} | ${col2} |\n|---|---|\n|   |   |\n`;
             const fullRange = new vscode.Range(activeDocument.positionAt(0), activeDocument.positionAt(docText.length));
             wsEdit.replace(activeDocument.uri, fullRange, template);
         } else if (hasRoot) {
-            const template = `## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
+            const template = `## Sheet 1\n\n### Table 1\n\n| ${col1} | ${col2} |\n|---|---|\n|   |   |\n`;
             const prefix = !docText.endsWith('\n') ? '\n\n' : '\n';
             const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
             wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
         } else {
-            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| A | B |\n|---|---|\n|   |   |\n`;
+            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| ${col1} | ${col2} |\n|---|---|\n|   |   |\n`;
             const prefix = docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : docText.length > 0 ? '\n' : '';
             const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
             wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
