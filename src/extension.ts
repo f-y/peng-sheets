@@ -28,7 +28,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 }
 
-export function deactivate() { }
+export function deactivate() {}
 
 export async function newWorkbookHandler() {
     // Get workspace folder
@@ -95,14 +95,18 @@ export function getWebviewContent(
     if (isProduction) {
         scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js'));
         wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide', 'md_spreadsheet_parser-0.5.0-py3-none-any.whl')
+            vscode.Uri.joinPath(
+                context.extensionUri,
+                'out',
+                'webview',
+                'pyodide',
+                'md_spreadsheet_parser-0.5.0-py3-none-any.whl'
+            )
         );
         codiconFontUri = webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'codicon.ttf')
         );
-        pyodideUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide')
-        );
+        pyodideUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide'));
 
         cspScriptSrc = `'unsafe-eval' ${webview.cspSource}`;
         cspConnectSrc = `${webview.cspSource}`;

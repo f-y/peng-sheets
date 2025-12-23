@@ -281,6 +281,18 @@ def delete_row(sheet_idx, table_idx, row_idx):
     return apply_table_update(sheet_idx, table_idx, lambda t: t.delete_row(row_idx))
 
 
+def delete_rows(sheet_idx, table_idx, row_indices):
+    def _delete_logic(t):
+        # Sort indices in descending order to prevent index shifting issues
+        sorted_indices = sorted(row_indices, reverse=True)
+        current_table = t
+        for idx in sorted_indices:
+            current_table = current_table.delete_row(idx)
+        return current_table
+
+    return apply_table_update(sheet_idx, table_idx, _delete_logic)
+
+
 def delete_column(sheet_idx, table_idx, col_idx):
     return apply_table_update(sheet_idx, table_idx, lambda t: t.delete_column(col_idx))
 

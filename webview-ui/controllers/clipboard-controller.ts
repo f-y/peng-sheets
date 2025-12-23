@@ -377,16 +377,21 @@ export class ClipboardController implements ReactiveController {
             if (effectiveMaxR < minR) return;
 
             // Optimistic Update: Remove rows from model (backwards to avoid index shift)
+            // Optimistic Update: Remove rows from model (backwards to avoid index shift)
+            const rowsToDelete: number[] = [];
             for (let r = effectiveMaxR; r >= minR; r--) {
                 table.rows.splice(r, 1);
-                this.host.dispatchEvent(
-                    new CustomEvent('row-delete', {
-                        detail: { sheetIndex: sheetIndex, tableIndex: tableIndex, rowIndex: r },
-                        bubbles: true,
-                        composed: true
-                    })
-                );
+                rowsToDelete.push(r);
             }
+
+            this.host.dispatchEvent(
+                new CustomEvent('rows-delete', {
+                    detail: { sheetIndex: sheetIndex, tableIndex: tableIndex, rowIndices: rowsToDelete },
+                    bubbles: true,
+                    composed: true
+                })
+            );
+
             triggerUpdate();
         } else if (selRow === -2) {
             // Column Clear

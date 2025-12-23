@@ -22,7 +22,7 @@ export class MessageDispatcher {
         // process message sequentially
         const processingPromise = this._messageQueue
             .then(async () => {
-                console.log('[Extension] Processing message:', message.type);
+                // console.log('[Extension] Processing message:', message.type);
                 await this._dispatchInner(message);
             })
             .catch((err) => {
@@ -90,9 +90,12 @@ export class MessageDispatcher {
         targetRange = validatedRange;
 
         if (editor) {
-            const success = await editor.edit((editBuilder) => {
-                editBuilder.replace(targetRange, message.content);
-            });
+            const success = await editor.edit(
+                (editBuilder) => {
+                    editBuilder.replace(targetRange, message.content);
+                },
+                { undoStopBefore: true, undoStopAfter: true }
+            );
 
             if (!success) {
                 console.warn('TextEditor.edit failed. Retrying with WorkspaceEdit...');

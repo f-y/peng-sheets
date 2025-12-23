@@ -286,6 +286,16 @@ export class SpreadsheetService {
         });
     }
 
+    public deleteRows(sheetIdx: number, tableIdx: number, rowIndices: number[]) {
+        this._enqueueRequest(async () => {
+            const result = await this.runPython<IUpdateSpec>(`
+                res = delete_rows(${sheetIdx}, ${tableIdx}, ${JSON.stringify(rowIndices)})
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
     public deleteColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
