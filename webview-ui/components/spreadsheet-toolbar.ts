@@ -44,48 +44,7 @@ export class SpreadsheetToolbar extends LitElement {
                     <span class="codicon codicon-redo"></span>
                 </vscode-button>
 
-                <div class="divider"></div>
-
-                <vscode-button
-                    appearance="icon"
-                    aria-label="${t('toolbarBold')}"
-                    title="${t('toolbarBold')}"
-                    @click="${() => this._dispatch('bold')}"
-                >
-                    <span class="codicon codicon-bold"></span>
-                </vscode-button>
-                <vscode-button
-                    appearance="icon"
-                    aria-label="${t('toolbarItalic')}"
-                    title="${t('toolbarItalic')}"
-                    @click="${() => this._dispatch('italic')}"
-                >
-                    <span class="codicon codicon-italic"></span>
-                </vscode-button>
-                <vscode-button
-                    appearance="icon"
-                    aria-label="${t('toolbarStrikethrough')}"
-                    title="${t('toolbarStrikethrough')}"
-                    @click="${() => this._dispatch('strikethrough')}"
-                >
-                    <span class="codicon codicon-strikethrough"></span>
-                </vscode-button>
-                <vscode-button
-                    appearance="icon"
-                    aria-label="${t('toolbarUnderline')}"
-                    title="${t('toolbarUnderline')}"
-                    @click="${() => this._dispatch('underline')}"
-                >
-                    <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="currentColor"
-                    >
-                        <path d="M13 5h-1v3.5a4 4 0 1 1-8 0V5H3v3.5a5 5 0 1 0 10 0V5zm-2 9H5v1h6v-1z" />
-                    </svg>
-                </vscode-button>
+                <!-- Formatting buttons (bold, italic, strikethrough, underline) temporarily hidden -->
 
                 <div class="divider"></div>
 
