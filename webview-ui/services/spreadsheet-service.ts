@@ -1,9 +1,18 @@
+export interface IPyodideFS {
+    mkdir(path: string): void;
+    mount(type: { [key: string]: unknown }, opts: Record<string, unknown>, mountpoint: string): void;
+    syncfs(populate: boolean, callback: (err?: Error) => void): void;
+    readFile(path: string, opts?: { encoding?: string }): string;
+    analyzePath(path: string): { exists: boolean };
+    filesystems: { IDBFS: { [key: string]: unknown } };
+}
+
 export interface IPyodide {
     runPythonAsync(code: string): Promise<string>;
     loadPackage(names: string | string[]): Promise<void>;
     pyimport(name: string): unknown;
     globals: Map<string, unknown>;
-    FS: any;
+    FS?: IPyodideFS;
 }
 
 export interface IVSCodeApi {
@@ -76,7 +85,7 @@ export class SpreadsheetService {
                     this.pyodide.FS.mount(this.pyodide.FS.filesystems.IDBFS, {}, mountDir);
 
                     // Sync from IndexedDB
-                    await new Promise<void>((resolve) => this.pyodide!.FS.syncfs(true, () => resolve()));
+                    await new Promise<void>((resolve) => this.pyodide!.FS!.syncfs(true, () => resolve()));
 
                     // Check cached version
                     let cachedVersion = '';
@@ -127,7 +136,7 @@ export class SpreadsheetService {
                                     f.write(wheel_uri)
                             `);
 
-                            await new Promise<void>((resolve) => this.pyodide!.FS.syncfs(false, () => resolve()));
+                            await new Promise<void>((resolve) => this.pyodide!.FS!.syncfs(false, () => resolve()));
                         }
                     }
                 }

@@ -378,7 +378,7 @@ suite('MessageDispatcher Test Suite', () => {
         const executionOrder: string[] = [];
 
         // Mock slow updateRange
-        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').callsFake(async () => {
+        const _applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').callsFake(async () => {
             executionOrder.push('start-edit');
             await new Promise((resolve) => setTimeout(resolve, 50));
             executionOrder.push('end-edit');

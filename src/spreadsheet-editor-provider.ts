@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
+
 import { getWebviewContent } from './extension';
-import { MessageDispatcher, HandlerContext } from './message-dispatcher';
+import { MessageDispatcher } from './message-dispatcher';
 
 export class SpreadsheetEditorProvider implements vscode.CustomTextEditorProvider {
     public static readonly viewType = 'vscode-md-spreadsheet.editor';
