@@ -19,7 +19,8 @@
         "commands": [
             {
                 "command": "vscode-md-spreadsheet.openEditor",
-                "title": "%command.openEditor.title%"
+                "title": "%command.openEditor.title%",
+                "icon": "$(table)"
             },
             {
                 "command": "vscode-md-spreadsheet.openEditorFromContextMenu",
