@@ -34,7 +34,7 @@
             "editor/title": [
                 {
                     "command": "vscode-md-spreadsheet.openEditor",
-                    "when": "resourceLangId == markdown",
+                    "when": "resourceLangId == markdown && activeCustomEditorId != vscode-md-spreadsheet.editor",
                     "group": "navigation"
                 }
             ],
