@@ -22,6 +22,10 @@
                 "title": "%command.openEditor.title%"
             },
             {
+                "command": "vscode-md-spreadsheet.openEditorFromContextMenu",
+                "title": "%command.openEditorFromContextMenu.title%"
+            },
+            {
                 "command": "vscode-md-spreadsheet.newWorkbook",
                 "title": "%command.newWorkbook.title%"
             }
@@ -30,6 +34,13 @@
             "editor/title": [
                 {
                     "command": "vscode-md-spreadsheet.openEditor",
+                    "when": "resourceLangId == markdown",
+                    "group": "navigation"
+                }
+            ],
+            "explorer/context": [
+                {
+                    "command": "vscode-md-spreadsheet.openEditorFromContextMenu",
                     "when": "resourceLangId == markdown",
                     "group": "navigation"
                 }

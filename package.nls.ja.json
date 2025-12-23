@@ -1,4 +1,5 @@
 {
-    "command.openEditor.title": "Markdown Spreadsheet: 表計算エディタを開く",
-    "command.newWorkbook.title": "Markdown Spreadsheet: 新規ワークブックを作成"
+    "command.openEditor.title": "表計算エディタで開く",
+    "command.openEditorFromContextMenu.title": "表計算エディタで開く",
+    "command.newWorkbook.title": "Markdown: 新規に表計算ファイルを作成"
 }

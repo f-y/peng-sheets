@@ -1,4 +1,5 @@
 {
-    "command.openEditor.title": "Markdown Spreadsheet: Open Editor",
-    "command.newWorkbook.title": "Markdown Spreadsheet: Create New Workbook"
+    "command.openEditor.title": "Open Spreadsheet Editor",
+    "command.openEditorFromContextMenu.title": "Open Spreadsheet Editor",
+    "command.newWorkbook.title": "Markdown: Create New Spreadsheet File"
 }

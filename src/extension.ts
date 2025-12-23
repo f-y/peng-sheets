@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
+
 import { SpreadsheetEditorProvider } from './spreadsheet-editor-provider';
 
 export function activate(context: vscode.ExtensionContext) {
@@ -12,17 +12,28 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Open Editor command (wrapper for vscode.openWith)
+    const openEditorFunction = async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (editor) {
+            await vscode.commands.executeCommand(
+                'vscode.openWith',
+                editor.document.uri,
+                SpreadsheetEditorProvider.viewType
+            );
+        } else {
+            vscode.window.showErrorMessage('No active editor found to open.');
+        }
+    };
+    context.subscriptions.push(vscode.commands.registerCommand('vscode-md-spreadsheet.openEditor', openEditorFunction));
+
+    // Open Editor from Context Menu command
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-md-spreadsheet.openEditor', async () => {
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                await vscode.commands.executeCommand(
-                    'vscode.openWith',
-                    editor.document.uri,
-                    SpreadsheetEditorProvider.viewType
-                );
+        vscode.commands.registerCommand('vscode-md-spreadsheet.openEditorFromContextMenu', async (uri: vscode.Uri) => {
+            if (uri) {
+                await vscode.commands.executeCommand('vscode.openWith', uri, SpreadsheetEditorProvider.viewType);
             } else {
-                vscode.window.showErrorMessage('No active editor found to open.');
+                // Fallback if no URI provided (though unlikely from context menu)
+                openEditorFunction();
             }
         })
     );
