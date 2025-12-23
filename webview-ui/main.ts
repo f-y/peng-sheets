@@ -71,7 +71,7 @@ export class MyEditor extends LitElement {
     private spreadsheetService = new SpreadsheetService(pythonCore, vscode);
 
     @state()
-    output: string = t('initializing');
+    output: string = '';
 
     @state()
     markdownInput: string = '';
@@ -633,7 +633,7 @@ export class MyEditor extends LitElement {
 
     render() {
         if (!this.tabs.length && !this.output) {
-            return html`< div class="output" > ${t('loading')}</div>`;
+            return html``;
         }
 
         return this._renderContent();
@@ -641,7 +641,7 @@ export class MyEditor extends LitElement {
 
     private _renderContent() {
         if (this.tabs.length === 0) {
-            return html` <div class="output">${this.output}</div> `;
+            return this.output ? html`<div class="output">${this.output}</div>` : html``;
         }
 
         let activeTab = this.tabs[this.activeTabIndex];

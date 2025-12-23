@@ -3,6 +3,7 @@ export interface IPyodide {
     loadPackage(names: string | string[]): Promise<void>;
     pyimport(name: string): unknown;
     globals: Map<string, unknown>;
+    FS: any;
 }
 
 export interface IVSCodeApi {
@@ -62,12 +63,73 @@ export class SpreadsheetService {
             });
 
             if (this.pyodide) {
-                await this.pyodide.loadPackage('micropip');
-                const micropip = this.pyodide.pyimport('micropip') as { install: (uri: string) => Promise<void> };
-
                 const wheelUri = (window as unknown as { wheelUri?: string }).wheelUri;
-                if (wheelUri) {
-                    await micropip.install(wheelUri);
+                const mountDir = '/local_cache';
+                let isCached = false;
+
+                if (wheelUri && this.pyodide.FS) {
+                    try {
+                        this.pyodide.FS.mkdir(mountDir);
+                    } catch (e) {
+                        // Directory might already exist
+                    }
+                    this.pyodide.FS.mount(this.pyodide.FS.filesystems.IDBFS, {}, mountDir);
+
+                    // Sync from IndexedDB
+                    await new Promise<void>((resolve) => this.pyodide!.FS.syncfs(true, () => resolve()));
+
+                    // Check cached version
+                    let cachedVersion = '';
+                    try {
+                        cachedVersion = this.pyodide.FS.readFile(`${mountDir}/version.txt`, { encoding: 'utf8' });
+                    } catch (e) {
+                        // File might not exist
+                    }
+
+                    if (cachedVersion === wheelUri && this.pyodide.FS.analyzePath(`${mountDir}/site-packages`).exists) {
+                        isCached = true;
+                    }
+                }
+
+                if (isCached) {
+                    console.log('Pyodide: Restoring packages from cache...');
+                    await this.runPythonAsync(`
+                        import sys
+                        sys.path.append("${mountDir}/site-packages")
+                    `);
+                } else {
+                    console.log('Pyodide: Installing packages...');
+                    await this.pyodide.loadPackage('micropip');
+                    const micropip = this.pyodide.pyimport('micropip') as { install: (uri: string) => Promise<void> };
+
+                    if (wheelUri) {
+                        await micropip.install(wheelUri);
+
+                        if (this.pyodide.FS) {
+                            console.log('Pyodide: Caching packages...');
+                            this.pyodide.globals.set('wheel_uri', wheelUri);
+                            this.pyodide.globals.set('mount_dir', mountDir);
+
+                            await this.runPythonAsync(`
+                                import shutil
+                                import site
+                                import os
+                                
+                                site_packages = site.getsitepackages()[0]
+                                target = f"{mount_dir}/site-packages"
+                                
+                                if os.path.exists(target):
+                                    shutil.rmtree(target)
+                                
+                                shutil.copytree(site_packages, target)
+                                
+                                with open(f"{mount_dir}/version.txt", "w") as f:
+                                    f.write(wheel_uri)
+                            `);
+
+                            await new Promise<void>((resolve) => this.pyodide!.FS.syncfs(false, () => resolve()));
+                        }
+                    }
                 }
 
                 await this.runPythonAsync(this.pythonCore);
