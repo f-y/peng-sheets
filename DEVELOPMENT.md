@@ -184,6 +184,7 @@ We bundle **Pyodide** locally instead of loading it from a CDN to ensure:
         *   `python_stdlib.zip`: Standard Python library (CRITICAL: without this, `import encodings` fails).
         *   `pyodide-lock.json`: Dependency manifest.
     *   **Wheels**:
+        *   `md-spreadsheet-parser-*.whl`: The pre-compiled bytecode wheel for the parser.
         *   `micropip` and `packaging` wheels are also bundled (copied from `node_modules` or `resources/pyodide_pkgs`) because `md-spreadsheet-parser` requires them to perform the install.
 
 3.  **Initialization (`spreadsheet-service.ts`)**:

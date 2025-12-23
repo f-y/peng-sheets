@@ -39,7 +39,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }
 
 export async function newWorkbookHandler() {
     // Get workspace folder
@@ -111,7 +111,7 @@ export function getWebviewContent(
                 'out',
                 'webview',
                 'pyodide',
-                'md_spreadsheet_parser-0.5.0-py3-none-any.whl'
+                'md_spreadsheet_parser-0.5.1-py3-none-any.whl'
             )
         );
         codiconFontUri = webview.asWebviewUri(
@@ -125,7 +125,7 @@ export function getWebviewContent(
     } else {
         scriptUri = 'http://localhost:5173/webview-ui/main.ts';
         wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.5.0-py3-none-any.whl')
+            vscode.Uri.joinPath(context.extensionUri, 'resources', 'md_spreadsheet_parser-0.5.1-py3-none-any.whl')
         );
         codiconFontUri = 'http://localhost:5173/node_modules/@vscode/codicons/dist/codicon.ttf';
         pyodideUri = 'http://localhost:5173/pyodide';
