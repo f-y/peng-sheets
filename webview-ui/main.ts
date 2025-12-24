@@ -800,7 +800,9 @@ export class MyEditor extends LitElement {
                                         ${t('deleteDocument')}
                                     </div>
                                 `}
-                          <div style="border-top: 1px solid var(--vscode-textBlockQuote-border); margin: 4px 0;"></div>
+                          <div
+                              style="border-top: 1px solid var(--vscode-textBlockQuote-border); margin: 4px 12px;"
+                          ></div>
                           <div
                               class="context-menu-item"
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
