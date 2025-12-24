@@ -589,7 +589,6 @@ export class SpreadsheetService {
 
     public deleteDocument(docIdx: number) {
         this._enqueueRequest(async () => {
-            // First call delete_document, then regenerate the workbook section
             const deleteResult = await this.runPython<IUpdateSpec>(`
                 res = delete_document(${docIdx})
                 json.dumps(res) if res else "null"
@@ -599,13 +598,6 @@ export class SpreadsheetService {
                     console.error('Delete Document failed:', deleteResult.error);
                 } else {
                     this._postUpdateMessage(deleteResult);
-
-                    // Also regenerate workbook section to update metadata
-                    const regenerateResult = await this.runPython<IUpdateSpec>(`
-                        res = generate_and_get_range()
-                        json.dumps(res) if res else "null"
-                    `);
-                    if (regenerateResult) this._postUpdateMessage(regenerateResult);
                 }
             }
         });
