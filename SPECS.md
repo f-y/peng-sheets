@@ -382,3 +382,19 @@ To achieve this, the implementation must be modular:
 *   **Renderer**: Dumb component that just renders the Model. (Canvas-based or Virtual DOM based for performance).
 *   **Input Controller**: Handles keyboard/mouse events and dispatches Commands.
 *   **Clipboard Manager**: Handles serialization/deserialization.
+
+## 19. Code Architecture Backlog
+
+Refactoring tasks for `webview-ui/main.ts` and related components.
+
+### 19.1. Tab Bar Component Extraction (Phase 4)
+- [ ] Create `<bottom-tabs>` component to encapsulate tab bar logic.
+- [ ] Properties: `tabs`, `activeIndex`, `editingIndex`.
+- [ ] Events: `tab-select`, `tab-rename`, `tab-drag`, `tab-context-menu`.
+- [ ] Move drag-and-drop, inline editing, and scroll indicator logic from `main.ts`.
+
+### 19.2. Event Handler Consolidation (Phase 5)
+- [ ] Refactor `firstUpdated()` event listeners into a Lit `ReactiveController`.
+- [ ] Create `GlobalEventController` for window-level event management.
+- [ ] Improve `disconnectedCallback()` cleanup to prevent memory leaks.
+

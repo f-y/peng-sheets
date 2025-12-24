@@ -192,9 +192,9 @@ describe('SpreadsheetTable', () => {
         expect(detail.colIndex).toBe(0);
     });
 
-    it('should emit row-delete event when deleting a selected row', () => {
+    it('should emit rows-delete event when deleting selected rows', () => {
         const spy = vi.fn();
-        element.addEventListener('row-delete', spy);
+        element.addEventListener('rows-delete', spy);
 
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = -2; // Sentinel for Row Selection
@@ -203,7 +203,7 @@ describe('SpreadsheetTable', () => {
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
-        expect(detail.rowIndex).toBe(0);
+        expect(detail.rowIndices).toContain(0);
     });
 
     it('should emit range-edit (clear) when deleting single cell', () => {
@@ -252,7 +252,7 @@ describe('SpreadsheetTable', () => {
         const rowSpy = vi.fn();
         element.addEventListener('cell-edit', cellSpy);
         element.addEventListener('range-edit', rangeSpy);
-        element.addEventListener('row-delete', rowSpy);
+        element.addEventListener('rows-delete', rowSpy);
 
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;

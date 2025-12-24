@@ -21,7 +21,7 @@ describe('SpreadsheetTable Delete Operations', () => {
         await awaitView(el);
 
         let deleteEventFired = false;
-        el.addEventListener('row-delete', () => {
+        el.addEventListener('rows-delete', () => {
             deleteEventFired = true;
         });
 
@@ -43,8 +43,8 @@ describe('SpreadsheetTable Delete Operations', () => {
         rowHeader.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, composed: true }));
         await awaitView(el);
 
-        // Expectation: Row Delete event fired
-        expect(deleteEventFired, 'Row Delete event should fire').to.be.true;
+        // Expectation: Rows Delete event fired
+        expect(deleteEventFired, 'Rows Delete event should fire').to.be.true;
     });
 
     it('handles column delete/clear when Delete key is pressed on Column Header', async () => {

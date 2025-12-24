@@ -1,15 +1,18 @@
-import { html, LitElement, PropertyValues } from 'lit';
+import { html, LitElement, PropertyValues, unsafeCSS } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem } from '@vscode/webview-ui-toolkit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { t } from './utils/i18n';
-import { mainStyles } from './styles/main-styles';
+// @ts-expect-error CSS import
+import mainStyles from './styles/main.css?inline';
 
 import './components/spreadsheet-toolbar';
 import './components/spreadsheet-table';
 import './components/spreadsheet-onboarding';
 import './components/spreadsheet-document-view';
 import './components/confirmation-modal';
+import './components/tab-context-menu';
+import './components/add-tab-dropdown';
 import './components/layout-container';
 import './components/layout-container';
 import {
@@ -66,7 +69,7 @@ import pythonCore from '../python-modules/headless_editor.py?raw';
 
 @customElement('md-spreadsheet-editor')
 export class MyEditor extends LitElement {
-    static styles = [mainStyles];
+    static styles = [unsafeCSS(mainStyles)];
 
     private spreadsheetService = new SpreadsheetService(pythonCore, vscode);
 
@@ -741,98 +744,23 @@ export class MyEditor extends LitElement {
                 <div class="scroll-indicator-right ${this.isScrollableRight ? 'visible' : ''}"></div>
             </div>
 
-            ${this.tabContextMenu
-                ? html`
-                      <div
-                          style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
-                              .x}px; background: var(--vscode-textBlockQuote-background); color: var(--vscode-foreground); border: 1px solid var(--vscode-textBlockQuote-border); border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 10000; padding: 6px 0; min-width: 220px;"
-                      >
-                          ${this.tabContextMenu.tabType === 'sheet'
-                              ? html`
-                                    <div
-                                        class="context-menu-item"
-                                        style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
-                                        @mouseover="${(e: MouseEvent) =>
-                                            ((e.target as HTMLElement).style.background =
-                                                'var(--vscode-list-hoverBackground)')}"
-                                        @mouseout="${(e: MouseEvent) =>
-                                            ((e.target as HTMLElement).style.background = 'transparent')}"
-                                        @click="${() => this._renameTab(this.tabContextMenu!.index)}"
-                                    >
-                                        ${t('renameSheet')}
-                                    </div>
-                                    <div
-                                        class="context-menu-item"
-                                        style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
-                                        @mouseover="${(e: MouseEvent) =>
-                                            ((e.target as HTMLElement).style.background =
-                                                'var(--vscode-list-hoverBackground)')}"
-                                        @mouseout="${(e: MouseEvent) =>
-                                            ((e.target as HTMLElement).style.background = 'transparent')}"
-                                        @click="${() => this._deleteSheet(this.tabContextMenu!.index)}"
-                                    >
-                                        ${t('deleteSheet')}
-                                    </div>
-                                `
-                              : html`
-                                    <div
-                                        class="context-menu-item"
-                                        style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
-                                        @mouseover="${(e: MouseEvent) =>
-                                            ((e.target as HTMLElement).style.background =
-                                                'var(--vscode-list-hoverBackground)')}"
-                                        @mouseout="${(e: MouseEvent) =>
-                                            ((e.target as HTMLElement).style.background = 'transparent')}"
-                                        @click="${() => this._renameTab(this.tabContextMenu!.index)}"
-                                    >
-                                        ${t('renameDocument')}
-                                    </div>
-                                    <div
-                                        class="context-menu-item"
-                                        style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
-                                        @mouseover="${(e: MouseEvent) =>
-                                            ((e.target as HTMLElement).style.background =
-                                                'var(--vscode-list-hoverBackground)')}"
-                                        @mouseout="${(e: MouseEvent) =>
-                                            ((e.target as HTMLElement).style.background = 'transparent')}"
-                                        @click="${() => this._deleteDocument(this.tabContextMenu!.index)}"
-                                    >
-                                        ${t('deleteDocument')}
-                                    </div>
-                                `}
-                          <div
-                              style="border-top: 1px solid var(--vscode-textBlockQuote-border); margin: 4px 12px;"
-                          ></div>
-                          <div
-                              class="context-menu-item"
-                              style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
-                              @mouseover="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
-                              @mouseout="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'transparent')}"
-                              @click="${() => this._addDocumentFromMenu()}"
-                          >
-                              ${t('addNewDocument')}
-                          </div>
-                          <div
-                              class="context-menu-item"
-                              style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
-                              @mouseover="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
-                              @mouseout="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'transparent')}"
-                              @click="${() => this._addSheetFromMenu()}"
-                          >
-                              ${t('addNewSheet')}
-                          </div>
-                      </div>
-                      <!-- Overlay to close menu on click outside -->
-                      <div
-                          style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999;"
-                          @click="${() => (this.tabContextMenu = null)}"
-                      ></div>
-                  `
-                : ''}
+            <tab-context-menu
+                .open="${this.tabContextMenu !== null}"
+                .x="${this.tabContextMenu?.x ?? 0}"
+                .y="${this.tabContextMenu?.y ?? 0}"
+                .tabType="${this.tabContextMenu?.tabType ?? 'sheet'}"
+                @rename="${() => this._renameTab(this.tabContextMenu!.index)}"
+                @delete="${() => {
+                    if (this.tabContextMenu?.tabType === 'sheet') {
+                        this._deleteSheet(this.tabContextMenu.index);
+                    } else {
+                        this._deleteDocument(this.tabContextMenu!.index);
+                    }
+                }}"
+                @add-document="${this._addDocumentFromMenu}"
+                @add-sheet="${this._addSheetFromMenu}"
+                @close="${() => (this.tabContextMenu = null)}"
+            ></tab-context-menu>
 
             <!-- Delete Confirmation Modal -->
             <confirmation-modal
@@ -859,40 +787,14 @@ export class MyEditor extends LitElement {
                 )}
             </confirmation-modal>
 
-            ${this.addTabDropdown
-                ? html`
-                      <div
-                          style="position: fixed; top: ${this.addTabDropdown.y}px; left: ${this.addTabDropdown
-                              .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
-                      >
-                          <div
-                              style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
-                              @mouseover="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
-                              @mouseout="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'transparent')}"
-                              @click="${() => this._addSheet()}"
-                          >
-                              ${t('addNewSheet')}
-                          </div>
-                          <div
-                              style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
-                              @mouseover="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
-                              @mouseout="${(e: MouseEvent) =>
-                                  ((e.target as HTMLElement).style.background = 'transparent')}"
-                              @click="${() => this._addDocument()}"
-                          >
-                              ${t('addNewDocument')}
-                          </div>
-                      </div>
-                      <!-- Overlay to close menu on click outside -->
-                      <div
-                          style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999;"
-                          @click="${() => (this.addTabDropdown = null)}"
-                      ></div>
-                  `
-                : ''}
+            <add-tab-dropdown
+                .open="${this.addTabDropdown !== null}"
+                .x="${this.addTabDropdown?.x ?? 0}"
+                .y="${this.addTabDropdown?.y ?? 0}"
+                @add-sheet="${() => this._addSheet()}"
+                @add-document="${() => this._addDocument()}"
+                @close="${() => (this.addTabDropdown = null)}"
+            ></add-tab-dropdown>
         `;
     }
 
