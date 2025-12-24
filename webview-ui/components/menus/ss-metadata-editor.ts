@@ -110,7 +110,7 @@ export class SSMetadataEditor extends LitElement {
         const isEmpty = !this.description;
         const placeholderText = this.placeholder || t('addDescription');
         return html`
-            <div class="metadata-container">
+            <div class="metadata-container ${isEmpty ? 'empty' : ''}">
                 <div class="metadata-desc ${isEmpty ? 'empty' : ''}" @click="${this._handleClick}">
                     ${this.description || html`<span class="placeholder">${placeholderText}</span>`}
                 </div>
