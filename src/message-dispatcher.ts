@@ -127,12 +127,42 @@ export class MessageDispatcher {
     }
 
     private async handleBatchUpdate(message: BatchUpdateMessage) {
-        for (const update of message.updates) {
-            const msg: UpdateRangeMessage = {
-                type: 'updateRange',
-                ...update
-            };
-            await this.handleUpdateRange(msg);
+        const activeEditor = vscode.window.visibleTextEditors.find(
+            (editor) => editor.document === this.context.activeDocument
+        );
+
+        if (!activeEditor) {
+            console.warn('Skipping batch update: No visible editor for document');
+            return;
+        }
+
+        if (message.updates.length === 0) return;
+
+        const firstUpdate = message.updates[0];
+        const lastUpdate = message.updates[message.updates.length - 1];
+
+        const success = await activeEditor.edit(
+            (editBuilder) => {
+                for (const update of message.updates) {
+                    const startPos = new vscode.Position(update.startLine, 0);
+                    // Ensure endCol is handled (default to 0 to be safe, though usually provided)
+                    const endPos = new vscode.Position(update.endLine, update.endCol ?? 0);
+                    const range = new vscode.Range(startPos, endPos);
+                    const validatedRange = this.context.activeDocument!.validateRange(range);
+
+                    if (update.content !== undefined) {
+                        editBuilder.replace(validatedRange, update.content);
+                    }
+                }
+            },
+            {
+                undoStopBefore: firstUpdate.undoStopBefore ?? true,
+                undoStopAfter: lastUpdate.undoStopAfter ?? true
+            }
+        );
+
+        if (!success) {
+            vscode.window.showErrorMessage('Failed to apply batch updates.');
         }
     }
 

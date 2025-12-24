@@ -452,19 +452,17 @@ suite('MessageDispatcher Test Suite', () => {
             ]
         });
 
-        assert.strictEqual(editorEditStub.callCount, 2, 'Should call editor.edit twice');
-        const firstCallOpts = editorEditStub.firstCall.args[1];
-        const secondCallOpts = editorEditStub.secondCall.args[1];
+        assert.strictEqual(editorEditStub.callCount, 1, 'Should call editor.edit ONCE');
+        const editOpts = editorEditStub.firstCall.args[1];
+
+        // The callback logic (calling replace) must be triggered by the stub
+        // Since our stub calls the callback immediately, replaceStub should have been called twice
+        assert.strictEqual(replaceStub.callCount, 2, 'Should call replace twice inside the edit callback');
 
         assert.deepStrictEqual(
-            firstCallOpts,
-            { undoStopBefore: true, undoStopAfter: false },
-            'First edit undo options mismatch'
-        );
-        assert.deepStrictEqual(
-            secondCallOpts,
-            { undoStopBefore: false, undoStopAfter: true },
-            'Second edit undo options mismatch'
+            editOpts,
+            { undoStopBefore: true, undoStopAfter: true },
+            'Edit options should use start of first and end of last update'
         );
     });
 });

@@ -634,6 +634,18 @@ export class SpreadsheetService {
                     `);
 
                     if (regenerateResult) {
+                        // Adjust coordinates for the second edit (metadata update)
+                        // Since we're batching them into a single transaction, both edits must target the PRE-edit document state.
+                        // The regenerateResult we got from Python is based on the POST-delete state.
+                        // So if the metadata section is AFTER the deleted section, we must shift it back (add deleted lines).
+                        const deletedCount = deleteResult.endLine - deleteResult.startLine + 1;
+                        const adjustedRegenerate = { ...regenerateResult };
+
+                        if (adjustedRegenerate.startLine >= deleteResult.startLine) {
+                            adjustedRegenerate.startLine += deletedCount;
+                            adjustedRegenerate.endLine += deletedCount;
+                        }
+
                         this._postBatchUpdateMessage([
                             {
                                 ...deleteResult,
@@ -641,7 +653,7 @@ export class SpreadsheetService {
                                 undoStopAfter: false
                             },
                             {
-                                ...regenerateResult,
+                                ...adjustedRegenerate,
                                 undoStopBefore: false,
                                 undoStopAfter: true
                             }
