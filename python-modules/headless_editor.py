@@ -802,8 +802,19 @@ def rename_document(doc_index, new_title):
 
     # Find the document section
     current_doc_index = 0
+    in_code_block = False
     for i, line in enumerate(lines):
         stripped = line.strip()
+
+        # Track code block state
+        if stripped.startswith("```"):
+            in_code_block = not in_code_block
+            continue
+
+        # Skip lines inside code blocks
+        if in_code_block:
+            continue
+
         # Check for document header (# Title)
         if stripped.startswith("#") and stripped != root_marker:
             # Count the header level
@@ -854,9 +865,19 @@ def delete_document(doc_index):
     sections = []
     current_start = None
     current_type = None
+    in_code_block = False
 
     for i, line in enumerate(lines):
         stripped = line.strip()
+
+        # Track code block state
+        if stripped.startswith("```"):
+            in_code_block = not in_code_block
+            continue
+
+        # Skip lines inside code blocks
+        if in_code_block:
+            continue
 
         # Check for section headers
         if stripped.startswith("#"):
