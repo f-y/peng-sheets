@@ -938,9 +938,9 @@ export class MyEditor extends LitElement {
     }
 
     private _handleTabDoubleClick(index: number, tab: TabDefinition) {
-        if (tab.type === 'sheet') {
+        if (tab.type === 'sheet' || tab.type === 'document') {
             this.editingTabIndex = index;
-            // Focus input after render? Lit handles it if we use ref, or simple timeout
+            // Focus input after render
             setTimeout(() => {
                 const input = this.shadowRoot?.querySelector('.tab-input') as HTMLInputElement;
                 if (input) {
