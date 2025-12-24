@@ -181,6 +181,13 @@ def add_sheet(new_name, column_names=None):
         # Update tab_order metadata to include the new sheet
         current_metadata = dict(workbook.metadata) if workbook.metadata else {}
         tab_order = list(current_metadata.get("tab_order", []))
+
+        # If tab_order is empty, initialize with all existing sheets first
+        # This ensures new sheet is appended to end, not at beginning
+        if not tab_order and new_sheet_index > 0:
+            for i in range(new_sheet_index):
+                tab_order.append({"type": "sheet", "index": i})
+
         # Add new sheet entry at the end of tab_order
         tab_order.append({"type": "sheet", "index": new_sheet_index})
         current_metadata["tab_order"] = tab_order
@@ -739,6 +746,14 @@ def add_document(
     if workbook is not None:
         current_metadata = dict(workbook.metadata) if workbook.metadata else {}
         tab_order = list(current_metadata.get("tab_order", []))
+
+        # If tab_order is empty, initialize with all existing sheets and documents first
+        # This ensures new item is appended to end, not at beginning
+        if not tab_order:
+            # Add all existing sheets
+            for i in range(len(workbook.sheets)):
+                tab_order.append({"type": "sheet", "index": i})
+            # Note: documents are added to tab_order in this function, so no need to add existing docs
 
         # Calculate the actual docIndex for the new document
         # When inserting after doc N, the new doc will be at position N+1 in file order
