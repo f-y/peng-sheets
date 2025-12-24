@@ -964,19 +964,10 @@ export class MyEditor extends LitElement {
         // Show custom context menu for sheet and document tabs
         if (tab.type !== 'sheet' && tab.type !== 'document') return;
 
-        // Position menu at click point, but adjust if it would go off-screen
-        const menuHeight = 180;
-        const viewportHeight = window.innerHeight;
-        let menuY = e.clientY;
-
-        // If menu would extend below viewport, show above click point
-        if (menuY + menuHeight > viewportHeight) {
-            menuY = e.clientY - menuHeight;
-        }
-
+        // Position menu at click point; dynamic adjustment happens in updated() lifecycle
         this.tabContextMenu = {
             x: e.clientX,
-            y: menuY,
+            y: e.clientY,
             index: index,
             tabType: tab.type
         };
@@ -1445,6 +1436,22 @@ export class MyEditor extends LitElement {
         if (changedProperties.has('tabs') || changedProperties.has('activeTabIndex')) {
             // Defer to ensure layout is complete
             setTimeout(() => this._checkScrollOverflow(), 0);
+        }
+
+        // Adjust context menu position after render using actual measured height
+        if (changedProperties.has('tabContextMenu') && this.tabContextMenu) {
+            setTimeout(() => {
+                const menuEl = this.shadowRoot?.querySelector('[style*="position: fixed"]') as HTMLElement;
+                if (menuEl) {
+                    const rect = menuEl.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight;
+                    if (rect.bottom > viewportHeight) {
+                        // Menu extends below viewport, reposition above click point
+                        const newY = this.tabContextMenu!.y - rect.height;
+                        this.tabContextMenu = { ...this.tabContextMenu!, y: newY };
+                    }
+                }
+            }, 0);
         }
     }
 
