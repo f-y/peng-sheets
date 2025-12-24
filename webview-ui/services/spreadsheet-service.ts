@@ -213,11 +213,35 @@ export class SpreadsheetService {
                 undoStopBefore: options.undoStopBefore,
                 undoStopAfter: options.undoStopAfter
             });
+
             // _isSyncing remains true until Extension sends 'update'
         } else {
             console.error('Operation failed: ', updateSpec?.error);
             this._isSyncing = false;
             this._scheduleProcessQueue();
+        }
+    }
+
+    private _postBatchUpdateMessage(updates: ({ undoStopBefore?: boolean; undoStopAfter?: boolean } & IUpdateSpec)[]) {
+        if (this._isBatching) {
+            console.warn('Batching not supported for batch updates yet');
+            return;
+        }
+
+        const validUpdates = updates.filter((u) => u && !u.error && u.startLine !== undefined);
+
+        if (validUpdates.length > 0) {
+            this.vscode.postMessage({
+                type: 'batchUpdate',
+                updates: validUpdates.map((u) => ({
+                    startLine: u.startLine!,
+                    endLine: u.endLine!,
+                    endCol: u.endCol,
+                    content: u.content!,
+                    undoStopBefore: u.undoStopBefore,
+                    undoStopAfter: u.undoStopAfter
+                }))
+            });
         }
     }
 
@@ -603,21 +627,29 @@ export class SpreadsheetService {
                 if (deleteResult.error) {
                     console.error('Delete Document failed:', deleteResult.error);
                 } else {
-                    this._postUpdateMessage(deleteResult, {
-                        undoStopBefore: true,
-                        undoStopAfter: false
-                    });
-
                     // Also regenerate workbook section to update metadata
                     const regenerateResult = await this.runPython<IUpdateSpec>(`
                         res = generate_and_get_range()
                         json.dumps(res) if res else "null"
                     `);
-                    if (regenerateResult)
-                        this._postUpdateMessage(regenerateResult, {
-                            undoStopBefore: false,
-                            undoStopAfter: true
-                        });
+
+                    if (regenerateResult) {
+                        this._postBatchUpdateMessage([
+                            {
+                                ...deleteResult,
+                                undoStopBefore: true,
+                                undoStopAfter: false
+                            },
+                            {
+                                ...regenerateResult,
+                                undoStopBefore: false,
+                                undoStopAfter: true
+                            }
+                        ]);
+                    } else {
+                        // Fallback if regenerate fails (shouldn't happen)
+                        this._postUpdateMessage(deleteResult);
+                    }
                 }
             }
         });

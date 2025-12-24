@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { WebviewMessage, UpdateRangeMessage } from './types/messages';
+import { WebviewMessage, UpdateRangeMessage, BatchUpdateMessage } from './types/messages';
 import { getDefaultColumnNames } from './i18n-utils';
 
 export interface HandlerContext {
@@ -39,6 +39,9 @@ export class MessageDispatcher {
             case 'updateRange':
                 await this.handleUpdateRange(message);
                 break;
+            case 'batchUpdate':
+                await this.handleBatchUpdate(message);
+                break;
             case 'createSpreadsheet':
                 await this.handleCreateSpreadsheet();
                 break;
@@ -61,7 +64,7 @@ export class MessageDispatcher {
             typeof message === 'object' &&
             typeof msg.type === 'string' &&
             typeof msg.type === 'string' &&
-            ['updateRange', 'createSpreadsheet', 'save', 'undo', 'redo'].includes(msg.type)
+            ['updateRange', 'batchUpdate', 'createSpreadsheet', 'save', 'undo', 'redo'].includes(msg.type)
         );
     }
 
@@ -120,6 +123,16 @@ export class MessageDispatcher {
                 console.error('Workspace edit failed');
                 vscode.window.showErrorMessage('Failed to update spreadsheet: Document version conflict.');
             }
+        }
+    }
+
+    private async handleBatchUpdate(message: BatchUpdateMessage) {
+        for (const update of message.updates) {
+            const msg: UpdateRangeMessage = {
+                type: 'updateRange',
+                ...update
+            };
+            await this.handleUpdateRange(msg);
         }
     }
 

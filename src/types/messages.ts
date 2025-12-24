@@ -8,6 +8,11 @@ export interface UpdateRangeMessage {
     undoStopAfter?: boolean;
 }
 
+export interface BatchUpdateMessage {
+    type: 'batchUpdate';
+    updates: Omit<UpdateRangeMessage, 'type'>[];
+}
+
 export interface UndoMessage {
     type: 'undo';
 }
@@ -31,4 +36,10 @@ export interface UpdateOrConfigMessage {
     config?: unknown;
 }
 
-export type WebviewMessage = UpdateRangeMessage | UndoMessage | RedoMessage | CreateSpreadsheetMessage | SaveMessage;
+export type WebviewMessage =
+    | UpdateRangeMessage
+    | BatchUpdateMessage
+    | UndoMessage
+    | RedoMessage
+    | CreateSpreadsheetMessage
+    | SaveMessage;

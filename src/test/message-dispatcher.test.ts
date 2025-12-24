@@ -415,4 +415,56 @@ suite('MessageDispatcher Test Suite', () => {
             'Messages should be processed sequentially'
         );
     });
+
+    test('batchUpdate: Should process updates sequentially', async () => {
+        const replaceStub = sandbox.stub();
+        const editorEditStub = sandbox.stub().callsFake(async (callback) => {
+            callback({ replace: replaceStub });
+            return true;
+        });
+
+        const activeEditor = {
+            document: mockContext.activeDocument,
+            edit: editorEditStub,
+            viewColumn: vscode.ViewColumn.One
+        } as unknown as vscode.TextEditor;
+
+        sandbox.stub(vscode.window, 'visibleTextEditors').get(() => [activeEditor]);
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({
+            type: 'batchUpdate',
+            updates: [
+                {
+                    startLine: 0,
+                    endLine: 1,
+                    content: 'Heads',
+                    undoStopBefore: true,
+                    undoStopAfter: false
+                },
+                {
+                    startLine: 10,
+                    endLine: 11,
+                    content: 'Tails',
+                    undoStopBefore: false,
+                    undoStopAfter: true
+                }
+            ]
+        });
+
+        assert.strictEqual(editorEditStub.callCount, 2, 'Should call editor.edit twice');
+        const firstCallOpts = editorEditStub.firstCall.args[1];
+        const secondCallOpts = editorEditStub.secondCall.args[1];
+
+        assert.deepStrictEqual(
+            firstCallOpts,
+            { undoStopBefore: true, undoStopAfter: false },
+            'First edit undo options mismatch'
+        );
+        assert.deepStrictEqual(
+            secondCallOpts,
+            { undoStopBefore: false, undoStopAfter: true },
+            'Second edit undo options mismatch'
+        );
+    });
 });
