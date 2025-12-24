@@ -745,7 +745,7 @@ export class MyEditor extends LitElement {
                 ? html`
                       <div
                           style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
-                              .x}px; background: #3c3c3c; border: 1px solid #6b6b6b; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1); z-index: 10000; padding: 6px 0; min-width: 200px;"
+                              .x}px; background: #4a4a4a; border: 1px solid #5a5a5a; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); z-index: 10000; padding: 8px 0; min-width: 200px;"
                       >
                           ${this.tabContextMenu.tabType === 'sheet'
                               ? html`
