@@ -95,7 +95,10 @@ export class MessageDispatcher {
                 (editBuilder) => {
                     editBuilder.replace(targetRange, message.content);
                 },
-                { undoStopBefore: true, undoStopAfter: true }
+                {
+                    undoStopBefore: message.undoStopBefore ?? true,
+                    undoStopAfter: message.undoStopAfter ?? true
+                }
             );
 
             if (!success) {

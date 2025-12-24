@@ -186,7 +186,10 @@ export class SpreadsheetService {
         }
     }
 
-    private _postUpdateMessage(updateSpec: IUpdateSpec) {
+    private _postUpdateMessage(
+        updateSpec: IUpdateSpec,
+        options: { undoStopBefore?: boolean; undoStopAfter?: boolean } = {}
+    ) {
         if (this._isBatching) {
             if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
                 this._pendingUpdateSpec = {
@@ -206,7 +209,9 @@ export class SpreadsheetService {
                 startLine: updateSpec.startLine,
                 endLine: updateSpec.endLine,
                 endCol: updateSpec.endCol, // Forward endCol if present
-                content: updateSpec.content
+                content: updateSpec.content,
+                undoStopBefore: options.undoStopBefore,
+                undoStopAfter: options.undoStopAfter
             });
             // _isSyncing remains true until Extension sends 'update'
         } else {
@@ -589,6 +594,7 @@ export class SpreadsheetService {
 
     public deleteDocument(docIdx: number) {
         this._enqueueRequest(async () => {
+            // First call delete_document, then regenerate the workbook section
             const deleteResult = await this.runPython<IUpdateSpec>(`
                 res = delete_document(${docIdx})
                 json.dumps(res) if res else "null"
@@ -597,7 +603,21 @@ export class SpreadsheetService {
                 if (deleteResult.error) {
                     console.error('Delete Document failed:', deleteResult.error);
                 } else {
-                    this._postUpdateMessage(deleteResult);
+                    this._postUpdateMessage(deleteResult, {
+                        undoStopBefore: true,
+                        undoStopAfter: false
+                    });
+
+                    // Also regenerate workbook section to update metadata
+                    const regenerateResult = await this.runPython<IUpdateSpec>(`
+                        res = generate_and_get_range()
+                        json.dumps(res) if res else "null"
+                    `);
+                    if (regenerateResult)
+                        this._postUpdateMessage(regenerateResult, {
+                            undoStopBefore: false,
+                            undoStopAfter: true
+                        });
                 }
             }
         });

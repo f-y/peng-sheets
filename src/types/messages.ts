@@ -4,6 +4,8 @@ export interface UpdateRangeMessage {
     endLine: number;
     endCol?: number;
     content: string;
+    undoStopBefore?: boolean;
+    undoStopAfter?: boolean;
 }
 
 export interface UndoMessage {
