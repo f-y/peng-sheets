@@ -115,6 +115,7 @@ def generate_and_get_range():
     if not workbook or not workbook.sheets:
         new_md = ""
     else:
+        assert schema is not None  # Schema should be set after initialize()
         new_md = generate_workbook_markdown(workbook, schema)
 
     # Determine replacement range

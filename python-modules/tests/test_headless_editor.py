@@ -42,7 +42,8 @@ def test_add_sheet():
     res = add_sheet("Sheet2")
     assert "content" in res
     assert "## Sheet2" in res["content"]
-    assert "| A | B | C |" in res["content"]
+    # Column names are now localized (e.g., "Column 1", "Column 2", "Column 3")
+    assert "| Column 1 | Column 2 | Column 3 |" in res["content"]
     assert len(headless_editor.workbook.sheets) == 2
 
 

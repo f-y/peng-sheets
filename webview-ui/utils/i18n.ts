@@ -60,6 +60,7 @@ const translations = {
         clickToEdit: 'Click to edit',
         pressEscapeToCancel: 'Press Escape to cancel',
         addNewSheet: 'Add New Sheet',
+        addNewDocument: 'Add New Document',
         newSpreadsheet: 'New Spreadsheet'
     },
     ja: {
@@ -123,6 +124,7 @@ const translations = {
         clickToEdit: 'クリックして編集',
         pressEscapeToCancel: 'Escキーでキャンセル',
         addNewSheet: '新しいシートを追加',
+        addNewDocument: '新しいドキュメントを追加',
         newSpreadsheet: '新しいスプレッドシート'
     }
 };

@@ -65,6 +65,10 @@ export interface DocumentJSON {
 
 export interface WorkbookJSON {
     sheets: SheetJSON[];
+    metadata?: {
+        tab_order?: Array<{ type: string; index: number }>;
+        [key: string]: unknown;
+    };
 }
 
 export interface TabDefinition {

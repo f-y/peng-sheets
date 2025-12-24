@@ -161,6 +161,8 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 
 <!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VZdoVuAp4BkC0IUeVll1Q", "direction": "vertical", "sizes": [44.315245478036175, 55.684754521963825], "children": [{"type": "pane", "id": "root", "tables": [0], "activeTableIndex": 0}, {"type": "pane", "id": "YAH8An6xc74WWoWVeZvs6", "tables": [1], "activeTableIndex": 0}]}} -->
 
+<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "document", "index": 1}, {"type": "sheet", "index": 1}, {"type": "sheet", "index": 2}]} -->
+
 
 # Appendix
 

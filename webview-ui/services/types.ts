@@ -5,6 +5,12 @@ export interface IPyodideFS {
     readFile(path: string, opts?: { encoding?: string }): string;
     analyzePath(path: string): { exists: boolean };
     filesystems: { IDBFS: { [key: string]: unknown } };
+    // Additional FS methods for cache management
+    stat(path: string): { mode: number };
+    isDir(mode: number): boolean;
+    readdir(path: string): string[];
+    rmdir(path: string): void;
+    unlink(path: string): void;
 }
 
 export interface IPyodide {
