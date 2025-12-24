@@ -14,6 +14,7 @@ import './components/tab-context-menu';
 import './components/add-tab-dropdown';
 import './components/bottom-tabs';
 import './components/layout-container';
+import { GlobalEventController } from './controllers/global-event-controller';
 import {
     SheetJSON,
     DocumentJSON,
@@ -35,10 +36,6 @@ import {
     IRequestRenameTableDetail,
     IRequestDeleteTableDetail,
     IPasteCellsDetail,
-    ICellEditDetail,
-    IRangeEditDetail,
-    IRowOperationDetail,
-    IColumnOperationDetail,
     IColumnResizeDetail,
     IColumnFilterDetail
 } from './types';
@@ -71,6 +68,10 @@ export class MyEditor extends LitElement {
     static styles = [unsafeCSS(mainStyles)];
 
     private spreadsheetService = new SpreadsheetService(pythonCore, vscode);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    private _globalEventController = new GlobalEventController(
+        this as unknown as import('./controllers/global-event-controller').GlobalEventHost
+    );
 
     @state()
     output: string = '';
@@ -431,146 +432,14 @@ export class MyEditor extends LitElement {
         } catch (e) {
             console.error('Error loading initial content:', e);
         }
-        window.addEventListener('keydown', this._boundHandleKeyDown, true);
-
-        window.addEventListener('rows-delete', (e: Event) => {
-            const detail = (e as CustomEvent).detail;
-            this._handleDeleteRows(detail.sheetIndex, detail.tableIndex, detail.rowIndices);
-        });
-    }
-
-    disconnectedCallback() {
-        super.disconnectedCallback();
-        window.removeEventListener('keydown', this._boundHandleKeyDown, true);
-    }
-
-    private _boundHandleKeyDown = this._handleGlobalKeyDown.bind(this);
-
-    private _handleGlobalKeyDown(e: KeyboardEvent) {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-            e.preventDefault();
-            this._handleSave();
-        }
+        // Event listeners are now managed by GlobalEventController
     }
 
     async firstUpdated() {
         try {
             await this.spreadsheetService.initialize();
             console.log('Spreadsheet Service initialized.');
-
-            window.addEventListener('cell-edit', (e: Event) => {
-                const detail = (e as CustomEvent<ICellEditDetail>).detail;
-                this._handleRangeEdit(
-                    detail.sheetIndex,
-                    detail.tableIndex,
-                    detail.rowIndex,
-                    detail.rowIndex,
-                    detail.colIndex,
-                    detail.colIndex,
-                    detail.newValue
-                );
-            });
-
-            window.addEventListener('range-edit', (e: Event) => {
-                const detail = (e as CustomEvent<IRangeEditDetail>).detail;
-                this._handleRangeEdit(
-                    detail.sheetIndex,
-                    detail.tableIndex,
-                    detail.startRow,
-                    detail.endRow,
-                    detail.startCol,
-                    detail.endCol,
-                    detail.newValue
-                );
-            });
-
-            window.addEventListener('row-delete', (e: Event) => {
-                const detail = (e as CustomEvent<IRowOperationDetail>).detail;
-                this._handleDeleteRow(detail.sheetIndex, detail.tableIndex, detail.rowIndex);
-            });
-
-            window.addEventListener('row-insert', (e: Event) => {
-                const detail = (e as CustomEvent<IRowOperationDetail>).detail;
-                this._handleInsertRow(detail.sheetIndex, detail.tableIndex, detail.rowIndex);
-            });
-
-            window.addEventListener('column-delete', (e: Event) => {
-                const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
-                this._handleDeleteColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
-            });
-
-            window.addEventListener('column-insert', (e: Event) => {
-                const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
-                this._handleInsertColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
-            });
-
-            window.addEventListener('column-clear', (e: Event) => {
-                const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
-                this._handleClearColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
-            });
-
-            window.addEventListener('column-resize', (e: Event) =>
-                this._handleColumnResize((e as CustomEvent<IColumnResizeDetail>).detail)
-            );
-            window.addEventListener('metadata-edit', (e: Event) =>
-                this._handleMetadataEdit((e as CustomEvent<IMetadataEditDetail>).detail)
-            );
-            window.addEventListener('metadata-update', (e: Event) =>
-                this._handleMetadataUpdate((e as CustomEvent<IMetadataUpdateDetail>).detail)
-            );
-            window.addEventListener('request-add-table', (e: Event) =>
-                this._handleRequestAddTable((e as CustomEvent<IRequestAddTableDetail>).detail)
-            );
-            window.addEventListener('request-rename-table', (e: Event) =>
-                this._handleRequestRenameTable((e as CustomEvent<IRequestRenameTableDetail>).detail)
-            );
-            window.addEventListener('request-delete-table', (e: Event) =>
-                this._handleRequestDeleteTable((e as CustomEvent<IRequestDeleteTableDetail>).detail)
-            );
-            window.addEventListener('metadata-change', (e: Event) =>
-                this._handleVisualMetadataUpdate((e as CustomEvent<IVisualMetadataUpdateDetail>).detail)
-            );
-            window.addEventListener('sheet-metadata-update', (e: Event) =>
-                this._handleSheetMetadataUpdate((e as CustomEvent<ISheetMetadataUpdateDetail>).detail)
-            );
-            window.addEventListener('paste-cells', (e: Event) =>
-                this._handlePasteCells((e as CustomEvent<IPasteCellsDetail>).detail)
-            );
-            window.addEventListener('post-message', (e: Event) =>
-                this._handlePostMessage((e as CustomEvent<PostMessageCommand>).detail)
-            );
-            window.addEventListener('document-change', (e: Event) =>
-                this._handleDocumentChange(
-                    (
-                        e as CustomEvent<{
-                            sectionIndex: number;
-                            content: string;
-                            title?: string;
-                            save?: boolean;
-                        }>
-                    ).detail
-                )
-            );
-
-            window.addEventListener('message', async (event) => {
-                const message = event.data;
-                switch (message.type) {
-                    case 'update':
-                        this.markdownInput = message.content;
-                        await this._parseWorkbook();
-                        this.spreadsheetService.notifyUpdateReceived();
-                        break;
-                    case 'configUpdate':
-                        this.config = message.config;
-                        await this._parseWorkbook();
-                        break;
-                    case 'sync-failed':
-                        // Error recovery
-                        console.warn('Sync failed, resetting queue state.');
-                        this.spreadsheetService.notifyUpdateReceived();
-                        break;
-                }
-            });
+            // Event listeners are now managed by GlobalEventController
 
             console.log('Pyodide initialized. Parsing initial content...');
             await this._parseWorkbook();
