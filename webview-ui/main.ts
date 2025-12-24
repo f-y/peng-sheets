@@ -964,8 +964,15 @@ export class MyEditor extends LitElement {
         // Show custom context menu for sheet and document tabs
         if (tab.type !== 'sheet' && tab.type !== 'document') return;
 
-        // Position menu at click point (simple approach)
-        const menuY = e.clientY;
+        // Position menu at click point, but adjust if it would go off-screen
+        const menuHeight = 180;
+        const viewportHeight = window.innerHeight;
+        let menuY = e.clientY;
+
+        // If menu would extend below viewport, show above click point
+        if (menuY + menuHeight > viewportHeight) {
+            menuY = e.clientY - menuHeight;
+        }
 
         this.tabContextMenu = {
             x: e.clientX,
