@@ -174,9 +174,17 @@ def add_sheet(new_name, column_names=None):
         new_sheet = Sheet(name=new_name, tables=[new_table])
 
         new_sheets = list(workbook.sheets)
+        new_sheet_index = len(new_sheets)  # Index of the new sheet
         new_sheets.append(new_sheet)
 
-        workbook = replace(workbook, sheets=new_sheets)
+        # Update tab_order metadata to include the new sheet
+        current_metadata = dict(workbook.metadata) if workbook.metadata else {}
+        tab_order = list(current_metadata.get("tab_order", []))
+        # Add new sheet entry at the end of tab_order
+        tab_order.append({"type": "sheet", "index": new_sheet_index})
+        current_metadata["tab_order"] = tab_order
+
+        workbook = replace(workbook, sheets=new_sheets, metadata=current_metadata)
         return generate_and_get_range()
     except Exception as e:
         return {"error": str(e)}
@@ -221,7 +229,7 @@ def rename_sheet(sheet_idx, new_name):
     return apply_sheet_update(sheet_idx, lambda s: replace(s, name=new_name))
 
 
-def move_sheet(from_index, to_index):
+def move_sheet(from_index, to_index, target_tab_order_index=None):
     def wb_transform(wb):
         new_sheets = list(wb.sheets)
         if from_index < 0 or from_index >= len(new_sheets):
@@ -234,7 +242,39 @@ def move_sheet(from_index, to_index):
         insert_idx = max(0, min(to_index, len(new_sheets)))
 
         new_sheets.insert(insert_idx, sheet)
-        return replace(wb, sheets=new_sheets)
+        wb = replace(wb, sheets=new_sheets)
+
+        if target_tab_order_index is not None:
+            wb = _reorder_tab_metadata(
+                wb, "sheet", from_index, insert_idx, target_tab_order_index
+            )
+
+        return wb
+
+    return apply_workbook_update(wb_transform)
+
+
+def update_workbook_tab_order(tab_order):
+    """
+    Update the tab display order in workbook metadata.
+
+    Args:
+        tab_order: List of dicts describing tab order, e.g.:
+            [
+                {"type": "document", "index": 0},
+                {"type": "sheet", "index": 0},
+                {"type": "sheet", "index": 1},
+                {"type": "document", "index": 1}
+            ]
+
+    Returns:
+        dict with 'content', 'startLine', 'endLine' or 'error' if failed
+    """
+
+    def wb_transform(wb):
+        current_metadata = dict(wb.metadata) if wb.metadata else {}
+        current_metadata["tab_order"] = tab_order
+        return replace(wb, metadata=current_metadata)
 
     return apply_workbook_update(wb_transform)
 
@@ -599,6 +639,431 @@ def get_document_section_range(wb, section_index):
     return {"start_line": target["start"], "end_line": end_line, "end_col": end_col}
 
 
+def add_document(
+    title, after_doc_index=-1, after_workbook=False, insert_after_tab_order_index=-1
+):
+    """
+    Add a new document section to the markdown.
+
+    Args:
+        title: Title for the new document (# Title)
+        after_doc_index: Insert after this document index (-1 for beginning)
+        after_workbook: If True, insert after the workbook section
+        insert_after_tab_order_index: Position in tab_order to insert after (-1 = append)
+
+    Returns:
+        dict with 'content', 'startLine', 'endLine', 'file_changed' or 'error'
+    """
+    global md_text, config, workbook
+
+    if not title:
+        title = "New Document"
+
+    config_dict = json.loads(config) if config else {}
+    root_marker = config_dict.get("rootMarker", "# Tables")
+
+    lines = md_text.split("\n")
+    sections = []
+    current_start = None
+    current_type = None
+
+    in_code_block = False
+
+    for i, line in enumerate(lines):
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+
+        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
+            if current_start is not None:
+                sections.append(
+                    {"start": current_start, "end": i - 1, "type": current_type}
+                )
+
+            stripped = line.strip()
+            if stripped == root_marker:
+                current_type = "workbook"
+            else:
+                current_type = "document"
+            current_start = i
+
+    if current_start is not None:
+        sections.append(
+            {"start": current_start, "end": len(lines) - 1, "type": current_type}
+        )
+
+    # Determine insertion point
+    insert_line = 0
+    doc_count = 0
+
+    if after_workbook:
+        # Find workbook and insert after it
+        for s in sections:
+            if s["type"] == "workbook":
+                insert_line = s["end"] + 1
+                break
+    elif after_doc_index >= 0:
+        # Find the specific document and insert after it
+        for s in sections:
+            if s["type"] == "document":
+                if doc_count == after_doc_index:
+                    insert_line = s["end"] + 1
+                    break
+                doc_count += 1
+        else:
+            # If index not found, insert at end of file
+            insert_line = len(lines)
+    else:
+        # Insert at beginning (before first section or at line 0)
+        insert_line = 0
+
+    # Create new document content (with blank line separator)
+    new_doc_content = f"# {title}\n\n"
+
+    # Update md_text to include the new document
+    # This is critical for subsequent calls like generate_and_get_range() to work correctly
+    # Split new_doc_content into lines and insert them
+    new_lines = new_doc_content.split("\n")
+    # Remove trailing empty string from split (if content ends with \n)
+    if new_lines and new_lines[-1] == "":
+        new_lines = new_lines[:-1]
+    for i, line in enumerate(new_lines):
+        lines.insert(insert_line + i, line)
+    md_text = "\n".join(lines)
+
+    # Calculate the edit range
+    # We're inserting new content, so startLine = endLine = insert_line
+    # The frontend will insert the content at that position
+
+    # Update tab_order in workbook metadata
+    if workbook is not None:
+        current_metadata = dict(workbook.metadata) if workbook.metadata else {}
+        tab_order = list(current_metadata.get("tab_order", []))
+
+        # Calculate the actual docIndex for the new document
+        # When inserting after doc N, the new doc will be at position N+1 in file order
+        if after_doc_index >= 0:
+            new_doc_index = after_doc_index + 1
+        else:
+            # Inserting at beginning - new doc will be docIndex 0
+            new_doc_index = 0
+
+        # Increment indices of all documents >= new_doc_index in tab_order
+        for i, entry in enumerate(tab_order):
+            if (
+                entry.get("type") == "document"
+                and entry.get("index", -1) >= new_doc_index
+            ):
+                tab_order[i] = {"type": "document", "index": entry["index"] + 1}
+
+        # Create new document entry
+        new_doc_entry = {"type": "document", "index": new_doc_index}
+
+        # Insert at specified position or append
+        if insert_after_tab_order_index >= 0:
+            # Insert after the specified index (clamped to valid range)
+            insert_pos = min(insert_after_tab_order_index + 1, len(tab_order))
+            tab_order.insert(insert_pos, new_doc_entry)
+        else:
+            # Append to end (default behavior)
+            tab_order.append(new_doc_entry)
+
+        current_metadata["tab_order"] = tab_order
+        workbook = replace(workbook, metadata=current_metadata)
+
+    return {
+        "content": new_doc_content,
+        "startLine": insert_line,
+        "endLine": insert_line,
+        "file_changed": True,
+    }
+
+
+def move_document_section(
+    from_doc_index,
+    to_doc_index=None,
+    to_after_workbook=False,
+    to_before_workbook=False,
+    target_tab_order_index=None,
+):
+    """
+    Move a document section to a new position.
+
+
+    Document-to-Document moves always require file changes because
+    we're physically reordering sections in the Markdown.
+
+    Args:
+        from_doc_index: Index of document to move
+        to_doc_index: Target document index position (optional)
+        to_after_workbook: Move to immediately after workbook
+        to_before_workbook: Move to immediately before workbook
+        target_tab_order_index: Optional target index in tab_order list for metadata update
+
+    Returns:
+        dict with 'content', 'startLine', 'endLine', 'file_changed' or 'error'
+    """
+    global md_text, config, workbook
+
+    config_dict = json.loads(config) if config else {}
+    root_marker = config_dict.get("rootMarker", "# Tables")
+
+    lines = md_text.split("\n")
+    sections = []
+    current_start = None
+    current_type = None
+
+    in_code_block = False
+
+    for i, line in enumerate(lines):
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+
+        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
+            if current_start is not None:
+                sections.append(
+                    {"start": current_start, "end": i - 1, "type": current_type}
+                )
+
+            stripped = line.strip()
+            if stripped == root_marker:
+                current_type = "workbook"
+            else:
+                current_type = "document"
+            current_start = i
+
+    if current_start is not None:
+        sections.append(
+            {"start": current_start, "end": len(lines) - 1, "type": current_type}
+        )
+
+    # Get document sections
+    doc_sections = [(i, s) for i, s in enumerate(sections) if s["type"] == "document"]
+
+    if from_doc_index < 0 or from_doc_index >= len(doc_sections):
+        return {"error": f"Invalid source document index: {from_doc_index}"}
+
+    # Check for no-op (same position)
+    if (
+        to_doc_index is not None
+        and from_doc_index == to_doc_index
+        and target_tab_order_index is None
+    ):
+        return {"file_changed": False, "metadata_changed": False}
+
+    # Get source document
+    source_section_idx, source_section = doc_sections[from_doc_index]
+    source_start = source_section["start"]
+    source_end = source_section["end"]
+
+    # Extract source content
+    source_lines = lines[source_start : source_end + 1]
+
+    # Determin target position physically
+    target_line = 0
+    calculated_to_doc_index = to_doc_index
+
+    if to_after_workbook:
+        for s in sections:
+            if s["type"] == "workbook":
+                target_line = s["end"] + 1
+                break
+        # Moving to after workbook means becoming the first document *after* workbook?
+        # Or just adjusting position?
+        # We need actual numeric index for metadata update.
+        # This logic is a bit complex for metadata mapping without explicit to_doc_index.
+        # But if to_after_workbook is used, it usually means appending or moving to specific spot.
+    elif to_before_workbook:
+        for s in sections:
+            if s["type"] == "workbook":
+                target_line = s["start"]
+                break
+    elif to_doc_index is not None:
+        if to_doc_index >= len(doc_sections):
+            # Move to end
+            target_line = len(lines)
+        else:
+            _, target_section = doc_sections[to_doc_index]
+            target_line = target_section["start"]
+    else:
+        return {"error": "No target position specified"}
+
+    # If to_doc_index is None (using flags), we need to infer it for metadata update
+    # But for now let's assume UI passes to_doc_index correctly when reusing this for reorder.
+
+    # Build new content by removing source and inserting at target
+    new_lines = []
+    inserted = False
+
+    for i, line in enumerate(lines):
+        # Skip source lines
+        if source_start <= i <= source_end:
+            continue
+
+        # Insert at target position (adjusted for removed lines)
+        adjusted_target = (
+            target_line
+            if target_line <= source_start
+            else target_line - (source_end - source_start + 1)
+        )
+        current_pos = len(new_lines)
+
+        if not inserted and current_pos >= adjusted_target:
+            new_lines.extend(source_lines)
+            inserted = True
+
+        new_lines.append(line)
+
+    # If not inserted yet (target was at end)
+    if not inserted:
+        new_lines.extend(source_lines)
+
+    new_md = "\n".join(new_lines)
+
+    # Update tab_order in workbook metadata
+    updated_workbook = workbook
+    if workbook is not None and target_tab_order_index is not None:
+        # Determine actual to_doc_index for metadata logic
+        # If we moved physically, we simply need to Apply the same index shift logic
+        # move_sheet logic: pop from_index, insert at to_index
+        # We need effective to_index.
+        effective_to_index = to_doc_index if to_doc_index is not None else 0  # Fallback
+
+        updated_workbook = _reorder_tab_metadata(
+            workbook,
+            "document",
+            from_doc_index,
+            effective_to_index,
+            target_tab_order_index,
+        )
+    elif workbook is not None:
+        # Just update indices without changing tab_order list order?
+        # Or if no target_tab_order_index is strictly provided but to_doc_index IS provided (reorder case)
+        # For simplicity, Require target_tab_order_index (passed from UI) to trigger metadata fix.
+        pass
+
+    if updated_workbook != workbook:
+        workbook = updated_workbook
+
+    # Return the full new content for the file
+    return {
+        "content": new_md,
+        "startLine": 0,
+        "endLine": len(lines) - 1,
+        "file_changed": True,
+        "metadata_changed": True,
+    }
+
+
+def _reorder_tab_metadata(wb, item_type, from_idx, to_idx, target_tab_order_index):
+    """
+    Updates tab_order metadata after a physical move of a sheet or document.
+    1. Updates 'index' property of all items of `item_type`.
+    2. Moves the item in the `tab_order` list to `target_tab_order_idx`.
+    """
+    if not wb or not wb.metadata:
+        return wb
+
+    metadata = dict(wb.metadata)
+    tab_order = list(metadata.get("tab_order", []))
+
+    if not tab_order:
+        return wb
+
+    # 1. Update indices based on physical move
+    # Logic matches python list behavior: pop(from), insert(to)
+    # So indices shift.
+
+    # Calculate shift for items of the same type
+    # If from < to: items between from+1 and to get -1 (they move 'up' to fill gap)
+    # If from > to: items between to and from-1 get +1 (they move 'down' to make room)
+
+    # Note: to_idx logic in move_sheet/move_doc might differ slightly on boundary condition ("before" vs "after")
+    # In move_sheet: insert_idx = max(0, min(to_index, len(new_sheets))) -> this is index in LIST *after* pop.
+
+    # We need to apply this index mapping to all items in tab_order
+
+    clamped_from = from_idx
+    # We assume valid range from caller
+
+    # Effective insertion index behavior
+    # If moving 0 to 2 (list size 3: A,B,C -> B,C,A)
+    # A becomes 2. B(1)->0. C(2)->1.
+
+    # Map old_index -> new_index
+    index_map = {}
+
+    # Count total items of this type
+    count = 0
+
+    # It's easier to simulate the list move to generate the map
+    # Create list of indices [0, 1, 2, ...]
+    # Perform the move
+    # record where each number ended up.
+
+    # We need to know COUNT of items of item_type to create the dummy list.
+    # We can infer max index from tab_order, or just assume we only care about those present in tab_order.
+
+    indices_in_tab_order = [
+        item["index"] for item in tab_order if item["type"] == item_type
+    ]
+    if not indices_in_tab_order:
+        return wb
+
+    max_index = max(indices_in_tab_order)
+    # Safety: ensure we cover at least up to from/to
+    max_index = max(max_index, from_idx, to_idx)
+
+    # Create dummy list representing physical positions
+    # item at index i holds the original index 'i'
+    dummy_list = list(range(max_index + 1))
+
+    if from_idx < len(dummy_list):
+        moved_item = dummy_list.pop(from_idx)
+        # clamp insert
+        insert_idx = max(0, min(to_idx, len(dummy_list)))
+        dummy_list.insert(insert_idx, moved_item)
+
+    # New position in dummy_list is 'p', value is 'old_index'
+    # So item that WAS at 'old_index' is NOW at 'p'.
+    # We want: given 'old_index' in tab_order, what is 'new_index'?
+    # new_index = dummy_list.index(old_index)
+
+    new_index_map = {old: new for new, old in enumerate(dummy_list)}
+
+    # Apply index updates
+    moved_tab_order_item = None
+
+    for item in tab_order:
+        if item["type"] == item_type:
+            old_idx = item["index"]
+            if old_idx in new_index_map:
+                item["index"] = new_index_map[old_idx]
+
+            # Identify the moved item within tab_order to re-position it in the list
+            # We track it by the NEW index (which matches the one at insert_idx)
+            # Wait, easier: identify by original index (which we know is from_idx)
+            if old_idx == from_idx:
+                moved_tab_order_item = item
+
+    # 2. Reorder the tab_order list itself
+    # Move 'moved_tab_order_item' to 'target_tab_order_idx'
+    if moved_tab_order_item and target_tab_order_index is not None:
+        # Remove from current position
+        try:
+            curr_pos = tab_order.index(moved_tab_order_item)
+            tab_order.pop(curr_pos)
+
+            # Insert at target
+            # Clamp target
+            safe_target = max(0, min(target_tab_order_index, len(tab_order)))
+            tab_order.insert(safe_target, moved_tab_order_item)
+        except ValueError:
+            pass  # Should not happen
+
+    metadata["tab_order"] = tab_order
+    return replace(wb, metadata=metadata)
+
+
 def initialize_workbook(md_text_input, config_json):
     global workbook, schema, md_text, config
     md_text = md_text_input
@@ -636,6 +1101,12 @@ def get_state():
     return json.dumps(
         {"workbook": workbook_json, "structure": json.loads(structure_json)}
     )
+
+
+def get_full_markdown():
+    """Return the full markdown content including all updates."""
+    global md_text
+    return md_text
 
 
 def update_column_width(sheet_idx, table_idx, col_idx, width):

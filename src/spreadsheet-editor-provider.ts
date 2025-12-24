@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-import { getWebviewContent } from './extension';
+import { getWebviewContent, findWheelFile } from './extension';
 import { MessageDispatcher } from './message-dispatcher';
 
 export class SpreadsheetEditorProvider implements vscode.CustomTextEditorProvider {
@@ -39,7 +39,8 @@ export class SpreadsheetEditorProvider implements vscode.CustomTextEditorProvide
                 vscode.Uri.joinPath(this.context.extensionUri, 'resources')
             ]
         };
-        webviewPanel.webview.html = getWebviewContent(webviewPanel.webview, this.context, document);
+        const wheelFilename = await findWheelFile(this.context);
+        webviewPanel.webview.html = getWebviewContent(webviewPanel.webview, this.context, document, wheelFilename);
 
         let isSaving = false;
 

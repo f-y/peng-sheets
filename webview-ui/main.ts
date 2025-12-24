@@ -103,8 +103,14 @@ export class MyEditor extends LitElement {
     @state()
     isScrollableRight = false;
 
+    @state()
+    addTabDropdown: { x: number; y: number } | null = null;
+
     // Track sheet count for add detection
     private _previousSheetCount = 0;
+
+    // Track pending new tab index for selection after add (original tab index + 1)
+    private _pendingNewTabIndex: number | null = null;
 
     private async _handleMetadataEdit(detail: IMetadataEditDetail) {
         if (!this.workbook) return;
@@ -701,8 +707,8 @@ export class MyEditor extends LitElement {
                                     ? 'add-sheet-tab'
                                     : ''}"
                                 draggable="${tab.type !== 'add-sheet' && this.editingTabIndex !== index}"
-                                @click="${() =>
-                                    tab.type === 'add-sheet' ? this._handleAddSheet() : (this.activeTabIndex = index)}"
+                                @click="${(e: MouseEvent) =>
+                                    tab.type === 'add-sheet' ? this._handleAddSheet(e) : (this.activeTabIndex = index)}"
                                 @dblclick="${() => this._handleTabDoubleClick(index, tab)}"
                                 @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, index, tab)}"
                                 @dragstart="${(e: DragEvent) => this._handleSheetDragStart(e, index)}"
@@ -790,6 +796,41 @@ export class MyEditor extends LitElement {
                     )
                 )}
             </confirmation-modal>
+
+            ${this.addTabDropdown
+                ? html`
+                      <div
+                          style="position: fixed; top: ${this.addTabDropdown.y}px; left: ${this.addTabDropdown
+                              .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
+                      >
+                          <div
+                              style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
+                              @mouseover="${(e: MouseEvent) =>
+                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
+                              @mouseout="${(e: MouseEvent) =>
+                                  ((e.target as HTMLElement).style.background = 'transparent')}"
+                              @click="${() => this._addSheet()}"
+                          >
+                              ${t('addNewSheet')}
+                          </div>
+                          <div
+                              style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
+                              @mouseover="${(e: MouseEvent) =>
+                                  ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
+                              @mouseout="${(e: MouseEvent) =>
+                                  ((e.target as HTMLElement).style.background = 'transparent')}"
+                              @click="${() => this._addDocument()}"
+                          >
+                              ${t('addNewDocument')}
+                          </div>
+                      </div>
+                      <!-- Overlay to close menu on click outside -->
+                      <div
+                          style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 999;"
+                          @click="${() => (this.addTabDropdown = null)}"
+                      ></div>
+                  `
+                : ''}
         `;
     }
 
@@ -910,7 +951,20 @@ export class MyEditor extends LitElement {
         }
     }
 
-    private async _handleAddSheet() {
+    private async _handleAddSheet(e?: Event) {
+        // Show dropdown menu for choosing what to add
+        if (e) {
+            const target = e.target as HTMLElement;
+            const rect = target.getBoundingClientRect();
+            this.addTabDropdown = { x: rect.left, y: rect.top - 80 }; // Position above the button
+        } else {
+            // Fallback: add sheet directly if no event
+            this._addSheet();
+        }
+    }
+
+    private async _addSheet() {
+        this.addTabDropdown = null;
         this.pendingAddSheet = true;
 
         let newSheetName = 'Sheet 1';
@@ -918,6 +972,51 @@ export class MyEditor extends LitElement {
             newSheetName = `Sheet ${this.workbook.sheets.length + 1}`;
         }
         this.spreadsheetService.addSheet(newSheetName);
+    }
+
+    private async _addDocument() {
+        this.addTabDropdown = null;
+
+        // Get current active tab to determine insertion position
+        const activeTab = this.tabs[this.activeTabIndex];
+        let afterDocIndex = -1;
+        let afterWorkbook = false;
+        // Use activeTabIndex for tab_order position (UI ordering)
+        const insertAfterTabOrderIndex = this.activeTabIndex;
+
+        if (activeTab?.type === 'document' && typeof activeTab.docIndex === 'number') {
+            // Document tab selected - add after this document
+            afterDocIndex = activeTab.docIndex;
+        } else if (activeTab?.type === 'sheet' || activeTab?.type === 'add-sheet') {
+            // Sheet tab selected - add after the LAST document (at file end)
+            // Find the highest document index to insert after it
+            const docTabs = this.tabs.filter((t) => t.type === 'document');
+            if (docTabs.length > 0) {
+                const maxDocIndex = Math.max(...docTabs.map((t) => t.docIndex!));
+                afterDocIndex = maxDocIndex;
+            } else {
+                // No documents exist - add after workbook
+                afterWorkbook = true;
+            }
+        } else {
+            // No valid tab or fallback - add after last document or at end
+            const docTabs = this.tabs.filter((t) => t.type === 'document');
+            if (docTabs.length > 0) {
+                afterDocIndex = Math.max(...docTabs.map((t) => t.docIndex!));
+            } else {
+                afterWorkbook = true;
+            }
+        }
+
+        // Generate default document name
+        const docCount = this.tabs.filter((t) => t.type === 'document').length;
+        const newDocName = `Document ${docCount + 1}`;
+
+        // Store pending new tab index to select after update
+        // Simple rule: new tab will be at the position after current selection
+        this._pendingNewTabIndex = this.activeTabIndex + 1;
+
+        this.spreadsheetService.addDocument(newDocName, afterDocIndex, afterWorkbook, insertAfterTabOrderIndex);
     }
 
     private _onCreateSpreadsheet() {
@@ -989,7 +1088,65 @@ export class MyEditor extends LitElement {
                 });
             }
 
-            this.tabs = newTabs;
+            // Reorder tabs based on tab_order metadata if available
+            const tabOrder = this.workbook?.metadata?.tab_order as Array<{ type: string; index: number }> | undefined;
+            if (tabOrder && tabOrder.length > 0) {
+                const reorderedTabs: TabDefinition[] = [];
+
+                for (const orderItem of tabOrder) {
+                    let matchedTab: TabDefinition | undefined;
+
+                    if (orderItem.type === 'sheet') {
+                        matchedTab = newTabs.find((t) => t.type === 'sheet' && t.sheetIndex === orderItem.index);
+                    } else if (orderItem.type === 'document') {
+                        matchedTab = newTabs.find((t) => t.type === 'document' && t.docIndex === orderItem.index);
+                    }
+
+                    if (matchedTab) {
+                        reorderedTabs.push(matchedTab);
+                    }
+                }
+
+                // Add any tabs not in tab_order (onboarding, etc.) at the end
+                // EXCEPT add-sheet which should always be last
+                let addSheetTab: TabDefinition | undefined;
+                for (const tab of newTabs) {
+                    if (!reorderedTabs.includes(tab)) {
+                        if (tab.type === 'add-sheet') {
+                            addSheetTab = tab;
+                        } else {
+                            reorderedTabs.push(tab);
+                        }
+                    }
+                }
+                // Always add add-sheet at the very end
+                if (addSheetTab) {
+                    reorderedTabs.push(addSheetTab);
+                }
+
+                // Reassign indices
+                reorderedTabs.forEach((tab, idx) => {
+                    tab.index = idx;
+                });
+
+                this.tabs = reorderedTabs;
+            } else {
+                this.tabs = newTabs;
+            }
+            // Select newly added document tab if pending
+            if (this._pendingNewTabIndex !== null) {
+                // Simple rule: select the tab at the pending index
+                // Clamp to valid range (in case tabs were reordered)
+                const maxValidIndex = this.tabs.length - 1;
+                const targetIndex = Math.min(this._pendingNewTabIndex, maxValidIndex);
+                // Skip if target is add-sheet button - wait for next parse when new tab exists
+                if (this.tabs[targetIndex]?.type !== 'add-sheet') {
+                    this.activeTabIndex = targetIndex;
+                    // Only reset when selection is successful
+                    this._pendingNewTabIndex = null;
+                }
+                // If target is add-sheet, keep pending for next parse cycle
+            }
 
             this.requestUpdate();
 
@@ -1075,40 +1232,84 @@ export class MyEditor extends LitElement {
 
         if (toIndex !== -1 && fromIndex !== toIndex) {
             const fromTab = this.tabs[fromIndex];
+            const toTab = toIndex < this.tabs.length ? this.tabs[toIndex] : null;
 
-            if (fromTab.type !== 'sheet') return;
+            // Handle different move scenarios
+            if (fromTab.type === 'sheet') {
+                if (toTab?.type === 'sheet' || toTab?.type === 'add-sheet' || !toTab) {
+                    // Sheet → Sheet: Physical reorder within workbook
+                    const fromSheetIndex = fromTab.sheetIndex!;
+                    let toSheetIndex = 0;
 
-            const fromSheetIndex = fromTab.sheetIndex!;
-            let toSheetIndex = 0;
+                    if (toTab?.type === 'sheet') {
+                        toSheetIndex = toTab.sheetIndex!;
+                    } else {
+                        const sheets = this.tabs.filter((t) => t.type === 'sheet');
+                        toSheetIndex = sheets.length;
+                    }
 
-            if (toIndex < this.tabs.length) {
-                const toTab = this.tabs[toIndex];
-                // Map to sheet indices
-                if (toTab.type === 'sheet') {
-                    toSheetIndex = toTab.sheetIndex!;
-                } else if (toTab.type === 'add-sheet') {
-                    const sheets = this.tabs.filter((t) => t.type === 'sheet');
-                    toSheetIndex = sheets.length;
+                    this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
                 } else {
-                    toSheetIndex = 0;
+                    // Sheet → Document position: Metadata-only (cross-type display)
+                    // Reorder tabs array first, then update backend
+                    this._reorderTabsArray(fromIndex, toIndex);
+                    this._updateTabOrder();
                 }
-            } else {
-                const sheets = this.tabs.filter((t) => t.type === 'sheet');
-                toSheetIndex = sheets.length;
+            } else if (fromTab.type === 'document') {
+                if (toTab?.type === 'document') {
+                    // Document → Document: Physical reorder in file
+                    const fromDocIndex = fromTab.docIndex!;
+                    const toDocIndex = toTab.docIndex!;
+                    this.spreadsheetService.moveDocumentSection(fromDocIndex, toDocIndex, false, false, toIndex);
+                } else {
+                    // Document → Sheet position: Metadata-only (cross-type display)
+                    // Reorder tabs array first, then update backend
+                    this._reorderTabsArray(fromIndex, toIndex);
+                    this._updateTabOrder();
+                }
             }
-
-            this._moveSheet(fromSheetIndex, toSheetIndex);
         }
     }
 
-    private async _moveSheet(from: number, to: number) {
+    /**
+     * Reorder the tabs array by moving element from fromIndex to toIndex.
+     * This is used for cross-type moves where only metadata needs updating.
+     */
+    private _reorderTabsArray(fromIndex: number, toIndex: number) {
+        const moved = this.tabs.splice(fromIndex, 1)[0];
+        // Adjust toIndex after splice
+        const insertAt = fromIndex < toIndex ? toIndex - 1 : toIndex;
+        this.tabs.splice(insertAt, 0, moved);
+        // Re-index tabs
+        this.tabs.forEach((t, i) => {
+            t.index = i;
+        });
+    }
+
+    private async _moveSheet(from: number, to: number, targetTabOrderIndex: number) {
         if (from === to) return;
 
         if (from < to) {
             to -= 1;
         }
 
-        this.spreadsheetService.moveSheet(from, to);
+        this.spreadsheetService.moveSheet(from, to, targetTabOrderIndex);
+    }
+
+    /**
+     * Update tab order in workbook metadata for cross-type display changes.
+     * This is called when a tab is moved to a position among different types
+     * (e.g., Sheet displayed between Documents, or Document displayed between Sheets).
+     */
+    private _updateTabOrder() {
+        const tabOrder = this.tabs
+            .filter((t) => t.type === 'sheet' || t.type === 'document')
+            .map((t) => ({
+                type: t.type,
+                index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
+            }));
+
+        this.spreadsheetService.updateWorkbookTabOrder(tabOrder);
     }
 
     private async _handleColumnResize(detail: IColumnResizeDetail) {

@@ -1,5 +1,8 @@
 import { IPyodide, IVSCodeApi, IUpdateSpec, IVisualMetadata } from './types';
 
+// @ts-expect-error Vite raw import for Python module
+import pyodideCacheModule from '../../python-modules/pyodide_cache.py?raw';
+
 export class SpreadsheetService {
     private pyodide: IPyodide | null = null;
     private _requestQueue: Array<() => Promise<void>> = [];
@@ -9,6 +12,7 @@ export class SpreadsheetService {
     private vscode: IVSCodeApi;
 
     private pythonCore: string;
+    private pyodideCache: string = pyodideCacheModule;
 
     constructor(pythonCore: string, vscode: IVSCodeApi) {
         this.pythonCore = pythonCore;
@@ -66,11 +70,65 @@ export class SpreadsheetService {
 
                 if (isCached) {
                     console.log('Pyodide: Restoring packages from cache...');
-                    await this.runPythonAsync(`
-                        import sys
-                        sys.path.append("${mountDir}/site-packages")
-                    `);
-                } else {
+                    try {
+                        // Load the pyodide_cache functions into global namespace and call setup
+                        await this.runPythonAsync(this.pyodideCache);
+                        await this.runPythonAsync(`setup_cached_path("${mountDir}/site-packages")`);
+                        // Test import to detect bytecode version mismatch
+                        await this.runPythonAsync('import md_spreadsheet_parser');
+                    } catch (cacheError) {
+                        // Cache is corrupted or bytecode version mismatch
+                        console.warn('Pyodide: Cache invalid, clearing and reinstalling...', cacheError);
+                        isCached = false;
+
+                        // Clear cache using Emscripten FS API directly (not Python, since imports are broken)
+                        if (this.pyodide.FS) {
+                            const fs = this.pyodide.FS;
+
+                            // Helper to recursively delete directory
+                            const rmRecursive = (path: string) => {
+                                try {
+                                    const stat = fs.stat(path);
+                                    if (fs.isDir(stat.mode)) {
+                                        const entries = fs.readdir(path).filter((e: string) => e !== '.' && e !== '..');
+                                        for (const entry of entries) {
+                                            rmRecursive(`${path}/${entry}`);
+                                        }
+                                        fs.rmdir(path);
+                                    } else {
+                                        fs.unlink(path);
+                                    }
+                                } catch (e) {
+                                    // Path doesn't exist or other error, ignore
+                                }
+                            };
+
+                            // Delete cached site-packages
+                            rmRecursive(`${mountDir}/site-packages`);
+
+                            // Delete version file
+                            try {
+                                fs.unlink(`${mountDir}/version.txt`);
+                            } catch (e) {
+                                // Ignore if doesn't exist
+                            }
+
+                            // Sync deletion to IndexedDB
+                            await new Promise<void>((resolve) => fs.syncfs(false, () => resolve()));
+                            console.log('Pyodide: Cache cleared successfully');
+                        }
+
+                        // Remove corrupted path from sys.path AND clear sys.modules
+                        // Note: pyodide_cache functions should already be in global namespace from earlier exec
+                        try {
+                            await this.runPythonAsync(`cleanup_corrupted_cache("${mountDir}/site-packages")`);
+                        } catch (e) {
+                            console.warn('Pyodide: Could not clean sys.path/modules:', e);
+                        }
+                    }
+                }
+
+                if (!isCached) {
                     console.log('Pyodide: Installing packages...');
                     await this.pyodide.loadPackage('micropip');
                     const micropip = this.pyodide.pyimport('micropip') as { install: (uri: string) => Promise<void> };
@@ -80,25 +138,9 @@ export class SpreadsheetService {
 
                         if (this.pyodide.FS) {
                             console.log('Pyodide: Caching packages...');
-                            this.pyodide.globals.set('wheel_uri', wheelUri);
-                            this.pyodide.globals.set('mount_dir', mountDir);
-
-                            await this.runPythonAsync(`
-                                import shutil
-                                import site
-                                import os
-                                
-                                site_packages = site.getsitepackages()[0]
-                                target = f"{mount_dir}/site-packages"
-                                
-                                if os.path.exists(target):
-                                    shutil.rmtree(target)
-                                
-                                shutil.copytree(site_packages, target)
-                                
-                                with open(f"{mount_dir}/version.txt", "w") as f:
-                                    f.write(wheel_uri)
-                            `);
+                            // Load pyodide_cache functions and call cache function
+                            await this.runPythonAsync(this.pyodideCache);
+                            await this.runPythonAsync(`cache_installed_packages("${mountDir}", "${wheelUri}")`);
 
                             await new Promise<void>((resolve) => this.pyodide!.FS!.syncfs(false, () => resolve()));
                         }
@@ -529,10 +571,85 @@ export class SpreadsheetService {
         });
     }
 
-    public moveSheet(fromIdx: number, toIdx: number) {
+    public moveSheet(fromIdx: number, toIdx: number, targetTabOrderIndex: number = -1) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
-                res = move_sheet(${fromIdx}, ${toIdx})
+                res = move_sheet(
+                    ${fromIdx}, 
+                    ${toIdx},
+                    target_tab_order_index=${targetTabOrderIndex === -1 ? 'None' : targetTabOrderIndex}
+                )
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
+    public updateWorkbookTabOrder(tabOrder: Array<{ type: string; index: number }>) {
+        this._enqueueRequest(async () => {
+            const result = await this.runPython<IUpdateSpec>(`
+                res = update_workbook_tab_order(json.loads(${JSON.stringify(JSON.stringify(tabOrder))}))
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
+    public addDocument(
+        title: string,
+        afterDocIndex: number = -1,
+        afterWorkbook: boolean = false,
+        insertAfterTabOrderIndex: number = -1
+    ) {
+        this._enqueueRequest(async () => {
+            // First, add the document (this updates the in-memory workbook metadata)
+            const result = await this.runPython<IUpdateSpec>(`
+                res = add_document(
+                    ${JSON.stringify(title)},
+                    after_doc_index=${afterDocIndex},
+                    after_workbook=${afterWorkbook ? 'True' : 'False'},
+                    insert_after_tab_order_index=${insertAfterTabOrderIndex}
+                )
+                json.dumps(res) if res else "null"
+            `);
+
+            if (result && !result.error) {
+                // Post the document addition first
+                this._postUpdateMessage(result);
+
+                // Then regenerate the workbook section to include updated metadata
+                const workbookUpdate = await this.runPython<IUpdateSpec>(`
+                    res = generate_and_get_range()
+                    json.dumps(res) if res else "null"
+                `);
+
+                if (workbookUpdate && !workbookUpdate.error) {
+                    this._postUpdateMessage(workbookUpdate);
+                }
+            } else if (result?.error) {
+                console.error('add_document failed:', result.error);
+                this._isSyncing = false;
+                this._scheduleProcessQueue();
+            }
+        });
+    }
+
+    public moveDocumentSection(
+        fromDocIndex: number,
+        toDocIndex: number | null = null,
+        toAfterWorkbook: boolean = false,
+        toBeforeWorkbook: boolean = false,
+        targetTabOrderIndex: number = -1
+    ) {
+        this._enqueueRequest(async () => {
+            const result = await this.runPython<IUpdateSpec>(`
+                res = move_document_section(
+                    ${fromDocIndex},
+                    to_doc_index=${toDocIndex === null ? 'None' : toDocIndex},
+                    to_after_workbook=${toAfterWorkbook ? 'True' : 'False'},
+                    to_before_workbook=${toBeforeWorkbook ? 'True' : 'False'},
+                    target_tab_order_index=${targetTabOrderIndex === -1 ? 'None' : targetTabOrderIndex}
+                )
                 json.dumps(res) if res else "null"
             `);
             if (result) this._postUpdateMessage(result);
