@@ -769,47 +769,6 @@ export class MyEditor extends LitElement {
         `;
     }
 
-    private _renderTabIcon(tab: TabDefinition) {
-        if (tab.type === 'sheet') {
-            return html`<svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="currentColor"
-            >
-                <path d="M3 3h10v10H3V3zm1 1v3h3V4H4zm4 0v3h3V4H8zm-4 4v3h3V8H4zm4 0v3h3V8H4zm4 0v3h3V8H8z" />
-            </svg>`;
-        } else if (tab.type === 'document') {
-            return html``;
-        } else if (tab.type === 'add-sheet') {
-            // Using the text content '+' in render loop, so maybe no icon needed?
-            // Or return a plus icon SVG. Title is '+' in definition.
-            // Let's use SVG for better look.
-            return html`<svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="currentColor"
-            >
-                <path
-                    d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"
-                />
-            </svg>`;
-        } else {
-            return html`<svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="currentColor"
-            >
-                <path d="M14 7H9V2H7v5H2v2h5v5h2V9h5V7z" />
-            </svg>`;
-        }
-    }
-
     private _handleTabDoubleClick(index: number, tab: TabDefinition) {
         if (tab.type === 'sheet' || tab.type === 'document') {
             this.editingTabIndex = index;

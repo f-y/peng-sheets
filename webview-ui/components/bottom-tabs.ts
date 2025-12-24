@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { t } from '../utils/i18n';
 // @ts-expect-error CSS import
 import styles from './styles/bottom-tabs.css?inline';
+import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
 export interface TabDefinition {
     title: string;
@@ -24,7 +25,7 @@ export interface TabDefinition {
  */
 @customElement('bottom-tabs')
 export class BottomTabs extends LitElement {
-    static styles = unsafeCSS(styles);
+    static styles = [unsafeCSS(codiconsStyles), unsafeCSS(styles)];
 
     @property({ type: Array })
     tabs: TabDefinition[] = [];
@@ -204,44 +205,11 @@ export class BottomTabs extends LitElement {
 
     private _renderTabIcon(tab: TabDefinition) {
         if (tab.type === 'sheet') {
-            return html`<svg
-                class="tab-icon"
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="currentColor"
-            >
-                <path
-                    d="M14 1H2a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1zM2 0h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2z"
-                />
-                <path d="M14 3H2v1h12V3zM2 5h12v1H2V5zM14 7H2v1h12V7zM2 9h12v1H2V9z" />
-            </svg>`;
+            return html`<span class="codicon codicon-table"></span>`;
         } else if (tab.type === 'document') {
-            return html`<svg
-                class="tab-icon"
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="currentColor"
-            >
-                <path
-                    d="M4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V4.5L9.5 0H4zM9 1v3.5A1.5 1.5 0 0 0 10.5 6H14v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h6z"
-                />
-            </svg>`;
+            return html`<span class="codicon codicon-file"></span>`;
         } else if (tab.type === 'add-sheet') {
-            return html`<svg
-                width="16"
-                height="16"
-                viewBox="0 0 16 16"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="currentColor"
-            >
-                <path
-                    d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"
-                />
-            </svg>`;
+            return html`<span class="codicon codicon-add"></span>`;
         }
         return html``;
     }
