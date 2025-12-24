@@ -98,7 +98,7 @@ export class MyEditor extends LitElement {
     confirmDeleteIndex: number | null = null;
 
     @state()
-    tabContextMenu: { x: number; y: number; index: number } | null = null;
+    tabContextMenu: { x: number; y: number; index: number; tabType: 'sheet' | 'document' } | null = null;
 
     @state()
     isScrollableRight = false;
@@ -747,25 +747,81 @@ export class MyEditor extends LitElement {
                           style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
                               .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
                       >
+                          ${this.tabContextMenu.tabType === 'sheet'
+                              ? html`
+                                    <div
+                                        class="context-menu-item"
+                                        style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
+                                        @mouseover="${(e: MouseEvent) =>
+                                            ((e.target as HTMLElement).style.background =
+                                                'var(--vscode-list-hoverBackground)')}"
+                                        @mouseout="${(e: MouseEvent) =>
+                                            ((e.target as HTMLElement).style.background = 'transparent')}"
+                                        @click="${() => this._renameTab(this.tabContextMenu!.index)}"
+                                    >
+                                        ${t('renameSheet')}
+                                    </div>
+                                    <div
+                                        class="context-menu-item"
+                                        style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
+                                        @mouseover="${(e: MouseEvent) =>
+                                            ((e.target as HTMLElement).style.background =
+                                                'var(--vscode-list-hoverBackground)')}"
+                                        @mouseout="${(e: MouseEvent) =>
+                                            ((e.target as HTMLElement).style.background = 'transparent')}"
+                                        @click="${() => this._deleteSheet(this.tabContextMenu!.index)}"
+                                    >
+                                        ${t('deleteSheet')}
+                                    </div>
+                                `
+                              : html`
+                                    <div
+                                        class="context-menu-item"
+                                        style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
+                                        @mouseover="${(e: MouseEvent) =>
+                                            ((e.target as HTMLElement).style.background =
+                                                'var(--vscode-list-hoverBackground)')}"
+                                        @mouseout="${(e: MouseEvent) =>
+                                            ((e.target as HTMLElement).style.background = 'transparent')}"
+                                        @click="${() => this._renameTab(this.tabContextMenu!.index)}"
+                                    >
+                                        ${t('renameDocument')}
+                                    </div>
+                                    <div
+                                        class="context-menu-item"
+                                        style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
+                                        @mouseover="${(e: MouseEvent) =>
+                                            ((e.target as HTMLElement).style.background =
+                                                'var(--vscode-list-hoverBackground)')}"
+                                        @mouseout="${(e: MouseEvent) =>
+                                            ((e.target as HTMLElement).style.background = 'transparent')}"
+                                        @click="${() => this._deleteDocument(this.tabContextMenu!.index)}"
+                                    >
+                                        ${t('deleteDocument')}
+                                    </div>
+                                `}
+                          <div style="border-top: 1px solid var(--vscode-widget-border); margin: 4px 0;"></div>
                           <div
+                              class="context-menu-item"
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
                               @mouseover="${(e: MouseEvent) =>
                                   ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
                               @mouseout="${(e: MouseEvent) =>
                                   ((e.target as HTMLElement).style.background = 'transparent')}"
-                              @click="${() => this._renameSheet(this.tabContextMenu!.index)}"
+                              @click="${() => this._addDocumentFromMenu()}"
                           >
-                              ${t('renameSheet')}
+                              ${t('addNewDocument')}
                           </div>
                           <div
+                              class="context-menu-item"
                               style="padding: 6px 12px; cursor: pointer; color: var(--vscode-foreground); font-family: var(--vscode-font-family); font-size: 13px;"
                               @mouseover="${(e: MouseEvent) =>
                                   ((e.target as HTMLElement).style.background = 'var(--vscode-list-hoverBackground)')}"
                               @mouseout="${(e: MouseEvent) =>
                                   ((e.target as HTMLElement).style.background = 'transparent')}"
-                              @click="${() => this._deleteSheet(this.tabContextMenu!.index)}"
+                              @click="${() => this._addSheetFromMenu()}"
                           >
-                              ${t('deleteSheet')}
+                              ${t('addNewSheet')}
                           </div>
                       </div>
                       <!-- Overlay to close menu on click outside -->
@@ -779,7 +835,9 @@ export class MyEditor extends LitElement {
             <!-- Delete Confirmation Modal -->
             <confirmation-modal
                 .open="${this.confirmDeleteIndex !== null}"
-                title="${t('deleteSheet')}"
+                title="${this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
+                    ? t('deleteDocument')
+                    : t('deleteSheet')}"
                 confirmLabel="${t('delete')}"
                 cancelLabel="${t('cancel')}"
                 @confirm="${this._performDelete}"
@@ -787,7 +845,9 @@ export class MyEditor extends LitElement {
             >
                 ${unsafeHTML(
                     t(
-                        'deleteSheetConfirm',
+                        this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
+                            ? 'deleteDocumentConfirm'
+                            : 'deleteSheetConfirm',
                         `<span style="color: var(--vscode-textPreformat-foreground);">${
                             this.confirmDeleteIndex !== null
                                 ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
@@ -901,14 +961,18 @@ export class MyEditor extends LitElement {
         // Prevent default context menu for all tab types
         e.preventDefault();
 
-        // Only show custom context menu for sheet tabs
-        if (tab.type !== 'sheet') return;
+        // Show custom context menu for sheet and document tabs
+        if (tab.type !== 'sheet' && tab.type !== 'document') return;
 
-        this.tabContextMenu = { x: e.clientX, y: e.clientY - 80, index: index }; // Simple offset or just clientY
-        // Adjust Y if too low?
+        this.tabContextMenu = {
+            x: e.clientX,
+            y: e.clientY - 80,
+            index: index,
+            tabType: tab.type
+        };
     }
 
-    private _renameSheet(index: number) {
+    private _renameTab(index: number) {
         this.tabContextMenu = null;
         const tab = this.tabs[index];
         if (tab) this._handleTabDoubleClick(index, tab);
@@ -921,6 +985,25 @@ export class MyEditor extends LitElement {
             // Trigger modal instead of confirm()
             this.confirmDeleteIndex = index;
         }
+    }
+
+    private _deleteDocument(index: number) {
+        this.tabContextMenu = null;
+        const tab = this.tabs[index];
+        if (tab && tab.type === 'document' && typeof tab.docIndex === 'number') {
+            // Trigger modal for document deletion
+            this.confirmDeleteIndex = index;
+        }
+    }
+
+    private _addDocumentFromMenu() {
+        this.tabContextMenu = null;
+        this._addDocument();
+    }
+
+    private _addSheetFromMenu() {
+        this.tabContextMenu = null;
+        this._handleAddSheet(new MouseEvent('click'));
     }
 
     private _cancelDelete() {
@@ -937,6 +1020,9 @@ export class MyEditor extends LitElement {
         const tab = this.tabs[index];
         if (tab && tab.type === 'sheet' && typeof tab.sheetIndex === 'number') {
             this.spreadsheetService.deleteSheet(tab.sheetIndex);
+        } else if (tab && tab.type === 'document' && typeof tab.docIndex === 'number') {
+            // TODO: Implement document deletion
+            console.log('Document deletion not implemented yet:', tab.docIndex);
         }
     }
 
@@ -948,6 +1034,9 @@ export class MyEditor extends LitElement {
 
         if (tab.type === 'sheet' && typeof tab.sheetIndex === 'number') {
             this.spreadsheetService.renameSheet(tab.sheetIndex, newName);
+        } else if (tab.type === 'document' && typeof tab.docIndex === 'number') {
+            // TODO: Implement document renaming
+            console.log('Document renaming not implemented yet:', tab.docIndex, newName);
         }
     }
 
