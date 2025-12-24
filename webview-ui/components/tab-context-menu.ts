@@ -1,5 +1,5 @@
-import { html, LitElement, unsafeCSS, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { html, LitElement, unsafeCSS, nothing, PropertyValues } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
 import { t } from '../utils/i18n';
 // @ts-expect-error CSS import
 import styles from './styles/tab-context-menu.css?inline';
@@ -33,6 +33,35 @@ export class TabContextMenu extends LitElement {
     @property({ type: String })
     tabType: 'sheet' | 'document' = 'sheet';
 
+    /** Adjusted Y position after overflow check */
+    @state()
+    private _adjustedY: number | null = null;
+
+    protected updated(changedProperties: PropertyValues): void {
+        super.updated(changedProperties);
+
+        // Adjust position after render if menu opened or position changed
+        if (this.open && (changedProperties.has('open') || changedProperties.has('y'))) {
+            this._adjustedY = null; // Reset on new open/position
+            setTimeout(() => {
+                const menuEl = this.shadowRoot?.querySelector('.context-menu') as HTMLElement;
+                if (menuEl) {
+                    const rect = menuEl.getBoundingClientRect();
+                    const viewportHeight = window.innerHeight;
+                    if (rect.bottom > viewportHeight) {
+                        // Menu extends below viewport, reposition above click point
+                        this._adjustedY = this.y - rect.height;
+                    }
+                }
+            }, 0);
+        }
+
+        // Reset adjusted position when closed
+        if (!this.open && changedProperties.has('open')) {
+            this._adjustedY = null;
+        }
+    }
+
     private _dispatchAction(action: string) {
         this.dispatchEvent(
             new CustomEvent(action, {
@@ -49,8 +78,10 @@ export class TabContextMenu extends LitElement {
     render() {
         if (!this.open) return nothing;
 
+        const displayY = this._adjustedY ?? this.y;
+
         return html`
-            <div class="context-menu" style="top: ${this.y}px; left: ${this.x}px;">
+            <div class="context-menu" style="top: ${displayY}px; left: ${this.x}px;">
                 ${this.tabType === 'sheet'
                     ? html`
                           <div class="context-menu-item" @click="${() => this._dispatchAction('rename')}">

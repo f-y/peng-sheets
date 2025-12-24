@@ -13,7 +13,8 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { t } from '../../utils/i18n';
-import { contextMenuStyles } from '../../styles/spreadsheet-shared';
+// @ts-expect-error CSS import
+import sharedStyles from '../../styles/spreadsheet-shared.css?inline';
 
 @customElement('ss-context-menu')
 export class SSContextMenu extends LitElement {
@@ -23,7 +24,7 @@ export class SSContextMenu extends LitElement {
                 display: block;
             }
         `,
-        unsafeCSS(contextMenuStyles)
+        unsafeCSS(sharedStyles)
     ];
 
     @property({ type: Number }) x = 0;

@@ -1341,22 +1341,7 @@ export class MyEditor extends LitElement {
             // Defer to ensure layout is complete
             setTimeout(() => this._checkScrollOverflow(), 0);
         }
-
-        // Adjust context menu position after render using actual measured height
-        if (changedProperties.has('tabContextMenu') && this.tabContextMenu) {
-            setTimeout(() => {
-                const menuEl = this.shadowRoot?.querySelector('[style*="position: fixed"]') as HTMLElement;
-                if (menuEl) {
-                    const rect = menuEl.getBoundingClientRect();
-                    const viewportHeight = window.innerHeight;
-                    if (rect.bottom > viewportHeight) {
-                        // Menu extends below viewport, reposition above click point
-                        const newY = this.tabContextMenu!.y - rect.height;
-                        this.tabContextMenu = { ...this.tabContextMenu!, y: newY };
-                    }
-                }
-            }, 0);
-        }
+        // Position adjustment for context menu is now handled by tab-context-menu component
     }
 
     private _handleTabScroll() {

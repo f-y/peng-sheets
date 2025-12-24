@@ -9,7 +9,8 @@
 import { LitElement, html, css, PropertyValues, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { t } from '../../utils/i18n';
-import { metadataEditorStyles } from '../../styles/spreadsheet-shared';
+// @ts-expect-error CSS import
+import sharedStyles from '../../styles/spreadsheet-shared.css?inline';
 
 @customElement('ss-metadata-editor')
 export class SSMetadataEditor extends LitElement {
@@ -19,7 +20,7 @@ export class SSMetadataEditor extends LitElement {
                 display: block;
             }
         `,
-        unsafeCSS(metadataEditorStyles)
+        unsafeCSS(sharedStyles)
     ];
 
     @property({ type: String }) description = '';
