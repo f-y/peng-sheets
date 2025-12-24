@@ -1,6 +1,5 @@
 import { html, LitElement, nothing, unsafeCSS, TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-// @ts-expect-error CSS import
 import spreadsheetTableStyles from './styles/spreadsheet-table.css?inline';
 import './cells/ss-data-cell';
 import './cells/ss-corner-cell';
@@ -10,7 +9,6 @@ import './cells/ss-ghost-cell';
 import './menus/ss-context-menu';
 import './menus/ss-metadata-editor';
 import './filter-menu';
-// @ts-expect-error CSS import
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 import { getEditingHtml, formatCellValue, renderMarkdown, NumberFormat } from '../utils/spreadsheet-helpers';
 import { calculateCellRangeState } from '../utils/edit-mode-helpers';

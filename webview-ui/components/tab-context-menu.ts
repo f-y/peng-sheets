@@ -1,7 +1,6 @@
 import { html, LitElement, unsafeCSS, nothing, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { t } from '../utils/i18n';
-// @ts-expect-error CSS import
 import styles from './styles/tab-context-menu.css?inline';
 
 /**

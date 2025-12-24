@@ -13,7 +13,6 @@
 import { LitElement, html, css, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { t } from '../../utils/i18n';
-// @ts-expect-error CSS import
 import sharedStyles from '../../styles/spreadsheet-shared.css?inline';
 
 @customElement('ss-context-menu')

@@ -2,9 +2,7 @@ import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem, vsCodeButton, vsCodeDivider } from '@vscode/webview-ui-toolkit';
 import { t } from '../utils/i18n';
-// @ts-expect-error CSS import
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
-// @ts-expect-error CSS import
 import toolbarStyles from './styles/toolbar.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton(), vsCodeDivider());

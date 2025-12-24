@@ -1,7 +1,6 @@
 import { html, LitElement, unsafeCSS, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { t } from '../utils/i18n';
-// @ts-expect-error CSS import
 import styles from './styles/add-tab-dropdown.css?inline';
 
 /**

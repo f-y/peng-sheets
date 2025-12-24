@@ -9,7 +9,6 @@
 import { LitElement, html, css, PropertyValues, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { t } from '../../utils/i18n';
-// @ts-expect-error CSS import
 import sharedStyles from '../../styles/spreadsheet-shared.css?inline';
 
 @customElement('ss-metadata-editor')

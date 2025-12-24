@@ -1,7 +1,6 @@
 import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { SplitNode, TableJSON } from '../types';
-// @ts-expect-error CSS import
 import splitViewStyles from './styles/split-view.css?inline';
 import './pane-view';
 

@@ -3,7 +3,6 @@ import { customElement, state } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem } from '@vscode/webview-ui-toolkit';
 import { unsafeHTML } from 'lit/directives/unsafe-html.js';
 import { t } from './utils/i18n';
-// @ts-expect-error CSS import
 import mainStyles from './styles/main.css?inline';
 
 import './components/spreadsheet-toolbar';

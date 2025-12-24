@@ -14,7 +14,6 @@ import { EventController } from '../controllers/event-controller';
 import { RowVisibilityController, VisualMetadata } from '../controllers/row-visibility-controller';
 import { getDOMText } from '../utils/spreadsheet-helpers';
 import { normalizeEditContent, findEditingCell } from '../utils/edit-mode-helpers';
-// @ts-expect-error CSS import
 import spreadsheetTableStyles from './styles/spreadsheet-table.css?inline';
 import './filter-menu';
 import './cells/ss-data-cell';
@@ -25,7 +24,6 @@ import './cells/ss-ghost-cell';
 import './menus/ss-context-menu';
 import './menus/ss-metadata-editor';
 import './spreadsheet-table-view';
-// @ts-expect-error CSS import
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
