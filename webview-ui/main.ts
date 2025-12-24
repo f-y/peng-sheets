@@ -72,6 +72,8 @@ export class MyEditor extends LitElement {
     private _globalEventController = new GlobalEventController(
         this as unknown as import('./controllers/global-event-controller').GlobalEventHost
     );
+    // Promise for Pyodide initialization, started early in connectedCallback
+    private _initPromise: Promise<unknown> | null = null;
 
     @state()
     output: string = '';
@@ -419,6 +421,10 @@ export class MyEditor extends LitElement {
 
     connectedCallback() {
         super.connectedCallback();
+        // Start Pyodide initialization immediately for faster startup
+        // Don't await - let it run in parallel with component mounting
+        this._initPromise = this.spreadsheetService.initialize();
+
         try {
             const initialContent = window.initialContent;
             if (initialContent) {
@@ -437,7 +443,8 @@ export class MyEditor extends LitElement {
 
     async firstUpdated() {
         try {
-            await this.spreadsheetService.initialize();
+            // Await the initialization that was started in connectedCallback
+            await this._initPromise;
             console.log('Spreadsheet Service initialized.');
             // Event listeners are now managed by GlobalEventController
 
