@@ -745,7 +745,7 @@ export class MyEditor extends LitElement {
                 ? html`
                       <div
                           style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
-                              .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 1000; padding: 4px 0; min-width: 150px;"
+                              .x}px; background: var(--vscode-editor-background); border: 1px solid var(--vscode-widget-border); box-shadow: 0 2px 8px rgba(0,0,0,0.15); z-index: 10000; padding: 4px 0; min-width: 150px;"
                       >
                           ${this.tabContextMenu.tabType === 'sheet'
                               ? html`
@@ -1021,8 +1021,7 @@ export class MyEditor extends LitElement {
         if (tab && tab.type === 'sheet' && typeof tab.sheetIndex === 'number') {
             this.spreadsheetService.deleteSheet(tab.sheetIndex);
         } else if (tab && tab.type === 'document' && typeof tab.docIndex === 'number') {
-            // TODO: Implement document deletion
-            console.log('Document deletion not implemented yet:', tab.docIndex);
+            this.spreadsheetService.deleteDocument(tab.docIndex);
         }
     }
 
@@ -1035,8 +1034,7 @@ export class MyEditor extends LitElement {
         if (tab.type === 'sheet' && typeof tab.sheetIndex === 'number') {
             this.spreadsheetService.renameSheet(tab.sheetIndex, newName);
         } else if (tab.type === 'document' && typeof tab.docIndex === 'number') {
-            // TODO: Implement document renaming
-            console.log('Document renaming not implemented yet:', tab.docIndex, newName);
+            this.spreadsheetService.renameDocument(tab.docIndex, newName);
         }
     }
 

@@ -779,6 +779,164 @@ def add_document(
     }
 
 
+def rename_document(doc_index, new_title):
+    """
+    Rename a document by changing its header.
+
+    Args:
+        doc_index: Index of the document to rename
+        new_title: New title for the document
+
+    Returns:
+        IUpdateSpec with the changes
+    """
+    global md_text, workbook
+
+    if not md_text:
+        return {"error": "No markdown content"}
+
+    lines = md_text.split("\n")
+    config_dict = json.loads(config) if config else {}
+    root_marker = config_dict.get("rootMarker", "# Tables")
+    doc_header_level = config_dict.get("docHeaderLevel", 1)
+
+    # Find the document section
+    current_doc_index = 0
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        # Check for document header (# Title)
+        if stripped.startswith("#") and stripped != root_marker:
+            # Count the header level
+            level = len(stripped) - len(stripped.lstrip("#"))
+            if level == doc_header_level:
+                if current_doc_index == doc_index:
+                    # Found the document - update the header
+                    new_header = "#" * doc_header_level + " " + new_title
+                    lines[i] = new_header
+
+                    # Update md_text
+                    md_text = "\n".join(lines)
+
+                    return {
+                        "content": new_header,
+                        "startLine": i,
+                        "endLine": i,
+                        "file_changed": True,
+                    }
+                current_doc_index += 1
+
+    return {"error": f"Document at index {doc_index} not found"}
+
+
+def delete_document(doc_index):
+    """
+    Delete a document section entirely.
+
+    Args:
+        doc_index: Index of the document to delete
+
+    Returns:
+        IUpdateSpec with the deletion line range
+    """
+    global md_text, workbook
+
+    if not md_text:
+        return {"error": "No markdown content"}
+
+    lines = md_text.split("\n")
+    config_dict = json.loads(config) if config else {}
+    root_marker = config_dict.get("rootMarker", "# Tables")
+    doc_header_level = config_dict.get("docHeaderLevel", 1)
+
+    # Find document sections
+    sections = []
+    current_start = None
+    current_type = None
+
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+
+        # Check for section headers
+        if stripped.startswith("#"):
+            level = len(stripped) - len(stripped.lstrip("#"))
+            if level == doc_header_level:
+                # This is a document or workbook header
+                if current_start is not None:
+                    sections.append(
+                        {"start": current_start, "end": i - 1, "type": current_type}
+                    )
+
+                if stripped == root_marker:
+                    current_type = "workbook"
+                else:
+                    current_type = "document"
+                current_start = i
+
+    if current_start is not None:
+        sections.append(
+            {"start": current_start, "end": len(lines) - 1, "type": current_type}
+        )
+
+    # Find the target document
+    current_doc_index = 0
+    target_section = None
+    for s in sections:
+        if s["type"] == "document":
+            if current_doc_index == doc_index:
+                target_section = s
+                break
+            current_doc_index += 1
+
+    if target_section is None:
+        return {"error": f"Document at index {doc_index} not found"}
+
+    # Calculate deletion range
+    start_line = target_section["start"]
+    end_line = target_section["end"]
+
+    # Remove trailing blank lines that belong to this section
+    while end_line > start_line and lines[end_line].strip() == "":
+        end_line -= 1
+
+    # Include one trailing blank line if it exists (for proper separation)
+    if end_line < len(lines) - 1:
+        end_line += 1
+
+    # Delete the section
+    del lines[start_line : end_line + 1]
+    md_text = "\n".join(lines)
+
+    # Update tab_order metadata to remove the document entry
+    if workbook and workbook.metadata:
+        current_metadata = dict(workbook.metadata)
+        tab_order = list(current_metadata.get("tab_order", []))
+        # Remove the document entry and decrement indices of subsequent documents
+        updated_tab_order = []
+        for entry in tab_order:
+            if entry.get("type") == "document":
+                if entry.get("index") == doc_index:
+                    continue  # Skip the deleted document
+                elif entry.get("index", 0) > doc_index:
+                    # Decrement indices of documents after the deleted one
+                    updated_tab_order.append(
+                        {"type": "document", "index": entry["index"] - 1}
+                    )
+                else:
+                    updated_tab_order.append(entry)
+            else:
+                updated_tab_order.append(entry)
+
+        current_metadata["tab_order"] = updated_tab_order
+        workbook = replace(workbook, metadata=current_metadata)
+
+    return {
+        "content": "",
+        "startLine": start_line,
+        "endLine": end_line,
+        "file_changed": True,
+    }
+
+
 def move_document_section(
     from_doc_index,
     to_doc_index=None,
