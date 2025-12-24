@@ -190,7 +190,7 @@
     min-height: 1em;
 }
 
-.cell.editing:not(:has(br ~ *)):not(:has(* ~ br))>br:only-child {
+.cell.editing:not(:has(br ~ *)):not(:has(* ~ br)) > br:only-child {
     line-height: 0;
     font-size: 0;
 }

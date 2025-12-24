@@ -85,7 +85,7 @@
     pointer-events: none;
 }
 
-.output:hover~.edit-hint,
+.output:hover ~ .edit-hint,
 .edit-hint.visible {
     opacity: 1;
 }

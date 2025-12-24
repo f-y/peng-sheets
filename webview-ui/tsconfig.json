@@ -2,17 +2,12 @@
     "compilerOptions": {
         "module": "esnext",
         "target": "es2022",
-        "lib": [
-            "es2022",
-            "dom"
-        ],
+        "lib": ["es2022", "dom"],
         "moduleResolution": "bundler",
         "experimentalDecorators": true,
         "useDefineForClassFields": false,
         "strict": true,
         "skipLibCheck": true
     },
-    "include": [
-        "./**/*.ts"
-    ]
+    "include": ["./**/*.ts"]
 }

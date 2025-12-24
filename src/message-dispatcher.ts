@@ -23,8 +23,7 @@ export class MessageDispatcher {
         // process message sequentially
         const processingPromise = this._messageQueue
             .then(async () => {
-                // console.log('[Extension] Processing message:', message.type);
-                await this._dispatchInner(message);
+                await this._dispatchInner(message as WebviewMessage);
             })
             .catch((err) => {
                 console.error('Error processing message:', err);
@@ -127,12 +126,37 @@ export class MessageDispatcher {
     }
 
     private async handleBatchUpdate(message: BatchUpdateMessage) {
+        const activeDoc = this.context.activeDocument;
+        if (!activeDoc) {
+            return;
+        }
+
         const activeEditor = vscode.window.visibleTextEditors.find(
-            (editor) => editor.document === this.context.activeDocument
+            (editor) => editor.document.uri.toString() === activeDoc.uri.toString()
         );
 
         if (!activeEditor) {
-            console.warn('Skipping batch update: No visible editor for document');
+            const edit = new vscode.WorkspaceEdit();
+            const uri = activeDoc.uri;
+
+            for (const update of message.updates) {
+                const startPos = new vscode.Position(update.startLine, 0);
+                const endPos = new vscode.Position(update.endLine, update.endCol ?? 0);
+                const range = new vscode.Range(startPos, endPos);
+
+                // Validate range against the document
+                const validatedRange = activeDoc.validateRange(range);
+
+                if (update.content !== undefined) {
+                    edit.replace(uri, validatedRange, update.content);
+                }
+            }
+
+            const success = await vscode.workspace.applyEdit(edit);
+            if (!success) {
+                console.error('[MessageDispatcher] Fallback WorkspaceEdit failed.');
+                vscode.window.showErrorMessage('Failed to apply batch updates (Sync error).');
+            }
             return;
         }
 
