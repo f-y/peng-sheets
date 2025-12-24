@@ -745,7 +745,7 @@ export class MyEditor extends LitElement {
                 ? html`
                       <div
                           style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
-                              .x}px; background: var(--vscode-menu-background, #3c3c3c); color: var(--vscode-menu-foreground, #e7e7e7); border: 1px solid var(--vscode-menu-border, #555555); border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 10000; padding: 6px 0; min-width: 220px;"
+                              .x}px; background: var(--vscode-quickInput-background, var(--vscode-editorWidget-background, #2d2d2d)); color: var(--vscode-quickInput-foreground, var(--vscode-editorWidget-foreground, #cccccc)); border: 1px solid var(--vscode-widget-border, #454545); border-radius: 8px; box-shadow: 0 8px 32px rgba(0,0,0,0.5); z-index: 10000; padding: 6px 0; min-width: 220px;"
                       >
                           ${this.tabContextMenu.tabType === 'sheet'
                               ? html`
