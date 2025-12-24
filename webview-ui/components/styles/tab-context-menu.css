@@ -20,6 +20,8 @@
 
 .context-menu-item {
     padding: 6px 12px;
+    margin: 0 6px;
+    border-radius: 6px;
     cursor: pointer;
     color: var(--vscode-foreground);
     font-family: var(--vscode-font-family);
@@ -29,7 +31,8 @@
 }
 
 .context-menu-item:hover {
-    background: var(--vscode-list-hoverBackground);
+    color: var(--vscode-inputOption-activeForeground);
+    background: var(--vscode-menu-selectionBackground);
 }
 
 .menu-divider {
