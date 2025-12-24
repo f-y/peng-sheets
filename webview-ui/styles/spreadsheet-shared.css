@@ -226,6 +226,10 @@
     min-height: 8px;
 }
 
+.metadata-container.empty {
+    width: 150px;
+}
+
 .metadata-desc {
     min-height: 1.5em;
     margin: 0;
