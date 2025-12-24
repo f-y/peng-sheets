@@ -811,6 +811,7 @@ def rename_document(doc_index, new_title):
             if level == doc_header_level:
                 if current_doc_index == doc_index:
                     # Found the document - update the header
+                    old_header_length = len(lines[i])
                     new_header = "#" * doc_header_level + " " + new_title
                     lines[i] = new_header
 
@@ -821,6 +822,7 @@ def rename_document(doc_index, new_title):
                         "content": new_header,
                         "startLine": i,
                         "endLine": i,
+                        "endCol": old_header_length,
                         "file_changed": True,
                     }
                 current_doc_index += 1
