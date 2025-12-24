@@ -914,12 +914,16 @@ export class MyEditor extends LitElement {
         }
     }
 
-    private async _handleAddSheet(e?: Event) {
+    private async _handleAddSheet(e?: CustomEvent<{ x: number; y: number }>) {
         // Show dropdown menu for choosing what to add
-        if (e) {
+        if (e?.detail) {
+            // Use coordinates from bottom-tabs component event
+            this.addTabDropdown = { x: e.detail.x, y: e.detail.y - 80 }; // Position above the button
+        } else if (e) {
+            // Fallback: use target element position
             const target = e.target as HTMLElement;
             const rect = target.getBoundingClientRect();
-            this.addTabDropdown = { x: rect.left, y: rect.top - 80 }; // Position above the button
+            this.addTabDropdown = { x: rect.left, y: rect.top - 80 };
         } else {
             // Fallback: add sheet directly if no event
             this._addSheet();
