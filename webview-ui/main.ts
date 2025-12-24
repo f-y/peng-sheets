@@ -13,7 +13,7 @@ import './components/spreadsheet-document-view';
 import './components/confirmation-modal';
 import './components/tab-context-menu';
 import './components/add-tab-dropdown';
-import './components/layout-container';
+import './components/bottom-tabs';
 import './components/layout-container';
 import {
     SheetJSON,
@@ -694,55 +694,26 @@ export class MyEditor extends LitElement {
                     : html``}
             </div>
 
-            <div class="bottom-tabs-container">
-                <div
-                    class="bottom-tabs"
-                    @scroll="${this._handleTabScroll}"
-                    @dragover="${this._handleSheetDragOver}"
-                    @drop="${this._handleSheetDrop}"
-                    @dragleave="${this._handleSheetDragLeave}"
-                >
-                    ${this.tabs.map(
-                        (tab, index) => html`
-                            <div
-                                class="tab-item ${this.activeTabIndex === index ? 'active' : ''} ${tab.type ===
-                                'add-sheet'
-                                    ? 'add-sheet-tab'
-                                    : ''}"
-                                draggable="${tab.type !== 'add-sheet' && this.editingTabIndex !== index}"
-                                @click="${(e: MouseEvent) =>
-                                    tab.type === 'add-sheet' ? this._handleAddSheet(e) : (this.activeTabIndex = index)}"
-                                @dblclick="${() => this._handleTabDoubleClick(index, tab)}"
-                                @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, index, tab)}"
-                                @dragstart="${(e: DragEvent) => this._handleSheetDragStart(e, index)}"
-                                @dragend="${this._handleSheetDragEnd}"
-                                title="${tab.type === 'add-sheet' ? t('addNewSheet') : ''}"
-                                data-index="${index}"
-                            >
-                                ${this._renderTabIcon(tab)}
-                                ${this.editingTabIndex === index
-                                    ? html`
-                                          <input
-                                              class="tab-input"
-                                              .value="${tab.title}"
-                                              @click="${(e: Event) => e.stopPropagation()}"
-                                              @dblclick="${(e: Event) => e.stopPropagation()}"
-                                              @keydown="${(e: KeyboardEvent) => this._handleTabInputKey(e)}"
-                                              @blur="${(e: Event) =>
-                                                  this._handleTabRename(
-                                                      index,
-                                                      tab,
-                                                      (e.target as HTMLInputElement).value
-                                                  )}"
-                                          />
-                                      `
-                                    : html` ${tab.type !== 'add-sheet' ? tab.title : ''} `}
-                            </div>
-                        `
-                    )}
-                </div>
-                <div class="scroll-indicator-right ${this.isScrollableRight ? 'visible' : ''}"></div>
-            </div>
+            <bottom-tabs
+                .tabs="${this.tabs}"
+                .activeIndex="${this.activeTabIndex}"
+                .editingIndex="${this.editingTabIndex}"
+                @tab-select="${(e: CustomEvent) => (this.activeTabIndex = e.detail.index)}"
+                @tab-edit-start="${(e: CustomEvent) =>
+                    this._handleTabDoubleClick(e.detail.index, this.tabs[e.detail.index])}"
+                @tab-rename="${(e: CustomEvent) =>
+                    this._handleTabRename(e.detail.index, e.detail.tab, e.detail.newName)}"
+                @tab-context-menu="${(e: CustomEvent) => {
+                    this.tabContextMenu = {
+                        x: e.detail.x,
+                        y: e.detail.y,
+                        index: e.detail.index,
+                        tabType: e.detail.tabType
+                    };
+                }}"
+                @tab-reorder="${(e: CustomEvent) => this._handleTabReorder(e.detail.fromIndex, e.detail.toIndex)}"
+                @add-sheet-click="${this._handleAddSheet}"
+            ></bottom-tabs>
 
             <tab-context-menu
                 .open="${this.tabContextMenu !== null}"
@@ -1152,113 +1123,45 @@ export class MyEditor extends LitElement {
         }
     }
 
-    private _handleSheetDragStart(e: DragEvent, index: number) {
-        if (!e.dataTransfer) return;
-        e.dataTransfer.setData('text/plain', index.toString());
-        e.dataTransfer.effectAllowed = 'move';
-    }
+    /**
+     * Handle tab reorder from bottom-tabs component drag-drop
+     */
+    private async _handleTabReorder(fromIndex: number, toIndex: number) {
+        if (fromIndex === toIndex) return;
 
-    private _handleSheetDragOver(e: DragEvent) {
-        e.preventDefault();
-        e.dataTransfer!.dropEffect = 'move';
+        const fromTab = this.tabs[fromIndex];
+        const toTab = toIndex < this.tabs.length ? this.tabs[toIndex] : null;
 
-        const tabs = this.shadowRoot?.querySelectorAll('.tab-item');
-        tabs?.forEach((t) => t.classList.remove('drag-over-left', 'drag-over-right'));
+        // Handle different move scenarios
+        if (fromTab.type === 'sheet') {
+            if (toTab?.type === 'sheet' || toTab?.type === 'add-sheet' || !toTab) {
+                // Sheet → Sheet: Physical reorder within workbook
+                const fromSheetIndex = fromTab.sheetIndex!;
+                let toSheetIndex = 0;
 
-        const target = e
-            .composedPath()
-            .find(
-                (n) => (n as HTMLElement).classList && (n as HTMLElement).classList.contains('tab-item')
-            ) as HTMLElement;
-        if (target && !target.classList.contains('add-sheet-tab')) {
-            const rect = target.getBoundingClientRect();
-            const mid = rect.left + rect.width / 2;
-            if (e.clientX < mid) target.classList.add('drag-over-left');
-            else target.classList.add('drag-over-right');
-        }
-    }
-
-    private _handleSheetDragLeave() {
-        // Optional cleanup
-    }
-
-    private _handleSheetDragEnd() {
-        const tabs = this.shadowRoot?.querySelectorAll('.tab-item');
-        tabs?.forEach((t) => t.classList.remove('drag-over-left', 'drag-over-right'));
-    }
-
-    private async _handleSheetDrop(e: DragEvent) {
-        e.preventDefault();
-        this._handleSheetDragEnd();
-
-        const fromIndexStr = e.dataTransfer?.getData('text/plain');
-        if (!fromIndexStr) return;
-        const fromIndex = parseInt(fromIndexStr);
-        if (isNaN(fromIndex)) return;
-
-        const target = e
-            .composedPath()
-            .find(
-                (n) => (n as HTMLElement).classList && (n as HTMLElement).classList.contains('tab-item')
-            ) as HTMLElement;
-        let toIndex = -1;
-
-        if (target) {
-            const indexAttr = target.getAttribute('data-index');
-            if (indexAttr) {
-                const initialIndex = parseInt(indexAttr);
-                if (!isNaN(initialIndex)) {
-                    const rect = target.getBoundingClientRect();
-                    const mid = rect.left + rect.width / 2;
-                    toIndex = e.clientX < mid ? initialIndex : initialIndex + 1;
+                if (toTab?.type === 'sheet') {
+                    toSheetIndex = toTab.sheetIndex!;
+                } else {
+                    const sheets = this.tabs.filter((t) => t.type === 'sheet');
+                    toSheetIndex = sheets.length;
                 }
-            }
-        } else if ((e.target as HTMLElement).classList.contains('bottom-tabs')) {
-            const addTab = this.tabs.find((t) => t.type === 'add-sheet');
-            if (addTab) {
-                toIndex = addTab.index;
+
+                this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
             } else {
-                toIndex = this.tabs.length;
+                // Sheet → Document position: Metadata-only (cross-type display)
+                this._reorderTabsArray(fromIndex, toIndex);
+                this._updateTabOrder();
             }
-        }
-
-        if (toIndex !== -1 && fromIndex !== toIndex) {
-            const fromTab = this.tabs[fromIndex];
-            const toTab = toIndex < this.tabs.length ? this.tabs[toIndex] : null;
-
-            // Handle different move scenarios
-            if (fromTab.type === 'sheet') {
-                if (toTab?.type === 'sheet' || toTab?.type === 'add-sheet' || !toTab) {
-                    // Sheet → Sheet: Physical reorder within workbook
-                    const fromSheetIndex = fromTab.sheetIndex!;
-                    let toSheetIndex = 0;
-
-                    if (toTab?.type === 'sheet') {
-                        toSheetIndex = toTab.sheetIndex!;
-                    } else {
-                        const sheets = this.tabs.filter((t) => t.type === 'sheet');
-                        toSheetIndex = sheets.length;
-                    }
-
-                    this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
-                } else {
-                    // Sheet → Document position: Metadata-only (cross-type display)
-                    // Reorder tabs array first, then update backend
-                    this._reorderTabsArray(fromIndex, toIndex);
-                    this._updateTabOrder();
-                }
-            } else if (fromTab.type === 'document') {
-                if (toTab?.type === 'document') {
-                    // Document → Document: Physical reorder in file
-                    const fromDocIndex = fromTab.docIndex!;
-                    const toDocIndex = toTab.docIndex!;
-                    this.spreadsheetService.moveDocumentSection(fromDocIndex, toDocIndex, false, false, toIndex);
-                } else {
-                    // Document → Sheet position: Metadata-only (cross-type display)
-                    // Reorder tabs array first, then update backend
-                    this._reorderTabsArray(fromIndex, toIndex);
-                    this._updateTabOrder();
-                }
+        } else if (fromTab.type === 'document') {
+            if (toTab?.type === 'document') {
+                // Document → Document: Physical reorder in file
+                const fromDocIndex = fromTab.docIndex!;
+                const toDocIndex = toTab.docIndex!;
+                this.spreadsheetService.moveDocumentSection(fromDocIndex, toDocIndex, false, false, toIndex);
+            } else {
+                // Document → Sheet position: Metadata-only (cross-type display)
+                this._reorderTabsArray(fromIndex, toIndex);
+                this._updateTabOrder();
             }
         }
     }
