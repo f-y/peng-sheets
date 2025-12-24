@@ -158,6 +158,14 @@ export class SpreadsheetService {
         return this.pyodide;
     }
 
+    /**
+     * Returns true if Pyodide has been initialized.
+     * Use this to check before calling methods that require Pyodide.
+     */
+    public get isInitialized(): boolean {
+        return this.pyodide !== null;
+    }
+
     private _enqueueRequest(task: () => Promise<void>) {
         this._requestQueue.push(task);
         if (!this._isSyncing) {
