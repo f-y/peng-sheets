@@ -745,7 +745,7 @@ export class MyEditor extends LitElement {
                 ? html`
                       <div
                           style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
-                              .x}px; background: var(--vscode-menu-background, #252526); border: 1px solid var(--vscode-menu-border, #454545); border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,0.4), 0 2px 6px rgba(0,0,0,0.2); z-index: 10000; padding: 6px 0; min-width: 180px;"
+                              .x}px; background: #3c3c3c; border: 1px solid #6b6b6b; border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.1); z-index: 10000; padding: 6px 0; min-width: 200px;"
                       >
                           ${this.tabContextMenu.tabType === 'sheet'
                               ? html`
@@ -964,19 +964,20 @@ export class MyEditor extends LitElement {
         // Show custom context menu for sheet and document tabs
         if (tab.type !== 'sheet' && tab.type !== 'document') return;
 
-        // Calculate menu position to show near the tab and within viewport
-        const menuHeight = 180; // Estimated height: 4 items + separator + padding
+        // Calculate menu position to show near click point within viewport
+        const menuHeight = 180;
         const viewportHeight = window.innerHeight;
 
-        // Position menu slightly above click point (not too far)
-        let menuY = e.clientY - 50;
-        if (menuY < 10) {
-            // If menu would go above viewport, show below the click
-            menuY = e.clientY + 20;
-        }
-        // Ensure it doesn't go below viewport either
-        if (menuY + menuHeight > viewportHeight) {
+        // Position menu at click point (slightly offset)
+        let menuY = e.clientY - 10;
+
+        // Ensure it doesn't go below viewport
+        if (menuY + menuHeight > viewportHeight - 10) {
             menuY = viewportHeight - menuHeight - 10;
+        }
+        // Ensure it doesn't go above viewport
+        if (menuY < 10) {
+            menuY = 10;
         }
 
         this.tabContextMenu = {
