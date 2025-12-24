@@ -745,7 +745,7 @@ export class MyEditor extends LitElement {
                 ? html`
                       <div
                           style="position: fixed; top: ${this.tabContextMenu.y}px; left: ${this.tabContextMenu
-                              .x}px; background: #4a4a4a; border: 1px solid #5a5a5a; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,0.6); z-index: 10000; padding: 8px 0; min-width: 200px;"
+                              .x}px; background: var(--vscode-menu-background); color: var(--vscode-menu-foreground); border: 1px solid var(--vscode-menu-border); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); z-index: 10000; padding: 6px 0; min-width: 200px;"
                       >
                           ${this.tabContextMenu.tabType === 'sheet'
                               ? html`
@@ -964,16 +964,16 @@ export class MyEditor extends LitElement {
         // Show custom context menu for sheet and document tabs
         if (tab.type !== 'sheet' && tab.type !== 'document') return;
 
-        // Calculate menu position to show near click point within viewport
+        // Calculate menu position - show just below the click point (close to tab)
         const menuHeight = 180;
         const viewportHeight = window.innerHeight;
 
-        // Position menu at click point (slightly offset)
-        let menuY = e.clientY - 10;
+        // Position menu just below click point
+        let menuY = e.clientY + 5;
 
-        // Ensure it doesn't go below viewport
+        // If menu would go below viewport, show above the click
         if (menuY + menuHeight > viewportHeight - 10) {
-            menuY = viewportHeight - menuHeight - 10;
+            menuY = e.clientY - menuHeight - 5;
         }
         // Ensure it doesn't go above viewport
         if (menuY < 10) {
