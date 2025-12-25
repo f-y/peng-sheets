@@ -147,8 +147,6 @@ def generate_and_get_range():
     # Handle case where start_line is beyond the file (appending to end)
     if start_line >= len(lines):
         start_line = len(lines) - 1
-        if start_line < 0:
-            start_line = 0
 
     return {
         "startLine": start_line,
@@ -543,8 +541,8 @@ def paste_cells(
 
         # Pad all rows
         for r in current_rows:
-            while len(r) < global_max_width:
-                r.append("")
+            if len(r) < global_max_width:
+                r.extend([""] * (global_max_width - len(r)))
 
         # Pad headers
         if new_headers:
@@ -1139,7 +1137,6 @@ def move_document_section(
 
     # Determin target position physically
     target_line = 0
-    calculated_to_doc_index = to_doc_index
 
     if to_after_workbook:
         for s in sections:
@@ -1261,7 +1258,6 @@ def _reorder_tab_metadata(wb, item_type, from_idx, to_idx, target_tab_order_inde
 
     # We need to apply this index mapping to all items in tab_order
 
-    clamped_from = from_idx
     # We assume valid range from caller
 
     # Effective insertion index behavior
@@ -1269,10 +1265,8 @@ def _reorder_tab_metadata(wb, item_type, from_idx, to_idx, target_tab_order_inde
     # A becomes 2. B(1)->0. C(2)->1.
 
     # Map old_index -> new_index
-    index_map = {}
 
     # Count total items of this type
-    count = 0
 
     # It's easier to simulate the list move to generate the map
     # Create list of indices [0, 1, 2, ...]

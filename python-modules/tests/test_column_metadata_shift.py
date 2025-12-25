@@ -8,6 +8,7 @@ is properly shifted when columns are inserted or deleted.
 import json
 
 from headless_editor import (
+    _shift_column_metadata_indices,
     delete_column,
     get_state,
     initialize_workbook,
@@ -385,6 +386,24 @@ class TestMetadataShiftEdgeCases:
 
         # Should be back to original
         assert visual["column_widths"] == original_widths
+
+    def test_metadata_with_non_integer_keys(self):
+        """Test metadata with non-integer keys (should be preserved)."""
+        visual_metadata = {
+            "column_widths": {
+                "0": 100,
+                "foo": 200,  # Non-integer key
+                "1": 300,
+            }
+        }
+
+        # Insert at 0
+        shifted = _shift_column_metadata_indices({"visual": visual_metadata}, 0, 1)
+
+        cw = shifted["visual"]["column_widths"]
+        assert cw["1"] == 100  # Shifted 0
+        assert cw["foo"] == 200  # Preserved
+        assert cw["2"] == 300  # Shifted 1
 
 
 # ============================================================================

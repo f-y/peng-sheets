@@ -132,6 +132,76 @@ class TestAddDocument:
         # Should use a default name like "New Document"
         assert "# " in result["content"]
 
+    def test_add_document_updates_existing_tab_order(self, setup_hybrid_workbook):
+        """If tab_order exists, add_document should update it efficiently."""
+        editor = setup_hybrid_workbook
+
+        # 1. Set up explicitly ordered tab_order
+        # Current Docs: Overview (0), Appendix (1).
+        # We will add a document after Overview.
+        tab_order = [
+            {"type": "document", "index": 1},  # Appendix
+            {"type": "sheet", "index": 0},  # Sheet 1
+            {"type": "document", "index": 0},  # Overview
+        ]
+        editor.update_workbook_tab_order(tab_order)
+
+        # 2. Add new document after Overview (index 0)
+        # New doc becomes index 1. Appendix becomes index 2.
+        result = editor.add_document("Middle Doc", after_doc_index=0)
+        assert "error" not in result
+
+        # 3. Verify tab_order updated
+        state = json.loads(editor.get_state())
+        new_tab_order = state["workbook"]["metadata"]["tab_order"]
+
+        # Verify Appendix shift (was 1 -> now 2)
+        appendix_entries = [
+            item
+            for item in new_tab_order
+            if item["type"] == "document" and item["index"] == 2
+        ]
+        assert len(appendix_entries) > 0
+
+        # Verify New Doc entry (index 1)
+        new_entries = [
+            item
+            for item in new_tab_order
+            if item["type"] == "document" and item["index"] == 1
+        ]
+        assert len(new_entries) > 0
+
+    def test_add_document_with_insert_after_tab_order_index(
+        self, setup_hybrid_workbook
+    ):
+        """Add document with explicit tab_order insertion point."""
+        editor = setup_hybrid_workbook
+
+        # Initial tab order: Doc(0) [Overview], Ind(0) [Sheet1], Doc(1) [Appendix]
+        tab_order = [
+            {"type": "document", "index": 0},
+            {"type": "sheet", "index": 0},
+            {"type": "document", "index": 1},
+        ]
+        editor.update_workbook_tab_order(tab_order)
+
+        # Add "Inserted Doc" after the FIRST item in tab_order (Doc 0)
+        # result: Doc(0), NewDoc(1), Sheet1, Appendix(2)
+        result = editor.add_document(
+            "Inserted Doc", after_doc_index=0, insert_after_tab_order_index=0
+        )
+        assert "error" not in result
+
+        state = json.loads(editor.get_state())
+        new_tab_order = state["workbook"]["metadata"]["tab_order"]
+        assert len(new_tab_order) == 4
+        # Index 0 was Doc 0.
+        # Index 1 should be New Doc.
+        assert new_tab_order[1]["type"] == "document"
+        # The new doc index depends on where it was inserted in FILE structure.
+        # after_doc_index=0 -> new doc is index 1.
+        assert new_tab_order[1]["index"] == 1
+
 
 class TestAddDocumentEdgeCases:
     """Edge case tests for add document."""
