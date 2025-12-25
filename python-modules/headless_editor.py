@@ -358,8 +358,85 @@ def delete_rows(sheet_idx, table_idx, row_indices):
     return apply_table_update(sheet_idx, table_idx, _delete_logic)
 
 
+def _shift_column_metadata_indices(metadata, col_idx, direction):
+    """
+    Shift column-indexed metadata when columns are inserted or deleted.
+
+    Args:
+        metadata: Table metadata dict
+        col_idx: Column index where operation occurred
+        direction: +1 for insert (shift right), -1 for delete (shift left)
+
+    Returns:
+        Updated metadata dict
+    """
+    if not metadata:
+        return metadata
+
+    new_metadata = metadata.copy()
+    visual = new_metadata.get("visual", {})
+    if not visual:
+        return new_metadata
+
+    new_visual = visual.copy()
+    updated = False
+
+    # Keys in visual that use column index as key
+    column_indexed_keys = ["column_widths", "validation", "columns"]
+
+    for key in column_indexed_keys:
+        if key not in new_visual:
+            continue
+
+        old_data = new_visual[key]
+        if not isinstance(old_data, dict):
+            continue
+
+        new_data = {}
+        for str_idx, value in old_data.items():
+            try:
+                idx = int(str_idx)
+            except (ValueError, TypeError):
+                # Keep non-integer keys as-is
+                new_data[str_idx] = value
+                continue
+
+            if direction == -1:  # Delete
+                if idx == col_idx:
+                    # This column is being deleted, skip it
+                    updated = True
+                    continue
+                elif idx > col_idx:
+                    # Shift left
+                    new_data[str(idx - 1)] = value
+                    updated = True
+                else:
+                    # Keep as-is
+                    new_data[str_idx] = value
+            else:  # Insert (direction == +1)
+                if idx >= col_idx:
+                    # Shift right
+                    new_data[str(idx + 1)] = value
+                    updated = True
+                else:
+                    # Keep as-is
+                    new_data[str_idx] = value
+
+        new_visual[key] = new_data
+
+    if updated:
+        new_metadata["visual"] = new_visual
+
+    return new_metadata
+
+
 def delete_column(sheet_idx, table_idx, col_idx):
-    return apply_table_update(sheet_idx, table_idx, lambda t: t.delete_column(col_idx))
+    def _delete_with_metadata(t):
+        new_table = t.delete_column(col_idx)
+        new_metadata = _shift_column_metadata_indices(new_table.metadata, col_idx, -1)
+        return replace(new_table, metadata=new_metadata)
+
+    return apply_table_update(sheet_idx, table_idx, _delete_with_metadata)
 
 
 def clear_column(sheet_idx, table_idx, col_idx):
@@ -380,7 +457,12 @@ def insert_row(sheet_idx, table_idx, row_idx):
 
 
 def insert_column(sheet_idx, table_idx, col_idx):
-    return apply_table_update(sheet_idx, table_idx, lambda t: t.insert_column(col_idx))
+    def _insert_with_metadata(t):
+        new_table = t.insert_column(col_idx)
+        new_metadata = _shift_column_metadata_indices(new_table.metadata, col_idx, +1)
+        return replace(new_table, metadata=new_metadata)
+
+    return apply_table_update(sheet_idx, table_idx, _insert_with_metadata)
 
 
 def update_visual_metadata(sheet_idx, table_idx, visual_metadata):
