@@ -1,20 +1,20 @@
 import { expect, fixture, html } from '@open-wc/testing';
 import { describe, it, beforeEach } from 'vitest';
-import { MyEditor } from '../../main';
+import { MdSpreadsheetEditor } from '../../main';
 import '../../main'; // Ensure custom element is defined
 import '../../components/confirmation-modal'; // Ensure modal is defined
 import { awaitView } from '../helpers/test-helpers';
 
 describe('MyEditor Sheet Deletion', () => {
-    let el: MyEditor;
+    let el: MdSpreadsheetEditor;
 
     beforeEach(async () => {
         // Stub _parseWorkbook to prevent it from resetting tabs
-        const _originalParse = (MyEditor.prototype as any)._parseWorkbook;
-        (MyEditor.prototype as any)._parseWorkbook = async () => {};
+        const _originalParse = (MdSpreadsheetEditor.prototype as any)._parseWorkbook;
+        (MdSpreadsheetEditor.prototype as any)._parseWorkbook = async () => {};
 
         try {
-            el = (await fixture(html`<md-spreadsheet-editor></md-spreadsheet-editor>`)) as MyEditor;
+            el = (await fixture(html`<md-spreadsheet-editor></md-spreadsheet-editor>`)) as MdSpreadsheetEditor;
             // Mock tabs data
             (el as any).tabs = [
                 { type: 'sheet', title: 'Sheet1', index: 0, sheetIndex: 0, data: { tables: [] } },

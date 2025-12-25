@@ -9,7 +9,7 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
-import { MyEditor } from '../../main';
+import { MdSpreadsheetEditor } from '../../main';
 import { awaitView } from '../helpers/test-helpers';
 
 // Mock vscode API
@@ -29,14 +29,14 @@ vi.stubGlobal('loadPyodide', async () => ({
 }));
 
 describe('Sheet Add Selection Bug - Regression', () => {
-    let el: MyEditor;
+    let el: MdSpreadsheetEditor;
 
     beforeEach(async () => {
         document.body.innerHTML = '';
         // Stub _parseWorkbook to prevent it from resetting tabs
-        (MyEditor.prototype as any)._parseWorkbook = async () => {};
+        (MdSpreadsheetEditor.prototype as any)._parseWorkbook = async () => {};
 
-        el = (await fixture(html`<md-spreadsheet-editor></md-spreadsheet-editor>`)) as MyEditor;
+        el = (await fixture(html`<md-spreadsheet-editor></md-spreadsheet-editor>`)) as MdSpreadsheetEditor;
     });
 
     it('should select Sheet 2 when adding to a workbook with 1 sheet', async () => {

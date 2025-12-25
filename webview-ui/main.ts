@@ -14,7 +14,7 @@ import './components/tab-context-menu';
 import './components/add-tab-dropdown';
 import './components/bottom-tabs';
 import './components/layout-container';
-import { GlobalEventController } from './controllers/global-event-controller';
+import { GlobalEventController, GlobalEventHost } from './controllers/global-event-controller';
 import {
     SheetJSON,
     DocumentJSON,
@@ -64,14 +64,12 @@ const vscode = acquireVsCodeApi();
 import pythonCore from '../python-modules/headless_editor.py?raw';
 
 @customElement('md-spreadsheet-editor')
-export class MyEditor extends LitElement {
+export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     static styles = [unsafeCSS(mainStyles)];
 
-    private spreadsheetService = new SpreadsheetService(pythonCore, vscode);
+    public readonly spreadsheetService = new SpreadsheetService(pythonCore, vscode);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    private _globalEventController = new GlobalEventController(
-        this as unknown as import('./controllers/global-event-controller').GlobalEventHost
-    );
+    private _globalEventController = new GlobalEventController(this);
     // Promise for Pyodide initialization, started early in connectedCallback
     private _initPromise: Promise<unknown> | null = null;
 
@@ -207,20 +205,6 @@ export class MyEditor extends LitElement {
         }
 
         this.spreadsheetService.deleteTable(sheetIndex, tableIndex);
-    }
-
-    private _onMetadataChange(e: CustomEvent) {
-        this._handleVisualMetadataUpdate(e.detail);
-    }
-
-    private async _onCellEdit(e: CustomEvent) {
-        const { sheetIndex, tableIndex, rowIndex, colIndex, newValue } = e.detail;
-        await this._handleRangeEdit(sheetIndex, tableIndex, rowIndex, rowIndex, colIndex, colIndex, newValue);
-    }
-
-    private async _onRangeEdit(e: CustomEvent) {
-        const { sheetIndex, tableIndex, startRow, endRow, startCol, endCol, newValue } = e.detail;
-        await this._handleRangeEdit(sheetIndex, tableIndex, startRow, endRow, startCol, endCol, newValue);
     }
 
     private async _handleRangeEdit(

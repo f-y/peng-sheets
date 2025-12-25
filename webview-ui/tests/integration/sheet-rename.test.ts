@@ -20,7 +20,7 @@ describe('Sheet Rename Logic', () => {
     beforeAll(async () => {
         // Dynamic import to ensure global is set before module execution
         const module = await import('../../main');
-        MyEditor = module.MyEditor;
+        MyEditor = module.MdSpreadsheetEditor;
 
         if (!customElements.get('md-spreadsheet-editor')) {
             customElements.define('md-spreadsheet-editor', MyEditor);
