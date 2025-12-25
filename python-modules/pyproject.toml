@@ -21,6 +21,7 @@ md-spreadsheet-parser = { workspace = true }
 [dependency-groups]
 dev = [
     "pytest>=9.0.2",
+    "pytest-cov>=4.1.0",
 ]
 
 [tool.pytest.ini_options]
