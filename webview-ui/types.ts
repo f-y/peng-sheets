@@ -202,6 +202,13 @@ export interface IColumnFilterDetail {
     hiddenValues: string[];
 }
 
+export interface IValidationUpdateDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    colIndex: number;
+    rule: unknown; // ValidationRule | null
+}
+
 export type PostMessageCommand =
     | ({ command: 'update_column_filter' } & IColumnFilterDetail)
     | ({ command: 'sort_rows' } & ISortRowsDetail)

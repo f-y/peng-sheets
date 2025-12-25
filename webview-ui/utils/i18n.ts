@@ -64,7 +64,25 @@ const translations = {
         pressEscapeToCancel: 'Press Escape to cancel',
         addNewSheet: 'Add New Sheet',
         addNewDocument: 'Add New Document',
-        newSpreadsheet: 'New Spreadsheet'
+        newSpreadsheet: 'New Spreadsheet',
+        dataValidation: 'Data Validation...',
+        noValidation: 'No Validation',
+        validationList: 'List (Dropdown)',
+        validationDate: 'Date (YYYY-MM-DD)',
+        validationInteger: 'Integer',
+        validationEmail: 'Email',
+        validationUrl: 'URL',
+        validationType: 'Validation Type',
+        listValues: 'Values (one per line)',
+        integerRange: 'Range (optional)',
+        removeValidation: 'Remove',
+        errorMustBeOneOf: 'Must be one of: {0}',
+        errorInvalidDate: 'Invalid date format (YYYY-MM-DD)',
+        errorMustBeInteger: 'Must be an integer',
+        errorMustBeMin: 'Must be >= {0}',
+        errorMustBeMax: 'Must be <= {0}',
+        errorInvalidEmail: 'Invalid email format',
+        errorInvalidUrl: 'Invalid URL format'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -131,7 +149,25 @@ const translations = {
         pressEscapeToCancel: 'Escキーでキャンセル',
         addNewSheet: '新しいシートを追加',
         addNewDocument: '新しいドキュメントを追加',
-        newSpreadsheet: '新しいスプレッドシート'
+        newSpreadsheet: '新しいスプレッドシート',
+        dataValidation: 'データ入力規則の設定...',
+        noValidation: '制限なし',
+        validationList: 'リスト (ドロップダウン)',
+        validationDate: '日付 (YYYY-MM-DD)',
+        validationInteger: '整数',
+        validationEmail: 'メールアドレス',
+        validationUrl: 'URL',
+        validationType: '入力規則の種類',
+        listValues: '値 (1行に1つ)',
+        integerRange: '範囲 (任意)',
+        removeValidation: '削除',
+        errorMustBeOneOf: '次のいずれかを入力してください: {0}',
+        errorInvalidDate: '無効な日付形式です (YYYY-MM-DD)',
+        errorMustBeInteger: '整数を入力してください',
+        errorMustBeMin: '{0} 以上を入力してください',
+        errorMustBeMax: '{0} 以下を入力してください',
+        errorInvalidEmail: '無効なメールアドレス形式です',
+        errorInvalidUrl: '無効なURL形式です'
     }
 };
 

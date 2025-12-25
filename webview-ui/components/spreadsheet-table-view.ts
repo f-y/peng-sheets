@@ -156,6 +156,9 @@ export class SpreadsheetTableView extends LitElement {
                           @ss-delete-col="${(e: CustomEvent<{ index: number }>) => {
                               this._bubbleEvent('view-delete-col', e.detail);
                           }}"
+                          @ss-data-validation="${(e: CustomEvent<{ index: number }>) => {
+                              this._bubbleEvent('view-data-validation', e.detail);
+                          }}"
                           @ss-menu-close="${() => {
                               this.dispatchEvent(new CustomEvent('view-menu-close', { bubbles: true, composed: true }));
                           }}"
@@ -333,6 +336,12 @@ export class SpreadsheetTableView extends LitElement {
                 const format = colSettings.format;
                 const wordWrapEnabled = format?.wordWrap !== false;
 
+                // Get validation rule for this column
+                const validation = (visual as Record<string, unknown>).validation as
+                    | Record<string, unknown>
+                    | undefined;
+                const validationRule = validation?.[c.toString()] || null;
+
                 const displayValue = isEditingCell ? cell : this._formatCellValue(cell, format?.numberFormat);
 
                 return html`
@@ -354,6 +363,7 @@ export class SpreadsheetTableView extends LitElement {
                         .isActive="${isActive && !isRangeSelection}"
                         .wordWrap="${wordWrapEnabled}"
                         .align="${align}"
+                        .validationRule="${validationRule}"
                         .rangeTop="${rangeState.topEdge}"
                         .rangeBottom="${rangeState.bottomEdge}"
                         .rangeLeft="${rangeState.leftEdge}"

@@ -60,6 +60,10 @@
     z-index: 1;
 }
 
+.cell a {
+    color: var(--vscode-textLink-foreground);
+}
+
 .cell.word-wrap {
     white-space: pre-wrap;
     word-break: break-word;
@@ -390,4 +394,32 @@
     visibility: visible;
     opacity: 1;
     color: var(--vscode-textLink-foreground);
+}
+
+/* Validation error styles */
+.cell.validation-error {
+    background-color: rgba(255, 0, 0, 0.08);
+    border-color: var(--vscode-inputValidation-errorBorder, #f44336);
+}
+
+.cell.validation-error::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 8px 8px 0;
+    border-color: transparent var(--vscode-inputValidation-errorBorder, #f44336) transparent transparent;
+    z-index: 10;
+}
+
+.validation-error-icon {
+    position: absolute;
+    bottom: 2px;
+    right: 4px;
+    font-size: 10px;
+    color: var(--vscode-inputValidation-errorBorder, #f44336);
+    z-index: 10;
 }

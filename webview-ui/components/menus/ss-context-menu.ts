@@ -117,6 +117,17 @@ export class SSContextMenu extends LitElement {
         );
     }
 
+    private _handleDataValidation(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-data-validation', {
+                detail: { index: this.index },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
     private _stopPropagation(e: MouseEvent) {
         e.stopPropagation();
     }
@@ -136,6 +147,10 @@ export class SSContextMenu extends LitElement {
                     <div class="context-menu-item" @click="${this._handleInsertLeft}">${t('insertColLeft')}</div>
                     <div class="context-menu-item" @click="${this._handleInsertRight}">${t('insertColRight')}</div>
                     <div class="context-menu-item" @click="${this._handleDeleteCol}">${t('deleteCol')}</div>
+                    <div class="context-menu-separator"></div>
+                    <div class="context-menu-item" @click="${this._handleDataValidation}">
+                        ${t('dataValidation') || 'Data Validation...'}
+                    </div>
                 </div>
             `;
         }

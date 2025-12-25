@@ -14,6 +14,7 @@ import {
     IVisualMetadataUpdateDetail,
     ISheetMetadataUpdateDetail,
     IPasteCellsDetail,
+    IValidationUpdateDetail,
     PostMessageCommand
 } from '../types';
 
@@ -54,6 +55,7 @@ export interface GlobalEventHost extends ReactiveControllerHost {
     _handlePostMessage(detail: PostMessageCommand): void;
     _handleDocumentChange(detail: { sectionIndex: number; content: string; title?: string; save?: boolean }): void;
     _handleSave(): void;
+    _handleValidationUpdate(detail: IValidationUpdateDetail): void;
     _parseWorkbook(): Promise<void>;
 }
 
@@ -87,6 +89,7 @@ export class GlobalEventController implements ReactiveController {
     private _boundPasteCells: (e: Event) => void;
     private _boundPostMessage: (e: Event) => void;
     private _boundDocumentChange: (e: Event) => void;
+    private _boundValidationUpdate: (e: Event) => void;
     private _boundMessage: (e: MessageEvent) => void;
 
     constructor(host: GlobalEventHost) {
@@ -114,6 +117,7 @@ export class GlobalEventController implements ReactiveController {
         this._boundPasteCells = this._handlePasteCells.bind(this);
         this._boundPostMessage = this._handlePostMessage.bind(this);
         this._boundDocumentChange = this._handleDocumentChange.bind(this);
+        this._boundValidationUpdate = this._handleValidationUpdate.bind(this);
         this._boundMessage = this._handleMessage.bind(this);
     }
 
@@ -151,6 +155,7 @@ export class GlobalEventController implements ReactiveController {
         window.addEventListener('paste-cells', this._boundPasteCells);
         window.addEventListener('post-message', this._boundPostMessage);
         window.addEventListener('document-change', this._boundDocumentChange);
+        window.addEventListener('validation-update', this._boundValidationUpdate);
 
         // VS Code extension messages
         window.addEventListener('message', this._boundMessage);
@@ -178,6 +183,7 @@ export class GlobalEventController implements ReactiveController {
         window.removeEventListener('paste-cells', this._boundPasteCells);
         window.removeEventListener('post-message', this._boundPostMessage);
         window.removeEventListener('document-change', this._boundDocumentChange);
+        window.removeEventListener('validation-update', this._boundValidationUpdate);
         window.removeEventListener('message', this._boundMessage);
     }
 
@@ -297,6 +303,10 @@ export class GlobalEventController implements ReactiveController {
                 }>
             ).detail
         );
+    }
+
+    private _handleValidationUpdate(e: Event): void {
+        this.host._handleValidationUpdate((e as CustomEvent<IValidationUpdateDetail>).detail);
     }
 
     private async _handleMessage(event: MessageEvent): Promise<void> {

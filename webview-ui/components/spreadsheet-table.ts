@@ -23,7 +23,9 @@ import './cells/ss-column-header';
 import './cells/ss-ghost-cell';
 import './menus/ss-context-menu';
 import './menus/ss-metadata-editor';
+import './menus/ss-validation-dialog';
 import './spreadsheet-table-view';
+import type { ValidationRule } from '../controllers/validation-controller';
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
@@ -72,6 +74,9 @@ export class SpreadsheetTable extends LitElement {
 
     @state()
     contextMenu: { x: number; y: number; type: 'row' | 'col'; index: number } | null = null;
+
+    @state()
+    validationDialog: { colIndex: number; currentRule: ValidationRule | null } | null = null;
 
     private _shouldFocusCell: boolean = false;
     private _isCommitting: boolean = false; // Kept in host for now as it coordinates editCtrl and Events
@@ -350,6 +355,45 @@ export class SpreadsheetTable extends LitElement {
     }
 
     /**
+     * Handle opening the validation dialog from context menu.
+     */
+    private _handleOpenValidationDialog = (e: CustomEvent<{ index: number }>) => {
+        const colIndex = e.detail.index;
+        // Get current validation rule from visual metadata
+        const visual = (this.table?.metadata as Record<string, unknown>)?.visual as Record<string, unknown> | undefined;
+        const validation = visual?.validation as Record<string, ValidationRule> | undefined;
+        const currentRule = validation?.[colIndex.toString()] || null;
+        this.validationDialog = { colIndex, currentRule };
+        this.contextMenu = null; // Close context menu
+    };
+
+    /**
+     * Handle validation rule update from dialog.
+     */
+    private _handleValidationUpdate = (e: CustomEvent<{ colIndex: number; rule: ValidationRule | null }>) => {
+        const { colIndex, rule } = e.detail;
+        // Dispatch event to window for GlobalEventController
+        window.dispatchEvent(
+            new CustomEvent('validation-update', {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    colIndex,
+                    rule
+                }
+            })
+        );
+        this.validationDialog = null;
+    };
+
+    /**
+     * Handle closing validation dialog.
+     */
+    private _handleValidationDialogClose = () => {
+        this.validationDialog = null;
+    };
+
+    /**
      * Calculate the selection range boundaries based on current selection state.
      * Delegates to SelectionController for the actual logic.
      */
@@ -429,7 +473,20 @@ export class SpreadsheetTable extends LitElement {
                 @view-sort="${this.filterCtrl.handleSort}"
                 @view-filter-change="${this.filterCtrl.handleFilterChange}"
                 @view-clear-filter="${this.filterCtrl.handleClearFilter}"
+                @view-data-validation="${this._handleOpenValidationDialog}"
             ></spreadsheet-table-view>
+            ${
+                this.validationDialog
+                    ? html`
+                          <ss-validation-dialog
+                              .colIndex="${this.validationDialog.colIndex}"
+                              .currentRule="${this.validationDialog.currentRule}"
+                              @ss-validation-update="${this._handleValidationUpdate}"
+                              @ss-dialog-close="${this._handleValidationDialogClose}"
+                          ></ss-validation-dialog>
+                      `
+                    : ''
+            }
         `;
     }
 

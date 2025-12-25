@@ -37,7 +37,8 @@ import {
     IRequestDeleteTableDetail,
     IPasteCellsDetail,
     IColumnResizeDetail,
-    IColumnFilterDetail
+    IColumnFilterDetail,
+    IValidationUpdateDetail
 } from './types';
 
 // Register the VS Code Design System components
@@ -165,6 +166,41 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     _handleVisualMetadataUpdate(detail: IVisualMetadataUpdateDetail) {
         const { sheetIndex, tableIndex, visual } = detail;
         this.spreadsheetService.updateVisualMetadata(sheetIndex, tableIndex, visual);
+    }
+
+    _handleValidationUpdate(detail: IValidationUpdateDetail) {
+        const { sheetIndex, tableIndex, colIndex, rule } = detail;
+        // Get current visual metadata and merge validation rule
+        const tab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
+        if (tab && isSheetJSON(tab.data)) {
+            const table = tab.data.tables[tableIndex];
+            if (table) {
+                // Initialize or update validation in visual metadata
+                const currentVisual =
+                    ((table.metadata as Record<string, unknown>)?.visual as Record<string, unknown>) || {};
+                const currentValidation = (currentVisual.validation as Record<string, unknown>) || {};
+
+                if (rule === null) {
+                    // Remove validation for this column
+                    delete currentValidation[colIndex.toString()];
+                } else {
+                    // Set validation rule for this column
+                    currentValidation[colIndex.toString()] = rule;
+                }
+
+                const newVisual = {
+                    ...currentVisual,
+                    validation: Object.keys(currentValidation).length > 0 ? currentValidation : undefined
+                };
+
+                // Clean up undefined validation key
+                if (newVisual.validation === undefined) {
+                    delete newVisual.validation;
+                }
+
+                this.spreadsheetService.updateVisualMetadata(sheetIndex, tableIndex, newVisual);
+            }
+        }
     }
 
     _handleSheetMetadataUpdate(detail: ISheetMetadataUpdateDetail) {
