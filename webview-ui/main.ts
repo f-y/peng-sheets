@@ -115,7 +115,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     // Track pending new tab index for selection after add (original tab index + 1)
     private _pendingNewTabIndex: number | null = null;
 
-    private async _handleMetadataEdit(detail: IMetadataEditDetail) {
+    _handleMetadataEdit(detail: IMetadataEditDetail) {
         if (!this.workbook) return;
         const { sheetIndex, tableIndex, name, description } = detail;
 
@@ -142,7 +142,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     /**
      * Handle description-only updates from ss-metadata-editor
      */
-    private async _handleMetadataUpdate(detail: IMetadataUpdateDetail) {
+    _handleMetadataUpdate(detail: IMetadataUpdateDetail) {
         if (!this.workbook) return;
         const { sheetIndex, tableIndex, description } = detail;
 
@@ -162,12 +162,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         this.spreadsheetService.updateTableMetadata(sheetIndex, tableIndex, currentName, description);
     }
 
-    private async _handleVisualMetadataUpdate(detail: IVisualMetadataUpdateDetail) {
+    _handleVisualMetadataUpdate(detail: IVisualMetadataUpdateDetail) {
         const { sheetIndex, tableIndex, visual } = detail;
         this.spreadsheetService.updateVisualMetadata(sheetIndex, tableIndex, visual);
     }
 
-    private async _handleSheetMetadataUpdate(detail: ISheetMetadataUpdateDetail) {
+    _handleSheetMetadataUpdate(detail: ISheetMetadataUpdateDetail) {
         const { sheetIndex, metadata } = detail;
         // Optimistic Update: Update local state immediately
         const targetTab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
@@ -182,19 +182,19 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         this.spreadsheetService.updateSheetMetadata(sheetIndex, metadata);
     }
 
-    private async _handleRequestAddTable(detail: IRequestAddTableDetail) {
+    _handleRequestAddTable(detail: IRequestAddTableDetail) {
         const { sheetIndex } = detail;
         this.spreadsheetService.addTable(sheetIndex, t('newTable'));
     }
 
-    private async _handleRequestRenameTable(detail: IRequestRenameTableDetail) {
+    _handleRequestRenameTable(detail: IRequestRenameTableDetail) {
         if (!this.workbook) return;
         const { sheetIndex, tableIndex, newName } = detail;
 
         this.spreadsheetService.renameTable(sheetIndex, tableIndex, newName);
     }
 
-    private async _handleRequestDeleteTable(detail: IRequestDeleteTableDetail) {
+    _handleRequestDeleteTable(detail: IRequestDeleteTableDetail) {
         const { sheetIndex, tableIndex } = detail;
 
         // Optimistic update
@@ -207,7 +207,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         this.spreadsheetService.deleteTable(sheetIndex, tableIndex);
     }
 
-    private async _handleRangeEdit(
+    _handleRangeEdit(
         sheetIdx: number,
         tableIdx: number,
         startRow: number,
@@ -219,31 +219,31 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         this.spreadsheetService.updateRange(sheetIdx, tableIdx, startRow, endRow, startCol, endCol, newValue);
     }
 
-    private async _handleDeleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
+    _handleDeleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
         this.spreadsheetService.deleteRow(sheetIdx, tableIdx, rowIndex);
     }
 
-    private async _handleDeleteRows(sheetIdx: number, tableIdx: number, rowIndices: number[]) {
+    _handleDeleteRows(sheetIdx: number, tableIdx: number, rowIndices: number[]) {
         this.spreadsheetService.deleteRows(sheetIdx, tableIdx, rowIndices);
     }
 
-    private async _handleDeleteColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
+    _handleDeleteColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
         this.spreadsheetService.deleteColumn(sheetIdx, tableIdx, colIndex);
     }
 
-    private async _handleInsertRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
+    _handleInsertRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
         this.spreadsheetService.insertRow(sheetIdx, tableIdx, rowIndex);
     }
 
-    private async _handleInsertColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
+    _handleInsertColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
         this.spreadsheetService.insertColumn(sheetIdx, tableIdx, colIndex);
     }
 
-    private async _handleClearColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
+    _handleClearColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
         this.spreadsheetService.clearColumn(sheetIdx, tableIdx, colIndex);
     }
 
-    private async _handlePasteCells(detail: IPasteCellsDetail) {
+    _handlePasteCells(detail: IPasteCellsDetail) {
         const { sheetIndex, tableIndex, startRow, startCol, data, includeHeaders } = detail;
         this.spreadsheetService.pasteCells(sheetIndex, tableIndex, startRow, startCol, data, includeHeaders);
     }
@@ -268,7 +268,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         this.spreadsheetService.updateColumnFormat(sheetIndex, tableIndex, colIndex, format ?? null);
     }
 
-    private _handlePostMessage(detail: PostMessageCommand) {
+    _handlePostMessage(detail: PostMessageCommand) {
         switch (detail.command) {
             case 'update_column_filter':
                 this._handleUpdateColumnFilter(detail);
@@ -287,12 +287,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         }
     }
 
-    private async _handleDocumentChange(detail: {
-        sectionIndex: number;
-        content: string;
-        title?: string;
-        save?: boolean;
-    }) {
+    async _handleDocumentChange(detail: { sectionIndex: number; content: string; title?: string; save?: boolean }) {
         console.log('Document change received:', detail);
 
         // Find the active document tab
@@ -388,7 +383,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     }
 
     private _saveDebounceTimer: number | null = null;
-    private _handleSave() {
+    _handleSave() {
         // Debounce save requests to prevent duplicate calls
         if (this._saveDebounceTimer !== null) {
             console.log('[Webview] Save already queued, skipping duplicate');
@@ -642,30 +637,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         }
     }
 
-    private _handleTabInputKey(e: KeyboardEvent) {
-        if (e.key === 'Enter') {
-            (e.target as HTMLInputElement).blur(); // Trigger blur handler
-        } else if (e.key === 'Escape') {
-            this.editingTabIndex = null;
-        }
-    }
-
-    private _handleTabContextMenu(e: MouseEvent, index: number, tab: TabDefinition) {
-        // Prevent default context menu for all tab types
-        e.preventDefault();
-
-        // Show custom context menu for sheet and document tabs
-        if (tab.type !== 'sheet' && tab.type !== 'document') return;
-
-        // Position menu at click point; dynamic adjustment happens in updated() lifecycle
-        this.tabContextMenu = {
-            x: e.clientX,
-            y: e.clientY,
-            index: index,
-            tabType: tab.type
-        };
-    }
-
     private _renameTab(index: number) {
         this.tabContextMenu = null;
         const tab = this.tabs[index];
@@ -808,7 +779,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         vscode.postMessage({ type: 'createSpreadsheet' });
     }
 
-    private async _parseWorkbook() {
+    async _parseWorkbook() {
         try {
             // 2. Initialization Phase
             const result = (await this.spreadsheetService.initializeWorkbook(
@@ -1029,7 +1000,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         this.spreadsheetService.updateWorkbookTabOrder(tabOrder);
     }
 
-    private async _handleColumnResize(detail: IColumnResizeDetail) {
+    async _handleColumnResize(detail: IColumnResizeDetail) {
         const { sheetIndex, tableIndex, col, width } = detail;
         this.spreadsheetService.updateColumnWidth(sheetIndex, tableIndex, col, width);
     }
