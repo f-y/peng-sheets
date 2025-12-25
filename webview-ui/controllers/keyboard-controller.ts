@@ -196,6 +196,18 @@ export class KeyboardController implements ReactiveController {
                 return;
             }
             // Let browser handle normal Backspace
+        } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            // Arrow keys in edit mode: commit edit and navigate
+            e.preventDefault();
+
+            this.host.commitEdit(e);
+
+            const rowCount = this.host.table?.rows.length || 0;
+            const colCount = this.host.table?.headers
+                ? this.host.table.headers.length
+                : this.host.table?.rows[0]?.length || 0;
+            this.host.navCtrl.handleKeyDown(e, rowCount + 1, colCount);
+            this.host.focusCell();
         } else if (e.key === 'Escape') {
             e.preventDefault();
             this.host.editCtrl.cancelEditing();
