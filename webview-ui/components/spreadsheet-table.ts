@@ -417,13 +417,20 @@ export class SpreadsheetTable extends LitElement {
         };
 
         // Build filter menu state from FilterController
+        // Get hiddenValues from metadata to ensure sync on Undo/reopen
+        const getHiddenValuesFromMetadata = (colIndex: number): string[] => {
+            const visual = (table.metadata?.['visual'] as Record<string, unknown>) || {};
+            const filters = (visual.filters as Record<string, string[]>) || {};
+            return filters[colIndex.toString()] || [];
+        };
+
         const filterMenu = this.filterCtrl.activeFilterMenu
             ? {
                   x: this.filterCtrl.activeFilterMenu.x,
                   y: this.filterCtrl.activeFilterMenu.y,
                   col: this.filterCtrl.activeFilterMenu.colIndex,
                   values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
-                  hiddenValues: this.filterCtrl.getHiddenValues(this.filterCtrl.activeFilterMenu.colIndex)
+                  hiddenValues: getHiddenValuesFromMetadata(this.filterCtrl.activeFilterMenu.colIndex)
               }
             : null;
 
