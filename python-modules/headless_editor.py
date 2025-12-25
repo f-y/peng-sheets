@@ -382,7 +382,7 @@ def _shift_column_metadata_indices(metadata, col_idx, direction):
     updated = False
 
     # Keys in visual that use column index as key
-    column_indexed_keys = ["column_widths", "validation", "columns"]
+    column_indexed_keys = ["column_widths", "validation", "columns", "filters"]
 
     for key in column_indexed_keys:
         if key not in new_visual:
