@@ -79,6 +79,33 @@ export class KeyboardController implements ReactiveController {
             return;
         }
 
+        // Excel-compatible date/time shortcuts
+        // Ctrl + ; inserts current date, Ctrl + Shift + ; inserts current time
+        if ((e.ctrlKey || e.metaKey) && e.key === ';') {
+            e.preventDefault();
+            const now = new Date();
+            let value: string;
+            if (e.shiftKey) {
+                // Ctrl + Shift + ; → current time (HH:MM)
+                value = now.toTimeString().slice(0, 5);
+            } else {
+                // Ctrl + ; → current date (YYYY-MM-DD)
+                value = now.toISOString().slice(0, 10);
+            }
+            this.host.dispatchEvent(
+                new CustomEvent('cell-change', {
+                    bubbles: true,
+                    composed: true,
+                    detail: {
+                        row: this.host.selectionCtrl.selectedRow,
+                        col: this.host.selectionCtrl.selectedCol,
+                        value: value
+                    }
+                })
+            );
+            return;
+        }
+
         if (isControl && (e.key === 'c' || e.key === 'C')) {
             e.preventDefault();
             this.host.clipboardCtrl.copyToClipboard();

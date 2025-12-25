@@ -29,6 +29,14 @@
             {
                 "command": "vscode-md-spreadsheet.newWorkbook",
                 "title": "%command.newWorkbook.title%"
+            },
+            {
+                "command": "vscode-md-spreadsheet.insertDate",
+                "title": "Insert Current Date"
+            },
+            {
+                "command": "vscode-md-spreadsheet.insertTime",
+                "title": "Insert Current Time"
             }
         ],
         "menus": {
@@ -57,6 +65,20 @@
                     }
                 ],
                 "priority": "option"
+            }
+        ],
+        "keybindings": [
+            {
+                "key": "ctrl+;",
+                "mac": "cmd+;",
+                "command": "vscode-md-spreadsheet.insertDate",
+                "when": "activeCustomEditorId == 'vscode-md-spreadsheet.editor'"
+            },
+            {
+                "key": "ctrl+shift+;",
+                "mac": "cmd+shift+;",
+                "command": "vscode-md-spreadsheet.insertTime",
+                "when": "activeCustomEditorId == 'vscode-md-spreadsheet.editor'"
             }
         ]
     },

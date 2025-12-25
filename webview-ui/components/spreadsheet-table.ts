@@ -199,6 +199,31 @@ export class SpreadsheetTable extends LitElement {
         (window as unknown as { activeSpreadsheetTable: SpreadsheetTable }).activeSpreadsheetTable = this;
     };
 
+    // Handle insert-value-at-selection events (e.g., date/time shortcuts from extension)
+    private _handleInsertValueAtSelection = (e: CustomEvent<{ value: string }>) => {
+        const { value } = e.detail;
+        const row = this.selectionCtrl.selectedRow;
+        const col = this.selectionCtrl.selectedCol;
+
+        // Only insert if we have a valid cell selection (not row/col header selection)
+        if (row >= -1 && col >= 0) {
+            // Dispatch to window so GlobalEventController can pick it up
+            window.dispatchEvent(
+                new CustomEvent('cell-edit', {
+                    bubbles: true,
+                    composed: true,
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        rowIndex: row,
+                        colIndex: col,
+                        newValue: value
+                    }
+                })
+            );
+        }
+    };
+
     // Delegate to RowVisibilityController
     get visibleRowIndices(): number[] {
         return this.rowVisibilityCtrl.visibleRowIndices;
@@ -215,6 +240,8 @@ export class SpreadsheetTable extends LitElement {
         // MouseMove/Up handled by SelectionController
         // Register focus tracker
         this.addEventListener('focusin', this._handleFocusIn);
+        // Listen for insert-value-at-selection events (from extension commands like date/time shortcuts)
+        window.addEventListener('insert-value-at-selection', this._handleInsertValueAtSelection as EventListener);
     }
 
     /**
@@ -228,6 +255,7 @@ export class SpreadsheetTable extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         this.removeEventListener('focusin', this._handleFocusIn);
+        window.removeEventListener('insert-value-at-selection', this._handleInsertValueAtSelection as EventListener);
     }
 
     /**

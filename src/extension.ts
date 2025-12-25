@@ -38,6 +38,30 @@ export function activate(context: vscode.ExtensionContext) {
             }
         })
     );
+
+    // Insert current date command (Excel-like: Ctrl+;)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-md-spreadsheet.insertDate', () => {
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
+            SpreadsheetEditorProvider.postMessageToActive({
+                type: 'insertValue',
+                value: dateStr
+            });
+        })
+    );
+
+    // Insert current time command (Excel-like: Ctrl+Shift+;)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-md-spreadsheet.insertTime', () => {
+            const now = new Date();
+            const timeStr = now.toTimeString().slice(0, 5); // HH:MM
+            SpreadsheetEditorProvider.postMessageToActive({
+                type: 'insertValue',
+                value: timeStr
+            });
+        })
+    );
 }
 
 export function deactivate() {}

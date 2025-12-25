@@ -6,6 +6,10 @@ import { MessageDispatcher } from './message-dispatcher';
 export class SpreadsheetEditorProvider implements vscode.CustomTextEditorProvider {
     public static readonly viewType = 'vscode-md-spreadsheet.editor';
 
+    // Track all active webview panels
+    private static activePanels: Map<string, vscode.WebviewPanel> = new Map();
+    private static currentActiveUri: string | undefined;
+
     constructor(private readonly context: vscode.ExtensionContext) {}
 
     public static register(context: vscode.ExtensionContext): vscode.Disposable {
@@ -21,6 +25,20 @@ export class SpreadsheetEditorProvider implements vscode.CustomTextEditorProvide
             }
         );
         return providerRegistration;
+    }
+
+    /**
+     * Post a message to the currently active webview panel
+     */
+    public static postMessageToActive(message: unknown): boolean {
+        if (SpreadsheetEditorProvider.currentActiveUri) {
+            const panel = SpreadsheetEditorProvider.activePanels.get(SpreadsheetEditorProvider.currentActiveUri);
+            if (panel) {
+                panel.webview.postMessage(message);
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -84,10 +102,32 @@ export class SpreadsheetEditorProvider implements vscode.CustomTextEditorProvide
             dispatcher.dispatch(e);
         });
 
+        // Track this panel
+        const docUri = document.uri.toString();
+        SpreadsheetEditorProvider.activePanels.set(docUri, webviewPanel);
+
+        // Track when this panel becomes active/inactive
+        webviewPanel.onDidChangeViewState((e) => {
+            if (e.webviewPanel.active) {
+                SpreadsheetEditorProvider.currentActiveUri = docUri;
+            } else if (SpreadsheetEditorProvider.currentActiveUri === docUri) {
+                SpreadsheetEditorProvider.currentActiveUri = undefined;
+            }
+        });
+
+        // Set as active if it's currently visible
+        if (webviewPanel.active) {
+            SpreadsheetEditorProvider.currentActiveUri = docUri;
+        }
+
         // Make sure we get rid of the listener when our editor is closed.
         webviewPanel.onDidDispose(() => {
             changeDocumentSubscription.dispose();
             changeConfigSubscription.dispose();
+            SpreadsheetEditorProvider.activePanels.delete(docUri);
+            if (SpreadsheetEditorProvider.currentActiveUri === docUri) {
+                SpreadsheetEditorProvider.currentActiveUri = undefined;
+            }
         });
 
         // Initial update
