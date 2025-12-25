@@ -423,3 +423,11 @@
     color: var(--vscode-inputValidation-errorBorder, #f44336);
     z-index: 10;
 }
+
+/* Column header validation indicator */
+.cell-content.has-validation {
+    text-decoration: underline dotted;
+    text-decoration-color: var(--vscode-textLink-foreground, #3794ff);
+    text-underline-offset: 2px;
+    cursor: help;
+}

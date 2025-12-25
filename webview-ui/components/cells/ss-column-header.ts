@@ -46,6 +46,8 @@ export class SSColumnHeader extends LitElement {
     @property({ type: Boolean }) hasActiveFilter = false;
     @property({ type: Boolean }) showActiveOutline = false;
     @property({ type: Number }) width = 100;
+    @property({ type: Boolean }) hasValidation = false;
+    @property({ type: String }) validationType = '';
 
     private _onClick = (e: MouseEvent) => {
         emitCellEvent<CellMouseEventDetail>(this, 'ss-col-click', {
@@ -137,9 +139,10 @@ export class SSColumnHeader extends LitElement {
                 @keydown="${this._onKeydown}"
             >
                 <span
-                    class="cell-content"
+                    class="cell-content ${this.hasValidation ? 'has-validation' : ''}"
                     contenteditable="${this.isEditing ? 'true' : 'false'}"
-                    style="display:inline-block; min-width: 10px; padding: 2px;"
+                    style="display:inline-block; min-width: 10px; padding: 3px;"
+                    title="${this.hasValidation ? this.validationType : ''}"
                     @blur="${this._onBlur}"
                     .textContent="${live(this.value)}"
                 ></span>

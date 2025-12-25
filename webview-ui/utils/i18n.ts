@@ -82,7 +82,8 @@ const translations = {
         errorMustBeMin: 'Must be >= {0}',
         errorMustBeMax: 'Must be <= {0}',
         errorInvalidEmail: 'Invalid email format',
-        errorInvalidUrl: 'Invalid URL format'
+        errorInvalidUrl: 'Invalid URL format',
+        validationTooltipPrefix: 'Data Validation'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -167,7 +168,8 @@ const translations = {
         errorMustBeMin: '{0} 以上を入力してください',
         errorMustBeMax: '{0} 以下を入力してください',
         errorInvalidEmail: '無効なメールアドレス形式です',
-        errorInvalidUrl: '無効なURL形式です'
+        errorInvalidUrl: '無効なURL形式です',
+        validationTooltipPrefix: '入力規則'
     }
 };
 

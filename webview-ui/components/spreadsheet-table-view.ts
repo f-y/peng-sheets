@@ -13,6 +13,7 @@ import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 import { getEditingHtml, formatCellValue, renderMarkdown, NumberFormat } from '../utils/spreadsheet-helpers';
 import { calculateCellRangeState } from '../utils/edit-mode-helpers';
 import { VisualMetadata } from '../controllers/row-visibility-controller';
+import { t } from '../utils/i18n';
 
 export type AlignmentType = 'left' | 'center' | 'right' | 'default';
 
@@ -256,6 +257,31 @@ export class SpreadsheetTableView extends LitElement {
                 const hiddenValues = filters[c.toString()] || [];
                 const hasActiveFilter = hiddenValues.length > 0;
 
+                // Compute hasValidation from table metadata
+                const validation = (visual as Record<string, unknown>).validation as
+                    | Record<string, unknown>
+                    | undefined;
+                const validationRule = validation?.[c.toString()] as { type: string; values?: string[] } | undefined;
+                const hasValidation = !!validationRule;
+                // Convert type to i18n tooltip
+                const prefix = t('validationTooltipPrefix');
+                let validationTooltip = '';
+                if (validationRule?.type) {
+                    if (validationRule.type === 'list' && validationRule.values?.length) {
+                        // For list type, show values directly with truncation
+                        const maxItems = 5;
+                        const values = validationRule.values;
+                        const displayValues =
+                            values.length > maxItems ? values.slice(0, maxItems).join(', ') + '...' : values.join(', ');
+                        validationTooltip = `${prefix}: ${displayValues}`;
+                    } else {
+                        // For other types, show the type name
+                        const typeKey = `validation${validationRule.type.charAt(0).toUpperCase()}${validationRule.type.slice(1)}`;
+                        const typeName = t(typeKey as Parameters<typeof t>[0]);
+                        validationTooltip = `${prefix}: ${typeName}`;
+                    }
+                }
+
                 return html`
                     <ss-column-header
                         .col="${c}"
@@ -266,6 +292,8 @@ export class SpreadsheetTableView extends LitElement {
                         .isEditing="${isColEditing}"
                         .isResizing="${this.resizingCol === c}"
                         .hasActiveFilter="${hasActiveFilter}"
+                        .hasValidation="${hasValidation}"
+                        .validationType="${validationTooltip}"
                         .width="${this.columnWidths[c] ?? 100}"
                         @ss-col-click="${(e: CustomEvent) => this._bubbleEvent('view-col-click', e.detail)}"
                         @ss-col-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-col-mousedown', e.detail)}"
