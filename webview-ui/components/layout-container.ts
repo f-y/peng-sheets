@@ -25,6 +25,9 @@ export class LayoutContainer extends LitElement {
     @property({ type: Number })
     sheetIndex: number = 0;
 
+    @property({ type: String })
+    dateFormat: string = 'YYYY-MM-DD';
+
     // Internal state to handle optimistic updates during drag/drop
     @state()
     private _currentLayout: LayoutNode | null = null;
@@ -161,12 +164,14 @@ export class LayoutContainer extends LitElement {
                 .node="${node}"
                 .tables="${this.tables}"
                 .sheetIndex="${this.sheetIndex}"
+                .dateFormat="${this.dateFormat}"
             ></split-view>`;
         } else {
             return html`<pane-view
                 .node="${node}"
                 .tables="${this.tables}"
                 .sheetIndex="${this.sheetIndex}"
+                .dateFormat="${this.dateFormat}"
             ></pane-view>`;
         }
     }

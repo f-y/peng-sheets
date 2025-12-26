@@ -1,0 +1,143 @@
+/**
+ * CSS styles for validation control components (dropdown and datepicker).
+ * These are Light DOM components, so styles are applied externally.
+ * They use display: contents to avoid being counted as grid cells.
+ * The button uses position: fixed and is positioned via JavaScript.
+ */
+
+/* Validation dropdown Light DOM styles */
+ss-validation-dropdown {
+    /* display: contents makes this element invisible to grid layout */
+    display: contents;
+}
+
+.validation-dropdown-trigger {
+    position: absolute;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: none;
+    background: var(--vscode-dropdown-background, #3c3c3c);
+    color: var(--vscode-dropdown-foreground, #cccccc);
+    cursor: pointer;
+    border-radius: 2px;
+    font-size: 8px;
+    padding: 0;
+    line-height: 1;
+}
+
+.validation-dropdown-trigger:hover {
+    background: var(--vscode-dropdown-hoverBackground, #4c4c4c);
+}
+
+.validation-dropdown-trigger:focus {
+    outline: 1px solid var(--vscode-focusBorder, #007acc);
+    outline-offset: -1px;
+}
+
+.validation-dropdown-menu {
+    position: absolute;
+    /* Changed from fixed to absolute */
+    min-width: 100px;
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--vscode-dropdown-background, #3c3c3c);
+    border: 1px solid var(--vscode-dropdown-border, #454545);
+    border-radius: 3px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+}
+
+.validation-dropdown-option {
+    padding: 4px 8px;
+    cursor: pointer;
+    white-space: nowrap;
+    color: var(--vscode-dropdown-foreground, #cccccc);
+    font-size: 12px;
+}
+
+.validation-dropdown-option:hover {
+    background: var(--vscode-list-hoverBackground, #2a2d2e);
+}
+
+.validation-dropdown-option.selected {
+    background: var(--vscode-list-activeSelectionBackground, #094771);
+    color: var(--vscode-list-activeSelectionForeground, #ffffff);
+}
+
+/* Validation datepicker Light DOM styles */
+ss-validation-datepicker {
+    /* display: contents makes this element invisible to grid layout */
+    display: contents;
+}
+
+.validation-datepicker-trigger {
+    appearance: none;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    width: 16px;
+    height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 2px;
+    color: var(--vscode-editor-foreground);
+    opacity: 0.6;
+    position: absolute;
+    /* Changed from fixed to absolute */
+    z-index: 1000;
+    pointer-events: auto;
+}
+
+.validation-datepicker-trigger:hover {
+    background: var(--vscode-dropdown-hoverBackground, #4c4c4c);
+}
+
+.validation-datepicker-overlay {
+    position: fixed;
+    background: var(--vscode-dropdown-background, #3c3c3c);
+    border: 1px solid var(--vscode-dropdown-border, #454545);
+    border-radius: 3px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    padding: 4px;
+}
+
+.validation-datepicker-overlay input[type="date"] {
+    background: var(--vscode-input-background, #3c3c3c);
+    color: var(--vscode-input-foreground, #cccccc);
+    border: 1px solid var(--vscode-input-border, #454545);
+    border-radius: 2px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+
+/* Date picker wrapper pattern */
+.date-picker-wrapper {
+    position: absolute;
+    /* Positioned by JS */
+    display: inline-block;
+    z-index: 1000;
+}
+
+/* Ensure the trigger button inside wrapper is static relative to wrapper */
+.date-picker-wrapper .validation-datepicker-trigger {
+    position: static;
+}
+
+.hidden-native-input {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+    z-index: 10;
+}

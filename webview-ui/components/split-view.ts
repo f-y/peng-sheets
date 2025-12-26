@@ -17,6 +17,9 @@ export class SplitView extends LitElement {
     @property({ type: Number })
     sheetIndex: number = 0;
 
+    @property({ type: String })
+    dateFormat: string = 'YYYY-MM-DD';
+
     // Resizing state
     private _isResizing = false;
     private _dragStartIndex = -1;
@@ -59,11 +62,13 @@ export class SplitView extends LitElement {
                               .node="${child}"
                               .tables="${this.tables}"
                               .sheetIndex="${this.sheetIndex}"
+                              .dateFormat="${this.dateFormat}"
                           ></split-view>`
                         : html`<pane-view
                               .node="${child}"
                               .tables="${this.tables}"
                               .sheetIndex="${this.sheetIndex}"
+                              .dateFormat="${this.dateFormat}"
                           ></pane-view>`;
 
                 return html`${resizer}

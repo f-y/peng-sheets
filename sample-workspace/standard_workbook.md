@@ -53,9 +53,13 @@
 
 | 列名1 | 列名2 | 列名3 |
 | --- | --- | --- |
+|  | あ<br>変換<br> | 2025-12-10 |
+|  |  |  |
 |  |  |  |
 
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "GRnl0SizCRS26cqCNniQt", "direction": "vertical", "sizes": [50, 50], "children": [{"type": "split", "id": "RmePBdUumDQQuiRuwk52i", "direction": "horizontal", "sizes": [50, 50], "children": [{"type": "pane", "id": "root", "tables": [0, 1], "activeTableIndex": 0}, {"type": "pane", "id": "1CFK8JtbqDM9E74Uw6k1O", "tables": [4], "activeTableIndex": 0}]}, {"type": "split", "id": "vOeCtkEQSNGDvxX3y5okm", "direction": "horizontal", "sizes": [50, 50], "children": [{"type": "pane", "id": "W3TprxHoFKwaHtaQcHktx", "tables": [2], "activeTableIndex": 0}, {"type": "pane", "id": "PcIiDDVmzJPwsv-T4LY-s", "tables": [3], "activeTableIndex": 0}]}]}} -->
+<!-- md-spreadsheet-metadata: {"validation": {"1": {"type": "list", "values": ["Yes", "No"]}, "2": {"type": "date"}}} -->
+
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "GRnl0SizCRS26cqCNniQt", "direction": "vertical", "sizes": [53.61904761904762, 46.38095238095238], "children": [{"type": "pane", "id": "root", "tables": [0, 1, 4], "activeTableIndex": 2}, {"type": "split", "id": "vOeCtkEQSNGDvxX3y5okm", "direction": "horizontal", "sizes": [50, 50], "children": [{"type": "pane", "id": "W3TprxHoFKwaHtaQcHktx", "tables": [2], "activeTableIndex": 0}, {"type": "pane", "id": "PcIiDDVmzJPwsv-T4LY-s", "tables": [3], "activeTableIndex": 0}]}]}} -->
 
 ## Products
 

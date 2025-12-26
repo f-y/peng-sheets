@@ -45,6 +45,9 @@ export class SpreadsheetTable extends LitElement {
     @property({ type: Number })
     tableIndex: number = 0;
 
+    @property({ type: String })
+    dateFormat: string = 'YYYY-MM-DD';
+
     selectionCtrl = new SelectionController(this);
     editCtrl = new EditController(this);
     resizeCtrl = new ResizeController(this);
@@ -447,6 +450,7 @@ export class SpreadsheetTable extends LitElement {
                 .filterMenu="${filterMenu}"
                 .resizingCol="${this.resizeCtrl.resizingCol}"
                 .rowCount="${table.rows.length}"
+                .dateFormat="${this.dateFormat}"
             }}"
                 @view-insert-row="${this.eventCtrl.handleInsertRow}"
                 @view-delete-row="${this.eventCtrl.handleDeleteRow}"
@@ -481,6 +485,7 @@ export class SpreadsheetTable extends LitElement {
                 @view-filter-change="${this.filterCtrl.handleFilterChange}"
                 @view-clear-filter="${this.filterCtrl.handleClearFilter}"
                 @view-data-validation="${this._handleOpenValidationDialog}"
+                @view-validation-input="${this.eventCtrl.handleValidationInput}"
             ></spreadsheet-table-view>
             ${
                 this.validationDialog

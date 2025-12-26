@@ -1,8 +1,9 @@
 {
-    "name": "vscode-md-spreadsheet",
+    "name": "peng-sheets",
     "publisher": "f-y",
-    "displayName": "Markdown Spreadsheet Editor",
+    "displayName": "PengSheets - Markdown Spreadsheet Editor",
     "description": "WYSIWYG editor for Markdown tables using md-spreadsheet-parser",
+    "icon": "images/icon.png",
     "version": "0.0.1",
     "engines": {
         "vscode": "^1.90.0"
@@ -137,6 +138,19 @@
                 ],
                 "default": "auto",
                 "description": "Language for the spreadsheet UI."
+            },
+            "mdSpreadsheet.validation.dateFormat": {
+                "type": "string",
+                "enum": [
+                    "YYYY-MM-DD",
+                    "DD/MM/YYYY",
+                    "MM/DD/YYYY",
+                    "YYYY/MM/DD",
+                    "DD.MM.YYYY",
+                    "MM.DD.YYYY"
+                ],
+                "default": "YYYY-MM-DD",
+                "description": "Date format for data validation cells."
             }
         }
     },

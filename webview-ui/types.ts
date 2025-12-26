@@ -1,4 +1,4 @@
-import { IVisualMetadata } from './services/spreadsheet-service';
+import { IVisualMetadata } from './services/types';
 
 export type AlignmentType = 'left' | 'center' | 'right' | 'default';
 
@@ -209,11 +209,16 @@ export interface IValidationUpdateDetail {
     rule: unknown; // ValidationRule | null
 }
 
+export interface IUpdateConfigDetail {
+    config: Record<string, unknown>;
+}
+
 export type PostMessageCommand =
     | ({ command: 'update_column_filter' } & IColumnFilterDetail)
     | ({ command: 'sort_rows' } & ISortRowsDetail)
     | ({ command: 'update_column_align' } & IColumnUpdateDetail)
-    | ({ command: 'update_column_format' } & IColumnUpdateDetail);
+    | ({ command: 'update_column_format' } & IColumnUpdateDetail)
+    | ({ command: 'update_config' } & IUpdateConfigDetail);
 
 export interface IParseResult {
     workbook: {

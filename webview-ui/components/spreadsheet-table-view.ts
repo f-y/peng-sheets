@@ -1,6 +1,7 @@
 import { html, LitElement, nothing, unsafeCSS, TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import spreadsheetTableStyles from './styles/spreadsheet-table.css?inline';
+import validationControlsStyles from '../styles/validation-controls.css?inline';
 import './cells/ss-data-cell';
 import './cells/ss-corner-cell';
 import './cells/ss-row-header';
@@ -64,7 +65,7 @@ export interface EditState {
  */
 @customElement('spreadsheet-table-view')
 export class SpreadsheetTableView extends LitElement {
-    static styles = [unsafeCSS(codiconsStyles), unsafeCSS(spreadsheetTableStyles)];
+    static styles = [unsafeCSS(codiconsStyles), unsafeCSS(spreadsheetTableStyles), unsafeCSS(validationControlsStyles)];
 
     // Data
     @property({ type: Object }) table: TableJSON | null = null;
@@ -88,6 +89,9 @@ export class SpreadsheetTableView extends LitElement {
 
     // Row count for dynamic header width
     @property({ type: Number }) rowCount: number = 0;
+
+    @property({ type: String })
+    dateFormat: string = 'YYYY-MM-DD';
 
     /**
      * Calculate the width needed for row headers based on max row number.
@@ -396,12 +400,15 @@ export class SpreadsheetTableView extends LitElement {
                         .rangeBottom="${rangeState.bottomEdge}"
                         .rangeLeft="${rangeState.leftEdge}"
                         .rangeRight="${rangeState.rightEdge}"
+                        .dateFormat="${this.dateFormat}"
                         @ss-cell-click="${(e: CustomEvent) => this._bubbleEvent('view-cell-click', e.detail)}"
                         @ss-cell-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-cell-mousedown', e.detail)}"
                         @ss-cell-dblclick="${(e: CustomEvent) => this._bubbleEvent('view-cell-dblclick', e.detail)}"
                         @ss-cell-input="${(e: CustomEvent) => this._bubbleEvent('view-cell-input', e.detail)}"
                         @ss-cell-blur="${(e: CustomEvent) => this._bubbleEvent('view-cell-blur', e.detail)}"
                         @ss-cell-keydown="${(e: CustomEvent) => this._bubbleEvent('view-cell-keydown', e.detail)}"
+                        @ss-validation-input="${(e: CustomEvent) =>
+                            this._bubbleEvent('view-validation-input', e.detail)}"
                     ></ss-data-cell>
                 `;
             })}

@@ -7,6 +7,19 @@ export function activate(context: vscode.ExtensionContext) {
     // Register Custom Editor Provider
     context.subscriptions.push(SpreadsheetEditorProvider.register(context));
 
+    // Listen for configuration changes
+    context.subscriptions.push(
+        vscode.workspace.onDidChangeConfiguration((e) => {
+            if (e.affectsConfiguration('mdSpreadsheet.validation')) {
+                const newConfig = vscode.workspace.getConfiguration('mdSpreadsheet.validation');
+                SpreadsheetEditorProvider.postMessageToActive({
+                    type: 'update_config',
+                    config: { validation: newConfig }
+                });
+            }
+        })
+    );
+
     // New Workbook command: create a new .md file with workbook template
     context.subscriptions.push(
         vscode.commands.registerCommand('vscode-md-spreadsheet.newWorkbook', newWorkbookHandler)
@@ -174,6 +187,11 @@ export function getWebviewContent(
     }
 
     const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
+    const validationConfig = vscode.workspace.getConfiguration('mdSpreadsheet.validation');
+    const initialConfig = {
+        ...config,
+        validation: validationConfig
+    };
     const generalConfig = vscode.workspace.getConfiguration('mdSpreadsheet');
     const languageSetting = generalConfig.get<string>('language') || 'auto';
     const extensionLanguage = languageSetting === 'auto' ? vscode.env.language : languageSetting;
@@ -201,7 +219,7 @@ export function getWebviewContent(
             window.pyodideIndexUrl = "${pyodideUri}";
             window.vscodeLanguage = ${JSON.stringify(extensionLanguage)};
             window.initialContent = \`${escapedContent}\`;
-            window.initialConfig = ${JSON.stringify(config)};
+            window.initialConfig = ${JSON.stringify(initialConfig)};
         </script>
         <script src="${pyodideUri}/pyodide.js"></script>
         ${viteClient}

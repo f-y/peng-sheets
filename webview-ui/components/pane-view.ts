@@ -21,6 +21,9 @@ export class PaneView extends LitElement {
     @property({ type: String })
     activeDropZone: 'top' | 'bottom' | 'left' | 'right' | 'center' | null = null;
 
+    @property({ type: String })
+    dateFormat: string = 'YYYY-MM-DD';
+
     @state()
     private _editingTabGlobalIndex: number | null = null;
 
@@ -90,6 +93,7 @@ export class PaneView extends LitElement {
                               .table="${activeTable}"
                               .sheetIndex="${this.sheetIndex}"
                               .tableIndex="${activeGlobalIndex}"
+                              .dateFormat="${this.dateFormat}"
                           ></spreadsheet-table>
                       `
                     : html`<div>${t('noTableSelected')}</div>`}

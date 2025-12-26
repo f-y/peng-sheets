@@ -239,19 +239,16 @@ The "Fill Handle" is the small square at the bottom-right of the active cell or 
     - [ ] **List (Dropdown)**:
         - *Excel*: Defined comma-separated list or cell range.
         - *Extension*: Defined in metadata (e.g., `["Open", "Closed"]`). Renders as a dropdown in edit mode.
-    - [ ] **Data Type validation**:
+    - [x] **Data Type validation**:
         - *Excel*: Whole Number, Decimal, Date, Time, Text Length.
         - *Extension*: Schema-based validation. If a column is defined as `int`, warn or block non-integer input.
-    - [ ] **Custom Formula**:
-        - *Excel*: `A1 > 5`.
-        - *Extension*: Likely via Python expression or Regex in metadata.
-    - [ ] **Error Alert**:
+    - [x] **Error Alert**:
         - *Excel*: Popup blocking execution.
         - *Extension*: Toast notification or red cell border (non-blocking preferred).
-    - [ ] **Input Message**:
+    - [x] **Input Message**:
         - *Excel*: Tooltip when cell is selected.
         - *Extension*: Tooltip or Status Bar message.
-- [ ] **Metadata Persistence**: Validation rules must be stored in the table metadata (JSON/YAML in comments) to persist across sessions.
+- [x] **Metadata Persistence**: Validation rules must be stored in the table metadata (JSON/YAML in comments) to persist across sessions.
 
 ## 14. Visual Formatting & Excel Compatibility Roadmap
 Excel has a vast array of formatting options. Since Markdown is plain text, we cannot support everything natively. We will implement support in phases, potentially using metadata (HTML comments or YAML frontmatter) to persist non-standard attributes.
@@ -278,7 +275,7 @@ Excel has a vast array of formatting options. Since Markdown is plain text, we c
 *   [x] **Basic Editing**: Cell value editing with real-time Markdown updates (In-place persistence).
 *   [x] **Navigation**: Arrow keys, Tab/Enter navigation.
 *   [x] **Line Breaks**: Support for in-cell newlines (persisted as `<br>`).
-*   [ ] **Native Formatting UI**:
+*   [x] **Native Formatting UI**:
     *   **Alignment**: Column alignment (Left/Center/Right).
     *   **Text Style**: Bold, Italic, Strikethrough, Links.
 

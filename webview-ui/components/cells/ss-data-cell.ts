@@ -12,8 +12,10 @@
  * - ss-cell-keydown: { row, col, originalEvent }
  * - ss-cell-mousemove: { row, col }
  */
-import { LitElement, html } from 'lit';
+import { LitElement, html, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import './ss-validation-dropdown';
+import './ss-validation-datepicker';
 import {
     emitCellMousedown,
     emitCellClick,
@@ -24,6 +26,7 @@ import {
     emitCellMousemove
 } from '../mixins/cell-events';
 import { t } from '../../utils/i18n';
+import { SimpleDateFormatter } from '../../utils/date-formatter';
 
 export interface ValidationRule {
     type: 'list' | 'date' | 'integer' | 'email' | 'url';
@@ -55,6 +58,8 @@ export class SSDataCell extends LitElement {
     @property({ type: Boolean }) wordWrap = true;
     @property({ type: String }) align = 'left';
     @property({ type: String }) editingHtml = '';
+    // New prop
+    @property({ type: String }) dateFormat: string = 'YYYY-MM-DD';
 
     // Validation
     @property({ type: Object }) validationRule: ValidationRule | null = null;
@@ -113,8 +118,8 @@ export class SSDataCell extends LitElement {
                 }
                 break;
             case 'date':
-                if (!/^\d{4}-\d{2}-\d{2}$/.test(val) || isNaN(Date.parse(val))) {
-                    return t('errorInvalidDate');
+                if (!this._validateDate(val)) {
+                    return t('errorInvalidDate', this.dateFormat);
                 }
                 break;
             case 'integer': {
@@ -147,9 +152,11 @@ export class SSDataCell extends LitElement {
     }
 
     render() {
+        // Validation check
         const validationError = this._getValidationError();
         const hasError = validationError !== null;
 
+        // Dynamic classes
         const classes = [
             'cell',
             this.wordWrap ? 'word-wrap' : 'no-wrap',
@@ -167,6 +174,24 @@ export class SSDataCell extends LitElement {
             .filter(Boolean)
             .join(' ');
 
+        // Content determination
+        let content = this.value;
+        if (this.isEditing) {
+            content = this.editingHtml || this.value;
+        } else {
+            // Apply date formatting if applicable
+            if (this.validationRule?.type === 'date') {
+                const formatted = this._getFormattedDate();
+                if (formatted) {
+                    content = formatted;
+                } else if (this.renderedHtml) {
+                    content = this.renderedHtml;
+                }
+            } else {
+                content = this.renderedHtml || this.value;
+            }
+        }
+
         return html`
             <div
                 class="${classes}"
@@ -175,8 +200,8 @@ export class SSDataCell extends LitElement {
                 tabindex="${this.isActive ? 0 : -1}"
                 style="text-align: ${this.align}"
                 contenteditable="${this.isEditing ? 'true' : 'false'}"
-                title="${hasError ? validationError : ''}"
-                .innerHTML="${this.isEditing ? this.editingHtml || this.value : this.renderedHtml || this.value}"
+                title="${hasError ? validationError || 'Invalid Value' : ''}"
+                .innerHTML="${content}"
                 @mousedown="${this._onMousedown}"
                 @click="${this._onClick}"
                 @dblclick="${this._onDblclick}"
@@ -185,8 +210,94 @@ export class SSDataCell extends LitElement {
                 @keydown="${this._onKeydown}"
                 @mousemove="${this._onMousemove}"
             ></div>
+            ${this._renderValidationControl()}
         `;
     }
+
+    private _validateDate(dateValue: string): boolean {
+        if (!dateValue || dateValue.trim() === '') return true; // empty is valid unless required
+
+        // Try parsing as YYYY-MM-DD
+        if (SimpleDateFormatter.parseDate(dateValue, 'YYYY-MM-DD')) return true;
+
+        // Try parsing as configured format
+        if (SimpleDateFormatter.parseDate(dateValue, this.dateFormat)) return true;
+
+        return false;
+    }
+
+    private _getFormattedDate(): string | null {
+        if (!this.value) return null;
+
+        // Try parsing as YYYY-MM-DD (native/standard)
+        const date = SimpleDateFormatter.parseDate(this.value, 'YYYY-MM-DD');
+        if (date) {
+            return SimpleDateFormatter.formatDate(date, this.dateFormat);
+        }
+
+        // If already in target format, return as is (validation will pass if it parses)
+        const dateConfig = SimpleDateFormatter.parseDate(this.value, this.dateFormat);
+        if (dateConfig) {
+            return this.value;
+        }
+
+        return null; // Could not parse, display raw value (which fallbacks to this.value in render)
+    }
+
+    private _renderValidationControl() {
+        // Only show when cell is selected/active and not editing
+        if (!this.validationRule || this.isEditing || (!this.isSelected && !this.isActive)) {
+            return nothing;
+        }
+
+        if (this.validationRule.type === 'list' && this.validationRule.values) {
+            return html`
+                <ss-validation-dropdown
+                    class="validation-control"
+                    .values="${this.validationRule.values}"
+                    .currentValue="${this.value}"
+                    @ss-dropdown-select="${this._handleDropdownSelect}"
+                ></ss-validation-dropdown>
+            `;
+        }
+
+        // Datepicker
+        if (this.validationRule.type === 'date') {
+            return html`
+                <ss-validation-datepicker
+                    .value="${this.value}"
+                    .dateFormat="${this.dateFormat}"
+                    @ss-datepicker-select="${this._handleDateSelect}"
+                ></ss-validation-datepicker>
+            `;
+        }
+
+        return nothing;
+    }
+
+    private _handleDropdownSelect = (e: CustomEvent<{ value: string }>) => {
+        e.stopPropagation();
+        // Emit cell input event with the selected value
+        this.dispatchEvent(
+            new CustomEvent('ss-validation-input', {
+                detail: { row: this.row, col: this.col, value: e.detail.value },
+                bubbles: true,
+                composed: true
+            })
+        );
+    };
+
+    private _handleDateSelect = (e: CustomEvent<{ value: string }>) => {
+        e.stopPropagation();
+        // Emit cell input event with the selected date
+        this.dispatchEvent(
+            new CustomEvent('ss-validation-input', {
+                detail: { row: this.row, col: this.col, value: e.detail.value },
+                bubbles: true,
+                composed: true
+            })
+        );
+    };
 }
 
 declare global {

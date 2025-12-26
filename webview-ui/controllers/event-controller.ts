@@ -321,6 +321,18 @@ export class EventController implements ReactiveController {
         this.host.keyboardCtrl.handleKeyDown(e.detail.originalEvent);
     };
 
+    handleValidationInput = (e: CustomEvent<{ row: number; col: number; value: string }>) => {
+        // Dispatch cell-edit event to commit the new value
+        this.dispatchAction('cell-edit', {
+            rowIndex: e.detail.row,
+            colIndex: e.detail.col,
+            newValue: e.detail.value
+        });
+
+        // Ensure focus remains on the table/cell (optional but good for UX)
+        // this.host.focusCell();
+    };
+
     handleCellMousemove = (e: CustomEvent<{ row: number; col: number }>) => {
         if (this.host.selectionCtrl.isSelecting) {
             this.host.selectionCtrl.selectCell(e.detail.row, e.detail.col, true);
