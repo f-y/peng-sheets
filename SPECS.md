@@ -385,13 +385,13 @@ To achieve this, the implementation must be modular:
 Refactoring tasks for `webview-ui/main.ts` and related components.
 
 ### 19.1. Tab Bar Component Extraction (Phase 4)
-- [ ] Create `<bottom-tabs>` component to encapsulate tab bar logic.
-- [ ] Properties: `tabs`, `activeIndex`, `editingIndex`.
-- [ ] Events: `tab-select`, `tab-rename`, `tab-drag`, `tab-context-menu`.
-- [ ] Move drag-and-drop, inline editing, and scroll indicator logic from `main.ts`.
+- [x] Create `<bottom-tabs>` component to encapsulate tab bar logic.
+- [x] Properties: `tabs`, `activeIndex`, `editingIndex`.
+- [x] Events: `tab-select`, `tab-rename`, `tab-drag`, `tab-context-menu`.
+- [x] Move drag-and-drop, inline editing, and scroll indicator logic from `main.ts`.
 
 ### 19.2. Event Handler Consolidation (Phase 5)
-- [ ] Refactor `firstUpdated()` event listeners into a Lit `ReactiveController`.
-- [ ] Create `GlobalEventController` for window-level event management.
-- [ ] Improve `disconnectedCallback()` cleanup to prevent memory leaks.
+- [x] Refactor `firstUpdated()` event listeners into a Lit `ReactiveController`.
+- [x] Create `GlobalEventController` for window-level event management.
+- [x] Improve `disconnectedCallback()` cleanup to prevent memory leaks.
 
