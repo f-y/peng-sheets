@@ -188,6 +188,12 @@ export interface IColumnOperationDetail {
     colIndex: number;
 }
 
+export interface IColumnOperationsDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    colIndices: number[];
+}
+
 export interface IColumnResizeDetail {
     sheetIndex: number;
     tableIndex: number;

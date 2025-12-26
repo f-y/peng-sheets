@@ -128,20 +128,39 @@ export class EventController implements ReactiveController {
         e.preventDefault();
         e.stopPropagation();
 
-        // If called from global listener, type/index might be undefined
-        // We need to determine if we clicked on something specific?
-        // Or just show generic menu?
-        // Original _handleContextMenu logic?
-
-        // Use composed path to find row/col?
-        // For now, if no type/index, return?
         if (!type || index === undefined) return;
 
         this.host.contextMenu = { x: e.clientX, y: e.clientY, type: type, index: index };
-        if (type === 'row') {
-            this.host.selectionCtrl.selectCell(index, -2);
-        } else {
-            this.host.selectionCtrl.selectCell(-2, index);
+
+        // Check if index is within current selection
+        let isInsideSelection = false;
+        const { selectedCol, selectionAnchorCol, selectedRow, selectionAnchorRow } = this.host.selectionCtrl;
+
+        if (type === 'col') {
+            if (selectedRow === -2 && selectedCol !== -2 && selectionAnchorCol !== -2) {
+                const minC = Math.min(selectedCol, selectionAnchorCol);
+                const maxC = Math.max(selectedCol, selectionAnchorCol);
+                if (index >= minC && index <= maxC) {
+                    isInsideSelection = true;
+                }
+            }
+        } else if (type === 'row') {
+            if (selectedCol === -2 && selectedRow !== -2 && selectionAnchorRow !== -2) {
+                const minR = Math.min(selectedRow, selectionAnchorRow);
+                const maxR = Math.max(selectedRow, selectionAnchorRow);
+                if (index >= minR && index <= maxR) {
+                    isInsideSelection = true;
+                }
+            }
+        }
+
+        // Only reset selection if clicked outside
+        if (!isInsideSelection) {
+            if (type === 'row') {
+                this.host.selectionCtrl.selectCell(index, -2);
+            } else {
+                this.host.selectionCtrl.selectCell(-2, index);
+            }
         }
         this.host.focusCell();
     };
@@ -360,7 +379,19 @@ export class EventController implements ReactiveController {
             if (type === 'row') {
                 this.dispatchAction('row-delete', { rowIndex: index });
             } else {
-                this.dispatchAction('column-delete', { colIndex: index });
+                // Check for multi-column selection
+                const { selectedCol, selectionAnchorCol, selectedRow } = this.host.selectionCtrl;
+                if (selectedRow === -2 && selectedCol !== -2 && selectionAnchorCol !== -2) {
+                    const minC = Math.min(selectedCol, selectionAnchorCol);
+                    const maxC = Math.max(selectedCol, selectionAnchorCol);
+                    const colIndices = [];
+                    for (let i = minC; i <= maxC; i++) {
+                        colIndices.push(i);
+                    }
+                    this.dispatchAction('columns-delete', { colIndices: colIndices });
+                } else {
+                    this.dispatchAction('column-delete', { colIndex: index });
+                }
             }
         }
         this.host.contextMenu = null;
