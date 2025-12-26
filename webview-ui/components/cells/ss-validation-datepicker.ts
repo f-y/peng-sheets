@@ -20,7 +20,6 @@ export class SSValidationDatepicker extends LitElement {
         return this;
     }
 
-
     @property({ type: String }) value: string = '';
     @property({ type: String }) dateFormat: string = 'YYYY-MM-DD';
 
