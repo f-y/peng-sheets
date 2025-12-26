@@ -5,6 +5,7 @@ import {
     IRangeEditDetail,
     IRowOperationDetail,
     IColumnOperationDetail,
+    IColumnOperationsDetail, // Added this
     IColumnResizeDetail,
     IMetadataEditDetail,
     IMetadataUpdateDetail,
@@ -41,8 +42,10 @@ export interface GlobalEventHost extends ReactiveControllerHost {
     _handleDeleteRows(sheetIndex: number, tableIndex: number, rowIndices: number[]): void;
     _handleInsertRow(sheetIndex: number, tableIndex: number, rowIndex: number): void;
     _handleDeleteColumn(sheetIndex: number, tableIndex: number, colIndex: number): void;
+    _handleDeleteColumns(sheetIndex: number, tableIndex: number, colIndices: number[]): void;
     _handleInsertColumn(sheetIndex: number, tableIndex: number, colIndex: number): void;
     _handleClearColumn(sheetIndex: number, tableIndex: number, colIndex: number): void;
+    _handleClearColumns(sheetIndex: number, tableIndex: number, colIndices: number[]): void;
     _handleColumnResize(detail: IColumnResizeDetail): void;
     _handleMetadataEdit(detail: IMetadataEditDetail): void;
     _handleMetadataUpdate(detail: IMetadataUpdateDetail): void;
@@ -136,8 +139,10 @@ export class GlobalEventController implements ReactiveController {
 
         // Column operations
         window.addEventListener('column-delete', this._boundColumnDelete);
+        window.addEventListener('columns-delete', this._boundColumnsDelete);
         window.addEventListener('column-insert', this._boundColumnInsert);
         window.addEventListener('column-clear', this._boundColumnClear);
+        window.addEventListener('columns-clear', this._boundColumnsClear);
         window.addEventListener('column-resize', this._boundColumnResize);
 
         // Metadata events
@@ -172,6 +177,7 @@ export class GlobalEventController implements ReactiveController {
         window.removeEventListener('column-delete', this._boundColumnDelete);
         window.removeEventListener('column-insert', this._boundColumnInsert);
         window.removeEventListener('column-clear', this._boundColumnClear);
+        window.removeEventListener('columns-clear', this._boundColumnsClear);
         window.removeEventListener('column-resize', this._boundColumnResize);
         window.removeEventListener('metadata-edit', this._boundMetadataEdit);
         window.removeEventListener('metadata-update', this._boundMetadataUpdate);
@@ -242,6 +248,11 @@ export class GlobalEventController implements ReactiveController {
         this.host._handleDeleteColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
     }
 
+    private _boundColumnsDelete = (e: Event) => {
+        const detail = (e as CustomEvent<IColumnOperationsDetail>).detail;
+        this.host._handleDeleteColumns(detail.sheetIndex, detail.tableIndex, detail.colIndices);
+    };
+
     private _handleColumnInsert(e: Event): void {
         const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
         this.host._handleInsertColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
@@ -251,6 +262,11 @@ export class GlobalEventController implements ReactiveController {
         const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
         this.host._handleClearColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
     }
+
+    private _boundColumnsClear = (e: Event) => {
+        const detail = (e as CustomEvent<IColumnOperationsDetail>).detail;
+        this.host._handleClearColumns(detail.sheetIndex, detail.tableIndex, detail.colIndices);
+    };
 
     private _handleColumnResize(e: Event): void {
         this.host._handleColumnResize((e as CustomEvent<IColumnResizeDetail>).detail);

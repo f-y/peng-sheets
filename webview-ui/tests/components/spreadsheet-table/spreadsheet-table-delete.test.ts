@@ -16,7 +16,8 @@ describe('SpreadsheetTable Delete Operations', () => {
             ],
             metadata: {},
             start_line: 0,
-            end_line: 0
+            end_line: 0,
+            alignments: ['left', 'left']
         };
         await awaitView(el);
 
@@ -56,12 +57,13 @@ describe('SpreadsheetTable Delete Operations', () => {
             rows: [['1', '2']],
             metadata: {},
             start_line: 0,
-            end_line: 0
+            end_line: 0,
+            alignments: ['left', 'left']
         };
         await awaitView(el);
 
         let colClearFired = false;
-        el.addEventListener('column-clear', () => {
+        el.addEventListener('columns-clear', () => {
             colClearFired = true;
         });
 
@@ -85,7 +87,7 @@ describe('SpreadsheetTable Delete Operations', () => {
         expect(colClearFired, 'column-clear should fire').to.be.true;
 
         // Expectation: Data in the column is cleared
-        expect(el.table.rows[0][0], 'Row 0 Col 0 should be empty').to.equal('');
-        expect(el.table.rows[0][1], 'Row 0 Col 1 should remain "2"').to.equal('2');
+        expect(el.table!.rows[0][0], 'Row 0 Col 0 should be empty').to.equal('');
+        expect(el.table!.rows[0][1], 'Row 0 Col 1 should remain "2"').to.equal('2');
     });
 });

@@ -10,6 +10,7 @@ type TestableSpreadsheetTable = {
         isEditing: boolean;
         pendingEditValue: string | null;
         setPendingValue(v: string): void;
+        deleteSelection(): void;
     };
     selectionCtrl: {
         selectedRow: number;
@@ -17,7 +18,7 @@ type TestableSpreadsheetTable = {
     };
     keyboardCtrl: any;
     clipboardCtrl: {
-        deleteSelection(): void;
+        // deleteSelection removed
     };
     commitEdit(e: unknown): void;
     // _renderMarkdown removed
@@ -40,7 +41,8 @@ describe('SpreadsheetTable', () => {
             ],
             metadata: {},
             start_line: 0,
-            end_line: 10
+            end_line: 10,
+            alignments: ['left', 'left']
         };
         element.sheetIndex = 0;
         element.tableIndex = 0;
@@ -79,11 +81,12 @@ describe('SpreadsheetTable', () => {
             rows: [['1', '2']],
             metadata: {},
             start_line: 0,
-            end_line: 0
+            end_line: 0,
+            alignments: ['left', 'left']
         };
         await awaitView(el);
 
-        const rowsBefore = el.table.rows.length;
+        const rowsBefore = el.table!.rows.length;
 
         // Ghost row
         const ghostCell = queryView(el, `.cell[data-row="${rowsBefore}"][data-col="0"]`) as HTMLElement;
@@ -117,8 +120,8 @@ describe('SpreadsheetTable', () => {
         await awaitView(el);
 
         // Should have added a row
-        expect(el.table.rows.length).to.equal(rowsBefore + 1);
-        expect(el.table.rows[rowsBefore][0]).to.equal('NewVal');
+        expect(el.table!.rows.length).to.equal(rowsBefore + 1);
+        expect(el.table!.rows[rowsBefore][0]).to.equal('NewVal');
     });
 
     it('allows double-click editing of column header', async () => {
@@ -130,7 +133,8 @@ describe('SpreadsheetTable', () => {
             rows: [['1', '2']],
             metadata: {},
             start_line: 0,
-            end_line: 0
+            end_line: 0,
+            alignments: ['left', 'left']
         };
         await awaitView(el);
 
@@ -199,7 +203,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = -2; // Sentinel for Row Selection
 
-        (element as unknown as TestableSpreadsheetTable).clipboardCtrl.deleteSelection();
+        (element as unknown as TestableSpreadsheetTable).editCtrl.deleteSelection();
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
@@ -213,7 +217,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
 
-        (element as unknown as TestableSpreadsheetTable).clipboardCtrl.deleteSelection();
+        (element as unknown as TestableSpreadsheetTable).editCtrl.deleteSelection();
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
@@ -232,18 +236,18 @@ describe('SpreadsheetTable', () => {
         expect(rendered).to.include('<br>');
     });
 
-    it('should emit column-clear event when deleting a selected column', () => {
+    it('should emit columns-clear event when deleting a selected column', () => {
         const spy = vi.fn();
-        element.addEventListener('column-clear', spy);
+        element.addEventListener('columns-clear', spy);
 
         element.selectionCtrl.selectedRow = -2; // Sentinel for Col Selection
         element.selectionCtrl.selectedCol = 1;
 
-        (element as unknown as TestableSpreadsheetTable).clipboardCtrl.deleteSelection();
+        (element as unknown as TestableSpreadsheetTable).editCtrl.deleteSelection();
 
         expect(spy).toHaveBeenCalled();
         const detail = spy.mock.calls[0][0].detail;
-        expect(detail.colIndex).toBe(1);
+        expect(detail.colIndices).toEqual([1]);
     });
 
     it('should emit range-edit (clear) when deleting single cell', () => {
@@ -257,7 +261,7 @@ describe('SpreadsheetTable', () => {
         element.selectionCtrl.selectedRow = 0;
         element.selectionCtrl.selectedCol = 0;
 
-        (element as unknown as TestableSpreadsheetTable).clipboardCtrl.deleteSelection();
+        (element as unknown as TestableSpreadsheetTable).editCtrl.deleteSelection();
 
         expect(rowSpy).not.toHaveBeenCalled();
         expect(cellSpy).not.toHaveBeenCalled();
@@ -281,7 +285,8 @@ describe('SpreadsheetTable', () => {
             start_line: 0,
             end_line: 0,
             headers: ['A'],
-            rows: [['Data']]
+            rows: [['Data']],
+            alignments: ['left']
         };
         await awaitView(el);
 

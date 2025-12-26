@@ -437,6 +437,25 @@ def delete_column(sheet_idx, table_idx, col_idx):
     return apply_table_update(sheet_idx, table_idx, _delete_with_metadata)
 
 
+def delete_columns(sheet_idx, table_idx, col_indices):
+    def _delete_logic(t):
+        # Sort indices in descending order to prevent index shifting issues
+        sorted_indices = sorted(col_indices, reverse=True)
+        current_table = t
+        for idx in sorted_indices:
+            current_table = current_table.delete_column(idx)
+            # Shift metadata for each deletion.
+            # Since we modify current_table.metadata in place via _shift_column_metadata_indices
+            # (which technically creates a new dict), we need to update current_table repeatedly.
+            new_metadata = _shift_column_metadata_indices(
+                current_table.metadata, idx, -1
+            )
+            current_table = replace(current_table, metadata=new_metadata)
+        return current_table
+
+    return apply_table_update(sheet_idx, table_idx, _delete_logic)
+
+
 def clear_column(sheet_idx, table_idx, col_idx):
     def _clear_logic(t):
         new_rows = []
@@ -444,6 +463,20 @@ def clear_column(sheet_idx, table_idx, col_idx):
             new_r = list(row)
             if 0 <= col_idx < len(new_r):
                 new_r[col_idx] = ""
+            new_rows.append(new_r)
+        return replace(t, rows=new_rows)
+
+    return apply_table_update(sheet_idx, table_idx, _clear_logic)
+
+
+def clear_columns(sheet_idx, table_idx, col_indices):
+    def _clear_logic(t):
+        new_rows = []
+        for row in t.rows:
+            new_r = list(row)
+            for col_idx in col_indices:
+                if 0 <= col_idx < len(new_r):
+                    new_r[col_idx] = ""
             new_rows.append(new_r)
         return replace(t, rows=new_rows)
 

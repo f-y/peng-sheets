@@ -5,12 +5,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
-    observe() { }
-    unobserve() { }
-    disconnect() { }
+    observe() {}
+    unobserve() {}
+    disconnect() {}
 };
 import { SSValidationDatepicker } from '../../../../webview-ui/components/cells/ss-validation-datepicker';
-import { fixture, html } from '@open-wc/testing-helpers';
+// import { fixture, html } from '@open-wc/testing-helpers'; // Unused
 
 describe('SSValidationDatepicker', () => {
     let container: HTMLElement;
@@ -47,9 +47,9 @@ describe('SSValidationDatepicker', () => {
 
     describe('Selection', () => {
         it('should emit ss-datepicker-select event on input', async () => {
-            const el = await fixture<SSValidationDatepicker>(html`
-                <ss-validation-datepicker .dateFormat=${'YYYY-MM-DD'}></ss-validation-datepicker>
-            `);
+            const el = document.createElement('ss-validation-datepicker') as SSValidationDatepicker;
+            el.dateFormat = 'YYYY-MM-DD';
+            container.appendChild(el);
             await el.updateComplete;
 
             const selectHandler = vi.fn();

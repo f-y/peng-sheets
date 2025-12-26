@@ -3,13 +3,9 @@ name = "python-modules"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-authors = [
-    { name = "f-y", email = "f-y@users.noreply.github.com" }
-]
+authors = [{ name = "f-y", email = "f-y@users.noreply.github.com" }]
 requires-python = ">=3.11"
-dependencies = [
-    "md-spreadsheet-parser",
-]
+dependencies = ["md-spreadsheet-parser"]
 
 [build-system]
 requires = ["uv_build>=0.9.16,<0.10.0"]
@@ -19,10 +15,7 @@ build-backend = "uv_build"
 md-spreadsheet-parser = { workspace = true }
 
 [dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-    "pytest-cov>=4.1.0",
-]
+dev = ["pytest>=9.0.2", "pytest-cov>=4.1.0", "pyright>=1.1.338"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

@@ -430,6 +430,16 @@ export class SpreadsheetService {
         });
     }
 
+    public deleteColumns(sheetIdx: number, tableIdx: number, colIndices: number[]) {
+        this._enqueueRequest(async () => {
+            const result = await this.runPython<IUpdateSpec>(`
+                res = delete_columns(${sheetIdx}, ${tableIdx}, ${JSON.stringify(colIndices)})
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
     public insertRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
@@ -454,6 +464,16 @@ export class SpreadsheetService {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
                 res = clear_column(${sheetIdx}, ${tableIdx}, ${colIndex})
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
+    public clearColumns(sheetIdx: number, tableIdx: number, colIndices: number[]) {
+        this._enqueueRequest(async () => {
+            const result = await this.runPython<IUpdateSpec>(`
+                res = clear_columns(${sheetIdx}, ${tableIdx}, ${JSON.stringify(colIndices)})
                 json.dumps(res) if res else "null"
             `);
             if (result) this._postUpdateMessage(result);

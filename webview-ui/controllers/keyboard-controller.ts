@@ -120,7 +120,7 @@ export class KeyboardController implements ReactiveController {
 
         if (e.key === 'Delete' || e.key === 'Backspace') {
             e.preventDefault();
-            this.host.clipboardCtrl.deleteSelection();
+            this.host.editCtrl.deleteSelection();
             return;
         }
 
