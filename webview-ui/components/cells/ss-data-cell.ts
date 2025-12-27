@@ -258,8 +258,13 @@ export class SSDataCell extends LitElement {
     }
 
     private _renderValidationControl() {
-        // Only show when cell is selected/active and not editing
+        // Only show when single cell is selected/active and not editing
+        // Hide when part of a range selection (multiple cells selected)
         if (!this.validationRule || this.isEditing || (!this.isSelected && !this.isActive)) {
+            return nothing;
+        }
+        // Hide when this cell is part of a multi-cell range selection
+        if (this.isInRange && this.isSelected) {
             return nothing;
         }
 
