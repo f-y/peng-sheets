@@ -429,7 +429,6 @@
     text-decoration: underline dotted;
     text-decoration-color: var(--vscode-textLink-foreground, #3794ff);
     text-underline-offset: 2px;
-    cursor: help;
 }
 
 /* Drag-and-drop styles */

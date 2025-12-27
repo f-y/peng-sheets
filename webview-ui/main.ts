@@ -594,7 +594,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                                   .layout="${(activeTab.data as SheetJSON).metadata?.layout}"
                                   .tables="${(activeTab.data as SheetJSON).tables}"
                                   .sheetIndex="${activeTab.sheetIndex}"
-                                  .dateFormat="${(this.config?.validation as any)?.dateFormat || 'YYYY-MM-DD'}"
+                                  .dateFormat="${((this.config?.validation as Record<string, unknown>)
+                                      ?.dateFormat as string) || 'YYYY-MM-DD'}"
                                   @save-requested="${this._handleSave}"
                               ></layout-container>
                           </div>

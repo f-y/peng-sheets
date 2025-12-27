@@ -6,8 +6,8 @@
  * Events Emitted:
  * - ss-datepicker-select: { value: string } - When a date is selected
  */
-import { LitElement, html, nothing, unsafeCSS } from 'lit';
-import { customElement, property, state, query } from 'lit/decorators.js';
+import { LitElement, html, unsafeCSS } from 'lit';
+import { customElement, property, query } from 'lit/decorators.js';
 import { SimpleDateFormatter } from '../../utils/date-formatter';
 import datepickerStyles from '../../styles/validation-controls.css?inline';
 
@@ -31,9 +31,7 @@ export class SSValidationDatepicker extends LitElement {
 
     private _handleInput(e: Event) {
         const input = e.target as HTMLInputElement;
-        const rawValue = input.value; // YYYY-MM-DD from native input
-
-        const rawDate = input.value; // YYYY-MM-DD
+        const rawDate = input.value; // YYYY-MM-DD from native input
         const date = SimpleDateFormatter.parseDate(rawDate, 'YYYY-MM-DD');
         if (date) {
             const formatted = SimpleDateFormatter.formatDate(date, this.dateFormat);

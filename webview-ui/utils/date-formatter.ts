@@ -67,7 +67,7 @@ export class SimpleDateFormatter {
         return format.replace('YYYY', yearStr).replace('MM', monthStr).replace('DD', dayStr);
     }
 
-    private static _splitIntoParts(text: string): string[] {
+    private static _splitIntoParts(_text: string): string[] {
         // Deprecated helper, but kept if needed for other logic (not used in new parseDate)
         // We can remove it or fix it if we want to keep API shape, but private so remove.
         return [];

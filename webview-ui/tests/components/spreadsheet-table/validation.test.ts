@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeAll } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { fixture, html } from '@open-wc/testing';
 import '../../../components/spreadsheet-table';
 import { queryView, awaitView } from '../../helpers/test-helpers';
@@ -19,8 +19,10 @@ global.ResizeObserver = window.ResizeObserver;
 describe('Validation Integration', () => {
     const createValidationTable = (): TableJSON => ({
         name: 'Validation Table',
+        description: null,
         headers: ['ValCol'],
         rows: [['A']],
+        alignments: null,
         metadata: {
             visual: {
                 validation: {

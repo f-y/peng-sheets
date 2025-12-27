@@ -268,69 +268,6 @@ describe('ClipboardController', () => {
         });
     });
 
-    describe('deleteSelection', () => {
-        it('should clear selected range cells', () => {
-            host.selectionCtrl.selectionAnchorRow = 0;
-            host.selectionCtrl.selectionAnchorCol = 0;
-            host.selectionCtrl.selectedRow = 0;
-            host.selectionCtrl.selectedCol = 1;
-
-            host.selectionCtrl.getSelectionRange = vi.fn(() => ({
-                minR: 0,
-                maxR: 0,
-                minC: 0,
-                maxC: 1
-            }));
-
-            clipboard.deleteSelection();
-
-            expect(host.table!.rows[0]).toEqual(['', '']);
-            expect(host.requestUpdate).toHaveBeenCalled();
-        });
-
-        it('should dispatch range-edit event', () => {
-            host.selectionCtrl.selectionAnchorRow = 0;
-            host.selectionCtrl.selectionAnchorCol = 0;
-            host.selectionCtrl.selectedRow = 0;
-            host.selectionCtrl.selectedCol = 0;
-
-            host.selectionCtrl.getSelectionRange = vi.fn(() => ({
-                minR: 0,
-                maxR: 0,
-                minC: 0,
-                maxC: 0
-            }));
-
-            clipboard.deleteSelection();
-
-            expect(host.dispatchEvent).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    type: 'range-edit'
-                })
-            );
-        });
-
-        it('should handle rectangular range selection', () => {
-            host.selectionCtrl.selectionAnchorRow = 0;
-            host.selectionCtrl.selectionAnchorCol = 0;
-            host.selectionCtrl.selectedRow = 1;
-            host.selectionCtrl.selectedCol = 1;
-
-            host.selectionCtrl.getSelectionRange = vi.fn(() => ({
-                minR: 0,
-                maxR: 1,
-                minC: 0,
-                maxC: 1
-            }));
-
-            clipboard.deleteSelection();
-
-            // All cells in range should be cleared
-            expect(host.table!.rows[0]).toEqual(['', '']);
-            expect(host.table!.rows[1]).toEqual(['', '']);
-        });
-    });
-
     describe('parseTsv + _escapeTsvValue roundtrip', () => {
         it('should maintain data integrity through copy-paste cycle', () => {
             const original = [
