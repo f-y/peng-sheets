@@ -1,10 +1,16 @@
 import { ReactiveController } from 'lit';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import { getDOMText } from '../utils/spreadsheet-helpers';
+import { SelectionRange } from './selection-controller';
 // import { normalizeEditContent, findEditingCell } from '../utils/edit-mode-helpers';
 
 export class EventController implements ReactiveController {
     host: SpreadsheetTable;
+
+    // Drag state tracking
+    private _potentialDragStart: { x: number; y: number; type: 'row' | 'col'; index: number } | null = null;
+    private _isDragging = false;
+    private static readonly DRAG_THRESHOLD = 5; // pixels before drag starts
 
     constructor(host: SpreadsheetTable) {
         this.host = host;
@@ -17,7 +23,27 @@ export class EventController implements ReactiveController {
 
     hostDisconnected() {
         window.removeEventListener('click', this.handleGlobalClick);
+        this._removeDragListeners();
     }
+
+    private _addDragListeners() {
+        window.addEventListener('mousemove', this._handleDragMouseMove);
+        window.addEventListener('mouseup', this._handleDragMouseUp);
+    }
+
+    private _removeDragListeners() {
+        window.removeEventListener('mousemove', this._handleDragMouseMove);
+        window.removeEventListener('mouseup', this._handleDragMouseUp);
+    }
+
+    private _handleDragMouseMove = (e: MouseEvent) => {
+        this.handleMouseMove(e);
+    };
+
+    private _handleDragMouseUp = (e: MouseEvent) => {
+        this.handleMouseUp(e);
+        this._removeDragListeners();
+    };
 
     private _handleDragOver = (_e: DragEvent) => {
         const path = _e.composedPath();
@@ -90,11 +116,32 @@ export class EventController implements ReactiveController {
     };
 
     handleMouseUp = (e: MouseEvent) => {
+        // Complete drag if dragging
+        if (this._isDragging && this.host.dragCtrl.isDragging) {
+            this._completeDrag();
+        }
+        // Reset drag state
+        this._potentialDragStart = null;
+        this._isDragging = false;
         this.host.selectionCtrl.handleMouseUp(e);
     };
 
     handleMouseMove = (e: MouseEvent) => {
-        this.host.selectionCtrl.handleMouseMove(e);
+        // Check if we should initiate drag
+        if (this._potentialDragStart && !this._isDragging) {
+            const dx = Math.abs(e.clientX - this._potentialDragStart.x);
+            const dy = Math.abs(e.clientY - this._potentialDragStart.y);
+            if (dx > EventController.DRAG_THRESHOLD || dy > EventController.DRAG_THRESHOLD) {
+                this._startDrag();
+            }
+        }
+
+        // Update drag target while dragging
+        if (this._isDragging && this.host.dragCtrl.isDragging) {
+            this._updateDragTarget(e);
+        } else {
+            this.host.selectionCtrl.handleMouseMove(e);
+        }
     };
 
     handleDblClick = (_e: MouseEvent) => {
@@ -174,8 +221,34 @@ export class EventController implements ReactiveController {
         this.host.focusCell();
     };
 
-    handleColMousedown = (e: CustomEvent<{ col: number; shiftKey: boolean }>) => {
-        this.host.selectionCtrl.startSelection(-2, e.detail.col, e.detail.shiftKey);
+    handleColMousedown = (e: CustomEvent<{ col: number; shiftKey: boolean; originalEvent?: MouseEvent }>) => {
+        const col = e.detail.col;
+        const shiftKey = e.detail.shiftKey;
+
+        // Check if this column is already in selection (potential drag)
+        const { selectedRow, selectedCol, selectionAnchorCol } = this.host.selectionCtrl;
+        if (selectedRow === -2 && selectedCol !== -2 && selectionAnchorCol !== -2) {
+            const minC = Math.min(selectedCol, selectionAnchorCol);
+            const maxC = Math.max(selectedCol, selectionAnchorCol);
+            if (col >= minC && col <= maxC && !shiftKey) {
+                // Clicked on selected column - prepare for potential drag
+                const mouseEvent = e.detail.originalEvent;
+                if (mouseEvent) {
+                    this._potentialDragStart = {
+                        x: mouseEvent.clientX,
+                        y: mouseEvent.clientY,
+                        type: 'col',
+                        index: col
+                    };
+                    this._addDragListeners();
+                }
+                return; // Don't start selection, wait for drag or click
+            }
+        }
+
+        // Normal selection start
+        this._potentialDragStart = null;
+        this.host.selectionCtrl.startSelection(-2, col, shiftKey);
     };
 
     handleColDblclick = (e: CustomEvent<{ col: number }>) => {
@@ -242,8 +315,34 @@ export class EventController implements ReactiveController {
         this.host.focusCell();
     };
 
-    handleRowMousedown = (e: CustomEvent<{ row: number; shiftKey: boolean }>) => {
-        this.host.selectionCtrl.startSelection(e.detail.row, -2, e.detail.shiftKey);
+    handleRowMousedown = (e: CustomEvent<{ row: number; shiftKey: boolean; originalEvent?: MouseEvent }>) => {
+        const row = e.detail.row;
+        const shiftKey = e.detail.shiftKey;
+
+        // Check if this row is already in selection (potential drag)
+        const { selectedRow, selectedCol, selectionAnchorRow } = this.host.selectionCtrl;
+        if (selectedCol === -2 && selectedRow !== -2 && selectionAnchorRow !== -2) {
+            const minR = Math.min(selectedRow, selectionAnchorRow);
+            const maxR = Math.max(selectedRow, selectionAnchorRow);
+            if (row >= minR && row <= maxR && !shiftKey) {
+                // Clicked on selected row - prepare for potential drag
+                const mouseEvent = e.detail.originalEvent;
+                if (mouseEvent) {
+                    this._potentialDragStart = {
+                        x: mouseEvent.clientX,
+                        y: mouseEvent.clientY,
+                        type: 'row',
+                        index: row
+                    };
+                    this._addDragListeners();
+                }
+                return; // Don't start selection, wait for drag or click
+            }
+        }
+
+        // Normal selection start
+        this._potentialDragStart = null;
+        this.host.selectionCtrl.startSelection(row, -2, shiftKey);
     };
 
     handleRowContextMenu = (e: CustomEvent<{ type: string; index: number; x: number; y: number }>) => {
@@ -466,5 +565,198 @@ export class EventController implements ReactiveController {
         if (this.host.editCtrl.isEditing) {
             this.host.commitEdit(e);
         }
+    }
+
+    // ============================================================
+    // Drag Helper Methods
+    // ============================================================
+
+    private _startDrag(): void {
+        if (!this._potentialDragStart) return;
+
+        const { type } = this._potentialDragStart;
+        const { selectedRow, selectedCol, selectionAnchorRow, selectionAnchorCol } = this.host.selectionCtrl;
+
+        // Build source range based on drag type
+        let sourceRange: SelectionRange;
+        if (type === 'row') {
+            const minR = Math.min(selectedRow, selectionAnchorRow);
+            const maxR = Math.max(selectedRow, selectionAnchorRow);
+            sourceRange = {
+                minR,
+                maxR,
+                minC: 0,
+                maxC: (this.host.table?.headers?.length ?? 1) - 1
+            };
+        } else {
+            const minC = Math.min(selectedCol, selectionAnchorCol);
+            const maxC = Math.max(selectedCol, selectionAnchorCol);
+            sourceRange = {
+                minR: 0,
+                maxR: (this.host.table?.rows?.length ?? 1) - 1,
+                minC,
+                maxC
+            };
+        }
+
+        this._isDragging = true;
+        this.host.dragCtrl.startDrag(type, sourceRange);
+        this.host.requestUpdate();
+    }
+
+    private _updateDragTarget(e: MouseEvent): void {
+        const dragType = this.host.dragCtrl.dragType;
+        if (!dragType) return;
+
+        // Find the row/column header under the mouse
+        // Need to traverse shadow DOM to find elements
+        let target: Element | null = document.elementFromPoint(e.clientX, e.clientY);
+
+        // Traverse into shadow roots to find the deepest element
+        while (target && target.shadowRoot) {
+            const deeper = target.shadowRoot.elementFromPoint(e.clientX, e.clientY);
+            if (!deeper || deeper === target) break;
+            target = deeper;
+        }
+
+        if (!target) {
+            // If no target found during column drag, check if mouse is past the last column
+            if (dragType === 'col') {
+                const table = this.host.table;
+                const numCols = table?.headers?.length ?? table?.rows?.[0]?.length ?? 0;
+                if (numCols > 0) {
+                    this.host.dragCtrl.updateDropTarget(numCols);
+                    this.host.requestUpdate();
+                }
+            }
+            return;
+        }
+
+        // Look for row or column header
+        const cell = target.closest('[data-row], [data-col]') as HTMLElement | null;
+        if (!cell) {
+            // No cell found - for column drag, allow end-of-columns drop
+            if (dragType === 'col') {
+                const table = this.host.table;
+                const numCols = table?.headers?.length ?? table?.rows?.[0]?.length ?? 0;
+                if (numCols > 0) {
+                    this.host.dragCtrl.updateDropTarget(numCols);
+                    this.host.requestUpdate();
+                }
+            }
+            return;
+        }
+
+        if (dragType === 'row') {
+            const rowAttr = cell.getAttribute('data-row');
+            if (rowAttr !== null) {
+                const row = parseInt(rowAttr, 10);
+                if (!isNaN(row) && row >= 0) {
+                    this.host.dragCtrl.updateDropTarget(row);
+                    this.host.requestUpdate();
+                }
+            }
+        } else if (dragType === 'col') {
+            const colAttr = cell.getAttribute('data-col');
+            if (colAttr !== null) {
+                const col = parseInt(colAttr, 10);
+                if (!isNaN(col) && col >= 0) {
+                    this.host.dragCtrl.updateDropTarget(col);
+                    this.host.requestUpdate();
+                }
+            }
+        }
+    }
+
+    private _completeDrag(): void {
+        const result = this.host.dragCtrl.completeDrag();
+        if (!result) return;
+
+        // Build the appropriate event based on drag type
+        if (result.type === 'row') {
+            this.host.dispatchEvent(
+                new CustomEvent('move-rows', {
+                    detail: {
+                        sheetIndex: this.host.sheetIndex,
+                        tableIndex: this.host.tableIndex,
+                        rowIndices: result.sourceIndices,
+                        targetRowIndex: result.targetIndex
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
+
+            // Update selection to the new row position after move
+            const sourceMin = Math.min(...result.sourceIndices);
+            const targetIndex = result.targetIndex;
+            // Calculate where the moved rows will end up
+            let newStartRow: number;
+            if (targetIndex <= sourceMin) {
+                // Moving up: rows end up at targetIndex
+                newStartRow = targetIndex;
+            } else {
+                // Moving down: rows end up at targetIndex - count
+                newStartRow = targetIndex - result.sourceIndices.length;
+            }
+            const newEndRow = newStartRow + result.sourceIndices.length - 1;
+            // Update selection to new row range (row selection mode: col = -2)
+            // SelectionController uses anchorRow/anchorCol and selectedRow/selectedCol
+            // Range is calculated from min/max of anchor and selected
+            this.host.selectionCtrl.selectionAnchorRow = newStartRow;
+            this.host.selectionCtrl.selectionAnchorCol = -2;
+            this.host.selectionCtrl.selectedRow = newEndRow;
+            this.host.selectionCtrl.selectedCol = -2;
+            this.host.requestUpdate();
+        } else if (result.type === 'col') {
+            this.host.dispatchEvent(
+                new CustomEvent('move-columns', {
+                    detail: {
+                        sheetIndex: this.host.sheetIndex,
+                        tableIndex: this.host.tableIndex,
+                        colIndices: result.sourceIndices,
+                        targetColIndex: result.targetIndex
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
+
+            // Update selection to the new column position after move
+            const sourceMin = Math.min(...result.sourceIndices);
+            const targetIndex = result.targetIndex;
+            // Calculate where the moved columns will end up
+            let newStartCol: number;
+            if (targetIndex <= sourceMin) {
+                // Moving left: columns end up at targetIndex
+                newStartCol = targetIndex;
+            } else {
+                // Moving right: columns end up at targetIndex - count
+                newStartCol = targetIndex - result.sourceIndices.length;
+            }
+            const newEndCol = newStartCol + result.sourceIndices.length - 1;
+            // Update selection to new column range (column selection mode: row = -2)
+            this.host.selectionCtrl.selectionAnchorRow = -2;
+            this.host.selectionCtrl.selectionAnchorCol = newStartCol;
+            this.host.selectionCtrl.selectedRow = -2;
+            this.host.selectionCtrl.selectedCol = newEndCol;
+            this.host.requestUpdate();
+        } else if (result.type === 'cell') {
+            this.host.dispatchEvent(
+                new CustomEvent('move-cells', {
+                    detail: {
+                        sheetIndex: this.host.sheetIndex,
+                        tableIndex: this.host.tableIndex,
+                        sourceRange: result.sourceRange,
+                        destRow: result.destRow,
+                        destCol: result.destCol
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
+        }
+
+        this.host.requestUpdate();
     }
 }

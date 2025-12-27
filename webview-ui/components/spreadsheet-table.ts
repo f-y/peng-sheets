@@ -12,6 +12,7 @@ import { FocusController } from '../controllers/focus-controller';
 import { KeyboardController } from '../controllers/keyboard-controller';
 import { EventController } from '../controllers/event-controller';
 import { RowVisibilityController, VisualMetadata } from '../controllers/row-visibility-controller';
+import { DragController } from '../controllers/drag-controller';
 import { getDOMText } from '../utils/spreadsheet-helpers';
 import { normalizeEditContent, findEditingCell } from '../utils/edit-mode-helpers';
 import spreadsheetTableStyles from './styles/spreadsheet-table.css?inline';
@@ -74,6 +75,7 @@ export class SpreadsheetTable extends LitElement {
             return ((this.table.metadata as Record<string, unknown>)?.visual as VisualMetadata) || null;
         }
     });
+    dragCtrl = new DragController(this);
 
     @state()
     contextMenu: { x: number; y: number; type: 'row' | 'col'; index: number } | null = null;
@@ -450,6 +452,9 @@ export class SpreadsheetTable extends LitElement {
                 .filterMenu="${filterMenu}"
                 .resizingCol="${this.resizeCtrl.resizingCol}"
                 .rowCount="${table.rows.length}"
+                .isDragging="${this.dragCtrl.isDragging}"
+                .dragType="${this.dragCtrl.dragType}"
+                .dropTargetIndex="${this.dragCtrl.dropTargetIndex}"
                 .dateFormat="${this.dateFormat}"
             }}"
                 @view-insert-row="${this.eventCtrl.handleInsertRow}"

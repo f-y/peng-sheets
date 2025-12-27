@@ -48,6 +48,10 @@ export class SSColumnHeader extends LitElement {
     @property({ type: Number }) width = 100;
     @property({ type: Boolean }) hasValidation = false;
     @property({ type: String }) validationType = '';
+    @property({ type: Boolean }) isDraggable = false;
+    @property({ type: Boolean }) isDragging = false;
+    @property({ type: Boolean }) isDropTarget = false;
+    @property({ type: Boolean }) isDropTargetEnd = false;
 
     private _onClick = (e: MouseEvent) => {
         emitCellEvent<CellMouseEventDetail>(this, 'ss-col-click', {
@@ -61,7 +65,8 @@ export class SSColumnHeader extends LitElement {
         emitCellEvent<CellMouseEventDetail>(this, 'ss-col-mousedown', {
             row: -2,
             col: this.col,
-            shiftKey: e.shiftKey
+            shiftKey: e.shiftKey,
+            originalEvent: e
         });
     };
 
@@ -118,7 +123,10 @@ export class SSColumnHeader extends LitElement {
             this.isSelected ? 'selected' : '',
             this.isInRange ? 'selected-range' : '',
             this.isEditing ? 'editing' : '',
-            this.showActiveOutline ? 'active-cell' : 'active-cell-no-outline'
+            this.showActiveOutline ? 'active-cell' : 'active-cell-no-outline',
+            this.isDraggable ? 'draggable' : '',
+            this.isDragging ? 'dragging' : '',
+            this.isDropTarget ? 'drop-target' : ''
         ]
             .filter(Boolean)
             .join(' ');
@@ -130,6 +138,10 @@ export class SSColumnHeader extends LitElement {
                 data-row="-1"
                 tabindex="0"
                 contenteditable="false"
+                style="${this.isDropTarget ? 'border-left: 3px solid var(--selection-color, #0078d7);' : ''}${this
+                    .isDropTargetEnd
+                    ? 'border-right: 3px solid var(--selection-color, #0078d7);'
+                    : ''}"
                 @click="${this._onClick}"
                 @mousedown="${this._onMousedown}"
                 @dblclick="${this._onDblclick}"

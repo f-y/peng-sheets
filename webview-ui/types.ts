@@ -215,6 +215,28 @@ export interface IValidationUpdateDetail {
     rule: unknown; // ValidationRule | null
 }
 
+export interface IMoveRowsDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    rowIndices: number[];
+    targetRowIndex: number;
+}
+
+export interface IMoveColumnsDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    colIndices: number[];
+    targetColIndex: number;
+}
+
+export interface IMoveCellsDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    sourceRange: { minR: number; maxR: number; minC: number; maxC: number };
+    destRow: number;
+    destCol: number;
+}
+
 export interface IUpdateConfigDetail {
     config: Record<string, unknown>;
 }

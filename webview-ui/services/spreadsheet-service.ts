@@ -504,6 +504,58 @@ export class SpreadsheetService {
         });
     }
 
+    public moveRows(sheetIdx: number, tableIdx: number, rowIndices: number[], targetRowIndex: number) {
+        this._enqueueRequest(async () => {
+            const result = await this.runPython<IUpdateSpec>(`
+                res = move_rows(
+                    ${sheetIdx},
+                    ${tableIdx},
+                    ${JSON.stringify(rowIndices)},
+                    ${targetRowIndex}
+                )
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
+    public moveColumns(sheetIdx: number, tableIdx: number, colIndices: number[], targetColIndex: number) {
+        this._enqueueRequest(async () => {
+            const result = await this.runPython<IUpdateSpec>(`
+                res = move_columns(
+                    ${sheetIdx},
+                    ${tableIdx},
+                    ${JSON.stringify(colIndices)},
+                    ${targetColIndex}
+                )
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
+    public moveCells(
+        sheetIdx: number,
+        tableIdx: number,
+        sourceRange: { minR: number; maxR: number; minC: number; maxC: number },
+        destRow: number,
+        destCol: number
+    ) {
+        this._enqueueRequest(async () => {
+            const result = await this.runPython<IUpdateSpec>(`
+                res = move_cells(
+                    ${sheetIdx},
+                    ${tableIdx},
+                    {"minR": ${sourceRange.minR}, "maxR": ${sourceRange.maxR}, "minC": ${sourceRange.minC}, "maxC": ${sourceRange.maxC}},
+                    ${destRow},
+                    ${destCol}
+                )
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
     public updateColumnFilter(sheetIdx: number, tableIdx: number, colIndex: number, filter: string[] | null) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`

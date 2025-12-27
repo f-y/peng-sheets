@@ -90,6 +90,11 @@ export class SpreadsheetTableView extends LitElement {
     // Row count for dynamic header width
     @property({ type: Number }) rowCount: number = 0;
 
+    // Drag state
+    @property({ type: Boolean }) isDragging: boolean = false;
+    @property({ type: String }) dragType: 'row' | 'col' | 'cell' | null = null;
+    @property({ type: Number }) dropTargetIndex: number = -1;
+
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
 
@@ -299,6 +304,13 @@ export class SpreadsheetTableView extends LitElement {
                         .hasValidation="${hasValidation}"
                         .validationType="${validationTooltip}"
                         .width="${this.columnWidths[c] ?? 100}"
+                        .isDraggable="${isColMode && isColInRange}"
+                        .isDragging="${this.isDragging && this.dragType === 'col' && isColInRange}"
+                        .isDropTarget="${this.isDragging && this.dragType === 'col' && c === this.dropTargetIndex}"
+                        .isDropTargetEnd="${this.isDragging &&
+                        this.dragType === 'col' &&
+                        c === colCount - 1 &&
+                        this.dropTargetIndex === colCount}"
                         @ss-col-click="${(e: CustomEvent) => this._bubbleEvent('view-col-click', e.detail)}"
                         @ss-col-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-col-mousedown', e.detail)}"
                         @ss-col-dblclick="${(e: CustomEvent) => this._bubbleEvent('view-col-dblclick', e.detail)}"
@@ -344,6 +356,9 @@ export class SpreadsheetTableView extends LitElement {
                 .row="${r}"
                 .isSelected="${isRowSelected}"
                 .isInRange="${isRowInRange}"
+                .isDraggable="${isRowMode && isRowInRange}"
+                .isDragging="${this.isDragging && this.dragType === 'row' && isRowInRange}"
+                .isDropTarget="${this.isDragging && this.dragType === 'row' && r === this.dropTargetIndex}"
                 @ss-row-click="${(e: CustomEvent) => this._bubbleEvent('view-row-click', e.detail)}"
                 @ss-row-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-row-mousedown', e.detail)}"
                 @ss-contextmenu="${(e: CustomEvent) => this._bubbleEvent('view-row-contextmenu', e.detail)}"
@@ -438,6 +453,7 @@ export class SpreadsheetTableView extends LitElement {
                 .isSelected="${isGhostRowSelected && selCol === -1}"
                 .isInRange="${false}"
                 .isGhost="${true}"
+                .isDropTarget="${this.isDragging && this.dragType === 'row' && ghostRowIndex === this.dropTargetIndex}"
                 @ss-row-click="${(e: CustomEvent) => this._bubbleEvent('view-row-click', e.detail)}"
                 @ss-row-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-row-mousedown', e.detail)}"
                 @ss-row-keydown="${(e: CustomEvent) => this._bubbleEvent('view-row-keydown', e.detail)}"
@@ -489,6 +505,31 @@ export class SpreadsheetTableView extends LitElement {
                 composed: true
             })
         );
+    }
+
+    /**
+     * Render drop indicator for drag-and-drop operations.
+     */
+    private _renderDropIndicator(): TemplateResult | typeof nothing {
+        if (!this.isDragging || this.dropTargetIndex < 0) return nothing;
+
+        if (this.dragType === 'row') {
+            // For row drag, render a horizontal line at the target row position
+            const rowHeight = 22; // Approximate row height
+            const headerHeight = 24; // Header row height
+            const top = headerHeight + this.dropTargetIndex * rowHeight;
+            return html` <div class="drop-indicator-row" style="top: ${top}px;"></div> `;
+        } else if (this.dragType === 'col') {
+            // For column drag, render a vertical line at the target column position
+            const rowHeaderWidth = this._getRowHeaderWidth();
+            let left = rowHeaderWidth;
+            for (let c = 0; c < this.dropTargetIndex; c++) {
+                left += this.columnWidths[c] ?? 100;
+            }
+            return html` <div class="drop-indicator-col" style="left: ${left}px;"></div> `;
+        }
+
+        return nothing;
     }
 
     render() {

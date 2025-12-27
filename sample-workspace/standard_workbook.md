@@ -54,8 +54,11 @@
 | 列名1 | 列名2 | 列名3 |
 | --- | --- | --- |
 |  | あ<br>変換<br> | 2025-12-10 |
+| a |  |  |
 |  |  |  |
-|  |  |  |
+| 1 |  |  |
+| 2 |  |  |
+| 3 |  |  |
 
 <!-- md-spreadsheet-metadata: {"validation": {"1": {"type": "list", "values": ["Yes", "No"]}, "2": {"type": "date"}}} -->
 

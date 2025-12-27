@@ -588,6 +588,300 @@ def paste_cells(
     return apply_table_update(sheet_idx, table_idx, _paste_logic)
 
 
+def move_rows(sheet_idx, table_idx, row_indices, target_row_idx):
+    """
+    Move selected rows to a new position.
+
+    Args:
+        sheet_idx: Sheet index
+        table_idx: Table index
+        row_indices: List of row indices to move (0-based)
+        target_row_idx: Target position to insert rows (0-based, before adjustment)
+
+    Returns:
+        IUpdateSpec with the changes
+    """
+
+    def _move_logic(t):
+        if not row_indices:
+            return t
+
+        current_rows = [list(r) for r in t.rows]
+        num_rows = len(current_rows)
+
+        # Validate indices
+        sorted_indices = sorted(row_indices)
+        for idx in sorted_indices:
+            if idx < 0 or idx >= num_rows:
+                raise IndexError(f"Invalid row index: {idx}")
+
+        # Check if move is a no-op (moving to the same position)
+        # This happens when target is within the contiguous range being moved
+        min_idx = sorted_indices[0]
+        max_idx = sorted_indices[-1]
+        if target_row_idx >= min_idx and target_row_idx <= max_idx + 1:
+            # Check if indices are contiguous
+            if sorted_indices == list(range(min_idx, max_idx + 1)):
+                return t
+
+        # Extract rows to move
+        rows_to_move = [current_rows[i] for i in sorted_indices]
+
+        # Remove rows from original positions (in reverse to preserve indices)
+        for idx in reversed(sorted_indices):
+            del current_rows[idx]
+
+        # Adjust target index based on how many rows were removed before it
+        removed_before_target = sum(1 for idx in sorted_indices if idx < target_row_idx)
+        adjusted_target = target_row_idx - removed_before_target
+
+        # Insert rows at adjusted target position
+        for i, row in enumerate(rows_to_move):
+            current_rows.insert(adjusted_target + i, row)
+
+        return replace(t, rows=current_rows)
+
+    return apply_table_update(sheet_idx, table_idx, _move_logic)
+
+
+def _reorder_column_metadata(metadata, col_indices, target_col_idx):
+    """
+    Reorder column-indexed metadata when columns are moved.
+
+    Args:
+        metadata: Table metadata dict
+        col_indices: List of column indices being moved
+        target_col_idx: Target position
+
+    Returns:
+        Updated metadata dict
+    """
+    if not metadata:
+        return metadata
+
+    new_metadata = metadata.copy()
+
+    # Handle both legacy 'columnWidths' and 'visual' nested structure
+    # Legacy: metadata["columnWidths"] = {"0": 100, "1": 150}
+    # New: metadata["visual"]["column_widths"] = {"0": 100, "1": 150}
+
+    def reorder_dict(old_data, col_indices, target_col_idx):
+        """Reorder a dict with string column indices as keys."""
+        if not isinstance(old_data, dict):
+            return old_data
+
+        # Convert to list format for easier manipulation
+        max_idx = 0
+        for str_idx in old_data.keys():
+            try:
+                max_idx = max(max_idx, int(str_idx))
+            except (ValueError, TypeError):
+                pass
+
+        # Create ordered list (None for missing indices)
+        values_list = [old_data.get(str(i)) for i in range(max_idx + 1)]
+
+        # Extract values being moved
+        sorted_indices = sorted(col_indices)
+        values_to_move = [
+            values_list[i] if i < len(values_list) else None for i in sorted_indices
+        ]
+
+        # Remove from original positions (reverse order)
+        for idx in reversed(sorted_indices):
+            if idx < len(values_list):
+                values_list[idx] = "__REMOVE__"
+        values_list = [v for v in values_list if v != "__REMOVE__"]
+
+        # Adjust target
+        removed_before_target = sum(1 for idx in sorted_indices if idx < target_col_idx)
+        adjusted_target = target_col_idx - removed_before_target
+
+        # Insert at target
+        for i, val in enumerate(values_to_move):
+            values_list.insert(adjusted_target + i, val)
+
+        # Convert back to dict format
+        new_data = {}
+        for i, val in enumerate(values_list):
+            if val is not None:
+                new_data[str(i)] = val
+
+        return new_data
+
+    # Handle legacy columnWidths
+    if "columnWidths" in new_metadata:
+        new_metadata["columnWidths"] = reorder_dict(
+            new_metadata["columnWidths"], col_indices, target_col_idx
+        )
+
+    # Handle visual nested structure
+    if "visual" in new_metadata:
+        visual = new_metadata["visual"].copy()
+        for key in ["column_widths", "validation", "columns", "filters"]:
+            if key in visual:
+                visual[key] = reorder_dict(visual[key], col_indices, target_col_idx)
+        new_metadata["visual"] = visual
+
+    return new_metadata
+
+
+def move_columns(sheet_idx, table_idx, col_indices, target_col_idx):
+    """
+    Move selected columns to a new position.
+
+    Args:
+        sheet_idx: Sheet index
+        table_idx: Table index
+        col_indices: List of column indices to move (0-based)
+        target_col_idx: Target position to insert columns (0-based)
+
+    Returns:
+        IUpdateSpec with the changes
+    """
+
+    def _move_logic(t):
+        if not col_indices:
+            return t
+
+        headers = list(t.headers) if t.headers else []
+        num_cols = len(headers)
+
+        # Validate indices
+        sorted_indices = sorted(col_indices)
+        for idx in sorted_indices:
+            if idx < 0 or idx >= num_cols:
+                raise IndexError(f"Invalid column index: {idx}")
+
+        # Check if move is a no-op
+        min_idx = sorted_indices[0]
+        max_idx = sorted_indices[-1]
+        if target_col_idx >= min_idx and target_col_idx <= max_idx + 1:
+            if sorted_indices == list(range(min_idx, max_idx + 1)):
+                return t
+
+        # Extract headers to move
+        headers_to_move = [headers[i] for i in sorted_indices]
+
+        # Remove from original positions (reverse order)
+        for idx in reversed(sorted_indices):
+            del headers[idx]
+
+        # Adjust target
+        removed_before_target = sum(1 for idx in sorted_indices if idx < target_col_idx)
+        adjusted_target = target_col_idx - removed_before_target
+
+        # Insert at target
+        for i, header in enumerate(headers_to_move):
+            headers.insert(adjusted_target + i, header)
+
+        # Move data in each row
+        new_rows = []
+        for row in t.rows:
+            row_list = list(row)
+
+            # Pad row if necessary
+            while len(row_list) < num_cols:
+                row_list.append("")
+
+            # Extract cells to move
+            cells_to_move = [row_list[i] for i in sorted_indices]
+
+            # Remove from original positions
+            for idx in reversed(sorted_indices):
+                del row_list[idx]
+
+            # Insert at target
+            for i, cell in enumerate(cells_to_move):
+                row_list.insert(adjusted_target + i, cell)
+
+            new_rows.append(row_list)
+
+        # Reorder column metadata
+        new_metadata = _reorder_column_metadata(
+            t.metadata, sorted_indices, target_col_idx
+        )
+
+        return replace(t, headers=headers, rows=new_rows, metadata=new_metadata)
+
+    return apply_table_update(sheet_idx, table_idx, _move_logic)
+
+
+def move_cells(sheet_idx, table_idx, src_range, dest_row, dest_col):
+    """
+    Move a cell range to a new position (clear source, overwrite destination).
+
+    Args:
+        sheet_idx: Sheet index
+        table_idx: Table index
+        src_range: Dict with minR, maxR, minC, maxC (0-based)
+        dest_row: Destination top-left row (0-based)
+        dest_col: Destination top-left column (0-based)
+
+    Returns:
+        IUpdateSpec with the changes
+    """
+
+    def _move_logic(t):
+        min_r = src_range["minR"]
+        max_r = src_range["maxR"]
+        min_c = src_range["minC"]
+        max_c = src_range["maxC"]
+
+        # Check for no-op (same position)
+        if min_r == dest_row and min_c == dest_col:
+            return t
+
+        current_rows = [list(r) for r in t.rows]
+
+        # Extract source data
+        src_data = []
+        for r in range(min_r, max_r + 1):
+            row_data = []
+            for c in range(min_c, max_c + 1):
+                if r < len(current_rows) and c < len(current_rows[r]):
+                    row_data.append(current_rows[r][c])
+                else:
+                    row_data.append("")
+            src_data.append(row_data)
+
+        height = max_r - min_r + 1
+        width = max_c - min_c + 1
+
+        # Expand grid if needed for destination
+        needed_rows = dest_row + height
+        num_cols = (
+            len(t.headers)
+            if t.headers
+            else (len(current_rows[0]) if current_rows else 0)
+        )
+        needed_cols = dest_col + width
+
+        while len(current_rows) < needed_rows:
+            current_rows.append([""] * num_cols)
+
+        for row in current_rows:
+            while len(row) < needed_cols:
+                row.append("")
+
+        # Clear source cells (after extraction, before paste to handle overlaps correctly)
+        for r in range(min_r, max_r + 1):
+            for c in range(min_c, max_c + 1):
+                if r < len(current_rows) and c < len(current_rows[r]):
+                    current_rows[r][c] = ""
+
+        # Write to destination
+        for r_offset, row_data in enumerate(src_data):
+            for c_offset, val in enumerate(row_data):
+                target_r = dest_row + r_offset
+                target_c = dest_col + c_offset
+                current_rows[target_r][target_c] = val
+
+        return replace(t, rows=current_rows)
+
+    return apply_table_update(sheet_idx, table_idx, _move_logic)
+
+
 def augment_workbook_metadata(workbook_dict, md_text, root_marker, sheet_header_level):
     lines = md_text.split("\n")
 
@@ -1590,216 +1884,3 @@ def update_column_format(sheet_idx, table_idx, col_idx, format_config):
         return replace(t, metadata=new_md)
 
     return apply_table_update(sheet_idx, table_idx, _update_logic)
-
-
-def move_rows(sheet_idx, table_idx, row_indices, target_index):
-    def _move_logic(t):
-        current_rows = list(t.rows)
-        rows_to_move = []
-
-        # Sort indices to remove safely
-        sorted_indices = sorted(row_indices, reverse=True)
-
-        # Extract rows
-        for idx in sorted_indices:
-            if 0 <= idx < len(current_rows):
-                # Pop removes element, shifting subsequent indices
-                rows_to_move.insert(0, current_rows.pop(idx))
-            else:
-                raise IndexError(f"Invalid row index: {idx}")
-
-        # Calculate insert position
-        # We need to adjust target_index because we removed rows.
-        # But wait, target_index provided by frontend is typically based on the "visual" state *before* removal?
-        # Yes, usually "drop before row X".
-
-        # Count how many removed rows were *before* the target_index
-        removed_before_target = sum(1 for idx in row_indices if idx < target_index)
-
-        # Adjust target index
-        # If I drop before index 5, and I removed 2 rows before it, the new index 5 corresponds to old index 7.
-        # But we want to insert at the *new* equivalent of "before old index 5".
-        # Old index 5 is now at 5 - 2 = 3.
-        insert_idx = max(0, target_index - removed_before_target)
-
-        # Insert rows
-        # rows_to_move is in original order (because we inserted at 0 during reverse iteration)
-        for row in reversed(rows_to_move):
-            current_rows.insert(insert_idx, row)
-
-
-def _remap_column_metadata(metadata, old_to_new_map):
-    """
-    Remap column-indexed metadata based on an index mapping.
-    Args:
-        metadata: The table metadata dict.
-        old_to_new_map: Dict mapping {old_index: new_index}.
-    """
-    if not metadata:
-        return metadata
-
-    new_metadata = metadata.copy()
-    visual = new_metadata.get("visual", {})
-    if not visual:
-        return new_metadata
-
-    new_visual = visual.copy()
-
-    # Keys in visual that use column index as key
-    column_indexed_keys = ["column_widths", "validation", "columns", "filters"]
-
-    for key in column_indexed_keys:
-        if key not in new_visual:
-            continue
-
-        old_data = new_visual[key]
-        if not isinstance(old_data, dict):
-            continue
-
-        new_data = {}
-        for str_idx, value in old_data.items():
-            try:
-                old_idx = int(str_idx)
-                if old_idx in old_to_new_map:
-                    new_idx = old_to_new_map[old_idx]
-                    new_data[str(new_idx)] = value
-                else:
-                    # Should not happen if map covers all indices, but safe fallback:
-                    # If index is outside range (e.g. latent metadata), keep it?
-                    # better to drop or warn if strict. For now keep.
-                    new_data[str_idx] = value
-            except (ValueError, TypeError):
-                # Keep non-integer keys as-is
-                new_data[str_idx] = value
-
-        new_visual[key] = new_data
-
-    new_metadata["visual"] = new_visual
-    return new_metadata
-
-
-def move_columns(sheet_idx, table_idx, col_indices, target_index):
-    def _move_logic(t):
-        current_rows = [list(r) for r in t.rows]
-        current_headers = list(t.headers) if t.headers else []
-
-        col_count = len(current_headers) if current_headers else 0
-        if not col_count and current_rows:
-            col_count = len(current_rows[0])
-
-        # 1. Calculate Index Permutation
-        # Simulate the move on a list of indices [0, 1, 2, ...]
-        indices = list(range(col_count))
-        indices_to_move = []
-
-        sorted_indices = sorted(col_indices, reverse=True)
-
-        for idx in sorted_indices:
-            if 0 <= idx < len(indices):
-                indices_to_move.insert(0, indices.pop(idx))
-            else:
-                raise IndexError(f"Invalid column index: {idx}")
-
-        removed_before_target = sum(1 for idx in col_indices if idx < target_index)
-        insert_idx = max(0, target_index - removed_before_target)
-
-        for idx in reversed(indices_to_move):
-            indices.insert(insert_idx, idx)
-
-        # now `indices` is the new order. indices[new_pos] = old_pos
-        # We need old_pos -> new_pos for metadata mapping
-        old_to_new_map = {old: new for new, old in enumerate(indices)}
-
-        # 2. Reconstruct Table Data
-        new_headers = []
-        if current_headers:
-            new_headers = [current_headers[i] for i in indices]
-
-        new_rows = []
-        for row in current_rows:
-            # Handle row length safety (though normalized rows expected)
-            new_r = []
-            for i in indices:
-                if i < len(row):
-                    new_r.append(row[i])
-                else:
-                    new_r.append("")
-            new_rows.append(new_r)
-
-        # 3. Update Metadata
-        new_metadata = _remap_column_metadata(t.metadata, old_to_new_map)
-
-        return replace(t, headers=new_headers, rows=new_rows, metadata=new_metadata)
-
-
-def move_cells(sheet_idx, table_idx, min_r, max_r, min_c, max_c, target_r, target_c):
-    def _move_logic(t):
-        current_rows = [list(r) for r in t.rows]
-
-        # 1. Read Data
-        data_to_move = []
-        for r in range(min_r, max_r + 1):
-            row_data = []
-            if 0 <= r < len(current_rows):
-                row_list = current_rows[r]
-                for c in range(min_c, max_c + 1):
-                    if 0 <= c < len(row_list):
-                        row_data.append(row_list[c])
-                    else:
-                        row_data.append("")
-            else:
-                width = max_c - min_c + 1
-                row_data = [""] * width
-            data_to_move.append(row_data)
-
-        # 2. Clear Source
-        for r in range(min_r, max_r + 1):
-            if 0 <= r < len(current_rows):
-                for c in range(min_c, max_c + 1):
-                    if 0 <= c < len(current_rows[r]):
-                        current_rows[r][c] = ""
-
-        # 3. Paste at Target
-        paste_data = data_to_move
-        rows_to_paste = len(paste_data)
-        if rows_to_paste == 0:
-            return replace(t, rows=current_rows)
-
-        cols_to_paste = len(paste_data[0]) if paste_data else 0
-
-        # Expand Rows
-        needed_rows = target_r + rows_to_paste
-        base_width = len(t.headers) if t.headers else 0
-        if current_rows:
-            base_width = max(base_width, len(current_rows[0]))
-
-        while len(current_rows) < needed_rows:
-            current_rows.append([""] * base_width)
-
-        max_cols_needed = target_c + cols_to_paste
-
-        for r_offset, row_data in enumerate(paste_data):
-            tr = target_r + r_offset
-
-            # Expand Cols
-            while len(current_rows[tr]) < max_cols_needed:
-                current_rows[tr].append("")
-
-            for c_offset, val in enumerate(row_data):
-                tc = target_c + c_offset
-                current_rows[tr][tc] = val
-
-        # Padding
-        global_max_width = 0
-        for r in current_rows:
-            global_max_width = max(global_max_width, len(r))
-        if t.headers:
-            global_max_width = max(global_max_width, len(t.headers))
-
-        for r in current_rows:
-            if len(r) < global_max_width:
-                r.extend([""] * (global_max_width - len(r)))
-
-        return replace(t, rows=current_rows)
-
-    return apply_table_update(sheet_idx, table_idx, _move_logic)

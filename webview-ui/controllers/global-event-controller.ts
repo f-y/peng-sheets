@@ -16,6 +16,9 @@ import {
     ISheetMetadataUpdateDetail,
     IPasteCellsDetail,
     IValidationUpdateDetail,
+    IMoveRowsDetail,
+    IMoveColumnsDetail,
+    IMoveCellsDetail,
     PostMessageCommand
 } from '../types';
 
@@ -59,6 +62,9 @@ export interface GlobalEventHost extends ReactiveControllerHost {
     _handleDocumentChange(detail: { sectionIndex: number; content: string; title?: string; save?: boolean }): void;
     _handleSave(): void;
     _handleValidationUpdate(detail: IValidationUpdateDetail): void;
+    _handleMoveRows(detail: IMoveRowsDetail): void;
+    _handleMoveColumns(detail: IMoveColumnsDetail): void;
+    _handleMoveCells(detail: IMoveCellsDetail): void;
     _parseWorkbook(): Promise<void>;
 }
 
@@ -93,6 +99,9 @@ export class GlobalEventController implements ReactiveController {
     private _boundPostMessage: (e: Event) => void;
     private _boundDocumentChange: (e: Event) => void;
     private _boundValidationUpdate: (e: Event) => void;
+    private _boundMoveRows: (e: Event) => void;
+    private _boundMoveColumns: (e: Event) => void;
+    private _boundMoveCells: (e: Event) => void;
     private _boundMessage: (e: MessageEvent) => void;
 
     constructor(host: GlobalEventHost) {
@@ -121,6 +130,9 @@ export class GlobalEventController implements ReactiveController {
         this._boundPostMessage = this._handlePostMessage.bind(this);
         this._boundDocumentChange = this._handleDocumentChange.bind(this);
         this._boundValidationUpdate = this._handleValidationUpdate.bind(this);
+        this._boundMoveRows = this._handleMoveRows.bind(this);
+        this._boundMoveColumns = this._handleMoveColumns.bind(this);
+        this._boundMoveCells = this._handleMoveCells.bind(this);
         this._boundMessage = this._handleMessage.bind(this);
     }
 
@@ -162,6 +174,11 @@ export class GlobalEventController implements ReactiveController {
         window.addEventListener('document-change', this._boundDocumentChange);
         window.addEventListener('validation-update', this._boundValidationUpdate);
 
+        // Move operations (drag-and-drop)
+        window.addEventListener('move-rows', this._boundMoveRows);
+        window.addEventListener('move-columns', this._boundMoveColumns);
+        window.addEventListener('move-cells', this._boundMoveCells);
+
         // VS Code extension messages
         window.addEventListener('message', this._boundMessage);
     }
@@ -190,6 +207,9 @@ export class GlobalEventController implements ReactiveController {
         window.removeEventListener('post-message', this._boundPostMessage);
         window.removeEventListener('document-change', this._boundDocumentChange);
         window.removeEventListener('validation-update', this._boundValidationUpdate);
+        window.removeEventListener('move-rows', this._boundMoveRows);
+        window.removeEventListener('move-columns', this._boundMoveColumns);
+        window.removeEventListener('move-cells', this._boundMoveCells);
         window.removeEventListener('message', this._boundMessage);
     }
 
@@ -323,6 +343,18 @@ export class GlobalEventController implements ReactiveController {
 
     private _handleValidationUpdate(e: Event): void {
         this.host._handleValidationUpdate((e as CustomEvent<IValidationUpdateDetail>).detail);
+    }
+
+    private _handleMoveRows(e: Event): void {
+        this.host._handleMoveRows((e as CustomEvent<IMoveRowsDetail>).detail);
+    }
+
+    private _handleMoveColumns(e: Event): void {
+        this.host._handleMoveColumns((e as CustomEvent<IMoveColumnsDetail>).detail);
+    }
+
+    private _handleMoveCells(e: Event): void {
+        this.host._handleMoveCells((e as CustomEvent<IMoveCellsDetail>).detail);
     }
 
     private async _handleMessage(event: MessageEvent): Promise<void> {

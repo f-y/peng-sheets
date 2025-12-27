@@ -38,7 +38,10 @@ import {
     IPasteCellsDetail,
     IColumnResizeDetail,
     IColumnFilterDetail,
-    IValidationUpdateDetail
+    IValidationUpdateDetail,
+    IMoveRowsDetail,
+    IMoveColumnsDetail,
+    IMoveCellsDetail
 } from './types';
 
 // Register the VS Code Design System components
@@ -292,6 +295,21 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     _handlePasteCells(detail: IPasteCellsDetail) {
         const { sheetIndex, tableIndex, startRow, startCol, data, includeHeaders } = detail;
         this.spreadsheetService.pasteCells(sheetIndex, tableIndex, startRow, startCol, data, includeHeaders);
+    }
+
+    _handleMoveRows(detail: IMoveRowsDetail) {
+        const { sheetIndex, tableIndex, rowIndices, targetRowIndex } = detail;
+        this.spreadsheetService.moveRows(sheetIndex, tableIndex, rowIndices, targetRowIndex);
+    }
+
+    _handleMoveColumns(detail: IMoveColumnsDetail) {
+        const { sheetIndex, tableIndex, colIndices, targetColIndex } = detail;
+        this.spreadsheetService.moveColumns(sheetIndex, tableIndex, colIndices, targetColIndex);
+    }
+
+    _handleMoveCells(detail: IMoveCellsDetail) {
+        const { sheetIndex, tableIndex, sourceRange, destRow, destCol } = detail;
+        this.spreadsheetService.moveCells(sheetIndex, tableIndex, sourceRange, destRow, destCol);
     }
 
     private async _handleUpdateColumnFilter(detail: IColumnFilterDetail) {

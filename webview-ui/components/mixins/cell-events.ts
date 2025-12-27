@@ -15,6 +15,7 @@ export interface CellMouseEventDetail extends CellEventDetail {
     shiftKey: boolean;
     ctrlKey?: boolean;
     metaKey?: boolean;
+    originalEvent?: MouseEvent; // For drag detection
 }
 
 export interface CellInputEventDetail extends CellEventDetail {

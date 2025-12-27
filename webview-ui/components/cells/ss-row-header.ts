@@ -29,6 +29,9 @@ export class SSRowHeader extends LitElement {
     @property({ type: Boolean }) isSelected = false;
     @property({ type: Boolean }) isInRange = false;
     @property({ type: Boolean }) isGhost = false;
+    @property({ type: Boolean }) isDraggable = false;
+    @property({ type: Boolean }) isDragging = false;
+    @property({ type: Boolean }) isDropTarget = false;
 
     private _onClick = (e: MouseEvent) => {
         emitCellEvent<CellMouseEventDetail>(this, 'ss-row-click', {
@@ -42,7 +45,8 @@ export class SSRowHeader extends LitElement {
         emitCellEvent<CellMouseEventDetail>(this, 'ss-row-mousedown', {
             row: this.row,
             col: -2,
-            shiftKey: e.shiftKey
+            shiftKey: e.shiftKey,
+            originalEvent: e
         });
     };
 
@@ -63,7 +67,10 @@ export class SSRowHeader extends LitElement {
             'cell',
             'header-row',
             this.isSelected ? 'selected' : '',
-            this.isInRange ? 'selected-range' : ''
+            this.isInRange ? 'selected-range' : '',
+            this.isDraggable ? 'draggable' : '',
+            this.isDragging ? 'dragging' : '',
+            this.isDropTarget ? 'drop-target' : ''
         ]
             .filter(Boolean)
             .join(' ');
@@ -73,7 +80,9 @@ export class SSRowHeader extends LitElement {
                 class="${classes}"
                 data-row="${this.row}"
                 tabindex="0"
-                style="${this.isGhost ? 'opacity: 0.5;' : ''}"
+                style="${this.isGhost ? 'opacity: 0.5;' : ''}${this.isDropTarget
+                    ? 'border-top: 3px solid var(--selection-color, #0078d7);'
+                    : ''}"
                 @click="${this._onClick}"
                 @mousedown="${this._onMousedown}"
                 @keydown="${this._onKeydown}"
