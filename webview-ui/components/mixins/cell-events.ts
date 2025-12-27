@@ -71,7 +71,8 @@ export function emitCellMousedown(host: HTMLElement, row: number, col: number, e
         col,
         shiftKey: e.shiftKey,
         ctrlKey: e.ctrlKey,
-        metaKey: e.metaKey
+        metaKey: e.metaKey,
+        originalEvent: e
     });
 }
 

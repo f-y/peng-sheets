@@ -73,6 +73,12 @@ export class SSDataCell extends LitElement {
     @property({ type: Boolean }) rangeLeft = false;
     @property({ type: Boolean }) rangeRight = false;
 
+    // Drag drop target indicator
+    @property({ type: Boolean }) isCellDropTarget = false;
+
+    // Draggable indicator (for move cursor)
+    @property({ type: Boolean }) isDraggable = false;
+
     private _onMousedown = (e: MouseEvent) => {
         emitCellMousedown(this, this.row, this.col, e);
     };
@@ -169,7 +175,9 @@ export class SSDataCell extends LitElement {
             this.rangeBottom ? 'range-bottom' : '',
             this.rangeLeft ? 'range-left' : '',
             this.rangeRight ? 'range-right' : '',
-            hasError ? 'validation-error' : ''
+            hasError ? 'validation-error' : '',
+            this.isCellDropTarget ? 'cell-drop-target' : '',
+            this.isDraggable ? 'move-cursor' : ''
         ]
             .filter(Boolean)
             .join(' ');
@@ -192,13 +200,18 @@ export class SSDataCell extends LitElement {
             }
         }
 
+        // Inline style for drop target (Light DOM doesn't inherit Shadow DOM CSS)
+        const dropTargetStyle = this.isCellDropTarget
+            ? 'border: 1px dashed #0078d7 !important; background-color: rgba(0, 120, 215, 0.1) !important;'
+            : '';
+
         return html`
             <div
                 class="${classes}"
                 data-row="${this.row}"
                 data-col="${this.col}"
                 tabindex="${this.isActive ? 0 : -1}"
-                style="text-align: ${this.align}"
+                style="text-align: ${this.align}; ${dropTargetStyle}"
                 contenteditable="${this.isEditing ? 'true' : 'false'}"
                 title="${hasError ? validationError || 'Invalid Value' : ''}"
                 .innerHTML="${content}"

@@ -94,6 +94,9 @@ export class SpreadsheetTableView extends LitElement {
     @property({ type: Boolean }) isDragging: boolean = false;
     @property({ type: String }) dragType: 'row' | 'col' | 'cell' | null = null;
     @property({ type: Number }) dropTargetIndex: number = -1;
+    @property({ type: Number }) cellDropRow: number = -1;
+    @property({ type: Number }) cellDropCol: number = -1;
+    @property({ type: Object }) dragSourceRange: SelectionRange | null = null;
 
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
@@ -416,6 +419,8 @@ export class SpreadsheetTableView extends LitElement {
                         .rangeLeft="${rangeState.leftEdge}"
                         .rangeRight="${rangeState.rightEdge}"
                         .dateFormat="${this.dateFormat}"
+                        .isDraggable="${rangeState.inRange && isRangeSelection}"
+                        .isCellDropTarget="${this._isCellInDropRange(r, c)}"
                         @ss-cell-click="${(e: CustomEvent) => this._bubbleEvent('view-cell-click', e.detail)}"
                         @ss-cell-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-cell-mousedown', e.detail)}"
                         @ss-cell-dblclick="${(e: CustomEvent) => this._bubbleEvent('view-cell-dblclick', e.detail)}"
@@ -567,5 +572,26 @@ export class SpreadsheetTableView extends LitElement {
 
             ${this._renderMenus()}
         `;
+    }
+
+    /**
+     * Check if a cell is within the drop target range for cell drag operations.
+     * The drop range size matches the source selection size.
+     */
+    private _isCellInDropRange(row: number, col: number): boolean {
+        if (!this.isDragging || this.dragType !== 'cell') return false;
+        if (this.cellDropRow < 0 || this.cellDropCol < 0) return false;
+        if (!this.dragSourceRange) return false;
+
+        // Calculate drop range based on source range size
+        const srcHeight = this.dragSourceRange.maxR - this.dragSourceRange.minR;
+        const srcWidth = this.dragSourceRange.maxC - this.dragSourceRange.minC;
+
+        const dropMinR = this.cellDropRow;
+        const dropMaxR = this.cellDropRow + srcHeight;
+        const dropMinC = this.cellDropCol;
+        const dropMaxC = this.cellDropCol + srcWidth;
+
+        return row >= dropMinR && row <= dropMaxR && col >= dropMinC && col <= dropMaxC;
     }
 }

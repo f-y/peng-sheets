@@ -8,7 +8,7 @@ export class EventController implements ReactiveController {
     host: SpreadsheetTable;
 
     // Drag state tracking
-    private _potentialDragStart: { x: number; y: number; type: 'row' | 'col'; index: number } | null = null;
+    private _potentialDragStart: { x: number; y: number; type: 'row' | 'col' | 'cell'; index: number } | null = null;
     private _isDragging = false;
     private static readonly DRAG_THRESHOLD = 5; // pixels before drag starts
 
@@ -375,7 +375,14 @@ export class EventController implements ReactiveController {
         this.host.focusCell();
     };
 
-    handleCellMousedown = (e: CustomEvent<{ row: number; col: number; shiftKey: boolean }>) => {
+    handleCellMousedown = (
+        e: CustomEvent<{
+            row: number;
+            col: number;
+            shiftKey: boolean;
+            originalEvent?: MouseEvent;
+        }>
+    ) => {
         // Commit any pending edit before changing selection (click-away commit)
         if (this.host.editCtrl.isEditing) {
             // Editing cell is in View's shadow DOM
@@ -411,10 +418,37 @@ export class EventController implements ReactiveController {
             }
         }
 
-        if (e.detail.shiftKey) {
-            this.host.selectionCtrl.selectCell(e.detail.row, e.detail.col, true);
+        const { row, col, shiftKey } = e.detail;
+
+        // Check if this cell is already in selection (potential drag)
+        const { selectedRow, selectedCol, selectionAnchorRow, selectionAnchorCol } = this.host.selectionCtrl;
+        // In normal cell selection mode (not row/column mode)
+        if (selectedRow >= 0 && selectedCol >= 0 && selectionAnchorRow >= 0 && selectionAnchorCol >= 0) {
+            const minR = Math.min(selectedRow, selectionAnchorRow);
+            const maxR = Math.max(selectedRow, selectionAnchorRow);
+            const minC = Math.min(selectedCol, selectionAnchorCol);
+            const maxC = Math.max(selectedCol, selectionAnchorCol);
+            // Check if clicked cell is within selection
+            if (row >= minR && row <= maxR && col >= minC && col <= maxC && !shiftKey) {
+                // Clicked on selected cell range - prepare for potential drag
+                const mouseEvent = e.detail.originalEvent;
+                if (mouseEvent) {
+                    this._potentialDragStart = {
+                        x: mouseEvent.clientX,
+                        y: mouseEvent.clientY,
+                        type: 'cell',
+                        index: row // Not really used for cell, just for consistency
+                    };
+                    this._addDragListeners();
+                }
+                return; // Don't start selection, wait for drag or click
+            }
+        }
+
+        if (shiftKey) {
+            this.host.selectionCtrl.selectCell(row, col, true);
         } else {
-            this.host.selectionCtrl.startSelection(e.detail.row, e.detail.col);
+            this.host.selectionCtrl.startSelection(row, col);
         }
         this.host.focusCell();
     };
@@ -588,7 +622,7 @@ export class EventController implements ReactiveController {
                 minC: 0,
                 maxC: (this.host.table?.headers?.length ?? 1) - 1
             };
-        } else {
+        } else if (type === 'col') {
             const minC = Math.min(selectedCol, selectionAnchorCol);
             const maxC = Math.max(selectedCol, selectionAnchorCol);
             sourceRange = {
@@ -597,6 +631,13 @@ export class EventController implements ReactiveController {
                 minC,
                 maxC
             };
+        } else {
+            // Cell range
+            const minR = Math.min(selectedRow, selectionAnchorRow);
+            const maxR = Math.max(selectedRow, selectionAnchorRow);
+            const minC = Math.min(selectedCol, selectionAnchorCol);
+            const maxC = Math.max(selectedCol, selectionAnchorCol);
+            sourceRange = { minR, maxR, minC, maxC };
         }
 
         this._isDragging = true;
@@ -662,6 +703,18 @@ export class EventController implements ReactiveController {
                 const col = parseInt(colAttr, 10);
                 if (!isNaN(col) && col >= 0) {
                     this.host.dragCtrl.updateDropTarget(col);
+                    this.host.requestUpdate();
+                }
+            }
+        } else if (dragType === 'cell') {
+            // For cell drag, we need both row and col
+            const rowAttr = cell.getAttribute('data-row');
+            const colAttr = cell.getAttribute('data-col');
+            if (rowAttr !== null && colAttr !== null) {
+                const row = parseInt(rowAttr, 10);
+                const col = parseInt(colAttr, 10);
+                if (!isNaN(row) && !isNaN(col) && row >= 0 && col >= 0) {
+                    this.host.dragCtrl.updateCellDropTarget(row, col);
                     this.host.requestUpdate();
                 }
             }
@@ -755,6 +808,22 @@ export class EventController implements ReactiveController {
                     composed: true
                 })
             );
+
+            // Update selection to the new cell range after move
+            const sourceRange = result.sourceRange!;
+            const rangeHeight = sourceRange.maxR - sourceRange.minR;
+            const rangeWidth = sourceRange.maxC - sourceRange.minC;
+            const newStartRow = result.destRow;
+            const newStartCol = result.destCol;
+            const newEndRow = newStartRow + rangeHeight;
+            const newEndCol = newStartCol + rangeWidth;
+
+            // Update selection to new cell range
+            this.host.selectionCtrl.selectionAnchorRow = newStartRow;
+            this.host.selectionCtrl.selectionAnchorCol = newStartCol;
+            this.host.selectionCtrl.selectedRow = newEndRow;
+            this.host.selectionCtrl.selectedCol = newEndCol;
+            this.host.requestUpdate();
         }
 
         this.host.requestUpdate();
