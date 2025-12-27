@@ -46,8 +46,12 @@
 /* Base cell styles */
 .cell {
     padding: var(--cell-padding);
+    /* All 4 borders set to maintain consistent size when copy indicator is applied */
+    border-top: 1px solid transparent;
+    border-left: 1px solid transparent;
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
+    box-sizing: border-box;
     white-space: nowrap;
     overflow: hidden;
     min-height: 20px;

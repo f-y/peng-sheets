@@ -101,6 +101,21 @@ export class SpreadsheetTableView extends LitElement {
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
 
+    // Current table location for copy indicator matching
+    @property({ type: Number }) sheetIndex: number = 0;
+    @property({ type: Number }) tableIndex: number = 0;
+
+    // Copied range for visual indicator (includes source location)
+    @property({ type: Object })
+    copiedRange: {
+        sheetIndex: number;
+        tableIndex: number;
+        minR: number;
+        maxR: number;
+        minC: number;
+        maxC: number;
+    } | null = null;
+
     /**
      * Calculate the width needed for row headers based on max row number.
      * Uses 35px for 3 digits or fewer, then 8px per digit + 6px padding for 4+.
@@ -376,6 +391,23 @@ export class SpreadsheetTableView extends LitElement {
                 const isEditingCell = this.editState.isEditing && isActive;
                 const isRangeSelection = minR !== maxR || minC !== maxC;
 
+                // Calculate copy range state for dashed border indicator
+                // Only show copy indicator on the same table where copy originated
+                const isCopySourceTable =
+                    this.copiedRange &&
+                    this.copiedRange.sheetIndex === this.sheetIndex &&
+                    this.copiedRange.tableIndex === this.tableIndex;
+                const copyState = isCopySourceTable
+                    ? calculateCellRangeState(
+                          r,
+                          c,
+                          this.copiedRange!.minR,
+                          this.copiedRange!.maxR,
+                          this.copiedRange!.minC,
+                          this.copiedRange!.maxC
+                      )
+                    : { inRange: false, topEdge: false, bottomEdge: false, leftEdge: false, rightEdge: false };
+
                 // Get alignment from GFM alignments
                 const align = this.table!.alignments?.[c] ?? 'left';
 
@@ -418,6 +450,10 @@ export class SpreadsheetTableView extends LitElement {
                         .rangeBottom="${rangeState.bottomEdge}"
                         .rangeLeft="${rangeState.leftEdge}"
                         .rangeRight="${rangeState.rightEdge}"
+                        .copyTop="${copyState.inRange && copyState.topEdge}"
+                        .copyBottom="${copyState.inRange && copyState.bottomEdge}"
+                        .copyLeft="${copyState.inRange && copyState.leftEdge}"
+                        .copyRight="${copyState.inRange && copyState.rightEdge}"
                         .dateFormat="${this.dateFormat}"
                         .isDraggable="${rangeState.inRange && isRangeSelection}"
                         .isCellDropTarget="${this._isCellInDropRange(r, c)}"

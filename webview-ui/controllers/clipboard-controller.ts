@@ -30,6 +30,16 @@ interface ClipboardHost extends ReactiveControllerHost {
 export class ClipboardController implements ReactiveController {
     host: ClipboardHost;
 
+    // Track the copied range for visual indicator (includes source location)
+    copiedRange: {
+        sheetIndex: number;
+        tableIndex: number;
+        minR: number;
+        maxR: number;
+        minC: number;
+        maxC: number;
+    } | null = null;
+
     constructor(host: ClipboardHost) {
         this.host = host;
         host.addController(this);
@@ -37,6 +47,100 @@ export class ClipboardController implements ReactiveController {
 
     hostConnected() {}
     hostDisconnected() {}
+
+    /**
+     * Clear the copied range indicator
+     */
+    clearCopiedRange() {
+        if (this.copiedRange) {
+            this.copiedRange = null;
+            this.host.requestUpdate();
+        }
+    }
+
+    /**
+     * Save the current selection as the copied range for visual indicator
+     */
+    private _saveCopiedRange() {
+        const { table, selectionCtrl } = this.host;
+        if (!table) return;
+
+        const numCols = table?.headers?.length || 0;
+        const numRows = table.rows.length;
+
+        const anchorRow = selectionCtrl.selectionAnchorRow;
+        const anchorCol = selectionCtrl.selectionAnchorCol;
+        const selRow = selectionCtrl.selectedRow;
+        const selCol = selectionCtrl.selectedCol;
+
+        let minR = -1,
+            maxR = -1,
+            minC = -1,
+            maxC = -1;
+
+        // Full table selection (corner click)
+        if (selRow === -2 && selCol === -2) {
+            minR = 0;
+            maxR = numRows - 1;
+            minC = 0;
+            maxC = numCols - 1;
+        } else if (selCol === -2 && selRow >= 0) {
+            // Row selection
+            if (anchorRow >= 0) {
+                minR = Math.min(anchorRow, selRow);
+                maxR = Math.max(anchorRow, selRow);
+            } else {
+                minR = maxR = selRow;
+            }
+            minC = 0;
+            maxC = numCols - 1;
+        } else if (selRow === -2 && selCol >= 0) {
+            // Column selection
+            if (anchorCol >= 0) {
+                minC = Math.min(anchorCol, selCol);
+                maxC = Math.max(anchorCol, selCol);
+            } else {
+                minC = maxC = selCol;
+            }
+            minR = 0;
+            maxR = numRows - 1;
+        } else if (selRow >= 0 && selCol >= 0) {
+            // Cell or cell range selection
+            if (anchorRow >= 0 && anchorCol >= 0) {
+                minR = Math.min(anchorRow, selRow);
+                maxR = Math.max(anchorRow, selRow);
+                minC = Math.min(anchorCol, selCol);
+                maxC = Math.max(anchorCol, selCol);
+            } else {
+                // Single cell (no anchor set)
+                minR = maxR = selRow;
+                minC = maxC = selCol;
+            }
+        }
+
+        if (minR >= 0 && minC >= 0) {
+            this.copiedRange = {
+                sheetIndex: this.host.sheetIndex,
+                tableIndex: this.host.tableIndex,
+                minR,
+                maxR,
+                minC,
+                maxC
+            };
+            // Dispatch global event so other tables can clear their copy range
+            this.host.dispatchEvent(
+                new CustomEvent('copy-range-set', {
+                    bubbles: true,
+                    composed: true,
+                    detail: {
+                        sheetIndex: this.host.sheetIndex,
+                        tableIndex: this.host.tableIndex
+                    }
+                })
+            );
+            this.host.requestUpdate();
+        }
+    }
 
     /**
      * Parse TSV text that may contain quoted values with embedded newlines, tabs, or escaped quotes.
@@ -131,6 +235,7 @@ export class ClipboardController implements ReactiveController {
         if (!text) return;
         try {
             await navigator.clipboard.writeText(text);
+            this._saveCopiedRange();
         } catch (err) {
             console.error('Failed to copy to clipboard:', err);
         }
@@ -141,6 +246,7 @@ export class ClipboardController implements ReactiveController {
         if (text) {
             e.clipboardData?.setData('text/plain', text);
             e.preventDefault();
+            this._saveCopiedRange();
         }
     }
 
@@ -149,7 +255,9 @@ export class ClipboardController implements ReactiveController {
         if (text) {
             e.clipboardData?.setData('text/plain', text);
             e.preventDefault();
-            this.deleteSelection();
+            this.host.editCtrl.deleteSelection();
+            // Clear copied range on cut (data is moved, not copied)
+            this.clearCopiedRange();
         }
     }
 

@@ -97,6 +97,7 @@ describe('SSDataCell Date Format', () => {
         element.dateFormat = 'MM/DD/YYYY';
         element.value = '2023-12-25';
         element.isSelected = true;
+        element.isActive = true; // Required for validation control to render
         element.validationRule = { type: 'date' };
         await element.updateComplete;
 
@@ -110,6 +111,7 @@ describe('SSDataCell Date Format', () => {
         element.dateFormat = 'DD/MM/YYYY';
         element.value = '2023-12-25';
         element.isSelected = true;
+        element.isActive = true; // Required for validation control to render
         element.validationRule = { type: 'date' };
         await element.updateComplete;
 

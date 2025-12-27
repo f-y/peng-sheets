@@ -31,6 +31,8 @@ export class EditController implements ReactiveController {
         this.isEditing = true;
         this.pendingEditValue = initialValue === null || initialValue === undefined ? '' : initialValue;
         this.isReplacementMode = isReplacement;
+        // Clear copy range indicator when editing starts (centralized for all entry points)
+        this.host.clipboardCtrl.clearCopiedRange();
         this.host.requestUpdate();
     }
 

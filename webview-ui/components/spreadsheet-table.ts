@@ -252,6 +252,8 @@ export class SpreadsheetTable extends LitElement {
         this.addEventListener('focusin', this._handleFocusIn);
         // Listen for insert-value-at-selection events (from extension commands like date/time shortcuts)
         window.addEventListener('insert-value-at-selection', this._handleInsertValueAtSelection as EventListener);
+        // Listen for copy-range-set to clear our copy range if another table copied
+        window.addEventListener('copy-range-set', this._handleCopyRangeSet as EventListener);
     }
 
     /**
@@ -266,7 +268,19 @@ export class SpreadsheetTable extends LitElement {
         super.disconnectedCallback();
         this.removeEventListener('focusin', this._handleFocusIn);
         window.removeEventListener('insert-value-at-selection', this._handleInsertValueAtSelection as EventListener);
+        window.removeEventListener('copy-range-set', this._handleCopyRangeSet as EventListener);
     }
+
+    /**
+     * Handle copy-range-set event: clear our copy range if another table did the copy
+     */
+    private _handleCopyRangeSet = (e: CustomEvent) => {
+        const { sheetIndex, tableIndex } = e.detail;
+        // If copy happened in a different table, clear our copy range
+        if (sheetIndex !== this.sheetIndex || tableIndex !== this.tableIndex) {
+            this.clipboardCtrl.clearCopiedRange();
+        }
+    };
 
     /**
      * Commits the current edit if one is active.
@@ -459,6 +473,9 @@ export class SpreadsheetTable extends LitElement {
                 .cellDropCol="${this.dragCtrl.cellDropCol}"
                 .dragSourceRange="${this.dragCtrl.sourceRange}"
                 .dateFormat="${this.dateFormat}"
+                .sheetIndex="${this.sheetIndex}"
+                .tableIndex="${this.tableIndex}"
+                .copiedRange="${this.clipboardCtrl.copiedRange}"
             }}"
                 @view-insert-row="${this.eventCtrl.handleInsertRow}"
                 @view-delete-row="${this.eventCtrl.handleDeleteRow}"

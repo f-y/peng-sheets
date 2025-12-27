@@ -79,6 +79,12 @@ export class SSDataCell extends LitElement {
     // Draggable indicator (for move cursor)
     @property({ type: Boolean }) isDraggable = false;
 
+    // Copied range edge properties (for dashed border indicator)
+    @property({ type: Boolean }) copyTop = false;
+    @property({ type: Boolean }) copyBottom = false;
+    @property({ type: Boolean }) copyLeft = false;
+    @property({ type: Boolean }) copyRight = false;
+
     private _onMousedown = (e: MouseEvent) => {
         emitCellMousedown(this, this.row, this.col, e);
     };
@@ -205,13 +211,21 @@ export class SSDataCell extends LitElement {
             ? 'border: 1px dashed #0078d7 !important; background-color: rgba(0, 120, 215, 0.1) !important;'
             : '';
 
+        // Build copy range border style (per-edge dashed border, only on copy edges)
+        const copyBorderParts: string[] = [];
+        if (this.copyTop) copyBorderParts.push('border-top: 1px dashed #0078d7 !important');
+        if (this.copyBottom) copyBorderParts.push('border-bottom: 1px dashed #0078d7 !important');
+        if (this.copyLeft) copyBorderParts.push('border-left: 1px dashed #0078d7 !important');
+        if (this.copyRight) copyBorderParts.push('border-right: 1px dashed #0078d7 !important');
+        const copyBorderStyle = copyBorderParts.length > 0 ? copyBorderParts.join('; ') + ';' : '';
+
         return html`
             <div
                 class="${classes}"
                 data-row="${this.row}"
                 data-col="${this.col}"
                 tabindex="${this.isActive ? 0 : -1}"
-                style="text-align: ${this.align}; ${dropTargetStyle}"
+                style="text-align: ${this.align}; ${dropTargetStyle}${copyBorderStyle}"
                 contenteditable="${this.isEditing ? 'true' : 'false'}"
                 title="${hasError ? validationError || 'Invalid Value' : ''}"
                 .innerHTML="${content}"
@@ -258,13 +272,9 @@ export class SSDataCell extends LitElement {
     }
 
     private _renderValidationControl() {
-        // Only show when single cell is selected/active and not editing
-        // Hide when part of a range selection (multiple cells selected)
-        if (!this.validationRule || this.isEditing || (!this.isSelected && !this.isActive)) {
-            return nothing;
-        }
-        // Hide when this cell is part of a multi-cell range selection
-        if (this.isInRange && this.isSelected) {
+        // Only show when single cell is selected (isActive=true) and not editing
+        // isActive is false during range selection, so controls will be hidden
+        if (!this.validationRule || this.isEditing || !this.isActive) {
             return nothing;
         }
 

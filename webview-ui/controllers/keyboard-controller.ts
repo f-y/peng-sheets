@@ -124,6 +124,13 @@ export class KeyboardController implements ReactiveController {
             return;
         }
 
+        // Escape clears copy range indicator
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            this.host.clipboardCtrl.clearCopiedRange();
+            return;
+        }
+
         // Nav
         const rowCount = this.host.table?.rows.length || 0;
         const colCount = this.host.table?.headers
