@@ -78,7 +78,14 @@ export class SpreadsheetTable extends LitElement {
     dragCtrl = new DragController(this);
 
     @state()
-    contextMenu: { x: number; y: number; type: 'row' | 'col'; index: number } | null = null;
+    contextMenu: {
+        x: number;
+        y: number;
+        type: 'row' | 'col';
+        index: number;
+        hasCopiedRows?: boolean;
+        hasCopiedColumns?: boolean;
+    } | null = null;
 
     @state()
     validationDialog: { colIndex: number; currentRule: ValidationRule | null } | null = null;
@@ -87,6 +94,12 @@ export class SpreadsheetTable extends LitElement {
     private _isCommitting: boolean = false; // Kept in host for now as it coordinates editCtrl and Events
     private _restoreCaretPos: number | null = null;
     private _wasFocusedBeforeUpdate: boolean = false;
+    private _pendingSelection: {
+        anchorRow: number;
+        selectedRow: number;
+        anchorCol: number;
+        selectedCol: number;
+    } | null = null;
 
     // Exposed for Controllers
     public focusCell() {
@@ -140,8 +153,25 @@ export class SpreadsheetTable extends LitElement {
             const colCount = this.table.headers ? this.table.headers.length : this.table.rows[0]?.length || 0;
             const rowCount = this.table.rows.length;
 
+            // Apply pending selection if table now has enough columns/rows
+            if (this._pendingSelection) {
+                const ps = this._pendingSelection;
+                const needsCol = Math.max(ps.anchorCol, ps.selectedCol);
+                const needsRow = Math.max(ps.anchorRow, ps.selectedRow);
+                if ((needsCol < 0 || needsCol < colCount) && (needsRow < 0 || needsRow < rowCount)) {
+                    this.selectionCtrl.selectionAnchorCol = ps.anchorCol;
+                    this.selectionCtrl.selectedCol = ps.selectedCol;
+                    this.selectionCtrl.selectionAnchorRow = ps.anchorRow;
+                    this.selectionCtrl.selectedRow = ps.selectedRow;
+                    this._pendingSelection = null;
+                }
+            }
+
             if (this.selectionCtrl.selectedCol !== -2 && this.selectionCtrl.selectedCol >= colCount) {
                 this.selectionCtrl.selectedCol = Math.max(0, colCount - 1);
+            }
+            if (this.selectionCtrl.selectionAnchorCol !== -2 && this.selectionCtrl.selectionAnchorCol >= colCount) {
+                this.selectionCtrl.selectionAnchorCol = Math.max(0, colCount - 1);
             }
             if (
                 this.selectionCtrl.selectedRow !== -2 &&
@@ -234,6 +264,32 @@ export class SpreadsheetTable extends LitElement {
         }
     };
 
+    // Handle insert-copied-cells-at-selection events (Ctrl+Shift+= from extension)
+    private _handleInsertCopiedCellsAtSelection = () => {
+        const { clipboardCtrl, selectionCtrl } = this;
+
+        // Only works when something is copied
+        if (!clipboardCtrl.copiedData) {
+            return;
+        }
+
+        // Row selection: insert copied rows above
+        if (selectionCtrl.selectedCol === -2 && selectionCtrl.selectedRow >= 0) {
+            if (clipboardCtrl.copyType === 'rows') {
+                clipboardCtrl.insertCopiedRows(selectionCtrl.selectedRow, 'above');
+            }
+            return;
+        }
+
+        // Column selection: insert copied columns to the left
+        if (selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol >= 0) {
+            if (clipboardCtrl.copyType === 'columns') {
+                clipboardCtrl.insertCopiedColumns(selectionCtrl.selectedCol, 'left');
+            }
+            return;
+        }
+    };
+
     // Delegate to RowVisibilityController
     get visibleRowIndices(): number[] {
         return this.rowVisibilityCtrl.visibleRowIndices;
@@ -252,6 +308,11 @@ export class SpreadsheetTable extends LitElement {
         this.addEventListener('focusin', this._handleFocusIn);
         // Listen for insert-value-at-selection events (from extension commands like date/time shortcuts)
         window.addEventListener('insert-value-at-selection', this._handleInsertValueAtSelection as EventListener);
+        // Listen for insert-copied-cells-at-selection events (from extension Ctrl+Shift+= shortcut)
+        window.addEventListener(
+            'insert-copied-cells-at-selection',
+            this._handleInsertCopiedCellsAtSelection as EventListener
+        );
         // Listen for copy-range-set to clear our copy range if another table copied
         window.addEventListener('copy-range-set', this._handleCopyRangeSet as EventListener);
     }
@@ -268,6 +329,10 @@ export class SpreadsheetTable extends LitElement {
         super.disconnectedCallback();
         this.removeEventListener('focusin', this._handleFocusIn);
         window.removeEventListener('insert-value-at-selection', this._handleInsertValueAtSelection as EventListener);
+        window.removeEventListener(
+            'insert-copied-cells-at-selection',
+            this._handleInsertCopiedCellsAtSelection as EventListener
+        );
         window.removeEventListener('copy-range-set', this._handleCopyRangeSet as EventListener);
     }
 
@@ -481,6 +546,41 @@ export class SpreadsheetTable extends LitElement {
                 @view-delete-row="${this.eventCtrl.handleDeleteRow}"
                 @view-insert-col="${this.eventCtrl.handleInsertCol}"
                 @view-delete-col="${this.eventCtrl.handleDeleteCol}"
+                @view-insert-copied-rows="${(e: CustomEvent<{ index: number; position: string }>) => {
+                    const copiedRowCount = this.clipboardCtrl.copiedData?.length || 0;
+                    const insertAt = e.detail.position === 'below' ? e.detail.index + 1 : e.detail.index;
+                    this.clipboardCtrl.insertCopiedRows(e.detail.index, e.detail.position as 'above' | 'below');
+                    // Store pending selection - will be applied in willUpdate when table has enough rows
+                    if (copiedRowCount > 0) {
+                        const endRow = insertAt + copiedRowCount - 1;
+                        this._pendingSelection = {
+                            anchorRow: endRow,
+                            selectedRow: insertAt,
+                            anchorCol: -2,
+                            selectedCol: -2
+                        };
+                    }
+                    this.contextMenu = null;
+                }}"
+                @view-insert-copied-cols="${(e: CustomEvent<{ index: number; position: string }>) => {
+                    const copiedColCount = this.clipboardCtrl.copiedData?.[0]?.length || 0;
+                    const insertAt = e.detail.position === 'right' ? e.detail.index + 1 : e.detail.index;
+                    this.clipboardCtrl.insertCopiedColumns(e.detail.index, e.detail.position as 'left' | 'right');
+                    // Store pending selection - will be applied in willUpdate when table has enough cols
+                    if (copiedColCount > 0) {
+                        const endCol = insertAt + copiedColCount - 1;
+                        this._pendingSelection = {
+                            anchorRow: -2,
+                            selectedRow: -2,
+                            anchorCol: insertAt,
+                            selectedCol: endCol
+                        };
+                    }
+                    this.contextMenu = null;
+                }}"
+                @view-menu-close="${() => {
+                    this.contextMenu = null;
+                }}"
                 @view-filter-apply="${this.eventCtrl.handleFilterApply}"
                 @view-filter-close="${this.eventCtrl.handleFilterClose}"
                 @view-col-click="${this.eventCtrl.handleColClick}"

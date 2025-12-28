@@ -40,6 +40,12 @@ export class ClipboardController implements ReactiveController {
         maxC: number;
     } | null = null;
 
+    // Store copied cell data for insert operations
+    copiedData: string[][] | null = null;
+
+    // Type of copy: 'cells', 'rows', or 'columns'
+    copyType: 'cells' | 'rows' | 'columns' | null = null;
+
     constructor(host: ClipboardHost) {
         this.host = host;
         host.addController(this);
@@ -49,11 +55,13 @@ export class ClipboardController implements ReactiveController {
     hostDisconnected() {}
 
     /**
-     * Clear the copied range indicator
+     * Clear the copied range indicator and data
      */
     clearCopiedRange() {
-        if (this.copiedRange) {
+        if (this.copiedRange || this.copiedData) {
             this.copiedRange = null;
+            this.copiedData = null;
+            this.copyType = null;
             this.host.requestUpdate();
         }
     }
@@ -127,6 +135,42 @@ export class ClipboardController implements ReactiveController {
                 minC,
                 maxC
             };
+
+            // Determine copy type based on selection
+            const { selectionCtrl } = this.host;
+            if (selectionCtrl.selectedCol === -2 && selectionCtrl.selectedRow >= 0) {
+                this.copyType = 'rows';
+            } else if (selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol >= 0) {
+                this.copyType = 'columns';
+            } else {
+                this.copyType = 'cells';
+            }
+
+            // Store copied cell data for insert operations
+            const { table } = this.host;
+            if (table) {
+                const data: string[][] = [];
+
+                // For column copy, include headers as first row
+                if (this.copyType === 'columns' && table.headers) {
+                    const headerRow: string[] = [];
+                    for (let c = minC; c <= maxC; c++) {
+                        headerRow.push(table.headers[c] || '');
+                    }
+                    data.push(headerRow);
+                }
+
+                // Add data rows
+                for (let r = minR; r <= maxR; r++) {
+                    const rowData: string[] = [];
+                    for (let c = minC; c <= maxC; c++) {
+                        rowData.push(table.rows[r]?.[c] || '');
+                    }
+                    data.push(rowData);
+                }
+                this.copiedData = data;
+            }
+
             // Dispatch global event so other tables can clear their copy range
             this.host.dispatchEvent(
                 new CustomEvent('copy-range-set', {
@@ -140,6 +184,73 @@ export class ClipboardController implements ReactiveController {
             );
             this.host.requestUpdate();
         }
+    }
+
+    /**
+     * Insert copied rows at a target position
+     * @param targetRow Row index where to insert
+     * @param direction 'above' or 'below' the target row
+     */
+    insertCopiedRows(targetRow: number, direction: 'above' | 'below') {
+        if (this.copyType !== 'rows' || !this.copiedData) {
+            console.warn('No rows copied to insert');
+            return;
+        }
+
+        const insertAt = direction === 'below' ? targetRow + 1 : targetRow;
+
+        this.host.dispatchEvent(
+            new CustomEvent('rows-insert-at', {
+                bubbles: true,
+                composed: true,
+                detail: {
+                    sheetIndex: this.host.sheetIndex,
+                    tableIndex: this.host.tableIndex,
+                    targetRow: insertAt,
+                    rowsData: this.copiedData
+                }
+            })
+        );
+    }
+
+    /**
+     * Insert copied columns at a target position
+     * @param targetCol Column index where to insert
+     * @param direction 'left' or 'right' of the target column
+     */
+    insertCopiedColumns(targetCol: number, direction: 'left' | 'right') {
+        if (this.copyType !== 'columns' || !this.copiedData) {
+            console.warn('No columns copied to insert');
+            return;
+        }
+
+        const insertAt = direction === 'right' ? targetCol + 1 : targetCol;
+
+        // Transpose copiedData from row-major to column-major for column insertion
+        const columnData: string[][] = [];
+        if (this.copiedData.length > 0) {
+            const numCols = this.copiedData[0].length;
+            for (let c = 0; c < numCols; c++) {
+                const colValues: string[] = [];
+                for (let r = 0; r < this.copiedData.length; r++) {
+                    colValues.push(this.copiedData[r][c] || '');
+                }
+                columnData.push(colValues);
+            }
+        }
+
+        this.host.dispatchEvent(
+            new CustomEvent('columns-insert-at', {
+                bubbles: true,
+                composed: true,
+                detail: {
+                    sheetIndex: this.host.sheetIndex,
+                    tableIndex: this.host.tableIndex,
+                    targetCol: insertAt,
+                    columnsData: columnData
+                }
+            })
+        );
     }
 
     /**

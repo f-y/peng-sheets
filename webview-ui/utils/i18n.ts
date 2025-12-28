@@ -83,7 +83,11 @@ const translations = {
         errorMustBeMax: 'Must be <= {0}',
         errorInvalidEmail: 'Invalid email format',
         errorInvalidUrl: 'Invalid URL format',
-        validationTooltipPrefix: 'Data Validation'
+        validationTooltipPrefix: 'Data Validation',
+        insertCopiedRowsAbove: 'Insert Copied Row(s) Above',
+        insertCopiedRowsBelow: 'Insert Copied Row(s) Below',
+        insertCopiedColsLeft: 'Insert Copied Column(s) Left',
+        insertCopiedColsRight: 'Insert Copied Column(s) Right'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -169,7 +173,11 @@ const translations = {
         errorMustBeMax: '{0} 以下を入力してください',
         errorInvalidEmail: '無効なメールアドレス形式です',
         errorInvalidUrl: '無効なURL形式です',
-        validationTooltipPrefix: '入力規則'
+        validationTooltipPrefix: '入力規則',
+        insertCopiedRowsAbove: 'コピーした行を上に挿入',
+        insertCopiedRowsBelow: 'コピーした行を下に挿入',
+        insertCopiedColsLeft: 'コピーした列を左に挿入',
+        insertCopiedColsRight: 'コピーした列を右に挿入'
     }
 };
 

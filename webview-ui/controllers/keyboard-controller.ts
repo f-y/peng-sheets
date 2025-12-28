@@ -131,6 +131,35 @@ export class KeyboardController implements ReactiveController {
             return;
         }
 
+        // Ctrl/Cmd + Shift + + : Insert copied rows/columns (Excel-like)
+        if (isControl && e.shiftKey && (e.key === '+' || e.key === '=')) {
+            e.preventDefault();
+            const { clipboardCtrl, selectionCtrl } = this.host;
+
+            // Only works when something is copied
+            if (!clipboardCtrl.copiedData) {
+                return;
+            }
+
+            // Row selection: insert copied rows above
+            if (selectionCtrl.selectedCol === -2 && selectionCtrl.selectedRow >= 0) {
+                if (clipboardCtrl.copyType === 'rows') {
+                    clipboardCtrl.insertCopiedRows(selectionCtrl.selectedRow, 'above');
+                }
+                return;
+            }
+
+            // Column selection: insert copied columns to the left
+            if (selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol >= 0) {
+                if (clipboardCtrl.copyType === 'columns') {
+                    clipboardCtrl.insertCopiedColumns(selectionCtrl.selectedCol, 'left');
+                }
+                return;
+            }
+
+            return;
+        }
+
         // Nav
         const rowCount = this.host.table?.rows.length || 0;
         const colCount = this.host.table?.headers

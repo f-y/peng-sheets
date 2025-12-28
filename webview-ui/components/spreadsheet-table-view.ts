@@ -42,6 +42,8 @@ export interface ContextMenuState {
     y: number;
     type: 'row' | 'col';
     index: number;
+    hasCopiedRows?: boolean;
+    hasCopiedColumns?: boolean;
 }
 
 export interface FilterMenuState {
@@ -172,6 +174,8 @@ export class SpreadsheetTableView extends LitElement {
                           .y="${contextMenu.y}"
                           .menuType="${contextMenu.type}"
                           .index="${contextMenu.index}"
+                          .hasCopiedRows="${contextMenu.hasCopiedRows || false}"
+                          .hasCopiedColumns="${contextMenu.hasCopiedColumns || false}"
                           @ss-insert-row="${(e: CustomEvent<{ index: number; position: string }>) => {
                               this._bubbleEvent('view-insert-row', e.detail);
                           }}"
@@ -183,6 +187,12 @@ export class SpreadsheetTableView extends LitElement {
                           }}"
                           @ss-delete-col="${(e: CustomEvent<{ index: number }>) => {
                               this._bubbleEvent('view-delete-col', e.detail);
+                          }}"
+                          @ss-insert-copied-rows="${(e: CustomEvent<{ index: number; position: string }>) => {
+                              this._bubbleEvent('view-insert-copied-rows', e.detail);
+                          }}"
+                          @ss-insert-copied-cols="${(e: CustomEvent<{ index: number; position: string }>) => {
+                              this._bubbleEvent('view-insert-copied-cols', e.detail);
                           }}"
                           @ss-data-validation="${(e: CustomEvent<{ index: number }>) => {
                               this._bubbleEvent('view-data-validation', e.detail);

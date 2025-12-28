@@ -504,6 +504,83 @@ export class SpreadsheetService {
         });
     }
 
+    /**
+     * Insert multiple rows with data at a specific position
+     * @param sheetIdx Sheet index
+     * @param tableIdx Table index
+     * @param targetRow Row index where to insert
+     * @param rowsData 2D array of row data to insert
+     */
+    public insertRowsWithData(sheetIdx: number, tableIdx: number, targetRow: number, rowsData: string[][]) {
+        this._enqueueRequest(async () => {
+            // Insert empty rows first, then paste data
+            // Insert from bottom to top to maintain correct indices
+            for (let i = 0; i < rowsData.length; i++) {
+                await this.runPython<IUpdateSpec>(`
+                    res = insert_row(${sheetIdx}, ${tableIdx}, ${targetRow})
+                    json.dumps(res) if res else "null"
+                `);
+            }
+
+            // Now paste the data at target position
+            const result = await this.runPython<IUpdateSpec>(`
+                res = paste_cells(
+                    ${sheetIdx}, 
+                    ${tableIdx}, 
+                    ${targetRow}, 
+                    0, 
+                    json.loads(${JSON.stringify(JSON.stringify(rowsData))}),
+                    False
+                )
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
+    /**
+     * Insert multiple columns with data at a specific position
+     * @param sheetIdx Sheet index
+     * @param tableIdx Table index
+     * @param targetCol Column index where to insert
+     * @param columnsData Array of column data (each inner array is one column's values)
+     */
+    public insertColumnsWithData(sheetIdx: number, tableIdx: number, targetCol: number, columnsData: string[][]) {
+        this._enqueueRequest(async () => {
+            // Insert empty columns first
+            for (let i = 0; i < columnsData.length; i++) {
+                await this.runPython<IUpdateSpec>(`
+                    res = insert_column(${sheetIdx}, ${tableIdx}, ${targetCol})
+                    json.dumps(res) if res else "null"
+                `);
+            }
+
+            // Transpose columnsData to row-major format for paste_cells
+            const numRows = columnsData.length > 0 ? columnsData[0].length : 0;
+            const rowsData: string[][] = [];
+            for (let r = 0; r < numRows; r++) {
+                const rowData: string[] = [];
+                for (let c = 0; c < columnsData.length; c++) {
+                    rowData.push(columnsData[c][r] || '');
+                }
+                rowsData.push(rowData);
+            }
+
+            // Paste data at target column, row 0
+            const result = await this.runPython<IUpdateSpec>(`
+                res = paste_cells(
+                    ${sheetIdx}, 
+                    ${tableIdx}, 
+                    0, 
+                    ${targetCol}, 
+                    json.loads(${JSON.stringify(JSON.stringify(rowsData))}),
+                    True
+                )
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
     public moveRows(sheetIdx: number, tableIdx: number, rowIndices: number[], targetRowIndex: number) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`

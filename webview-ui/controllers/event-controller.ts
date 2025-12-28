@@ -177,7 +177,14 @@ export class EventController implements ReactiveController {
 
         if (!type || index === undefined) return;
 
-        this.host.contextMenu = { x: e.clientX, y: e.clientY, type: type, index: index };
+        this.host.contextMenu = {
+            x: e.clientX,
+            y: e.clientY,
+            type: type,
+            index: index,
+            hasCopiedRows: this.host.clipboardCtrl.copyType === 'rows' && !!this.host.clipboardCtrl.copiedData,
+            hasCopiedColumns: this.host.clipboardCtrl.copyType === 'columns' && !!this.host.clipboardCtrl.copiedData
+        };
 
         // Check if index is within current selection
         let isInsideSelection = false;
@@ -504,7 +511,7 @@ export class EventController implements ReactiveController {
         const { action, type, index } = e.detail;
         if (action === 'insert') {
             if (type === 'row') {
-                this.dispatchAction('insert-row', { rowIndex: index });
+                this.dispatchAction('row-insert', { rowIndex: index });
             } else {
                 this.dispatchAction('column-insert', { colIndex: index });
             }
@@ -543,7 +550,7 @@ export class EventController implements ReactiveController {
     };
 
     handleInsertRow = (e: CustomEvent<{ index: number }>) => {
-        this.dispatchAction('insert-row', { rowIndex: e.detail.index });
+        this.dispatchAction('row-insert', { rowIndex: e.detail.index });
     };
 
     handleDeleteRow = (e: CustomEvent<{ index: number }>) => {

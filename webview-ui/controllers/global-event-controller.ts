@@ -65,6 +65,18 @@ export interface GlobalEventHost extends ReactiveControllerHost {
     _handleMoveRows(detail: IMoveRowsDetail): void;
     _handleMoveColumns(detail: IMoveColumnsDetail): void;
     _handleMoveCells(detail: IMoveCellsDetail): void;
+    _handleInsertRowsAt(detail: {
+        sheetIndex: number;
+        tableIndex: number;
+        targetRow: number;
+        rowsData: string[][];
+    }): void;
+    _handleInsertColumnsAt(detail: {
+        sheetIndex: number;
+        tableIndex: number;
+        targetCol: number;
+        columnsData: string[][];
+    }): void;
     _parseWorkbook(): Promise<void>;
 }
 
@@ -102,6 +114,8 @@ export class GlobalEventController implements ReactiveController {
     private _boundMoveRows: (e: Event) => void;
     private _boundMoveColumns: (e: Event) => void;
     private _boundMoveCells: (e: Event) => void;
+    private _boundInsertRowsAt: (e: Event) => void;
+    private _boundInsertColumnsAt: (e: Event) => void;
     private _boundMessage: (e: MessageEvent) => void;
 
     constructor(host: GlobalEventHost) {
@@ -133,6 +147,8 @@ export class GlobalEventController implements ReactiveController {
         this._boundMoveRows = this._handleMoveRows.bind(this);
         this._boundMoveColumns = this._handleMoveColumns.bind(this);
         this._boundMoveCells = this._handleMoveCells.bind(this);
+        this._boundInsertRowsAt = this._handleInsertRowsAt.bind(this);
+        this._boundInsertColumnsAt = this._handleInsertColumnsAt.bind(this);
         this._boundMessage = this._handleMessage.bind(this);
     }
 
@@ -179,6 +195,10 @@ export class GlobalEventController implements ReactiveController {
         window.addEventListener('move-columns', this._boundMoveColumns);
         window.addEventListener('move-cells', this._boundMoveCells);
 
+        // Insert copied rows/columns operations
+        window.addEventListener('rows-insert-at', this._boundInsertRowsAt);
+        window.addEventListener('columns-insert-at', this._boundInsertColumnsAt);
+
         // VS Code extension messages
         window.addEventListener('message', this._boundMessage);
     }
@@ -210,6 +230,8 @@ export class GlobalEventController implements ReactiveController {
         window.removeEventListener('move-rows', this._boundMoveRows);
         window.removeEventListener('move-columns', this._boundMoveColumns);
         window.removeEventListener('move-cells', this._boundMoveCells);
+        window.removeEventListener('rows-insert-at', this._boundInsertRowsAt);
+        window.removeEventListener('columns-insert-at', this._boundInsertColumnsAt);
         window.removeEventListener('message', this._boundMessage);
     }
 
@@ -357,6 +379,20 @@ export class GlobalEventController implements ReactiveController {
         this.host._handleMoveCells((e as CustomEvent<IMoveCellsDetail>).detail);
     }
 
+    private _handleInsertRowsAt(e: Event): void {
+        const detail = (
+            e as CustomEvent<{ sheetIndex: number; tableIndex: number; targetRow: number; rowsData: string[][] }>
+        ).detail;
+        this.host._handleInsertRowsAt(detail);
+    }
+
+    private _handleInsertColumnsAt(e: Event): void {
+        const detail = (
+            e as CustomEvent<{ sheetIndex: number; tableIndex: number; targetCol: number; columnsData: string[][] }>
+        ).detail;
+        this.host._handleInsertColumnsAt(detail);
+    }
+
     private async _handleMessage(event: MessageEvent): Promise<void> {
         const message = event.data;
         switch (message.type) {
@@ -387,6 +423,10 @@ export class GlobalEventController implements ReactiveController {
                         detail: { value: message.value }
                     })
                 );
+                break;
+            case 'insertCopiedCells':
+                // Trigger insert copied cells action (used for Ctrl+Shift+= shortcut from extension)
+                window.dispatchEvent(new CustomEvent('insert-copied-cells-at-selection'));
                 break;
         }
     }

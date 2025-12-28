@@ -108,14 +108,14 @@ describe('Context Menu Verification', () => {
             expect(menu?.content?.textContent).to.include('Delete Row');
         });
 
-        it('dispatches insert-row event on Insert Above click', async () => {
+        it('dispatches row-insert event on Insert Above click', async () => {
             const el = await fixture<SpreadsheetTable>(
                 html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
             );
             await awaitView(el);
 
             const insertSpy = vi.fn();
-            el.addEventListener('insert-row', insertSpy);
+            el.addEventListener('row-insert', insertSpy);
 
             // Open context menu on row 1
             const rowHeader = queryView(el, '.cell.header-row[data-row="1"]') as HTMLElement;

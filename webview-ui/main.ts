@@ -312,6 +312,20 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         this.spreadsheetService.moveCells(sheetIndex, tableIndex, sourceRange, destRow, destCol);
     }
 
+    _handleInsertRowsAt(detail: { sheetIndex: number; tableIndex: number; targetRow: number; rowsData: string[][] }) {
+        const { sheetIndex, tableIndex, targetRow, rowsData } = detail;
+        this.spreadsheetService.insertRowsWithData(sheetIndex, tableIndex, targetRow, rowsData);
+    }
+
+    _handleInsertColumnsAt(detail: {
+        sheetIndex: number;
+        tableIndex: number;
+        targetCol: number;
+        columnsData: string[][];
+    }) {
+        const { sheetIndex, tableIndex, targetCol, columnsData } = detail;
+        this.spreadsheetService.insertColumnsWithData(sheetIndex, tableIndex, targetCol, columnsData);
+    }
     private async _handleUpdateColumnFilter(detail: IColumnFilterDetail) {
         const { sheetIndex, tableIndex, colIndex, hiddenValues } = detail;
         this.spreadsheetService.updateColumnFilter(sheetIndex, tableIndex, colIndex, hiddenValues);

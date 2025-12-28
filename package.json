@@ -38,6 +38,10 @@
             {
                 "command": "vscode-md-spreadsheet.insertTime",
                 "title": "Insert Current Time"
+            },
+            {
+                "command": "vscode-md-spreadsheet.insertCopiedCells",
+                "title": "Insert Copied Cells"
             }
         ],
         "menus": {
@@ -79,6 +83,12 @@
                 "key": "ctrl+shift+;",
                 "mac": "cmd+shift+;",
                 "command": "vscode-md-spreadsheet.insertTime",
+                "when": "activeCustomEditorId == 'vscode-md-spreadsheet.editor'"
+            },
+            {
+                "key": "ctrl+shift+=",
+                "mac": "cmd+shift+=",
+                "command": "vscode-md-spreadsheet.insertCopiedCells",
                 "when": "activeCustomEditorId == 'vscode-md-spreadsheet.editor'"
             }
         ]

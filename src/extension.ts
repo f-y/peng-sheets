@@ -75,6 +75,15 @@ export function activate(context: vscode.ExtensionContext) {
             });
         })
     );
+
+    // Insert copied cells command (Excel-like: Ctrl+Shift+=)
+    context.subscriptions.push(
+        vscode.commands.registerCommand('vscode-md-spreadsheet.insertCopiedCells', () => {
+            SpreadsheetEditorProvider.postMessageToActive({
+                type: 'insertCopiedCells'
+            });
+        })
+    );
 }
 
 export function deactivate() {}
