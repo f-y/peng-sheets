@@ -1,7 +1,8 @@
 /**
  * Test suite for ClipboardController insert copied rows/columns functionality
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { ClipboardStore } from '../../stores/clipboard-store';
 
 // Simple mock for SelectionController
 function createMockSelectionController() {
@@ -61,8 +62,13 @@ describe('ClipboardController - Insert Copied Rows', () => {
     let controller: ClipboardController;
 
     beforeEach(() => {
+        ClipboardStore.clear();
         host = createMockHost();
         controller = new ClipboardController(host as any);
+    });
+
+    afterEach(() => {
+        ClipboardStore.clear();
     });
 
     describe('insertCopiedRows', () => {
@@ -73,8 +79,7 @@ describe('ClipboardController - Insert Copied Rows', () => {
 
         it('should not dispatch event when copyType is not "rows"', () => {
             // Set up copied data with wrong type
-            controller.copiedData = [['A1', 'B1']];
-            controller.copyType = 'cells'; // Not 'rows'
+            ClipboardStore.setCopiedData([['A1', 'B1']], 'cells', null);
 
             controller.insertCopiedRows(1, 'above');
             expect(host._dispatchedEvents.length).toBe(0);
@@ -82,11 +87,14 @@ describe('ClipboardController - Insert Copied Rows', () => {
 
         it('should dispatch rows-insert-at event with correct detail for "above" direction', () => {
             // Set up copied rows
-            controller.copiedData = [
-                ['Row1-A', 'Row1-B'],
-                ['Row2-A', 'Row2-B']
-            ];
-            controller.copyType = 'rows';
+            ClipboardStore.setCopiedData(
+                [
+                    ['Row1-A', 'Row1-B'],
+                    ['Row2-A', 'Row2-B']
+                ],
+                'rows',
+                null
+            );
 
             controller.insertCopiedRows(2, 'above');
 
@@ -105,8 +113,7 @@ describe('ClipboardController - Insert Copied Rows', () => {
         });
 
         it('should dispatch rows-insert-at event with targetRow + 1 for "below" direction', () => {
-            controller.copiedData = [['A', 'B']];
-            controller.copyType = 'rows';
+            ClipboardStore.setCopiedData([['A', 'B']], 'rows', null);
 
             controller.insertCopiedRows(2, 'below');
 
@@ -118,8 +125,7 @@ describe('ClipboardController - Insert Copied Rows', () => {
         it('should include current sheetIndex and tableIndex in event', () => {
             host.sheetIndex = 2;
             host.tableIndex = 3;
-            controller.copiedData = [['A', 'B']];
-            controller.copyType = 'rows';
+            ClipboardStore.setCopiedData([['A', 'B']], 'rows', null);
 
             controller.insertCopiedRows(0, 'above');
 
@@ -135,8 +141,13 @@ describe('ClipboardController - Insert Copied Columns', () => {
     let controller: ClipboardController;
 
     beforeEach(() => {
+        ClipboardStore.clear();
         host = createMockHost();
         controller = new ClipboardController(host as any);
+    });
+
+    afterEach(() => {
+        ClipboardStore.clear();
     });
 
     describe('insertCopiedColumns', () => {
@@ -146,8 +157,7 @@ describe('ClipboardController - Insert Copied Columns', () => {
         });
 
         it('should not dispatch event when copyType is not "columns"', () => {
-            controller.copiedData = [['A1'], ['A2']];
-            controller.copyType = 'cells';
+            ClipboardStore.setCopiedData([['A1'], ['A2']], 'cells', null);
 
             controller.insertCopiedColumns(1, 'left');
             expect(host._dispatchedEvents.length).toBe(0);
@@ -155,11 +165,14 @@ describe('ClipboardController - Insert Copied Columns', () => {
 
         it('should dispatch columns-insert-at event with correct detail for "left" direction', () => {
             // Copied columns data in row-major format (2 rows, 2 columns)
-            controller.copiedData = [
-                ['Col1-R1', 'Col2-R1'],
-                ['Col1-R2', 'Col2-R2']
-            ];
-            controller.copyType = 'columns';
+            ClipboardStore.setCopiedData(
+                [
+                    ['Col1-R1', 'Col2-R1'],
+                    ['Col1-R2', 'Col2-R2']
+                ],
+                'columns',
+                null
+            );
 
             controller.insertCopiedColumns(2, 'left');
 
@@ -177,8 +190,7 @@ describe('ClipboardController - Insert Copied Columns', () => {
         });
 
         it('should dispatch columns-insert-at event with targetCol + 1 for "right" direction', () => {
-            controller.copiedData = [['A'], ['B']];
-            controller.copyType = 'columns';
+            ClipboardStore.setCopiedData([['A'], ['B']], 'columns', null);
 
             controller.insertCopiedColumns(2, 'right');
 
@@ -188,8 +200,7 @@ describe('ClipboardController - Insert Copied Columns', () => {
         });
 
         it('should handle single column correctly', () => {
-            controller.copiedData = [['A1'], ['A2'], ['A3']];
-            controller.copyType = 'columns';
+            ClipboardStore.setCopiedData([['A1'], ['A2'], ['A3']], 'columns', null);
 
             controller.insertCopiedColumns(0, 'left');
 
@@ -198,8 +209,7 @@ describe('ClipboardController - Insert Copied Columns', () => {
         });
 
         it('should handle empty data gracefully', () => {
-            controller.copiedData = [];
-            controller.copyType = 'columns';
+            ClipboardStore.setCopiedData([], 'columns', null);
 
             controller.insertCopiedColumns(0, 'left');
 
@@ -214,8 +224,13 @@ describe('ClipboardController - copiedData and copyType state', () => {
     let controller: ClipboardController;
 
     beforeEach(() => {
+        ClipboardStore.clear();
         host = createMockHost();
         controller = new ClipboardController(host as any);
+    });
+
+    afterEach(() => {
+        ClipboardStore.clear();
     });
 
     it('should have null copiedData and copyType initially', () => {
@@ -223,22 +238,39 @@ describe('ClipboardController - copiedData and copyType state', () => {
         expect(controller.copyType).toBeNull();
     });
 
-    it('should clear copiedData and copyType when clearCopiedRange is called', () => {
-        controller.copiedData = [['A', 'B']];
-        controller.copyType = 'rows';
-        controller.copiedRange = {
+    it('should clear copiedData and copyType when clearCopiedRange is called by owning table', () => {
+        ClipboardStore.setCopiedData([['A', 'B']], 'rows', {
             sheetIndex: 0,
             tableIndex: 0,
-            startRow: 0,
-            endRow: 0,
-            startCol: 0,
-            endCol: 1
-        };
+            minR: 0,
+            maxR: 0,
+            minC: 0,
+            maxC: 1
+        });
 
         controller.clearCopiedRange();
 
         expect(controller.copiedData).toBeNull();
         expect(controller.copyType).toBeNull();
         expect(controller.copiedRange).toBeNull();
+    });
+
+    it('should NOT clear when called by non-owning table', () => {
+        // Store is owned by sheetIndex: 1, tableIndex: 1
+        ClipboardStore.setCopiedData([['A', 'B']], 'rows', {
+            sheetIndex: 1,
+            tableIndex: 1,
+            minR: 0,
+            maxR: 0,
+            minC: 0,
+            maxC: 1
+        });
+
+        // Controller's host is sheetIndex: 0, tableIndex: 0
+        controller.clearCopiedRange();
+
+        // Store should NOT be cleared
+        expect(controller.copiedData).toEqual([['A', 'B']]);
+        expect(controller.copyType).toBe('rows');
     });
 });

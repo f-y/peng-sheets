@@ -2,6 +2,7 @@ import { ReactiveController } from 'lit';
 import { SpreadsheetTable } from '../components/spreadsheet-table';
 import { getDOMText } from '../utils/spreadsheet-helpers';
 import { SelectionRange } from './selection-controller';
+import { ClipboardStore } from '../stores/clipboard-store';
 // import { normalizeEditContent, findEditingCell } from '../utils/edit-mode-helpers';
 
 export class EventController implements ReactiveController {
@@ -182,8 +183,8 @@ export class EventController implements ReactiveController {
             y: e.clientY,
             type: type,
             index: index,
-            hasCopiedRows: this.host.clipboardCtrl.copyType === 'rows' && !!this.host.clipboardCtrl.copiedData,
-            hasCopiedColumns: this.host.clipboardCtrl.copyType === 'columns' && !!this.host.clipboardCtrl.copiedData
+            hasCopiedRows: ClipboardStore.hasCopiedRows,
+            hasCopiedColumns: ClipboardStore.hasCopiedColumns
         };
 
         // Check if index is within current selection

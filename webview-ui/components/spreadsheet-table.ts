@@ -13,6 +13,7 @@ import { KeyboardController } from '../controllers/keyboard-controller';
 import { EventController } from '../controllers/event-controller';
 import { RowVisibilityController, VisualMetadata } from '../controllers/row-visibility-controller';
 import { DragController } from '../controllers/drag-controller';
+import { ClipboardStore } from '../stores/clipboard-store';
 import { getDOMText } from '../utils/spreadsheet-helpers';
 import { normalizeEditContent, findEditingCell } from '../utils/edit-mode-helpers';
 import spreadsheetTableStyles from './styles/spreadsheet-table.css?inline';
@@ -313,8 +314,8 @@ export class SpreadsheetTable extends LitElement {
             'insert-copied-cells-at-selection',
             this._handleInsertCopiedCellsAtSelection as EventListener
         );
-        // Listen for copy-range-set to clear our copy range if another table copied
-        window.addEventListener('copy-range-set', this._handleCopyRangeSet as EventListener);
+        // Listen for clipboard store changes for cross-table copy/paste
+        ClipboardStore.addEventListener('change', this._handleClipboardStoreChange);
     }
 
     /**
@@ -333,18 +334,14 @@ export class SpreadsheetTable extends LitElement {
             'insert-copied-cells-at-selection',
             this._handleInsertCopiedCellsAtSelection as EventListener
         );
-        window.removeEventListener('copy-range-set', this._handleCopyRangeSet as EventListener);
+        ClipboardStore.removeEventListener('change', this._handleClipboardStoreChange);
     }
 
     /**
-     * Handle copy-range-set event: clear our copy range if another table did the copy
+     * Handle ClipboardStore change event: re-render to update context menu options
      */
-    private _handleCopyRangeSet = (e: CustomEvent) => {
-        const { sheetIndex, tableIndex } = e.detail;
-        // If copy happened in a different table, clear our copy range
-        if (sheetIndex !== this.sheetIndex || tableIndex !== this.tableIndex) {
-            this.clipboardCtrl.clearCopiedRange();
-        }
+    private _handleClipboardStoreChange = () => {
+        this.requestUpdate();
     };
 
     /**

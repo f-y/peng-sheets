@@ -2,14 +2,14 @@
  * Tests for Copy Range Indicator feature
  *
  * Tests the visual copy indicator (dashed border) functionality:
- * - _saveCopiedRange stores correct range with sheetIndex/tableIndex
- * - clearCopiedRange clears the range
- * - copy-range-set event is dispatched on copy
- * - Cross-table copy clears other table's copy range
+ * - _saveCopiedRange stores correct range in ClipboardStore
+ * - clearCopiedRange clears the range when called by owning table
+ * - Cross-table copy coordination via ClipboardStore
  * - Edit start clears copy range via EditController
  */
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ClipboardController } from '../../controllers/clipboard-controller';
+import { ClipboardStore } from '../../stores/clipboard-store';
 
 // Mock minimal host for ClipboardController
 const createMockClipboardHost = () => {
@@ -44,8 +44,13 @@ describe('ClipboardController Copy Range Indicator', () => {
     let clipboardCtrl: ClipboardController;
 
     beforeEach(() => {
+        ClipboardStore.clear();
         host = createMockClipboardHost();
         clipboardCtrl = new ClipboardController(host);
+    });
+
+    afterEach(() => {
+        ClipboardStore.clear();
     });
 
     describe('copiedRange state', () => {
@@ -53,16 +58,16 @@ describe('ClipboardController Copy Range Indicator', () => {
             expect(clipboardCtrl.copiedRange).toBeNull();
         });
 
-        it('should clear copiedRange when clearCopiedRange is called', () => {
-            // Set some range first
-            clipboardCtrl.copiedRange = {
+        it('should clear copiedRange when clearCopiedRange is called by owning table', () => {
+            // Set some range first in store
+            ClipboardStore.setCopiedData([['A']], 'cells', {
                 sheetIndex: 0,
                 tableIndex: 0,
                 minR: 0,
                 maxR: 1,
                 minC: 0,
                 maxC: 1
-            };
+            });
 
             clipboardCtrl.clearCopiedRange();
 
@@ -70,8 +75,27 @@ describe('ClipboardController Copy Range Indicator', () => {
             expect(host.requestUpdate).toHaveBeenCalled();
         });
 
+        it('should NOT clear if copiedRange is from different table', () => {
+            // Set range from different table
+            ClipboardStore.setCopiedData([['A']], 'cells', {
+                sheetIndex: 1,
+                tableIndex: 1,
+                minR: 0,
+                maxR: 1,
+                minC: 0,
+                maxC: 1
+            });
+            host.requestUpdate.mockClear();
+
+            clipboardCtrl.clearCopiedRange();
+
+            // Should not have been cleared
+            expect(clipboardCtrl.copiedRange).not.toBeNull();
+            expect(host.requestUpdate).not.toHaveBeenCalled();
+        });
+
         it('should not call requestUpdate if copiedRange is already null', () => {
-            clipboardCtrl.copiedRange = null;
+            // Store is already clear (no copiedRange)
             host.requestUpdate.mockClear();
 
             clipboardCtrl.clearCopiedRange();
@@ -81,7 +105,7 @@ describe('ClipboardController Copy Range Indicator', () => {
     });
 
     describe('_saveCopiedRange', () => {
-        it('should save single cell selection', () => {
+        it('should save single cell selection to ClipboardStore', () => {
             host.selectionCtrl.selectedRow = 0;
             host.selectionCtrl.selectedCol = 1;
             host.selectionCtrl.selectionAnchorRow = -1;
@@ -100,7 +124,7 @@ describe('ClipboardController Copy Range Indicator', () => {
             });
         });
 
-        it('should save multi-cell range selection', () => {
+        it('should save multi-cell range selection to ClipboardStore', () => {
             host.selectionCtrl.selectedRow = 1;
             host.selectionCtrl.selectedCol = 2;
             host.selectionCtrl.selectionAnchorRow = 0;
@@ -118,7 +142,7 @@ describe('ClipboardController Copy Range Indicator', () => {
             });
         });
 
-        it('should save row selection', () => {
+        it('should save row selection to ClipboardStore', () => {
             host.selectionCtrl.selectedRow = 1;
             host.selectionCtrl.selectedCol = -2; // Full row
             host.selectionCtrl.selectionAnchorRow = 0;
@@ -136,22 +160,7 @@ describe('ClipboardController Copy Range Indicator', () => {
             });
         });
 
-        it('should dispatch copy-range-set event', () => {
-            host.selectionCtrl.selectedRow = 0;
-            host.selectionCtrl.selectedCol = 0;
-
-            (clipboardCtrl as any)._saveCopiedRange();
-
-            expect(host.dispatchEvent).toHaveBeenCalledWith(
-                expect.objectContaining({
-                    type: 'copy-range-set',
-                    bubbles: true,
-                    composed: true
-                })
-            );
-        });
-
-        it('should include sheetIndex and tableIndex in event detail', () => {
+        it('should store sheetIndex and tableIndex in ClipboardStore range', () => {
             host.sheetIndex = 2;
             host.tableIndex = 1;
             host.selectionCtrl.selectedRow = 0;
@@ -159,11 +168,8 @@ describe('ClipboardController Copy Range Indicator', () => {
 
             (clipboardCtrl as any)._saveCopiedRange();
 
-            const dispatchedEvent = host.dispatchEvent.mock.calls[0][0] as CustomEvent;
-            expect(dispatchedEvent.detail).toEqual({
-                sheetIndex: 2,
-                tableIndex: 1
-            });
+            expect(clipboardCtrl.copiedRange?.sheetIndex).toBe(2);
+            expect(clipboardCtrl.copiedRange?.tableIndex).toBe(1);
         });
     });
 });

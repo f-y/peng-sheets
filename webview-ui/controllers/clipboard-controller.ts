@@ -1,5 +1,6 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
 import { SelectionController } from './selection-controller';
+import { ClipboardStore } from '../stores/clipboard-store';
 
 interface TableData {
     headers: string[] | null;
@@ -30,22 +31,6 @@ interface ClipboardHost extends ReactiveControllerHost {
 export class ClipboardController implements ReactiveController {
     host: ClipboardHost;
 
-    // Track the copied range for visual indicator (includes source location)
-    copiedRange: {
-        sheetIndex: number;
-        tableIndex: number;
-        minR: number;
-        maxR: number;
-        minC: number;
-        maxC: number;
-    } | null = null;
-
-    // Store copied cell data for insert operations
-    copiedData: string[][] | null = null;
-
-    // Type of copy: 'cells', 'rows', or 'columns'
-    copyType: 'cells' | 'rows' | 'columns' | null = null;
-
     constructor(host: ClipboardHost) {
         this.host = host;
         host.addController(this);
@@ -54,14 +39,25 @@ export class ClipboardController implements ReactiveController {
     hostConnected() {}
     hostDisconnected() {}
 
+    // Getters to access shared store
+    get copiedRange() {
+        return ClipboardStore.copiedRange;
+    }
+
+    get copiedData() {
+        return ClipboardStore.copiedData;
+    }
+
+    get copyType() {
+        return ClipboardStore.copyType;
+    }
+
     /**
-     * Clear the copied range indicator and data
+     * Clear the copied range indicator and data (only if this table owns it)
      */
     clearCopiedRange() {
-        if (this.copiedRange || this.copiedData) {
-            this.copiedRange = null;
-            this.copiedData = null;
-            this.copyType = null;
+        if (ClipboardStore.isFromTable(this.host.sheetIndex, this.host.tableIndex)) {
+            ClipboardStore.clear();
             this.host.requestUpdate();
         }
     }
@@ -127,32 +123,25 @@ export class ClipboardController implements ReactiveController {
         }
 
         if (minR >= 0 && minC >= 0) {
-            this.copiedRange = {
-                sheetIndex: this.host.sheetIndex,
-                tableIndex: this.host.tableIndex,
-                minR,
-                maxR,
-                minC,
-                maxC
-            };
-
             // Determine copy type based on selection
             const { selectionCtrl } = this.host;
+            let copyType: 'cells' | 'rows' | 'columns';
             if (selectionCtrl.selectedCol === -2 && selectionCtrl.selectedRow >= 0) {
-                this.copyType = 'rows';
+                copyType = 'rows';
             } else if (selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol >= 0) {
-                this.copyType = 'columns';
+                copyType = 'columns';
             } else {
-                this.copyType = 'cells';
+                copyType = 'cells';
             }
 
-            // Store copied cell data for insert operations
+            // Build copied cell data
             const { table } = this.host;
+            let data: string[][] | null = null;
             if (table) {
-                const data: string[][] = [];
+                data = [];
 
                 // For column copy, include headers as first row
-                if (this.copyType === 'columns' && table.headers) {
+                if (copyType === 'columns' && table.headers) {
                     const headerRow: string[] = [];
                     for (let c = minC; c <= maxC; c++) {
                         headerRow.push(table.headers[c] || '');
@@ -168,20 +157,18 @@ export class ClipboardController implements ReactiveController {
                     }
                     data.push(rowData);
                 }
-                this.copiedData = data;
             }
 
-            // Dispatch global event so other tables can clear their copy range
-            this.host.dispatchEvent(
-                new CustomEvent('copy-range-set', {
-                    bubbles: true,
-                    composed: true,
-                    detail: {
-                        sheetIndex: this.host.sheetIndex,
-                        tableIndex: this.host.tableIndex
-                    }
-                })
-            );
+            // Store in shared ClipboardStore
+            ClipboardStore.setCopiedData(data, copyType, {
+                sheetIndex: this.host.sheetIndex,
+                tableIndex: this.host.tableIndex,
+                minR,
+                maxR,
+                minC,
+                maxC
+            });
+
             this.host.requestUpdate();
         }
     }
