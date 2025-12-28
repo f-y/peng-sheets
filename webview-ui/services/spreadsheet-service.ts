@@ -909,6 +909,20 @@ export class SpreadsheetService {
         });
     }
 
+    public moveWorkbookSection(toDocIndex: number, toAfterDoc: boolean = false, targetTabOrderIndex: number = -1) {
+        this._enqueueRequest(async () => {
+            const result = await this.runPython<IUpdateSpec>(`
+                res = move_workbook_section(
+                    to_doc_index=${toDocIndex},
+                    to_after_doc=${toAfterDoc ? 'True' : 'False'},
+                    target_tab_order_index=${targetTabOrderIndex === -1 ? 'None' : targetTabOrderIndex}
+                )
+                json.dumps(res) if res else "null"
+            `);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
     public async getDocumentSectionRange(docIndex: number) {
         // This method might return a different structure, use any or specific interface if known
         const result = await this.runPython<unknown>(`

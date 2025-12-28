@@ -908,12 +908,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                                 data: sheet
                             });
                         });
-                        // Add "Add Sheet" button
-                        newTabs.push({
-                            type: 'add-sheet',
-                            title: '+',
-                            index: newTabs.length
-                        });
+                        // Note: Add-sheet button is added at the very end after all tabs are collected
                     } else {
                         // Empty workbook placeholder
                         newTabs.push({
@@ -930,6 +925,16 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 newTabs.push({
                     type: 'onboarding',
                     title: t('newSpreadsheet'),
+                    index: newTabs.length
+                });
+            }
+
+            // Add "Add Sheet" button - this will be placed at the very end after reordering
+            const hasSheets = newTabs.some((t) => t.type === 'sheet');
+            if (hasSheets) {
+                newTabs.push({
+                    type: 'add-sheet',
+                    title: '+',
                     index: newTabs.length
                 });
             }
@@ -1008,6 +1013,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     /**
      * Handle tab reorder from bottom-tabs component drag-drop
+     *
+     * Reordering follows SPECS.md section 8.4:
+     * - Document↔Document: Physical move in Markdown
+     * - Sheet↔Sheet: Physical move within Workbook
+     * - Document↔Workbook boundary: Physical move in Markdown
+     * - Sheet↔Document (cross-type within UI): Metadata-only update
      */
     private async _handleTabReorder(fromIndex: number, toIndex: number) {
         if (fromIndex === toIndex) return;
@@ -1015,34 +1026,61 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         const fromTab = this.tabs[fromIndex];
         const toTab = toIndex < this.tabs.length ? this.tabs[toIndex] : null;
 
-        // Handle different move scenarios
+        // Determine the boundary context: is the target at a Workbook boundary?
+        // Find the first and last sheet tab indices to determine Workbook boundaries
+        const firstSheetIdx = this.tabs.findIndex((t) => t.type === 'sheet');
+        const lastSheetIdx = this.tabs.reduce((acc, t, i) => (t.type === 'sheet' ? i : acc), -1);
+        const hasWorkbook = firstSheetIdx !== -1;
+
         if (fromTab.type === 'sheet') {
-            if (toTab?.type === 'sheet' || toTab?.type === 'add-sheet' || !toTab) {
+            // Check if there are documents after the workbook (last doc index > last sheet index)
+            const lastDocIdx = this.tabs.reduce((acc, t, i) => (t.type === 'document' ? i : acc), -1);
+            const hasDocsAfterWorkbook = lastDocIdx > lastSheetIdx;
+
+            if (toTab?.type === 'sheet') {
                 // Sheet → Sheet: Physical reorder within workbook
                 const fromSheetIndex = fromTab.sheetIndex!;
-                let toSheetIndex = 0;
-
-                if (toTab?.type === 'sheet') {
-                    toSheetIndex = toTab.sheetIndex!;
-                } else {
-                    const sheets = this.tabs.filter((t) => t.type === 'sheet');
-                    toSheetIndex = sheets.length;
-                }
-
+                const toSheetIndex = toTab.sheetIndex!;
+                this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
+            } else if (toTab?.type === 'document') {
+                // Sheet → Document position: Workbook crosses Document boundary (physical move)
+                // Move entire Workbook to BEFORE the target Document
+                const toDocIndex = toTab.docIndex!;
+                this.spreadsheetService.moveWorkbookSection(toDocIndex, false, toIndex);
+            } else if ((toTab?.type === 'add-sheet' || !toTab) && hasDocsAfterWorkbook) {
+                // Sheet → End of tabs (after last Document): Move Workbook to file end
+                const docCount = this.tabs.filter((t) => t.type === 'document').length;
+                this.spreadsheetService.moveWorkbookSection(docCount, false, toIndex);
+            } else if (toTab?.type === 'add-sheet' || !toTab) {
+                // Sheet → add-sheet (no docs after): Just reorder within workbook (no-op for single sheet)
+                const fromSheetIndex = fromTab.sheetIndex!;
+                const sheets = this.tabs.filter((t) => t.type === 'sheet');
+                const toSheetIndex = sheets.length;
                 this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
             } else {
-                // Sheet → Document position: Metadata-only (cross-type display)
+                // Fallback: metadata-only
                 this._reorderTabsArray(fromIndex, toIndex);
                 this._updateTabOrder();
             }
         } else if (fromTab.type === 'document') {
+            const fromDocIndex = fromTab.docIndex!;
+
             if (toTab?.type === 'document') {
                 // Document → Document: Physical reorder in file
-                const fromDocIndex = fromTab.docIndex!;
                 const toDocIndex = toTab.docIndex!;
                 this.spreadsheetService.moveDocumentSection(fromDocIndex, toDocIndex, false, false, toIndex);
+            } else if (!hasWorkbook) {
+                // No workbook exists - just reorder metadata
+                this._reorderTabsArray(fromIndex, toIndex);
+                this._updateTabOrder();
+            } else if (toIndex <= firstSheetIdx) {
+                // Document → Before Workbook: Physical move
+                this.spreadsheetService.moveDocumentSection(fromDocIndex, null, false, true, toIndex);
+            } else if (toIndex > lastSheetIdx || toTab?.type === 'add-sheet' || !toTab) {
+                // Document → After Workbook: Physical move
+                this.spreadsheetService.moveDocumentSection(fromDocIndex, null, true, false, toIndex);
             } else {
-                // Document → Sheet position: Metadata-only (cross-type display)
+                // Document → Between sheets (inside Workbook UI): Metadata-only
                 this._reorderTabsArray(fromIndex, toIndex);
                 this._updateTabOrder();
             }

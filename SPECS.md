@@ -163,6 +163,32 @@ The application treats a Markdown file as a collection of "Tabs".
     - [x] The Workbook Section boundary is determined by the next top-level header (same level as root marker) or end of file.
     - [x] Example: In a document with `# Tables` followed by `# Appendix`, deleting all sheets removes only the content between these headers.
 
+### 8.4. Tab Reordering Rules
+Documents and Sheets are different types of tabs that can be mixed in the UI tab bar.
+
+*   **Markdown Structure**:
+    - [x] **Workbook**: A Workbook (collection of Sheets) always exists as a contiguous unit in the Markdown file.
+    - [x] **Documents**: Documents can appear before, or after Workbooks (e.g., `# Intro`, `# Tables`, `# Appendix`).
+
+*   **UI Tab Order**:
+    - [x] UI tab order can mix Sheets and Documents freely (e.g., `[Sheet1, Doc1, Sheet2, Doc2]`).
+    - [x] The display order is managed by Workbook Metadata (`tab_order` array).
+
+*   **Reordering Scenarios**:
+    | From | To | Behavior |
+    |------|-----|----------|
+    | Document A | Document B (same level) | **Physical Move**: Move Document A's text across Document B in Markdown. |
+    | Sheet A | Sheet B (same Workbook) | **Physical Move**: Move Sheet A's text across Sheet B within the Workbook. |
+    | Document | Workbook boundary | **Physical Move**: Move Document's text to before/after the Workbook section in Markdown. |
+    | Document | Between Sheet A and Sheet B | **Metadata Only**: Update `tab_order` in Workbook Metadata. No Markdown text change. |
+    | Sheet | Document position | **Metadata Only**: Update `tab_order` in Workbook Metadata. No Markdown text change. |
+
+*   **Key Principle**:
+    - Documents and Workbooks are **same-level entities** in Markdown structure.
+    - Moving between same-level entities = **Physical Markdown edit**.
+    - Moving Sheet ↔ Document (cross-type within UI) = **Metadata-only update** (Workbook position unchanged).
+
+
 ## 9. Markdown Specific Features
 These features are specific to the Markdown context but should be integrated into the UI.
 

@@ -8,8 +8,6 @@
 | --- | --- | --- |
 |  |  |  |
 
-<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "sheet", "index": 0}, {"type": "document", "index": 0}, {"type": "document", "index": 1}, {"type": "document", "index": 2}, {"type": "document", "index": 3}]} -->
-
 
 # Document 1
 

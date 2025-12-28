@@ -1557,6 +1557,147 @@ def move_document_section(
     }
 
 
+def move_workbook_section(
+    to_doc_index=None,
+    to_after_doc=False,
+    to_before_doc=False,
+    target_tab_order_index=None,
+):
+    """
+    Move the entire Workbook section to a new position relative to Document sections.
+
+    The Workbook is treated as a single unit (contains all Sheets).
+    This enables Sheet tabs to cross Document boundaries in the UI.
+
+    Args:
+        to_doc_index: Target document index position. Workbook moves before this doc.
+        to_after_doc: If True with to_doc_index, move after that document.
+        to_before_doc: If True with to_doc_index, move before that document (default).
+        target_tab_order_index: Optional target index in tab_order for metadata update.
+
+    Returns:
+        dict with 'content', 'startLine', 'endLine', 'file_changed' or 'error'
+    """
+    global md_text, config, workbook
+
+    config_dict = json.loads(config) if config else {}
+    root_marker = config_dict.get("rootMarker", "# Tables")
+
+    lines = md_text.split("\n")
+    sections = []
+    current_start = None
+    current_type = None
+
+    in_code_block = False
+
+    for i, line in enumerate(lines):
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+
+        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
+            if current_start is not None:
+                sections.append(
+                    {"start": current_start, "end": i - 1, "type": current_type}
+                )
+
+            stripped = line.strip()
+            if stripped == root_marker:
+                current_type = "workbook"
+            else:
+                current_type = "document"
+            current_start = i
+
+    if current_start is not None:
+        sections.append(
+            {"start": current_start, "end": len(lines) - 1, "type": current_type}
+        )
+
+    # Find workbook section
+    workbook_section = None
+    for s in sections:
+        if s["type"] == "workbook":
+            workbook_section = s
+            break
+
+    if workbook_section is None:
+        return {"error": "No workbook section found"}
+
+    # Get document sections
+    doc_sections = [(i, s) for i, s in enumerate(sections) if s["type"] == "document"]
+
+    if to_doc_index is None:
+        return {"error": "No target document index specified"}
+
+    if to_doc_index < 0 or to_doc_index > len(doc_sections):
+        return {"error": f"Invalid target document index: {to_doc_index}"}
+
+    # Extract workbook content
+    source_start = workbook_section["start"]
+    source_end = workbook_section["end"]
+    source_lines = lines[source_start : source_end + 1]
+
+    # Determine target position
+    target_line = 0
+
+    if to_doc_index >= len(doc_sections):
+        # Move to end of file
+        target_line = len(lines)
+    else:
+        _, target_doc = doc_sections[to_doc_index]
+        if to_after_doc:
+            target_line = target_doc["end"] + 1
+        else:
+            # Default: move before the target document
+            target_line = target_doc["start"]
+
+    # Check for no-op (workbook already at target position)
+    if target_line >= source_start and target_line <= source_end + 1:
+        return {"file_changed": False, "metadata_changed": False}
+
+    # Build new content by removing source and inserting at target
+    new_lines = []
+    inserted = False
+
+    for i, line in enumerate(lines):
+        # Skip source lines
+        if source_start <= i <= source_end:
+            continue
+
+        # Insert at target position (adjusted for removed lines)
+        adjusted_target = (
+            target_line
+            if target_line <= source_start
+            else target_line - (source_end - source_start + 1)
+        )
+        current_pos = len(new_lines)
+
+        if not inserted and current_pos >= adjusted_target:
+            new_lines.extend(source_lines)
+            inserted = True
+
+        new_lines.append(line)
+
+    # If not inserted yet (target was at end)
+    if not inserted:
+        new_lines.extend(source_lines)
+
+    new_md = "\n".join(new_lines)
+
+    # Update global md_text
+    md_text = new_md
+
+    # Note: tab_order metadata doesn't change because sheet indices within workbook
+    # remain the same. Only the physical position of the workbook changes.
+
+    return {
+        "content": new_md,
+        "startLine": 0,
+        "endLine": len(lines) - 1,
+        "file_changed": True,
+        "metadata_changed": False,
+    }
+
+
 def _reorder_tab_metadata(wb, item_type, from_idx, to_idx, target_tab_order_index):
     """
     Updates tab_order metadata after a physical move of a sheet or document.
