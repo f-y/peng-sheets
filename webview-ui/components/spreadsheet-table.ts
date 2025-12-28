@@ -285,7 +285,20 @@ export class SpreadsheetTable extends LitElement {
         // Row selection: insert copied rows above
         if (selectionCtrl.selectedCol === -2 && selectionCtrl.selectedRow >= 0) {
             if (clipboardCtrl.copyType === 'rows') {
+                const copiedRowCount = clipboardCtrl.copiedData.length;
+                const insertAt = selectionCtrl.selectedRow; // 'above' = same index
                 clipboardCtrl.insertCopiedRows(selectionCtrl.selectedRow, 'above');
+
+                // Store pending selection - same as context menu
+                if (copiedRowCount > 0) {
+                    const endRow = insertAt + copiedRowCount - 1;
+                    this._pendingSelection = {
+                        anchorRow: endRow,
+                        selectedRow: insertAt,
+                        anchorCol: -2,
+                        selectedCol: -2
+                    };
+                }
             }
             return;
         }
@@ -293,7 +306,20 @@ export class SpreadsheetTable extends LitElement {
         // Column selection: insert copied columns to the right
         if (selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol >= 0) {
             if (clipboardCtrl.copyType === 'columns') {
+                const copiedColCount = clipboardCtrl.copiedData[0]?.length || 0;
+                const insertAt = selectionCtrl.selectedCol + 1; // 'right' = index + 1
                 clipboardCtrl.insertCopiedColumns(selectionCtrl.selectedCol, 'right');
+
+                // Store pending selection - same as context menu
+                if (copiedColCount > 0) {
+                    const endCol = insertAt + copiedColCount - 1;
+                    this._pendingSelection = {
+                        anchorRow: -2,
+                        selectedRow: -2,
+                        anchorCol: insertAt,
+                        selectedCol: endCol
+                    };
+                }
             }
             return;
         }
