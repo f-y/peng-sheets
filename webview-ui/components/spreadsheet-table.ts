@@ -290,10 +290,10 @@ export class SpreadsheetTable extends LitElement {
             return;
         }
 
-        // Column selection: insert copied columns to the left
+        // Column selection: insert copied columns to the right
         if (selectionCtrl.selectedRow === -2 && selectionCtrl.selectedCol >= 0) {
             if (clipboardCtrl.copyType === 'columns') {
-                clipboardCtrl.insertCopiedColumns(selectionCtrl.selectedCol, 'left');
+                clipboardCtrl.insertCopiedColumns(selectionCtrl.selectedCol, 'right');
             }
             return;
         }
