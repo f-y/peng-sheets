@@ -1010,10 +1010,15 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
      * Handle tab reorder from bottom-tabs component drag-drop
      */
     private async _handleTabReorder(fromIndex: number, toIndex: number) {
-        if (fromIndex === toIndex) return;
+        console.log('[main] _handleTabReorder called', { fromIndex, toIndex });
+        if (fromIndex === toIndex) {
+            console.log('[main] early return: fromIndex === toIndex');
+            return;
+        }
 
         const fromTab = this.tabs[fromIndex];
         const toTab = toIndex < this.tabs.length ? this.tabs[toIndex] : null;
+        console.log('[main] tabs info', { fromTab, toTab, tabsLength: this.tabs.length });
 
         // Handle different move scenarios
         if (fromTab.type === 'sheet') {
@@ -1029,9 +1034,11 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                     toSheetIndex = sheets.length;
                 }
 
+                console.log('[main] calling _moveSheet', { fromSheetIndex, toSheetIndex, toIndex });
                 this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
             } else {
                 // Sheet → Document position: Metadata-only (cross-type display)
+                console.log('[main] reorderTabsArray for sheet -> document');
                 this._reorderTabsArray(fromIndex, toIndex);
                 this._updateTabOrder();
             }
@@ -1040,13 +1047,22 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 // Document → Document: Physical reorder in file
                 const fromDocIndex = fromTab.docIndex!;
                 const toDocIndex = toTab.docIndex!;
+                console.log('[main] moveDocumentSection', { fromDocIndex, toDocIndex });
                 this.spreadsheetService.moveDocumentSection(fromDocIndex, toDocIndex, false, false, toIndex);
             } else {
                 // Document → Sheet position: Metadata-only (cross-type display)
+                console.log('[main] reorderTabsArray for document -> sheet');
                 this._reorderTabsArray(fromIndex, toIndex);
                 this._updateTabOrder();
             }
         }
+
+        // Calculate final position and select the moved tab
+        // When moving from left to right: newIndex = toIndex - 1 (because original was removed first)
+        // When moving from right to left: newIndex = toIndex
+        const newIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+        console.log('[main] selecting moved tab', { fromIndex, toIndex, newIndex });
+        this.activeTabIndex = newIndex;
     }
 
     /**

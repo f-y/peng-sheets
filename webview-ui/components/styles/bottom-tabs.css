@@ -83,6 +83,10 @@
     border-right: 2px solid var(--vscode-focusBorder);
 }
 
+.tab-item.dragging {
+    opacity: 0.5;
+}
+
 .tab-input {
     font-family: inherit;
     font-size: inherit;

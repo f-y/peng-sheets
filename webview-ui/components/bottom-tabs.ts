@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { t } from '../utils/i18n';
 import styles from './styles/bottom-tabs.css?inline';
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
+import { TabDragController } from '../controllers/tab-drag-controller';
 
 export interface TabDefinition {
     title: string;
@@ -38,11 +39,31 @@ export class BottomTabs extends LitElement {
     @state()
     private _isScrollableRight = false;
 
-    @state()
-    private _dragOverIndex: number | null = null;
-
-    @state()
-    private _dragOverSide: 'left' | 'right' | null = null;
+    // Mouse-based drag controller
+    private _dragCtrl = new TabDragController(this, {
+        onDragStart: () => {
+            this.requestUpdate();
+        },
+        onDragOver: () => {
+            this.requestUpdate();
+        },
+        onDragLeave: () => {
+            this.requestUpdate();
+        },
+        onDragEnd: (fromIndex, toIndex) => {
+            console.log('[bottom-tabs] onDragEnd called', { fromIndex, toIndex });
+            if (toIndex !== null && fromIndex !== toIndex) {
+                console.log('[bottom-tabs] dispatching tab-reorder', { fromIndex, toIndex });
+                this.dispatchEvent(
+                    new CustomEvent('tab-reorder', {
+                        detail: { fromIndex, toIndex },
+                        bubbles: true,
+                        composed: true
+                    })
+                );
+            }
+        }
+    });
 
     protected updated(changedProperties: PropertyValues): void {
         super.updated(changedProperties);
@@ -76,6 +97,9 @@ export class BottomTabs extends LitElement {
     }
 
     private _handleTabClick(e: MouseEvent, index: number, tab: TabDefinition) {
+        // Ignore if we just finished a drag
+        if (this._dragCtrl.isDragging) return;
+
         if (tab.type === 'add-sheet') {
             const rect = (e.target as HTMLElement).getBoundingClientRect();
             this.dispatchEvent(
@@ -143,62 +167,24 @@ export class BottomTabs extends LitElement {
         );
     }
 
-    // Drag and drop handlers
-    private _handleDragStart(e: DragEvent, index: number) {
-        if (!e.dataTransfer) return;
-        e.dataTransfer.setData('text/plain', index.toString());
-        e.dataTransfer.effectAllowed = 'move';
+    // Mouse-based drag handlers
+    private _handleMouseDown(e: MouseEvent, index: number, tab: TabDefinition) {
+        if (tab.type === 'add-sheet') return;
+        if (this.editingIndex === index) return;
+        this._dragCtrl.startPotentialDrag(e, index);
     }
 
-    private _handleDragOver(e: DragEvent, index: number, tab: TabDefinition) {
+    private _handleMouseMove(e: MouseEvent, index: number, tab: TabDefinition) {
+        if (!this._dragCtrl.isDragging) return;
         if (tab.type === 'add-sheet') return;
-        e.preventDefault();
-        e.dataTransfer!.dropEffect = 'move';
 
         const target = e.currentTarget as HTMLElement;
-        const rect = target.getBoundingClientRect();
-        const mid = rect.left + rect.width / 2;
-        this._dragOverIndex = index;
-        this._dragOverSide = e.clientX < mid ? 'left' : 'right';
+        this._dragCtrl.updateDropTarget(index, target, e.clientX);
     }
 
-    private _handleDragLeave() {
-        this._dragOverIndex = null;
-        this._dragOverSide = null;
-    }
-
-    private _handleDragEnd() {
-        this._dragOverIndex = null;
-        this._dragOverSide = null;
-    }
-
-    private _handleDrop(e: DragEvent) {
-        e.preventDefault();
-        const fromIndexStr = e.dataTransfer?.getData('text/plain');
-        if (!fromIndexStr) return;
-        const fromIndex = parseInt(fromIndexStr);
-        if (isNaN(fromIndex)) return;
-
-        let toIndex = -1;
-
-        if (this._dragOverIndex !== null) {
-            toIndex = this._dragOverSide === 'left' ? this._dragOverIndex : this._dragOverIndex + 1;
-        } else {
-            // Dropped on container - append to end
-            const addTab = this.tabs.find((t) => t.type === 'add-sheet');
-            toIndex = addTab ? addTab.index : this.tabs.length;
-        }
-
-        this._handleDragEnd();
-
-        if (toIndex !== -1 && fromIndex !== toIndex) {
-            this.dispatchEvent(
-                new CustomEvent('tab-reorder', {
-                    detail: { fromIndex, toIndex },
-                    bubbles: true,
-                    composed: true
-                })
-            );
+    private _handleMouseLeave() {
+        if (this._dragCtrl.isDragging) {
+            this._dragCtrl.clearDropTarget();
         }
     }
 
@@ -214,35 +200,29 @@ export class BottomTabs extends LitElement {
     }
 
     render() {
+        const isDragging = this._dragCtrl.isDragging;
+        const targetIndex = this._dragCtrl.targetIndex;
+        const targetSide = this._dragCtrl.targetSide;
+        const sourceIndex = this._dragCtrl.dragSourceIndex;
+
         return html`
             <div class="bottom-tabs-container">
-                <div
-                    class="bottom-tabs"
-                    @scroll="${this._handleScroll}"
-                    @dragover="${(e: DragEvent) => {
-                        e.preventDefault();
-                        e.dataTransfer!.dropEffect = 'move';
-                    }}"
-                    @drop="${this._handleDrop}"
-                    @dragleave="${this._handleDragLeave}"
-                >
+                <div class="bottom-tabs" @scroll="${this._handleScroll}">
                     ${this.tabs.map(
                         (tab, index) => html`
                             <div
                                 class="tab-item ${this.activeIndex === index ? 'active' : ''} ${tab.type === 'add-sheet'
                                     ? 'add-sheet-tab'
-                                    : ''} ${this._dragOverIndex === index && this._dragOverSide === 'left'
+                                    : ''} ${isDragging && sourceIndex === index ? 'dragging' : ''} ${targetIndex ===
+                                    index && targetSide === 'left'
                                     ? 'drag-over-left'
-                                    : ''} ${this._dragOverIndex === index && this._dragOverSide === 'right'
-                                    ? 'drag-over-right'
-                                    : ''}"
-                                draggable="${tab.type !== 'add-sheet' && this.editingIndex !== index}"
+                                    : ''} ${targetIndex === index && targetSide === 'right' ? 'drag-over-right' : ''}"
+                                @mousedown="${(e: MouseEvent) => this._handleMouseDown(e, index, tab)}"
+                                @mousemove="${(e: MouseEvent) => this._handleMouseMove(e, index, tab)}"
+                                @mouseleave="${this._handleMouseLeave}"
                                 @click="${(e: MouseEvent) => this._handleTabClick(e, index, tab)}"
                                 @dblclick="${() => this._handleDoubleClick(index, tab)}"
                                 @contextmenu="${(e: MouseEvent) => this._handleContextMenu(e, index, tab)}"
-                                @dragstart="${(e: DragEvent) => this._handleDragStart(e, index)}"
-                                @dragover="${(e: DragEvent) => this._handleDragOver(e, index, tab)}"
-                                @dragend="${this._handleDragEnd}"
                                 title="${tab.type === 'add-sheet' ? t('addNewSheet') : ''}"
                                 data-index="${index}"
                             >
@@ -254,6 +234,7 @@ export class BottomTabs extends LitElement {
                                               .value="${tab.title}"
                                               @click="${(e: Event) => e.stopPropagation()}"
                                               @dblclick="${(e: Event) => e.stopPropagation()}"
+                                              @mousedown="${(e: Event) => e.stopPropagation()}"
                                               @keydown="${this._handleInputKeydown}"
                                               @blur="${(e: FocusEvent) => this._handleInputBlur(e, index, tab)}"
                                           />
