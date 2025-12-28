@@ -87,8 +87,6 @@ export class TabDragController implements ReactiveController {
         window.addEventListener('mousemove', this._boundMouseMove);
         window.addEventListener('mouseup', this._boundMouseUp);
         window.addEventListener('keydown', this._boundKeyDown);
-
-        console.log('[TabDragController] potential drag started', { index });
     }
 
     /**
@@ -106,7 +104,6 @@ export class TabDragController implements ReactiveController {
             this._currentTargetSide = side;
             this.config.onDragOver?.(index, side);
             this.host.requestUpdate();
-            console.log('[TabDragController] dropTarget updated', { index, side });
         }
     }
 
@@ -119,7 +116,6 @@ export class TabDragController implements ReactiveController {
             this._currentTargetSide = null;
             this.config.onDragLeave?.();
             this.host.requestUpdate();
-            console.log('[TabDragController] dropTarget cleared');
         }
     }
 
@@ -134,7 +130,6 @@ export class TabDragController implements ReactiveController {
                 this._isDragging = true;
                 this.config.onDragStart?.(this._dragSourceIndex);
                 this.host.requestUpdate();
-                console.log('[TabDragController] drag started', { sourceIndex: this._dragSourceIndex });
             }
         }
 
@@ -143,13 +138,6 @@ export class TabDragController implements ReactiveController {
     }
 
     private _handleMouseUp(_e: MouseEvent) {
-        console.log('[TabDragController] mouseup', {
-            isDragging: this._isDragging,
-            sourceIndex: this._dragSourceIndex,
-            targetIndex: this._currentTargetIndex,
-            targetSide: this._currentTargetSide
-        });
-
         if (this._isDragging && this._dragSourceIndex !== null) {
             let toIndex: number | null = null;
 
@@ -169,7 +157,6 @@ export class TabDragController implements ReactiveController {
     private _handleKeyDown(e: KeyboardEvent) {
         // Cancel drag on Escape
         if (e.key === 'Escape') {
-            console.log('[TabDragController] drag cancelled by Escape');
             this._cleanup();
             this.host.requestUpdate();
         }

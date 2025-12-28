@@ -51,9 +51,7 @@ export class BottomTabs extends LitElement {
             this.requestUpdate();
         },
         onDragEnd: (fromIndex, toIndex) => {
-            console.log('[bottom-tabs] onDragEnd called', { fromIndex, toIndex });
             if (toIndex !== null && fromIndex !== toIndex) {
-                console.log('[bottom-tabs] dispatching tab-reorder', { fromIndex, toIndex });
                 this.dispatchEvent(
                     new CustomEvent('tab-reorder', {
                         detail: { fromIndex, toIndex },
