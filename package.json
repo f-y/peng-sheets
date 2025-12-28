@@ -86,8 +86,8 @@
                 "when": "activeCustomEditorId == 'vscode-md-spreadsheet.editor'"
             },
             {
-                "key": "ctrl+shift+=",
-                "mac": "cmd+shift+=",
+                "key": "ctrl+shift++",
+                "mac": "cmd+shift++",
                 "command": "vscode-md-spreadsheet.insertCopiedCells",
                 "when": "activeCustomEditorId == 'vscode-md-spreadsheet.editor'"
             }

@@ -242,6 +242,10 @@ export class SpreadsheetTable extends LitElement {
 
     // Handle insert-value-at-selection events (e.g., date/time shortcuts from extension)
     private _handleInsertValueAtSelection = (e: CustomEvent<{ value: string }>) => {
+        // Only handle if this table is the active one (prevents multi-table insertion)
+        const activeTable = (window as unknown as { activeSpreadsheetTable: SpreadsheetTable }).activeSpreadsheetTable;
+        if (activeTable !== this) return;
+
         const { value } = e.detail;
         const row = this.selectionCtrl.selectedRow;
         const col = this.selectionCtrl.selectedCol;
@@ -267,6 +271,10 @@ export class SpreadsheetTable extends LitElement {
 
     // Handle insert-copied-cells-at-selection events (Ctrl+Shift+= from extension)
     private _handleInsertCopiedCellsAtSelection = () => {
+        // Only handle if this table is the active one (prevents multi-table insertion)
+        const activeTable = (window as unknown as { activeSpreadsheetTable: SpreadsheetTable }).activeSpreadsheetTable;
+        if (activeTable !== this) return;
+
         const { clipboardCtrl, selectionCtrl } = this;
 
         // Only works when something is copied
