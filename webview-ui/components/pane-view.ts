@@ -33,6 +33,12 @@ export class PaneView extends LitElement {
     @state()
     private _tabContextMenu: { x: number; y: number; index: number; globalIndex: number } | null = null;
 
+    @state()
+    private _dragOverIndex: number | null = null;
+
+    @state()
+    private _dragOverSide: 'left' | 'right' | null = null;
+
     render() {
         if (!this.node || !this.tables.length) return html``;
 
@@ -55,9 +61,16 @@ export class PaneView extends LitElement {
 
                     return html`
                         <div
-                            class="tab ${isActive ? 'active' : ''}"
+                            class="tab ${isActive ? 'active' : ''} ${this._dragOverIndex === i &&
+                            this._dragOverSide === 'left'
+                                ? 'drag-over-left'
+                                : ''} ${this._dragOverIndex === i && this._dragOverSide === 'right'
+                                ? 'drag-over-right'
+                                : ''}"
                             draggable="${!isEditing}"
                             @dragstart="${(e: DragEvent) => this._handleDragStart(e, i, globalIdx)}"
+                            @dragover="${(e: DragEvent) => this._handleTabDragOver(e, i)}"
+                            @dragleave="${this._handleTabDragLeave}"
                             @click="${() => this._switchTab(i)}"
                             @contextmenu="${(e: MouseEvent) => this._handleTabContextMenu(e, i, globalIdx)}"
                             @dblclick="${() => this._startRenaming(globalIdx, table.name || undefined)}"
@@ -239,11 +252,32 @@ export class PaneView extends LitElement {
 
     private _handleTabBarDragLeave(e: DragEvent) {
         (e.currentTarget as HTMLElement).classList.remove('drag-over');
+        this._dragOverIndex = null;
+        this._dragOverSide = null;
     }
+
+    private _handleTabDragOver(e: DragEvent, index: number) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.dataTransfer!.dropEffect = 'move';
+
+        const target = e.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        const mid = rect.left + rect.width / 2;
+        this._dragOverIndex = index;
+        this._dragOverSide = e.clientX < mid ? 'left' : 'right';
+    }
+
+    private _handleTabDragLeave = () => {
+        this._dragOverIndex = null;
+        this._dragOverSide = null;
+    };
 
     private _handleTabBarDrop(e: DragEvent) {
         e.preventDefault();
         (e.currentTarget as HTMLElement).classList.remove('drag-over');
+        this._dragOverIndex = null;
+        this._dragOverSide = null;
 
         const data = this._parseDragData(e);
         if (!data || data.type !== 'tab-drag') return;

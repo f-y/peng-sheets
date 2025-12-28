@@ -48,6 +48,14 @@
     background-color: var(--vscode-tab-hoverBackground);
 }
 
+.tab.drag-over-left {
+    border-left: 2px solid var(--vscode-focusBorder);
+}
+
+.tab.drag-over-right {
+    border-right: 2px solid var(--vscode-focusBorder);
+}
+
 .tab-add {
     display: flex;
     align-items: center;

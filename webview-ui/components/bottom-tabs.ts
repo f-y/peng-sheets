@@ -232,7 +232,9 @@ export class BottomTabs extends LitElement {
                                 class="tab-item ${this.activeIndex === index ? 'active' : ''} ${tab.type === 'add-sheet'
                                     ? 'add-sheet-tab'
                                     : ''} ${this._dragOverIndex === index && this._dragOverSide === 'left'
-                                    ? 'drag-over'
+                                    ? 'drag-over-left'
+                                    : ''} ${this._dragOverIndex === index && this._dragOverSide === 'right'
+                                    ? 'drag-over-right'
                                     : ''}"
                                 draggable="${tab.type !== 'add-sheet' && this.editingIndex !== index}"
                                 @click="${(e: MouseEvent) => this._handleTabClick(e, index, tab)}"

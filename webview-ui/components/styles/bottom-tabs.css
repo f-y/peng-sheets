@@ -75,8 +75,12 @@
     justify-content: center;
 }
 
-.tab-item.drag-over {
+.tab-item.drag-over-left {
     border-left: 2px solid var(--vscode-focusBorder);
+}
+
+.tab-item.drag-over-right {
+    border-right: 2px solid var(--vscode-focusBorder);
 }
 
 .tab-input {
