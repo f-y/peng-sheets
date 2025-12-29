@@ -3,6 +3,16 @@ import { IPyodide, IVSCodeApi, IUpdateSpec, IVisualMetadata } from './types';
 // @ts-expect-error Vite raw import for Python module
 import pyodideCacheModule from '../../python-modules/pyodide_cache.py?raw';
 
+/**
+ * Service responsible for bridging VS Code Extension (TypeScript) and Pyodide (Python).
+ *
+ * Architecture:
+ * - **Single-threaded Queue**: Pyodide runs in the main thread (in Webview). To prevent race conditions
+ *   and ensure consistent state updates, all Python operations are queued via `_enqueueRequest`.
+ * - **State Management**: The Python backend (`md_spreadsheet_parser`) holds the source of truth for the
+ *   workbook state. This service pushes mutations to Python and broadcasts the resulting state updates
+ *   back to the VS Code extension via `_postUpdateMessage`.
+ */
 export class SpreadsheetService {
     private pyodide: IPyodide | null = null;
     private _requestQueue: Array<() => Promise<void>> = [];
@@ -104,6 +114,8 @@ export class SpreadsheetService {
                             };
 
                             // Delete cached site-packages
+                            // Note: We manually clean the Emscripten filesystem because the Python environment
+                            // might be in a broken state where `shutil` or other standard libs aren't importable.
                             rmRecursive(`${mountDir}/site-packages`);
 
                             // Delete version file
@@ -166,6 +178,12 @@ export class SpreadsheetService {
         return this.pyodide !== null;
     }
 
+    /**
+     * Enqueues a task ensuring sequential execution of Python operations.
+     * This is critical because Pyodide/WASM is single-threaded and non-reentrant for many operations.
+     * A new task is only started after the previous one completes (or fails).
+     */
+
     private _enqueueRequest(task: () => Promise<void>) {
         this._requestQueue.push(task);
         if (!this._isSyncing) {
@@ -194,6 +212,14 @@ export class SpreadsheetService {
         }
     }
 
+    /**
+     * Sends the result of a Python operation back to the VS Code extension.
+     * This triggers the extension to update the text document (editor) and eventually
+     * the webview will receive a `update` message with the new state.
+     *
+     * @param updateSpec The change specification returned by the Python backend.
+     * @param options Undo/Redo control flags.
+     */
     private _postUpdateMessage(
         updateSpec: IUpdateSpec,
         options: { undoStopBefore?: boolean; undoStopAfter?: boolean } = {}
@@ -288,6 +314,45 @@ export class SpreadsheetService {
         return await this.pyodide.runPythonAsync(code);
     }
 
+    /**
+     * Serializes a JavaScript value into a safe Python argument string.
+     *
+     * Strategy: `json.loads(<JSON string>)`
+     * We double-serialize (JSON.stringify inside JSON.stringify) to safely pass the value
+     * as a string literal to Python's `json.loads`.
+     *
+     * Why?
+     * - Handles `null` -> `None` conversion correctly.
+     * - Handles complex objects (arrays, dicts) automatically.
+     * - Prevents syntax errors from unescaped quotes in string arguments.
+     * - More robust than manual string interpolation.
+     */
+    private _toPythonArg(v: any): string {
+        return `json.loads(${JSON.stringify(JSON.stringify(v === undefined ? null : v))})`;
+    }
+
+    private async _runPythonFunction<T>(funcName: string, ...args: any[]): Promise<T | null> {
+        const argsStr = args.map((a) => this._toPythonArg(a)).join(', ');
+        const code = `
+            res = ${funcName}(${argsStr})
+            json.dumps(res) if res else "null"
+        `;
+        return this.runPython<T>(code);
+    }
+
+    /**
+     * Orchestrates the standard action flow:
+     * 1. Enqueues the request (serialization).
+     * 2. Executes the Python function.
+     * 3. Posts the result back to VS Code (communication).
+     */
+    private _performAction(funcName: string, ...args: any[]) {
+        this._enqueueRequest(async () => {
+            const result = await this._runPythonFunction<IUpdateSpec>(funcName, ...args);
+            if (result) this._postUpdateMessage(result);
+        });
+    }
+
     private _getDefaultColumnHeaders(): string[] {
         // Use global window variable injected by extension
         const lang = (window as unknown as { vscodeLanguage?: string }).vscodeLanguage || 'en';
@@ -300,76 +365,28 @@ export class SpreadsheetService {
     // --- Operations ---
 
     public updateTableMetadata(sheetIdx: number, tableIdx: number, name: string, description: string) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = update_table_metadata(
-                    ${sheetIdx}, 
-                    ${tableIdx}, 
-                    ${JSON.stringify(name)}, 
-                    ${JSON.stringify(description)}
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('update_table_metadata', sheetIdx, tableIdx, name, description);
     }
 
     public updateVisualMetadata(sheetIdx: number, tableIdx: number, metadata: IVisualMetadata) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = update_visual_metadata(
-                    ${sheetIdx},
-                    ${tableIdx},
-                    json.loads(${JSON.stringify(JSON.stringify(metadata))})
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('update_visual_metadata', sheetIdx, tableIdx, metadata);
     }
 
     public updateSheetMetadata(sheetIdx: number, metadata: Record<string, unknown>) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = update_sheet_metadata(
-                    ${sheetIdx},
-                    json.loads(${JSON.stringify(JSON.stringify(metadata))})
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('update_sheet_metadata', sheetIdx, metadata);
     }
 
     public addTable(sheetIdx: number, _tableName: string) {
         const headers = this._getDefaultColumnHeaders();
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = add_table(${sheetIdx}, ${JSON.stringify(headers)})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('add_table', sheetIdx, headers);
     }
 
     public renameTable(sheetIdx: number, tableIdx: number, newName: string) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = rename_table(${sheetIdx}, ${tableIdx}, ${JSON.stringify(newName)})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('rename_table', sheetIdx, tableIdx, newName);
     }
 
     public deleteTable(sheetIdx: number, tableIdx: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = delete_table(${sheetIdx}, ${tableIdx})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('delete_table', sheetIdx, tableIdx);
     }
 
     public updateRange(
@@ -386,11 +403,14 @@ export class SpreadsheetService {
             // Handle multi-cell range: update each cell individually
             for (let r = startRow; r <= endRow; r++) {
                 for (let c = startCol; c <= endCol; c++) {
-                    const result = await this.runPython<IUpdateSpec>(`
-                    res = update_cell(${sheetIdx}, ${tableIdx}, ${r}, ${c}, ${JSON.stringify(newValue)})
-                    json.dumps(res) if res else "null"
-                `);
-                    lastResult = result;
+                    lastResult = await this._runPythonFunction<IUpdateSpec>(
+                        'update_cell',
+                        sheetIdx,
+                        tableIdx,
+                        r,
+                        c,
+                        newValue
+                    );
                 }
             }
             // Only post update message once with the final result
@@ -401,83 +421,35 @@ export class SpreadsheetService {
     }
 
     public deleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = delete_row(${sheetIdx}, ${tableIdx}, ${rowIndex})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('delete_row', sheetIdx, tableIdx, rowIndex);
     }
 
     public deleteRows(sheetIdx: number, tableIdx: number, rowIndices: number[]) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = delete_rows(${sheetIdx}, ${tableIdx}, ${JSON.stringify(rowIndices)})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('delete_rows', sheetIdx, tableIdx, rowIndices);
     }
 
     public deleteColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = delete_column(${sheetIdx}, ${tableIdx}, ${colIndex})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('delete_column', sheetIdx, tableIdx, colIndex);
     }
 
     public deleteColumns(sheetIdx: number, tableIdx: number, colIndices: number[]) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = delete_columns(${sheetIdx}, ${tableIdx}, ${JSON.stringify(colIndices)})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('delete_columns', sheetIdx, tableIdx, colIndices);
     }
 
     public insertRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = insert_row(${sheetIdx}, ${tableIdx}, ${rowIndex})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('insert_row', sheetIdx, tableIdx, rowIndex);
     }
 
     public insertColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = insert_column(${sheetIdx}, ${tableIdx}, ${colIndex})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('insert_column', sheetIdx, tableIdx, colIndex);
     }
 
     public clearColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = clear_column(${sheetIdx}, ${tableIdx}, ${colIndex})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('clear_column', sheetIdx, tableIdx, colIndex);
     }
 
     public clearColumns(sheetIdx: number, tableIdx: number, colIndices: number[]) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = clear_columns(${sheetIdx}, ${tableIdx}, ${JSON.stringify(colIndices)})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('clear_columns', sheetIdx, tableIdx, colIndices);
     }
 
     public pasteCells(
@@ -488,20 +460,7 @@ export class SpreadsheetService {
         rows: string[][],
         includeHeaders: boolean = false
     ) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = paste_cells(
-                    ${sheetIdx}, 
-                    ${tableIdx}, 
-                    ${startRow}, 
-                    ${startCol}, 
-                    json.loads(${JSON.stringify(JSON.stringify(rows))}),
-                    ${includeHeaders ? 'True' : 'False'}
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('paste_cells', sheetIdx, tableIdx, startRow, startCol, rows, includeHeaders);
     }
 
     /**
@@ -516,24 +475,20 @@ export class SpreadsheetService {
             // Insert empty rows first, then paste data
             // Insert from bottom to top to maintain correct indices
             for (let i = 0; i < rowsData.length; i++) {
-                await this.runPython<IUpdateSpec>(`
-                    res = insert_row(${sheetIdx}, ${tableIdx}, ${targetRow})
-                    json.dumps(res) if res else "null"
-                `);
+                await this._runPythonFunction<IUpdateSpec>('insert_row', sheetIdx, tableIdx, targetRow);
             }
 
             // Now paste the data at target position
-            const result = await this.runPython<IUpdateSpec>(`
-                res = paste_cells(
-                    ${sheetIdx}, 
-                    ${tableIdx}, 
-                    ${targetRow}, 
-                    0, 
-                    json.loads(${JSON.stringify(JSON.stringify(rowsData))}),
-                    False
-                )
-                json.dumps(res) if res else "null"
-            `);
+            const result = await this._runPythonFunction<IUpdateSpec>(
+                'paste_cells',
+                sheetIdx,
+                tableIdx,
+                targetRow,
+                0,
+                rowsData,
+                false
+            );
+
             if (result) this._postUpdateMessage(result);
         });
     }
@@ -549,10 +504,7 @@ export class SpreadsheetService {
         this._enqueueRequest(async () => {
             // Insert empty columns first
             for (let i = 0; i < columnsData.length; i++) {
-                await this.runPython<IUpdateSpec>(`
-                    res = insert_column(${sheetIdx}, ${tableIdx}, ${targetCol})
-                    json.dumps(res) if res else "null"
-                `);
+                await this._runPythonFunction<IUpdateSpec>('insert_column', sheetIdx, tableIdx, targetCol);
             }
 
             // Transpose columnsData to row-major format for paste_cells
@@ -567,48 +519,25 @@ export class SpreadsheetService {
             }
 
             // Paste data at target column, row 0
-            const result = await this.runPython<IUpdateSpec>(`
-                res = paste_cells(
-                    ${sheetIdx}, 
-                    ${tableIdx}, 
-                    0, 
-                    ${targetCol}, 
-                    json.loads(${JSON.stringify(JSON.stringify(rowsData))}),
-                    True
-                )
-                json.dumps(res) if res else "null"
-            `);
+            const result = await this._runPythonFunction<IUpdateSpec>(
+                'paste_cells',
+                sheetIdx,
+                tableIdx,
+                0,
+                targetCol,
+                rowsData,
+                true
+            );
+
             if (result) this._postUpdateMessage(result);
         });
     }
     public moveRows(sheetIdx: number, tableIdx: number, rowIndices: number[], targetRowIndex: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = move_rows(
-                    ${sheetIdx},
-                    ${tableIdx},
-                    ${JSON.stringify(rowIndices)},
-                    ${targetRowIndex}
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('move_rows', sheetIdx, tableIdx, rowIndices, targetRowIndex);
     }
 
     public moveColumns(sheetIdx: number, tableIdx: number, colIndices: number[], targetColIndex: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = move_columns(
-                    ${sheetIdx},
-                    ${tableIdx},
-                    ${JSON.stringify(colIndices)},
-                    ${targetColIndex}
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('move_columns', sheetIdx, tableIdx, colIndices, targetColIndex);
     }
 
     public moveCells(
@@ -618,50 +547,16 @@ export class SpreadsheetService {
         destRow: number,
         destCol: number
     ) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = move_cells(
-                    ${sheetIdx},
-                    ${tableIdx},
-                    {"minR": ${sourceRange.minR}, "maxR": ${sourceRange.maxR}, "minC": ${sourceRange.minC}, "maxC": ${sourceRange.maxC}},
-                    ${destRow},
-                    ${destCol}
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('move_cells', sheetIdx, tableIdx, sourceRange, destRow, destCol);
     }
 
     public updateColumnFilter(sheetIdx: number, tableIdx: number, colIndex: number, filter: string[] | null) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = update_column_filter(
-                    ${sheetIdx},
-                    ${tableIdx},
-                    ${colIndex},
-                    json.loads(${JSON.stringify(JSON.stringify(filter || null))})
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('update_column_filter', sheetIdx, tableIdx, colIndex, filter);
     }
 
     public sortRows(sheetIdx: number, tableIdx: number, colIndex: number, direction: 'asc' | 'desc') {
-        this._enqueueRequest(async () => {
-            const ascending = direction === 'asc' ? 'True' : 'False';
-            const result = await this.runPython<IUpdateSpec>(`
-                res = sort_rows(
-                    ${sheetIdx},
-                    ${tableIdx},
-                    ${colIndex},
-                    ${ascending}
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        const ascending = direction === 'asc';
+        this._performAction('sort_rows', sheetIdx, tableIdx, colIndex, ascending);
     }
 
     public updateColumnAlign(
@@ -670,18 +565,7 @@ export class SpreadsheetService {
         colIndex: number,
         align: 'left' | 'center' | 'right' | null
     ) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = update_column_align(
-                    ${sheetIdx},
-                    ${tableIdx},
-                    ${colIndex},
-                    json.loads(${JSON.stringify(JSON.stringify(align))})
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('update_column_align', sheetIdx, tableIdx, colIndex, align);
     }
 
     public updateColumnFormat(
@@ -690,137 +574,52 @@ export class SpreadsheetService {
         colIndex: number,
         format: Record<string, unknown> | null
     ) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = update_column_format(
-                    ${sheetIdx},
-                    ${tableIdx},
-                    ${colIndex},
-                    json.loads(${JSON.stringify(JSON.stringify(format || null))})
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('update_column_format', sheetIdx, tableIdx, colIndex, format);
     }
 
     public updateColumnWidth(sheetIdx: number, tableIdx: number, colIndex: number, width: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = update_column_width(
-                    ${sheetIdx}, 
-                    ${tableIdx}, 
-                    ${colIndex}, 
-                    ${width}
-                )
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('update_column_width', sheetIdx, tableIdx, colIndex, width);
     }
 
     public addSheet(newSheetName: string, afterSheetIndex?: number, targetTabOrderIndex?: number) {
         const headers = this._getDefaultColumnHeaders();
-        const afterIdxParam = afterSheetIndex !== undefined ? afterSheetIndex : 'None';
-        const targetIdxParam = targetTabOrderIndex !== undefined ? targetTabOrderIndex : 'None';
-
-        this._enqueueRequest(async () => {
-            const updateSpec = await this.runPython<IUpdateSpec>(`
-                res = add_sheet(${JSON.stringify(newSheetName)}, ${JSON.stringify(headers)}, ${afterIdxParam}, ${targetIdxParam})
-                json.dumps(res) if res else "null"
-            `);
-
-            if (updateSpec) {
-                if (updateSpec.error) {
-                    console.error('Add Sheet failed:', updateSpec.error);
-                } else {
-                    this._postUpdateMessage(updateSpec);
-                }
-            }
-        });
+        const afterIdx = afterSheetIndex !== undefined ? afterSheetIndex : null;
+        const targetIdx = targetTabOrderIndex !== undefined ? targetTabOrderIndex : null;
+        this._performAction('add_sheet', newSheetName, headers, afterIdx, targetIdx);
     }
 
     public renameSheet(sheetIdx: number, newName: string) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = rename_sheet(${sheetIdx}, ${JSON.stringify(newName)})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('rename_sheet', sheetIdx, newName);
     }
 
     public deleteSheet(sheetIdx: number) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = delete_sheet(${sheetIdx})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('delete_sheet', sheetIdx);
     }
 
     public renameDocument(docIdx: number, newTitle: string) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = rename_document(${docIdx}, ${JSON.stringify(newTitle)})
-                json.dumps(res) if res else "null"
-            `);
-            if (result) {
-                if (result.error) {
-                    console.error('Rename Document failed:', result.error);
-                } else {
-                    this._postUpdateMessage(result);
-                }
-            }
-        });
+        this._performAction('rename_document', docIdx, newTitle);
     }
 
     public deleteDocument(docIdx: number) {
         this._enqueueRequest(async () => {
+            // Complex Transaction:
+            // 1. Delete the document logic in Python (removes internal state).
+            // 2. Regenerate the workbook metadata section in Python to reflect the removal.
+            // 3. Batches these two changes into a single update message to VS Code.
+            //    This ensures the physical markdown file updates atomically.
+
             // First call delete_document, then regenerate the workbook section
-            const deleteResult = await this.runPython<IUpdateSpec>(`
-                res = delete_document(${docIdx})
-                json.dumps(res) if res else "null"
-            `);
+            const deleteResult = await this._runPythonFunction<IUpdateSpec>('delete_document', docIdx);
+
             if (deleteResult) {
                 if (deleteResult.error) {
                     console.error('Delete Document failed:', deleteResult.error);
                 } else {
                     // Also regenerate workbook section to update metadata
-                    const regenerateResult = await this.runPython<IUpdateSpec>(`
-                        res = generate_and_get_range()
-                        json.dumps(res) if res else "null"
-                    `);
+                    const regenerateResult = await this._runPythonFunction<IUpdateSpec>('generate_and_get_range');
 
                     if (regenerateResult) {
-                        // Adjust coordinates for the second edit (metadata update)
-                        // Since we're batching them into a single transaction, both edits must target the PRE-edit document state.
-                        // The regenerateResult we got from Python is based on the POST-delete state.
-                        // So if the metadata section is AFTER the deleted section, we must shift it back (add deleted lines).
-                        const deletedCount = deleteResult.endLine! - deleteResult.startLine! + 1;
-                        const adjustedRegenerate = { ...regenerateResult };
-
-                        if (adjustedRegenerate.startLine! >= deleteResult.startLine!) {
-                            adjustedRegenerate.startLine = adjustedRegenerate.startLine! + deletedCount;
-                            adjustedRegenerate.endLine = adjustedRegenerate.endLine! + deletedCount;
-                        }
-
-                        this._postBatchUpdateMessage([
-                            {
-                                ...deleteResult,
-                                undoStopBefore: true,
-                                undoStopAfter: false
-                            },
-                            {
-                                ...adjustedRegenerate,
-                                undoStopBefore: false,
-                                undoStopAfter: true
-                            }
-                        ]);
-                    } else {
-                        // Fallback if regenerate fails (shouldn't happen)
-                        this._postUpdateMessage(deleteResult);
+                        this._postBatchUpdateMessage([deleteResult, regenerateResult]);
                     }
                 }
             }
@@ -842,13 +641,7 @@ export class SpreadsheetService {
     }
 
     public updateWorkbookTabOrder(tabOrder: Array<{ type: string; index: number }>) {
-        this._enqueueRequest(async () => {
-            const result = await this.runPython<IUpdateSpec>(`
-                res = update_workbook_tab_order(json.loads(${JSON.stringify(JSON.stringify(tabOrder))}))
-                json.dumps(res) if res else "null"
-            `);
-            if (result) this._postUpdateMessage(result);
-        });
+        this._performAction('update_workbook_tab_order', tabOrder);
     }
 
     public addDocument(
@@ -858,47 +651,22 @@ export class SpreadsheetService {
         insertAfterTabOrderIndex: number = -1
     ) {
         this._enqueueRequest(async () => {
+            // Complex Transaction:
+            // We need to insert a new document AND potentially update the workbook metadata (e.g. invalidating old offsets).
+            // Instead of two separate edits (which would create two undo steps), we run a Python script
+            // that performs the logic and constructs a single "whole file reconstruction" or merged changeset.
+            // This ensures atomic updates and a clean undo history.
+
             // Add the document and regenerate workbook in a single operation
             // This ensures only one undo step is created
             const result = await this.runPython<IUpdateSpec>(`
-                add_result = add_document(
+                res = add_document_and_get_full_update(
                     ${JSON.stringify(title)},
                     after_doc_index=${afterDocIndex},
                     after_workbook=${afterWorkbook ? 'True' : 'False'},
                     insert_after_tab_order_index=${insertAfterTabOrderIndex}
                 )
-                if add_result and not add_result.get('error'):
-                    # Get current md_text (which now includes the new document)
-                    current_md = md_text
-                    lines = current_md.split('\\n')
-                    original_line_count = len(lines)
-                    
-                    # Regenerate workbook content (includes metadata comment)
-                    wb_update = generate_and_get_range()
-                    
-                    # Embed the regenerated workbook content (with metadata) into the md_text
-                    if wb_update:
-                        wb_start = wb_update['startLine']
-                        wb_end = wb_update['endLine']
-                        # Keep trailing newline for proper spacing between metadata and Document
-                        wb_content = wb_update['content'].rstrip('\\n') + '\\n'
-                        
-                        # Replace workbook section with regenerated content
-                        lines = lines[:wb_start] + wb_content.split('\\n') + lines[wb_end + 1:]
-                        current_md = '\\n'.join(lines)
-                    
-                    # Return full file content directly (not in changes array)
-                    # _postUpdateMessage expects content/startLine/endLine at top level
-                    add_result['content'] = current_md
-                    add_result['startLine'] = 0
-                    add_result['endLine'] = original_line_count - 1
-                    add_result['endCol'] = 0
-                    
-                    # Get full state for UI update
-                    full_state = json.loads(get_state())
-                    add_result['workbook'] = full_state.get('workbook')
-                    add_result['structure'] = full_state.get('structure')
-                json.dumps(add_result) if add_result else "null"
+                json.dumps(res) if res else "null"
             `);
 
             if (result && !result.error) {

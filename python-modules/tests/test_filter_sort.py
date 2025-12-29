@@ -6,7 +6,6 @@ from headless_editor import (
     initialize_workbook,
     sort_rows,
     update_column_filter,
-    workbook,
 )
 
 BASIC_MD = """

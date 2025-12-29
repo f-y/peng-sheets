@@ -2,7 +2,6 @@ import json
 import os
 import sys
 
-import pytest
 
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 from headless_editor import (

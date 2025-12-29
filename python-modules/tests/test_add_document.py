@@ -216,3 +216,52 @@ class TestAddDocumentEdgeCases:
         # Should either error or add at end
         # Implementation decides exact behavior
         assert result is not None
+
+
+class TestAddDocumentAndGetFullUpdate:
+    """Tests for the atomic add_document_and_get_full_update function."""
+
+    def test_add_document_atomic_update(self, setup_hybrid_workbook):
+        """Verify that atomic add returns full consolidated update."""
+        editor = setup_hybrid_workbook
+
+        # Initial State:
+        # Overview (Doc 0)
+        # Workbook
+        # Appendix (Doc 1)
+
+        # Explicitly initialize tab order for this test to ensure robust verification
+        # The default parser doesn't auto-generate document entries in tab_order on load
+        initial_tab_order = [
+            {"type": "document", "index": 0},
+            {"type": "sheet", "index": 0},
+            {"type": "document", "index": 1},
+        ]
+        editor.update_workbook_tab_order(initial_tab_order)
+
+        # Add a new document in the middle
+        result = editor.add_document_and_get_full_update(
+            "Atomic Doc", after_doc_index=0
+        )
+
+        assert "error" not in result
+
+        # Verify structure of return object
+        assert "content" in result
+        assert "workbook" in result
+        assert "structure" in result
+
+        # Verify content integrity
+        content = result["content"]
+        assert "# Atomic Doc" in content
+        assert "# Overview" in content
+        assert "# Appendix" in content
+
+        # Verify metadata update is reflected in the single return payload
+        tab_order = result["workbook"]["metadata"]["tab_order"]
+        # Should have 4 items: Doc(0), New(1), Sheet(1), Appendix(2)
+        # Note: Index check depends on exact setup_hybrid_workbook state
+        # But we know Appendix index should have shifted
+
+        doc_entries = [x for x in tab_order if x["type"] == "document"]
+        assert len(doc_entries) == 3  # Overview, New, Appendix

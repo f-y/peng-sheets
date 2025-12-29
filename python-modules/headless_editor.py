@@ -1419,6 +1419,80 @@ def delete_document(doc_index):
     }
 
 
+def add_document_and_get_full_update(
+    title, after_doc_index=-1, after_workbook=False, insert_after_tab_order_index=-1
+):
+    """
+    Add a document and return the full file content update.
+    This encapsulates the logic of adding a document and then regenerating the workbook
+    metadata section to ensure atomic updates.
+
+    Args:
+        title: Title for the new document
+        after_doc_index: Insert after this document index (-1 for beginning)
+        after_workbook: If True, insert after the workbook section
+        insert_after_tab_order_index: Position in tab_order to insert after
+
+    Returns:
+        dict with 'content' (full file), 'workbook', 'structure' or 'error'
+    """
+    # 1. Add the document (updates md_text globally)
+    add_result = add_document(
+        title, after_doc_index, after_workbook, insert_after_tab_order_index
+    )
+
+    if add_result.get("error"):
+        return add_result
+
+    # 2. Get current md_text (which now includes the new document)
+    # We need to act on the global md_text which add_document modified
+    global md_text
+    current_md = md_text
+    lines = current_md.split("\n")
+    original_line_count = len(lines)
+
+    # 3. Regenerate workbook content (includes metadata comment updates)
+    # This detects the new structure and updates tab_order/metadata
+    wb_update = generate_and_get_range()
+
+    # 4. Embed the regenerated workbook content into the md_text
+    if wb_update and not wb_update.get("error"):
+        wb_start = wb_update["startLine"]
+        wb_end = wb_update["endLine"]
+
+        # Keep trailing newline for proper spacing between metadata and Document
+        # The content from generate_and_get_range usually ends with \n\n
+        # We trim one \n to fit into the line list splice cleanly if needed,
+        # but let's follow the logic: content replaces lines[start:end+1]
+        wb_content = wb_update["content"]
+        # If it ends with multiple newlines, we might want to preserve that structure,
+        # but split('\n') will create empty strings.
+        # Let's just use the content as is.
+        # Note: original TS logic did `.rstrip('\\n') + '\\n'`
+        wb_content_lines = wb_content.rstrip("\n").split("\n")
+        # Ensure at least one newline at end of block if it wasn't empty
+        if wb_content:
+            wb_content_lines.append("")
+
+        # Replace workbook section
+        # lines slice is exclusive at end, so +1 is correct for replacement range
+        lines = lines[:wb_start] + wb_content_lines + lines[wb_end + 1 :]
+        current_md = "\n".join(lines)
+
+    # 5. Get full state for UI update
+    full_state = json.loads(get_state())
+
+    return {
+        "content": current_md,
+        "startLine": 0,
+        "endLine": original_line_count
+        - 1,  # This might be slightly off if line count changed, but 'content' is full replacement
+        "endCol": 0,
+        "workbook": full_state.get("workbook"),
+        "structure": full_state.get("structure"),
+    }
+
+
 def move_document_section(
     from_doc_index,
     to_doc_index=None,

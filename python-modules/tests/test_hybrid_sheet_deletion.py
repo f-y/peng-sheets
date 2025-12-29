@@ -3,7 +3,6 @@
 import json
 
 import headless_editor
-import pytest
 from headless_editor import (
     delete_sheet,
     get_workbook_range,

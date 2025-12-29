@@ -88,7 +88,7 @@ describe('Rows Delete Event Integration', () => {
             // Check arguments: (0, 0, [1,2,3])
             // Remove spaces and newlines for robust comparison
             const normalized = deleteCall.replace(/\s/g, '');
-            expect(normalized).toContain('delete_rows(0,0,[1,2,3])');
+            expect(normalized).toContain('delete_rows(json.loads("0"),json.loads("0"),json.loads("[1,2,3]"))');
         }
     });
 });

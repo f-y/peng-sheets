@@ -1,7 +1,6 @@
 import json
 
 import headless_editor
-import pytest
 from headless_editor import clear_columns, delete_columns, initialize_workbook
 
 # Reuse mock config
