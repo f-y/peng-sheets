@@ -719,11 +719,14 @@ export class SpreadsheetService {
         });
     }
 
-    public addSheet(newSheetName: string) {
+    public addSheet(newSheetName: string, afterSheetIndex?: number, targetTabOrderIndex?: number) {
         const headers = this._getDefaultColumnHeaders();
+        const afterIdxParam = afterSheetIndex !== undefined ? afterSheetIndex : 'None';
+        const targetIdxParam = targetTabOrderIndex !== undefined ? targetTabOrderIndex : 'None';
+
         this._enqueueRequest(async () => {
             const updateSpec = await this.runPython<IUpdateSpec>(`
-                res = add_sheet(${JSON.stringify(newSheetName)}, ${JSON.stringify(headers)})
+                res = add_sheet(${JSON.stringify(newSheetName)}, ${JSON.stringify(headers)}, ${afterIdxParam}, ${targetIdxParam})
                 json.dumps(res) if res else "null"
             `);
 
@@ -855,30 +858,51 @@ export class SpreadsheetService {
         insertAfterTabOrderIndex: number = -1
     ) {
         this._enqueueRequest(async () => {
-            // First, add the document (this updates the in-memory workbook metadata)
+            // Add the document and regenerate workbook in a single operation
+            // This ensures only one undo step is created
             const result = await this.runPython<IUpdateSpec>(`
-                res = add_document(
+                add_result = add_document(
                     ${JSON.stringify(title)},
                     after_doc_index=${afterDocIndex},
                     after_workbook=${afterWorkbook ? 'True' : 'False'},
                     insert_after_tab_order_index=${insertAfterTabOrderIndex}
                 )
-                json.dumps(res) if res else "null"
+                if add_result and not add_result.get('error'):
+                    # Get current md_text (which now includes the new document)
+                    current_md = md_text
+                    lines = current_md.split('\\n')
+                    original_line_count = len(lines)
+                    
+                    # Regenerate workbook content (includes metadata comment)
+                    wb_update = generate_and_get_range()
+                    
+                    # Embed the regenerated workbook content (with metadata) into the md_text
+                    if wb_update:
+                        wb_start = wb_update['startLine']
+                        wb_end = wb_update['endLine']
+                        # Keep trailing newline for proper spacing between metadata and Document
+                        wb_content = wb_update['content'].rstrip('\\n') + '\\n'
+                        
+                        # Replace workbook section with regenerated content
+                        lines = lines[:wb_start] + wb_content.split('\\n') + lines[wb_end + 1:]
+                        current_md = '\\n'.join(lines)
+                    
+                    # Return full file content directly (not in changes array)
+                    # _postUpdateMessage expects content/startLine/endLine at top level
+                    add_result['content'] = current_md
+                    add_result['startLine'] = 0
+                    add_result['endLine'] = original_line_count - 1
+                    add_result['endCol'] = 0
+                    
+                    # Get full state for UI update
+                    full_state = json.loads(get_state())
+                    add_result['workbook'] = full_state.get('workbook')
+                    add_result['structure'] = full_state.get('structure')
+                json.dumps(add_result) if add_result else "null"
             `);
 
             if (result && !result.error) {
-                // Post the document addition first
                 this._postUpdateMessage(result);
-
-                // Then regenerate the workbook section to include updated metadata
-                const workbookUpdate = await this.runPython<IUpdateSpec>(`
-                    res = generate_and_get_range()
-                    json.dumps(res) if res else "null"
-                `);
-
-                if (workbookUpdate && !workbookUpdate.error) {
-                    this._postUpdateMessage(workbookUpdate);
-                }
             } else if (result?.error) {
                 console.error('add_document failed:', result.error);
                 this._isSyncing = false;

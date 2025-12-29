@@ -156,7 +156,9 @@ def generate_and_get_range():
     }
 
 
-def add_sheet(new_name, column_names=None):
+def add_sheet(
+    new_name, column_names=None, after_sheet_index=None, target_tab_order_index=None
+):
     # Handle add_sheet separately as it handles None workbook
     global workbook
     if workbook is None:
@@ -173,22 +175,53 @@ def add_sheet(new_name, column_names=None):
         new_sheet = Sheet(name=new_name, tables=[new_table])
 
         new_sheets = list(workbook.sheets)
-        new_sheet_index = len(new_sheets)  # Index of the new sheet
-        new_sheets.append(new_sheet)
 
-        # Update tab_order metadata to include the new sheet
-        current_metadata = dict(workbook.metadata) if workbook.metadata else {}
-        tab_order = list(current_metadata.get("tab_order", []))
+        # Determine insertion position
+        if after_sheet_index is not None and 0 <= after_sheet_index <= len(new_sheets):
+            # Insert at specified position
+            new_sheet_index = after_sheet_index
+            new_sheets.insert(new_sheet_index, new_sheet)
 
-        # If tab_order is empty, initialize with all existing sheets first
-        # This ensures new sheet is appended to end, not at beginning
-        if not tab_order and new_sheet_index > 0:
-            for i in range(new_sheet_index):
-                tab_order.append({"type": "sheet", "index": i})
+            # Renumber sheet indices in metadata for sheets after insertion point
+            current_metadata = dict(workbook.metadata) if workbook.metadata else {}
+            tab_order = list(current_metadata.get("tab_order", []))
 
-        # Add new sheet entry at the end of tab_order
-        tab_order.append({"type": "sheet", "index": new_sheet_index})
-        current_metadata["tab_order"] = tab_order
+            # Update indices of sheets that come after the insertion point
+            for item in tab_order:
+                if item["type"] == "sheet" and item["index"] >= new_sheet_index:
+                    item["index"] = item["index"] + 1
+
+            # Insert new sheet entry at specified tab_order position
+            if target_tab_order_index is not None:
+                tab_order.insert(
+                    target_tab_order_index, {"type": "sheet", "index": new_sheet_index}
+                )
+            else:
+                tab_order.append({"type": "sheet", "index": new_sheet_index})
+
+            current_metadata["tab_order"] = tab_order
+        else:
+            # Append at end (default behavior)
+            new_sheet_index = len(new_sheets)
+            new_sheets.append(new_sheet)
+
+            # Update tab_order metadata to include the new sheet
+            current_metadata = dict(workbook.metadata) if workbook.metadata else {}
+            tab_order = list(current_metadata.get("tab_order", []))
+
+            # If tab_order is empty, initialize with all existing sheets first
+            if not tab_order and new_sheet_index > 0:
+                for i in range(new_sheet_index):
+                    tab_order.append({"type": "sheet", "index": i})
+
+            # Add new sheet entry at specified position or end
+            if target_tab_order_index is not None:
+                tab_order.insert(
+                    target_tab_order_index, {"type": "sheet", "index": new_sheet_index}
+                )
+            else:
+                tab_order.append({"type": "sheet", "index": new_sheet_index})
+            current_metadata["tab_order"] = tab_order
 
         workbook = replace(workbook, sheets=new_sheets, metadata=current_metadata)
         return generate_and_get_range()
@@ -1132,7 +1165,11 @@ def add_document(
         insert_line = 0
 
     # Create new document content (with blank line separator)
-    new_doc_content = f"# {title}\n\n"
+    # Add blank line before title if not at the very beginning of the file
+    if insert_line > 0:
+        new_doc_content = f"\n# {title}\n\n"
+    else:
+        new_doc_content = f"# {title}\n\n"
 
     # Update md_text to include the new document
     # This is critical for subsequent calls like generate_and_get_range() to work correctly

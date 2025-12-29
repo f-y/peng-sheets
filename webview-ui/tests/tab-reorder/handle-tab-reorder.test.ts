@@ -74,7 +74,9 @@ function handleTabReorder(
     };
 
     // Helper: Check if a Document should be before Workbook based on new tab order
-    const shouldDocumentBeBeforeWorkbook = (newTabs: TestTab[]): { needed: boolean; docIndex?: number; targetTabOrderIndex?: number } => {
+    const shouldDocumentBeBeforeWorkbook = (
+        newTabs: TestTab[]
+    ): { needed: boolean; docIndex?: number; targetTabOrderIndex?: number } => {
         const newFirstSheetIdx = newTabs.findIndex((t) => t.type === 'sheet');
         if (newFirstSheetIdx <= 0) return { needed: false };
 
@@ -488,7 +490,7 @@ describe('handleTabReorder', () => {
         /**
          * Key principle: Regardless of WHICH tab is moved (Sheet or Document),
          * the final tab_order determines the physical file structure.
-         * 
+         *
          * If Sheet is moved right past Document, the result is the same as
          * moving Document left past Sheet - the Document should be first in file.
          */
@@ -498,7 +500,7 @@ describe('handleTabReorder', () => {
              * Initial: [Sheet 0, Document 0, Sheet 1, Sheet 2, Document 1]
              * Action: Move Sheet 0 to position 2 (after Document 0)
              * New tab_order: [Document 0, Sheet 0, Sheet 1, Sheet 2, Document 1]
-             * 
+             *
              * Since Document 0 is now first in tab_order, it should be
              * physically moved before the Workbook in the file.
              */
@@ -524,7 +526,7 @@ describe('handleTabReorder', () => {
              * Both of these should produce the same physical file structure:
              * 1. Move Sheet 0 to the right (past Document 0)
              * 2. Move Document 0 to the left (to position 0)
-             * 
+             *
              * Result: Document 0 should be physically before Workbook
              */
 
@@ -545,10 +547,10 @@ describe('handleTabReorder', () => {
             /**
              * File structure: [Document 0, Workbook (Sheet 0, Sheet 1, Sheet 2), Document 1, ...]
              * Initial tab_order: [Document 0, Sheet 0, Sheet 1, Sheet 2, Document 1]
-             * 
+             *
              * Action: Move Sheet 0 to position 0 (leftmost)
              * New tab_order: [Sheet 0, Document 0, Sheet 1, Sheet 2, Document 1]
-             * 
+             *
              * Since Sheet is now first in tab_order but Document 0 is physically
              * before Workbook in the file, we need to move Workbook before Document 0.
              */

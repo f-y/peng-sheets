@@ -97,18 +97,8 @@ class TestAddDocument:
         result = editor.add_document("New Doc", after_doc_index=0)
         assert "error" not in result
 
-        # Apply the change by updating md_text (simulating what extension does)
-        # In real flow, extension applies the edit via updateRange
-        # For test, we directly update and reinitialize
-        lines = editor.md_text.split("\n")
-        start = result["startLine"]
-        end = result["endLine"]
-        new_lines = (
-            lines[:start]
-            + result["content"].rstrip("\n").split("\n")
-            + lines[end + 1 :]
-        )
-        new_md = "\n".join(new_lines)
+        # add_document updates md_text directly, so we just reinitialize with it
+        new_md = editor.md_text
 
         # Reinitialize
         config = json.dumps({"rootMarker": "# Tables", "sheetHeaderLevel": 2})
