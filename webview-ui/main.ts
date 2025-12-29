@@ -602,34 +602,34 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet' && isSheetJSON(activeTab.data)
-                    ? html`
+                ? html`
                           <div class="sheet-container" style="height: 100%">
                               <layout-container
                                   .layout="${(activeTab.data as SheetJSON).metadata?.layout}"
                                   .tables="${(activeTab.data as SheetJSON).tables}"
                                   .sheetIndex="${activeTab.sheetIndex}"
                                   .dateFormat="${((this.config?.validation as Record<string, unknown>)
-                                      ?.dateFormat as string) || 'YYYY-MM-DD'}"
+                        ?.dateFormat as string) || 'YYYY-MM-DD'}"
                                   @save-requested="${this._handleSave}"
                               ></layout-container>
                           </div>
                       `
-                    : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
-                      ? html`
+                : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
+                    ? html`
                             <spreadsheet-document-view
                                 .title="${activeTab.title}"
                                 .content="${(activeTab.data as DocumentJSON).content}"
                                 @toolbar-action="${this._handleToolbarAction}"
                             ></spreadsheet-document-view>
                         `
-                      : html``}
+                    : html``}
                 ${activeTab.type === 'onboarding'
-                    ? html`
+                ? html`
                           <spreadsheet-onboarding
                               @create-spreadsheet="${this._onCreateSpreadsheet}"
                           ></spreadsheet-onboarding>
                       `
-                    : html``}
+                : html``}
             </div>
 
             <bottom-tabs
@@ -638,17 +638,17 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 .editingIndex="${this.editingTabIndex}"
                 @tab-select="${(e: CustomEvent) => (this.activeTabIndex = e.detail.index)}"
                 @tab-edit-start="${(e: CustomEvent) =>
-                    this._handleTabDoubleClick(e.detail.index, this.tabs[e.detail.index])}"
+                this._handleTabDoubleClick(e.detail.index, this.tabs[e.detail.index])}"
                 @tab-rename="${(e: CustomEvent) =>
-                    this._handleTabRename(e.detail.index, e.detail.tab, e.detail.newName)}"
+                this._handleTabRename(e.detail.index, e.detail.tab, e.detail.newName)}"
                 @tab-context-menu="${(e: CustomEvent) => {
-                    this.tabContextMenu = {
-                        x: e.detail.x,
-                        y: e.detail.y,
-                        index: e.detail.index,
-                        tabType: e.detail.tabType
-                    };
-                }}"
+                this.tabContextMenu = {
+                    x: e.detail.x,
+                    y: e.detail.y,
+                    index: e.detail.index,
+                    tabType: e.detail.tabType
+                };
+            }}"
                 @tab-reorder="${(e: CustomEvent) => this._handleTabReorder(e.detail.fromIndex, e.detail.toIndex)}"
                 @add-sheet-click="${this._handleAddSheet}"
             ></bottom-tabs>
@@ -660,12 +660,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 .tabType="${this.tabContextMenu?.tabType ?? 'sheet'}"
                 @rename="${() => this._renameTab(this.tabContextMenu!.index)}"
                 @delete="${() => {
-                    if (this.tabContextMenu?.tabType === 'sheet') {
-                        this._deleteSheet(this.tabContextMenu.index);
-                    } else {
-                        this._deleteDocument(this.tabContextMenu!.index);
-                    }
-                }}"
+                if (this.tabContextMenu?.tabType === 'sheet') {
+                    this._deleteSheet(this.tabContextMenu.index);
+                } else {
+                    this._deleteDocument(this.tabContextMenu!.index);
+                }
+            }}"
                 @add-document="${this._addDocumentFromMenu}"
                 @add-sheet="${this._addSheetFromMenu}"
                 @close="${() => (this.tabContextMenu = null)}"
@@ -675,8 +675,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             <confirmation-modal
                 .open="${this.confirmDeleteIndex !== null}"
                 title="${this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
-                    ? t('deleteDocument')
-                    : t('deleteSheet')}"
+                ? t('deleteDocument')
+                : t('deleteSheet')}"
                 confirmLabel="${t('delete')}"
                 cancelLabel="${t('cancel')}"
                 @confirm="${this._performDelete}"
@@ -687,10 +687,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                         this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
                             ? 'deleteDocumentConfirm'
                             : 'deleteSheetConfirm',
-                        `<span style="color: var(--vscode-textPreformat-foreground);">${
-                            this.confirmDeleteIndex !== null
-                                ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
-                                : ''
+                        `<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null
+                            ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
+                            : ''
                         }</span>`
                     )
                 )}
@@ -1036,6 +1035,85 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             // Check if there are documents after the workbook (last doc index > last sheet index)
             const lastDocIdx = this.tabs.reduce((acc, t, i) => (t.type === 'document' ? i : acc), -1);
             const hasDocsAfterWorkbook = lastDocIdx > lastSheetIdx;
+            const sheetCount = this.tabs.filter((t) => t.type === 'sheet').length;
+
+            // Helper: Compute what the new tab order would look like after this move
+            const computeNewTabOrder = (): typeof this.tabs => {
+                const newTabs = [...this.tabs];
+                const [moved] = newTabs.splice(fromIndex, 1);
+                const insertIdx = fromIndex < toIndex ? toIndex - 1 : toIndex;
+                newTabs.splice(insertIdx, 0, moved);
+                return newTabs;
+            };
+
+            // Helper: Check if a Document should be before Workbook based on new tab order
+            const shouldDocumentBeBeforeWorkbook = (
+                newTabs: typeof this.tabs
+            ): { needed: boolean; docIndex?: number; targetTabOrderIndex?: number } => {
+                const newFirstSheetIdx = newTabs.findIndex((t) => t.type === 'sheet');
+                if (newFirstSheetIdx <= 0) return { needed: false };
+
+                // Check if there's a document before the first sheet
+                for (let i = 0; i < newFirstSheetIdx; i++) {
+                    if (newTabs[i].type === 'document') {
+                        // Check if currently this doc is after workbook in file
+                        const currentDocIdx = this.tabs.findIndex((t) => t === newTabs[i]);
+                        if (currentDocIdx > firstSheetIdx) {
+                            return { needed: true, docIndex: newTabs[i].docIndex!, targetTabOrderIndex: i };
+                        }
+                    }
+                }
+                return { needed: false };
+            };
+
+            // Helper: Check if Workbook should be before a Document based on new tab order
+            const shouldWorkbookBeBeforeDocument = (
+                newTabs: typeof this.tabs
+            ): { needed: boolean; toDocIndex?: number; targetTabOrderIndex?: number } => {
+                const newFirstSheetIdx = newTabs.findIndex((t) => t.type === 'sheet');
+                // If no sheets or sheet is NOT first, no need to move workbook
+                if (newFirstSheetIdx !== 0) return { needed: false };
+
+                // Sheet is first in new tab_order. Check if currently a Document is before Workbook in file.
+                if (firstSheetIdx > 0) {
+                    for (let i = 0; i < firstSheetIdx; i++) {
+                        if (this.tabs[i].type === 'document') {
+                            return { needed: true, toDocIndex: this.tabs[i].docIndex!, targetTabOrderIndex: 0 };
+                        }
+                    }
+                }
+                return { needed: false };
+            };
+
+            // FIRST: For multi-sheet workbooks, check if this move requires physical adjustment
+            // This takes precedence over Sheet→Sheet reorder
+            if (sheetCount > 1) {
+                const newTabs = computeNewTabOrder();
+
+                // Check if a Document needs to move before Workbook
+                const docAdjustment = shouldDocumentBeBeforeWorkbook(newTabs);
+                if (docAdjustment.needed) {
+                    this.spreadsheetService.moveDocumentSection(
+                        docAdjustment.docIndex!,
+                        null,
+                        false,
+                        true,
+                        docAdjustment.targetTabOrderIndex!
+                    );
+                    return;
+                }
+
+                // Check if Workbook needs to move before a Document
+                const wbAdjustment = shouldWorkbookBeBeforeDocument(newTabs);
+                if (wbAdjustment.needed) {
+                    this.spreadsheetService.moveWorkbookSection(
+                        wbAdjustment.toDocIndex!,
+                        false,
+                        wbAdjustment.targetTabOrderIndex!
+                    );
+                    return;
+                }
+            }
 
             if (toTab?.type === 'sheet') {
                 // Sheet → Sheet: Physical reorder within workbook
@@ -1043,19 +1121,35 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 const toSheetIndex = toTab.sheetIndex!;
                 this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
             } else if (toTab?.type === 'document') {
-                // Sheet → Document position: Workbook crosses Document boundary (physical move)
-                // Move entire Workbook to BEFORE the target Document
-                const toDocIndex = toTab.docIndex!;
-                this.spreadsheetService.moveWorkbookSection(toDocIndex, false, toIndex);
+                // Sheet → Document position
+                if (sheetCount === 1) {
+                    // Single sheet = Workbook crosses Document boundary (physical move)
+                    // Python handles metadata (including sheetIndex recalculation)
+                    const toDocIndex = toTab.docIndex!;
+                    this.spreadsheetService.moveWorkbookSection(toDocIndex, false, toIndex);
+                    // Note: Do NOT call _updateTabOrder here - Python handles metadata correctly
+                } else {
+                    // Multiple sheets = Metadata-only (cross-type display order)
+                    this._reorderTabsArray(fromIndex, toIndex);
+                    this._updateTabOrder();
+                }
             } else if ((toTab?.type === 'add-sheet' || !toTab) && hasDocsAfterWorkbook) {
-                // Sheet → End of tabs (after last Document): Move Workbook to file end
-                const docCount = this.tabs.filter((t) => t.type === 'document').length;
-                this.spreadsheetService.moveWorkbookSection(docCount, false, toIndex);
+                // Sheet → End of tabs (after last Document)
+                if (sheetCount === 1) {
+                    // Single sheet = Move Workbook to file end
+                    // Python handles metadata
+                    const docCount = this.tabs.filter((t) => t.type === 'document').length;
+                    this.spreadsheetService.moveWorkbookSection(docCount, false, toIndex);
+                    // Note: Do NOT call _updateTabOrder here - Python handles metadata correctly
+                } else {
+                    // Multiple sheets = Metadata-only
+                    this._reorderTabsArray(fromIndex, toIndex);
+                    this._updateTabOrder();
+                }
             } else if (toTab?.type === 'add-sheet' || !toTab) {
-                // Sheet → add-sheet (no docs after): Just reorder within workbook (no-op for single sheet)
+                // Sheet → add-sheet (no docs after): Just reorder within workbook
                 const fromSheetIndex = fromTab.sheetIndex!;
-                const sheets = this.tabs.filter((t) => t.type === 'sheet');
-                const toSheetIndex = sheets.length;
+                const toSheetIndex = sheetCount;
                 this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
             } else {
                 // Fallback: metadata-only
@@ -1067,18 +1161,25 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
             if (toTab?.type === 'document') {
                 // Document → Document: Physical reorder in file
+                // Python updates both file content and metadata (including docIndex recalculation)
                 const toDocIndex = toTab.docIndex!;
                 this.spreadsheetService.moveDocumentSection(fromDocIndex, toDocIndex, false, false, toIndex);
+                // Note: Do NOT call _updateTabOrder here - it would overwrite Python's correct metadata
+                // with stale local docIndex values. Wait for server response to refresh tabs.
             } else if (!hasWorkbook) {
                 // No workbook exists - just reorder metadata
                 this._reorderTabsArray(fromIndex, toIndex);
                 this._updateTabOrder();
             } else if (toIndex <= firstSheetIdx) {
                 // Document → Before Workbook: Physical move
+                // Python updates both file content and metadata (including docIndex recalculation)
                 this.spreadsheetService.moveDocumentSection(fromDocIndex, null, false, true, toIndex);
+                // Note: Do NOT call _updateTabOrder here - Python handles metadata correctly
             } else if (toIndex > lastSheetIdx || toTab?.type === 'add-sheet' || !toTab) {
                 // Document → After Workbook: Physical move
+                // Python updates both file content and metadata (including docIndex recalculation)
                 this.spreadsheetService.moveDocumentSection(fromDocIndex, null, true, false, toIndex);
+                // Note: Do NOT call _updateTabOrder here - Python handles metadata correctly
             } else {
                 // Document → Between sheets (inside Workbook UI): Metadata-only
                 this._reorderTabsArray(fromIndex, toIndex);

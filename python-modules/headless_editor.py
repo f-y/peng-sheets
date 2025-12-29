@@ -1529,7 +1529,25 @@ def move_document_section(
         # If we moved physically, we simply need to Apply the same index shift logic
         # move_sheet logic: pop from_index, insert at to_index
         # We need effective to_index.
-        effective_to_index = to_doc_index if to_doc_index is not None else 0  # Fallback
+        if to_doc_index is not None:
+            effective_to_index = to_doc_index
+        else:
+            # to_before_workbook=True or to_after_workbook=True case
+            # Derive effective_to_index from target_tab_order_index:
+            # Count how many Document items are in tab_order list BEFORE the target position
+            # (excluding the item being moved)
+            tab_order = (
+                workbook.metadata.get("tab_order", []) if workbook.metadata else []
+            )
+
+            docs_before_target = 0
+            for i in range(min(target_tab_order_index, len(tab_order))):
+                item = tab_order[i]
+                if item["type"] == "document" and item["index"] != from_doc_index:
+                    docs_before_target += 1
+
+            # The moved document will be placed at this document index
+            effective_to_index = docs_before_target
 
         updated_workbook = _reorder_tab_metadata(
             workbook,
@@ -1546,6 +1564,37 @@ def move_document_section(
 
     if updated_workbook != workbook:
         workbook = updated_workbook
+
+        # Replace old metadata comment in new_md with updated metadata
+        # This ensures the returned Markdown has the correct tab_order
+        if workbook.metadata:
+            import re
+
+            new_metadata_json = json.dumps(workbook.metadata, ensure_ascii=False)
+            new_metadata_comment = (
+                f"<!-- md-spreadsheet-workbook-metadata: {new_metadata_json} -->"
+            )
+
+            # Replace existing metadata comment
+            metadata_pattern = r"<!-- md-spreadsheet-workbook-metadata: \{.*?\} -->"
+            if re.search(metadata_pattern, new_md):
+                new_md = re.sub(metadata_pattern, new_metadata_comment, new_md)
+            else:
+                # Metadata comment doesn't exist - need to insert it after the workbook section
+                config_dict = json.loads(config) if config else {}
+                root_marker = config_dict.get("rootMarker", "# Tables")
+                sheet_header_level = config_dict.get("sheetHeaderLevel", 2)
+
+                new_lines_list = new_md.split("\n")
+                wb_start, wb_end = get_workbook_range(
+                    new_md, root_marker, sheet_header_level
+                )
+
+                if wb_end <= len(new_lines_list):
+                    insert_idx = min(wb_end, len(new_lines_list))
+                    new_lines_list.insert(insert_idx, "")
+                    new_lines_list.insert(insert_idx + 1, new_metadata_comment)
+                    new_md = "\n".join(new_lines_list)
 
     # Return the full new content for the file
     return {
@@ -1686,15 +1735,81 @@ def move_workbook_section(
     # Update global md_text
     md_text = new_md
 
-    # Note: tab_order metadata doesn't change because sheet indices within workbook
-    # remain the same. Only the physical position of the workbook changes.
+    # Update tab_order metadata: Move all sheets to their new position in tab_order list
+    # When Workbook moves (e.g., to position 0), all sheets should be moved to that position
+    updated_workbook = workbook
+    metadata_changed = False
+
+    if workbook is not None and target_tab_order_index is not None:
+        metadata = dict(workbook.metadata) if workbook.metadata else {}
+        tab_order = list(metadata.get("tab_order", []))
+
+        if tab_order:
+            # Extract all sheet items and non-sheet items
+            sheet_items = [item for item in tab_order if item["type"] == "sheet"]
+            non_sheet_items = [item for item in tab_order if item["type"] != "sheet"]
+
+            # Build new tab_order with sheets at target position
+            new_tab_order = []
+            sheets_inserted = False
+
+            # Insert sheets at target_tab_order_index position (relative to non-sheet items)
+            for i, item in enumerate(non_sheet_items):
+                # Calculate position in original non-sheet list
+                if not sheets_inserted and target_tab_order_index <= i:
+                    new_tab_order.extend(sheet_items)
+                    sheets_inserted = True
+                new_tab_order.append(item)
+
+            # If sheets weren't inserted (target is at end)
+            if not sheets_inserted:
+                new_tab_order.extend(sheet_items)
+
+            metadata["tab_order"] = new_tab_order
+            updated_workbook = replace(workbook, metadata=metadata)
+            metadata_changed = True
+
+    if updated_workbook != workbook:
+        workbook = updated_workbook
+
+        # Replace old metadata comment in new_md with updated metadata
+        if workbook.metadata:
+            import re
+
+            new_metadata_json = json.dumps(workbook.metadata, ensure_ascii=False)
+            new_metadata_comment = (
+                f"<!-- md-spreadsheet-workbook-metadata: {new_metadata_json} -->"
+            )
+
+            metadata_pattern = r"<!-- md-spreadsheet-workbook-metadata: \{.*?\} -->"
+            if re.search(metadata_pattern, new_md):
+                new_md = re.sub(metadata_pattern, new_metadata_comment, new_md)
+            else:
+                # Metadata comment doesn't exist - need to insert it after the workbook section
+                # Find the end of the workbook (before the next top-level section or EOF)
+                config_dict = json.loads(config) if config else {}
+                root_marker = config_dict.get("rootMarker", "# Tables")
+                sheet_header_level = config_dict.get("sheetHeaderLevel", 2)
+
+                # Find where workbook ends in the new content
+                new_lines_list = new_md.split("\n")
+                wb_start, wb_end = get_workbook_range(
+                    new_md, root_marker, sheet_header_level
+                )
+
+                # Insert metadata comment at the end of workbook section
+                if wb_end <= len(new_lines_list):
+                    insert_idx = min(wb_end, len(new_lines_list))
+                    new_lines_list.insert(insert_idx, "")
+                    new_lines_list.insert(insert_idx + 1, new_metadata_comment)
+                    new_md = "\n".join(new_lines_list)
 
     return {
         "content": new_md,
         "startLine": 0,
         "endLine": len(lines) - 1,
         "file_changed": True,
-        "metadata_changed": False,
+        "metadata_changed": metadata_changed,
     }
 
 
@@ -1751,8 +1866,12 @@ def _reorder_tab_metadata(wb, item_type, from_idx, to_idx, target_tab_order_inde
         return wb
 
     max_index = max(indices_in_tab_order)
-    # Safety: ensure we cover at least up to from/to
-    max_index = max(max_index, from_idx, to_idx)
+    # Safety: if from_idx is out of current range, extend
+    max_index = max(max_index, from_idx)
+    # Note: to_idx can be max_index + 1 to indicate "end position"
+    # But for the dummy list, we only need indices that actually exist
+    # Clamp to_idx to the valid range for insertion (0 <= to_idx <= max_index)
+    clamped_to_idx = min(to_idx, max_index)
 
     # Create dummy list representing physical positions
     # item at index i holds the original index 'i'
@@ -1760,8 +1879,8 @@ def _reorder_tab_metadata(wb, item_type, from_idx, to_idx, target_tab_order_inde
 
     if from_idx < len(dummy_list):
         moved_item = dummy_list.pop(from_idx)
-        # clamp insert
-        insert_idx = max(0, min(to_idx, len(dummy_list)))
+        # clamp insert position
+        insert_idx = max(0, min(clamped_to_idx, len(dummy_list)))
         dummy_list.insert(insert_idx, moved_item)
 
     # New position in dummy_list is 'p', value is 'old_index'
