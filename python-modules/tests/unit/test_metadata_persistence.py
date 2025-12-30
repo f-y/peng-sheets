@@ -13,7 +13,7 @@ def test_metadata_persistence_insert_column():
 | --- | --- |
 | A | B |
 
-<!-- md-spreadsheet-metadata: {"validation": {"0": {"type": "list", "values": ["A", "B"]}}} -->
+<!-- md-spreadsheet-table-metadata: {"validation": {"0": {"type": "list", "values": ["A", "B"]}}} -->
 """
 
     # EditorContext.get_instance() # context is singleton, init via api
@@ -27,7 +27,9 @@ def test_metadata_persistence_insert_column():
     assert "error" not in result, f"Operation failed: {result.get('error')}"
 
     content = result.get("content", "")
-    assert "md-spreadsheet-metadata" in content, "Metadata block missing from update"
+    assert "md-spreadsheet-table-metadata" in content, (
+        "Metadata block missing from update"
+    )
 
     # Check validation shift
     # Expected: "1": { ... }

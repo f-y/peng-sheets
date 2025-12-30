@@ -16,7 +16,7 @@
 | a |  |  |  |  |
 | a |  |  |  |  |
 
-<!-- md-spreadsheet-metadata: {"columns": {"2": {"width": 203}}} -->
+<!-- md-spreadsheet-table-metadata: {"columns": {"2": {"width": 203}}} -->
 
 ### Table 2
 
@@ -29,7 +29,7 @@
 | a |  |  |  |
 |  | a |  |  |
 
-<!-- md-spreadsheet-metadata: {"column_widths": {"3": 140}, "columns": {"2": {"width": 280}, "1": {"width": 232}, "0": {"width": 213}}} -->
+<!-- md-spreadsheet-table-metadata: {"column_widths": {"3": 140}, "columns": {"2": {"width": 280}, "1": {"width": 232}, "0": {"width": 213}}} -->
 
 ### Table 3
 

@@ -57,7 +57,7 @@
 | 49 | Item 49 | 490 | Description for item 49 |
 | 50 | Item 50 | 500 | Description for item 50 |
 
-<!-- md-spreadsheet-metadata: {"column_widths": {"3": 205}} -->
+<!-- md-spreadsheet-table-metadata: {"column_widths": {"3": 205}} -->
 
 ## 500 Rows
 
@@ -566,7 +566,7 @@
 | 499 | Item 499 | 4990 | Description for item 499 |
 | 500 | Item 500 | 5000 | Description for item 500 |
 
-<!-- md-spreadsheet-metadata: {"column_widths": {"3": 216}} -->
+<!-- md-spreadsheet-table-metadata: {"column_widths": {"3": 216}} -->
 
 ## 1000 Rows
 
