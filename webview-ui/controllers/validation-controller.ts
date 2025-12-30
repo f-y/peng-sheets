@@ -10,59 +10,16 @@
  */
 
 import { ReactiveController, ReactiveControllerHost } from 'lit';
+import type {
+    ListValidationRule,
+    DateValidationRule,
+    IntegerValidationRule,
+    EmailValidationRule,
+    UrlValidationRule
+} from '../types/metadata';
 
 /**
- * Validation rule types
- */
-export type ValidationRuleType = 'list' | 'date' | 'integer' | 'email' | 'url';
-
-/**
- * Base validation rule interface
- */
-export interface ValidationRuleBase {
-    type: ValidationRuleType;
-}
-
-/**
- * List validation rule - value must be one of the predefined values
- */
-export interface ListValidationRule extends ValidationRuleBase {
-    type: 'list';
-    values: string[];
-}
-
-/**
- * Date validation rule - value must be ISO8601 date (YYYY-MM-DD)
- */
-export interface DateValidationRule extends ValidationRuleBase {
-    type: 'date';
-}
-
-/**
- * Integer validation rule - value must be an integer, optionally within range
- */
-export interface IntegerValidationRule extends ValidationRuleBase {
-    type: 'integer';
-    min?: number;
-    max?: number;
-}
-
-/**
- * Email validation rule - value must be valid email format
- */
-export interface EmailValidationRule extends ValidationRuleBase {
-    type: 'email';
-}
-
-/**
- * URL validation rule - value must be valid URL format
- */
-export interface UrlValidationRule extends ValidationRuleBase {
-    type: 'url';
-}
-
-/**
- * Union type for all validation rules
+ * Union type for all validation rules (re-constructed from generated interfaces)
  */
 export type ValidationRule =
     | ListValidationRule
@@ -70,6 +27,20 @@ export type ValidationRule =
     | IntegerValidationRule
     | EmailValidationRule
     | UrlValidationRule;
+
+// Export these for consumers
+export type {
+    ListValidationRule,
+    DateValidationRule,
+    IntegerValidationRule,
+    EmailValidationRule,
+    UrlValidationRule
+};
+
+/**
+ * Validation rule types
+ */
+export type ValidationRuleType = ValidationRule['type'];
 
 /**
  * Map of column index to validation rule
@@ -102,8 +73,8 @@ export class ValidationController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected(): void {}
-    hostDisconnected(): void {}
+    hostConnected(): void { }
+    hostDisconnected(): void { }
 
     /**
      * Get the validation rule for a specific column

@@ -5,20 +5,18 @@
  * for moving between visible rows (respecting filters).
  */
 
-import { NumberFormat } from '../utils/spreadsheet-helpers';
+import type { VisualMetadata } from '../types/metadata';
 
-export interface ColumnDisplayFormat {
-    wordWrap?: boolean;
-    numberFormat?: NumberFormat;
-}
+export { VisualMetadata };
 
-export interface VisualMetadata {
-    filters?: Record<string, string[]>;
-    column_widths?: number[] | Record<number, number>;
-    columns?: Record<string, { align?: string; format?: ColumnDisplayFormat }>;
-    align?: string;
-    format?: unknown;
-}
+// Re-export ColumnFormat as ColumnDisplayFormat for compatibility if needed, 
+// or denote that it is from metadata.
+// However, ColumnFormat from metadata.d.ts uses its own NumberFormat definition (structural).
+// We might need to cast or align them.
+// For now, let's keep ColumnDisplayFormat as alias to ColumnFormat?
+// But ColumnFormat refers to generated NumberFormat.
+// Existing code uses utils NumberFormat.
+// Let's just import VisualMetadata.
 
 export interface RowVisibilityDependencies {
     /** Get the current table rows (2D array of cell values) */

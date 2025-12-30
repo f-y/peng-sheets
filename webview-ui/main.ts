@@ -897,11 +897,20 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         if (this.workbook && this.workbook.sheets) {
             newSheetName = `Sheet ${this.workbook.sheets.length + 1}`;
         }
-        this.spreadsheetService.addSheet(newSheetName);
+
+        // Calculate append indices
+        const validTabs = this.tabs.filter((t) => t.type === 'sheet' || t.type === 'document');
+        const targetTabOrderIndex = validTabs.length;
+
+        const sheetCount = this.workbook?.sheets?.length ?? 0;
+        const afterSheetIndex = sheetCount - 1; // Append after last sheet
+
+        this.spreadsheetService.addSheet(newSheetName, afterSheetIndex, targetTabOrderIndex);
     }
 
     public addSheet(newSheetName: string) {
         if (this.spreadsheetService) {
+            // Default public method also appends
             this.spreadsheetService.addSheet(newSheetName);
         }
     }
@@ -909,44 +918,30 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     private async _addDocument() {
         this.addTabDropdown = null;
 
-        // Get current active tab to determine insertion position
-        const activeTab = this.tabs[this.activeTabIndex];
-        let afterDocIndex = -1;
+        // Calculate append indices (Always append to end)
+        const docTabs = this.tabs.filter((t) => t.type === 'document');
+        let afterDocIndex = -1; // Default to before everything if no docs
         let afterWorkbook = false;
-        // Use activeTabIndex for tab_order position (UI ordering)
-        const insertAfterTabOrderIndex = this.activeTabIndex;
 
-        if (activeTab?.type === 'document' && typeof activeTab.docIndex === 'number') {
-            // Document tab selected - add after this document
-            afterDocIndex = activeTab.docIndex;
-        } else if (activeTab?.type === 'sheet' || activeTab?.type === 'add-sheet') {
-            // Sheet tab selected - add after the LAST document (at file end)
-            // Find the highest document index to insert after it
-            const docTabs = this.tabs.filter((t) => t.type === 'document');
-            if (docTabs.length > 0) {
-                const maxDocIndex = Math.max(...docTabs.map((t) => t.docIndex!));
-                afterDocIndex = maxDocIndex;
-            } else {
-                // No documents exist - add after workbook
-                afterWorkbook = true;
-            }
+        if (docTabs.length > 0) {
+            // Add after the last document found
+            afterDocIndex = Math.max(...docTabs.map((t) => t.docIndex!));
         } else {
-            // No valid tab or fallback - add after last document or at end
-            const docTabs = this.tabs.filter((t) => t.type === 'document');
-            if (docTabs.length > 0) {
-                afterDocIndex = Math.max(...docTabs.map((t) => t.docIndex!));
-            } else {
-                afterWorkbook = true;
-            }
+            // No documents exist - add after workbook (at end of file)
+            afterWorkbook = true;
         }
+
+        const validTabs = this.tabs.filter((t) => t.type === 'sheet' || t.type === 'document');
+        // insertAfter: validTabs.length - 1 (last valid tab)
+        const insertAfterTabOrderIndex = validTabs.length - 1;
 
         // Generate default document name
         const docCount = this.tabs.filter((t) => t.type === 'document').length;
         const newDocName = `Document ${docCount + 1}`;
 
         // Store pending new tab index to select after update
-        // Simple rule: new tab will be at the position after current selection
-        this._pendingNewTabIndex = this.activeTabIndex + 1;
+        // New tab will be appended at the end
+        this._pendingNewTabIndex = validTabs.length;
 
         this.spreadsheetService.addDocument(newDocName, afterDocIndex, afterWorkbook, insertAfterTabOrderIndex);
     }
@@ -1016,14 +1011,11 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             }
 
             // Add "Add Sheet" button - this will be placed at the very end after reordering
-            const hasSheets = newTabs.some((t) => t.type === 'sheet');
-            if (hasSheets) {
-                newTabs.push({
-                    type: 'add-sheet',
-                    title: '+',
-                    index: newTabs.length
-                });
-            }
+            newTabs.push({
+                type: 'add-sheet',
+                title: '+',
+                index: newTabs.length
+            });
 
             // Reorder tabs based on tab_order metadata if available
             const tabOrder = this.workbook?.metadata?.tab_order as Array<{ type: string; index: number }> | undefined;

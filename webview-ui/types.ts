@@ -1,6 +1,8 @@
 import { IVisualMetadata } from './services/types';
 
-export type AlignmentType = 'left' | 'center' | 'right' | 'default';
+import type { Align } from './types/metadata';
+
+export type AlignmentType = Align | 'default';
 
 export interface TableJSON {
     name: string | null;

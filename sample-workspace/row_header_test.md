@@ -1575,7 +1575,7 @@
 | 999 | Item 999 | 9990 | Description for item 999 |
 | 1000 | Item 1000 | 10000 | Description for item 1000 |
 
-<!-- md-spreadsheet-metadata: {"column_widths": {"3": 188}} -->
+<!-- md-spreadsheet-table-metadata: {"column_widths": {"3": 188}} -->
 
 ## 10100 Rows
 
@@ -11684,5 +11684,5 @@
 | 10099 | Item 10099 | 100990 | Description for item 10099 |
 | 10100 | Item 10100 | 101000 | Description for item 10100 |
 
-<!-- md-spreadsheet-metadata: {"column_widths": {"3": 190}} -->
+<!-- md-spreadsheet-table-metadata: {"column_widths": {"3": 190}} -->
 

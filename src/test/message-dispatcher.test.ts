@@ -465,4 +465,38 @@ suite('MessageDispatcher Test Suite', () => {
             'Edit options should use start of first and end of last update'
         );
     });
+
+    test('CreateSpreadsheet: REPRO - Should include root marker when document is empty', async () => {
+        // Mock config to return empty string/undefined to trigger fallback to default
+        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
+            get: (_key: string) => '' // Simulate empty config
+        } as any);
+
+        // Document is empty
+        (mockContext.activeDocument!.getText as sinon.SinonStub).returns('');
+        // Mock line count for insert
+        (mockContext.activeDocument!.lineCount as any) = 1;
+        (mockContext.activeDocument!.lineAt as sinon.SinonStub).returns({
+            range: { end: new vscode.Position(0, 0) }
+        });
+
+        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
+
+        const dispatcher = new MessageDispatcher(mockContext);
+        await dispatcher.dispatch({ type: 'createSpreadsheet' });
+
+        assert.ok(applyEditStub.calledOnce);
+        const args = applyEditStub.firstCall.args[0] as vscode.WorkspaceEdit;
+
+        // WorkspaceEdit structure is complex, but we can check if it has entries
+        const entries = args.entries();
+        // [ [uri, [TextEdit]]]
+        assert.ok(entries.length > 0);
+        const edits = entries[0][1];
+        assert.ok(edits.length > 0);
+        const insertedText = edits[0].newText;
+
+        assert.ok(insertedText.includes('# Tables'), `Expected '# Tables' in output, got: ${insertedText}`);
+    });
 });
+

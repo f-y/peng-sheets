@@ -38,6 +38,6 @@ export interface IUpdateSpec {
     [key: string]: unknown;
 }
 
-export interface IVisualMetadata {
-    [key: string]: unknown;
-}
+import type { VisualMetadata } from '../types/metadata';
+
+export type IVisualMetadata = VisualMetadata;

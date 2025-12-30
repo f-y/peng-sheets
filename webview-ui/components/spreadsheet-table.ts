@@ -143,7 +143,7 @@ export class SpreadsheetTable extends LitElement {
             // Prioritize new "columns" structure for width
             if (visual && visual.columns) {
                 const widths: Record<number, number> = {};
-                const cols = visual.columns as Record<string, { width?: number }>;
+                const cols = visual.columns;
                 Object.entries(cols).forEach(([k, v]) => {
                     if (v.width !== undefined) {
                         const colIdx = Number(k);

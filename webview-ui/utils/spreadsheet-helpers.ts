@@ -5,12 +5,9 @@ import { marked } from 'marked';
  * Extracted from SpreadsheetTable for better organization and testability.
  */
 
-export interface NumberFormat {
-    type: 'number' | 'currency' | 'percent';
-    decimals?: number;
-    useThousandsSeparator?: boolean;
-    currencySymbol?: string;
-}
+import type { NumberFormat } from '../types/metadata';
+
+export type { NumberFormat };
 
 /**
  * Convert text to HTML suitable for contenteditable editing.

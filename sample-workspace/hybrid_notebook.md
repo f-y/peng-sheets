@@ -68,7 +68,7 @@ models = table.to_models(FeatureComparison)
 | a | 1 | 2 |
 | a | 1 | 2 |
 
-<!-- md-spreadsheet-metadata: {"filters": {"1": []}, "column_widths": {"1": 172, "2": 238}, "columns": {"1": {"format": {"numberFormat": {"type": "percent", "decimals": 0}}}, "2": {"format": {"numberFormat": {"type": "number", "decimals": 2}}}}} -->
+<!-- md-spreadsheet-table-metadata: {"filters": {"1": []}, "column_widths": {"1": 172, "2": 238}, "columns": {"1": {"format": {"numberFormat": {"type": "percent", "decimals": 0}}}, "2": {"format": {"numberFormat": {"type": "number", "decimals": 2}}}}} -->
 
 ### New Table 2
 
@@ -76,15 +76,23 @@ models = table.to_models(FeatureComparison)
 | --- | --- | --- |
 |  |  |  |
 
+<!-- md-spreadsheet-table-metadata: {"columns": {"1": {"width": 181}}} -->
+
 ### New Table 3
+
+| 列名1 | 列名2 | 新しい列 | 列名3 |
+| --- | --- | --- | --- |
+|  | Yes |  | 2025-12-02 |
+
+<!-- md-spreadsheet-table-metadata: {"validation": {"1": {"type": "list", "values": ["Yes", "No"]}, "3": {"type": "date"}}} -->
+
+### テーブル 4
 
 | 列名1 | 列名2 | 列名3 |
 | --- | --- | --- |
-|  | Yes | 2025-12-02 |
+|  |  |  |
 
-<!-- md-spreadsheet-metadata: {"validation": {"1": {"type": "list", "values": ["Yes", "No"]}, "2": {"type": "date"}}} -->
-
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [29.970695970695967, 70.02930402930403], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 0}, {"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2], "activeTableIndex": 0}]}} -->
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [29.970695970695967, 70.02930402930403], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 0}, {"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2, 3], "activeTableIndex": 0}]}} -->
 
 ## Comparison
 
@@ -102,7 +110,7 @@ Markdown Spreadsheet Suite と一般的なスプレッドシート（Excel）の
 | **Automation** | VBA / Macros | Python Scripting | `uv` エコシステムやPandasを直接活用可能。 |
 | **Version Control** | Difficult (Binary) | Native (Git) | PRレビューが可能。コンフリクト解消も容易。 |
 
-<!-- md-spreadsheet-metadata: {"column_widths": {"3": 463, "2": 170}} -->
+<!-- md-spreadsheet-table-metadata: {"column_widths": {"3": 463, "2": 170}} -->
 
 ### Keyboard Shortcuts
 
@@ -118,6 +126,8 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | **Edit Cell** | `F2` | `F2` | Grid |
 | **Select All** | `Ctrl+A` | `Cmd+A` | Grid |
 | **Find** | `Ctrl+F` | `Cmd+F` | Grid |
+
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "F3P9dZN2krJqp8Wi44FFL", "direction": "vertical", "sizes": [50, 50], "children": [{"type": "pane", "id": "root", "tables": [0], "activeTableIndex": 0}, {"type": "pane", "id": "H_YLuFJT9Y2fLKyaMFJB0", "tables": [1], "activeTableIndex": 0}]}} -->
 
 ## Project Status
 

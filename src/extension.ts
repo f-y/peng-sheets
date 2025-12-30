@@ -142,8 +142,8 @@ export async function findWheelFiles(context: vscode.ExtensionContext): Promise<
         ? vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide')
         : vscode.Uri.joinPath(context.extensionUri, 'resources');
 
-    let parser = 'md_spreadsheet_parser-0.7.2-py3-none-any.whl'; // Fallback
-    let editor = 'md_spreadsheet_editor-0.1.5-py3-none-any.whl'; // Fallback
+    let parser = 'md_spreadsheet_parser-0.8.0-py3-none-any.whl'; // Fallback
+    let editor = 'md_spreadsheet_editor-0.1.10-py3-none-any.whl'; // Fallback
 
     try {
         const entries = await vscode.workspace.fs.readDirectory(searchUri);

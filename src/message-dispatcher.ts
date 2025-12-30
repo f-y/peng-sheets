@@ -12,7 +12,7 @@ export interface HandlerContext {
 export class MessageDispatcher {
     private _messageQueue: Promise<void> = Promise.resolve();
 
-    constructor(private context: HandlerContext) {}
+    constructor(private context: HandlerContext) { }
 
     public async dispatch(message: unknown): Promise<void> {
         if (!this.isValidMessage(message)) {
@@ -197,14 +197,16 @@ export class MessageDispatcher {
         const wsEdit = new vscode.WorkspaceEdit();
         const docText = activeDocument.getText();
         const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
-        const rootMarker = config.get<string>('rootMarker') || '# Tables';
+        const rawRootMarker = config.get<string>('rootMarker');
+        const rootMarker = rawRootMarker && rawRootMarker.trim().length > 0 ? rawRootMarker : '# Tables';
 
         const escapedRoot = rootMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const pattern = escapedRoot.replace(/\\ /g, '\\s+').replace(/\s+/g, '\\s+');
         const rootRegex = new RegExp(pattern);
 
         const hasRoot = rootRegex.test(docText);
-        const isZombie = docText.trim().match(new RegExp(`^${pattern}$`));
+        const isEmpty = docText.trim().length === 0;
+        const isZombie = isEmpty || !!docText.trim().match(new RegExp(`^${pattern}$`));
 
         const [col1, col2] = getDefaultColumnNames();
 
