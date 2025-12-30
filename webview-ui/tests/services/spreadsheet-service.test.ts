@@ -77,4 +77,42 @@ describe('SpreadsheetService', () => {
         expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('My Table'));
         expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('My Desc'));
     });
+
+    it('should call deleteDocument using atomic update function', async () => {
+        // Setup mock return for full file update
+        const mockUpdate = {
+            content: "new content",
+            startLine: 0,
+            endLine: 100,
+            file_changed: true,
+            structure: {}
+        };
+        (mockPyodide.runPythonAsync as any).mockResolvedValue(JSON.stringify(mockUpdate));
+
+        service.deleteDocument(1);
+
+        // Wait for queue
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        // Verify correct Python function used
+        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(
+            expect.stringContaining('delete_document_and_get_full_update(')
+        );
+        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(
+            expect.stringContaining('json.loads("1")')
+        );
+
+        // Verify single message posted (not batch)
+        expect(mockVscode.postMessage).toHaveBeenCalledTimes(1);
+        expect(mockVscode.postMessage).toHaveBeenCalledWith(
+            expect.objectContaining({
+                content: "new content",
+                startLine: 0,
+                endLine: 100
+            })
+        );
+        // Verify it is NOT an array (batch)
+        const callArgs = (mockVscode.postMessage as any).mock.calls[0][0];
+        expect(Array.isArray(callArgs)).toBe(false);
+    });
 });

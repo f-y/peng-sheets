@@ -56,7 +56,37 @@ class FeatureComparison(BaseModel):
 models = table.to_models(FeatureComparison)
 ```
 
+
+# Document 3
+
 # Tables
+
+## Sheet 4
+
+| 列名1 | 列名2 | 列名3 |
+| --- | --- | --- |
+|  |  |  |
+| a | 1 | 2 |
+| a | 1 | 2 |
+| a | 1 | 2 |
+
+<!-- md-spreadsheet-metadata: {"filters": {"1": []}, "column_widths": {"1": 172, "2": 238}, "columns": {"1": {"format": {"numberFormat": {"type": "percent", "decimals": 0}}}, "2": {"format": {"numberFormat": {"type": "number", "decimals": 2}}}}} -->
+
+### New Table 2
+
+| 列名1 | 列名2 | 列名3 |
+| --- | --- | --- |
+|  |  |  |
+
+### New Table 3
+
+| 列名1 | 列名2 | 列名3 |
+| --- | --- | --- |
+|  | Yes | 2025-12-02 |
+
+<!-- md-spreadsheet-metadata: {"validation": {"1": {"type": "list", "values": ["Yes", "No"]}, "2": {"type": "date"}}} -->
+
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [38.76190476190476, 61.23809523809524], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 1}, {"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2], "activeTableIndex": 0}]}} -->
 
 ## Comparison
 
@@ -74,7 +104,7 @@ Markdown Spreadsheet Suite と一般的なスプレッドシート（Excel）の
 | **Automation** | VBA / Macros | Python Scripting | `uv` エコシステムやPandasを直接活用可能。 |
 | **Version Control** | Difficult (Binary) | Native (Git) | PRレビューが可能。コンフリクト解消も容易。 |
 
-<!-- md-spreadsheet-metadata: {"columnWidths": [120, 150, 150, 250], "column_widths": {"3": 203, "2": 140}} -->
+<!-- md-spreadsheet-metadata: {"column_widths": {"3": 463, "2": 170}} -->
 
 ### Keyboard Shortcuts
 
@@ -90,10 +120,6 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | **Edit Cell** | `F2` | `F2` | Grid |
 | **Select All** | `Ctrl+A` | `Cmd+A` | Grid |
 | **Find** | `Ctrl+F` | `Cmd+F` | Grid |
-
-<!-- md-spreadsheet-metadata: {"columnWidths": [120, 150, 150, 100], "column_widths": {"1": 154, "3": 74}} -->
-
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "bj8Sel_MhOaOgSSPa37Az", "direction": "horizontal", "sizes": [54.6875, 45.3125], "children": [{"type": "pane", "id": "root", "tables": [0], "activeTableIndex": 0}, {"type": "pane", "id": "IoTJSjtjfMDHHr7_gUszt", "tables": [1], "activeTableIndex": 0}]}} -->
 
 ## Project Status
 
@@ -111,8 +137,6 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | **Undo/Redo System** | 40 | 40 | 0 | 0 | 95.0% | ✅ Stable |
 | **Performance (10k rows)** | 10 | 8 | 1 | 1 | - | ⚠️ Perf |
 
-<!-- md-spreadsheet-metadata: {"columnWidths": [160, 100, 80, 80, 80, 80, 100]} -->
-
 ### Resource Allocation
 
 プロジェクトメンバーの割り当て状況です。
@@ -124,10 +148,6 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | **Charlie** | Frontend | 0% | 90% | 10% | 100% |
 | **Dave** | QA | 20% | 20% | 60% | 100% |
 | **Eve** | Design | 0% | 50% | 0% | 50% |
-
-<!-- md-spreadsheet-metadata: {"columnWidths": [100, 100, 100, 100, 100, 80]} -->
-
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "XoegvbgWzHkA8HXN-DI7F", "direction": "vertical", "sizes": [36.52849740932643, 63.47150259067357], "children": [{"type": "pane", "id": "root", "tables": [1], "activeTableIndex": 0}, {"type": "pane", "id": "mMCHOT36H8iX8s-byozmB", "tables": [0], "activeTableIndex": 0}]}} -->
 
 ## Sales Data
 
@@ -144,8 +164,6 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | 2024-03-20 | US-West | Pro License | 5 | $300 | $1,500 |
 | 2024-02-10 | EU-Central | Standard License | 10 | $100 | $1,000 |
 
-<!-- md-spreadsheet-metadata: {"columnWidths": [100, 100, 150, 80, 100, 100], "column_widths": {"5": 80}} -->
-
 ### Q2 Forecast
 
 第2四半期の売上予測データです。
@@ -157,11 +175,7 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | **June** | US-Region | +8% | $12,000 | High | 50% |
 | **Total** | - | - | $35,000 | - | - |
 
-<!-- md-spreadsheet-metadata: {"columnWidths": [100, 100, 120, 150, 100, 100], "column_widths": {"2": 130, "3": 164}} -->
-
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VZdoVuAp4BkC0IUeVll1Q", "direction": "vertical", "sizes": [44.315245478036175, 55.684754521963825], "children": [{"type": "pane", "id": "root", "tables": [0], "activeTableIndex": 0}, {"type": "pane", "id": "YAH8An6xc74WWoWVeZvs6", "tables": [1], "activeTableIndex": 0}]}} -->
-
-<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "document", "index": 1}, {"type": "sheet", "index": 1}, {"type": "sheet", "index": 2}]} -->
+<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "document", "index": 1}, {"type": "sheet", "index": 0}, {"type": "sheet", "index": 1}, {"type": "document", "index": 2}, {"type": "sheet", "index": 2}, {"type": "sheet", "index": 3}]} -->
 
 
 # Appendix

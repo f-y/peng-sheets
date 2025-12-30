@@ -1,6 +1,10 @@
 import json
 from dataclasses import replace
 
+# Global State (managed by the
+# State is now managed by md_spreadsheet_editor.context.EditorContext
+from md_spreadsheet_editor.context import EditorContext
+from md_spreadsheet_editor.services import workbook as workbook_service
 from md_spreadsheet_parser import (
     MultiTableParsingSchema,
     Sheet,
@@ -10,39 +14,38 @@ from md_spreadsheet_parser import (
 )
 from md_spreadsheet_parser.models import Table
 
-# Global State (managed by the runtime)
-workbook = None
-schema = None
-md_text = ""
-config = ""
-
 
 def apply_workbook_update(transform_func):
-    global workbook
-    if workbook is None:
-        return {"error": "No workbook"}
-    try:
-        workbook = transform_func(workbook)
-        return generate_and_get_range()
-    except Exception as e:
-        return {"error": str(e)}
+    ctx = EditorContext()
+    # Sync global workbook to context if changed (e.g. by tests)
+    global workbook, md_text
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
+
+    result = workbook_service.update_workbook(ctx, transform_func)
+
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def apply_sheet_update(sheet_idx, transform_func):
-    def wb_transform(wb):
-        new_sheets = list(wb.sheets)
-        if sheet_idx < 0 or sheet_idx >= len(new_sheets):
-            raise IndexError("Invalid sheet index")
+    ctx = EditorContext()
+    # Sync global workbook to context if changed (e.g. by tests)
+    global workbook, md_text
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-        target_sheet = new_sheets[sheet_idx]
-        new_sheet = transform_func(target_sheet)
-        new_sheets[sheet_idx] = new_sheet
-        return replace(wb, sheets=new_sheets)
+    result = workbook_service.apply_sheet_update(ctx, sheet_idx, transform_func)
 
-    return apply_workbook_update(wb_transform)
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def apply_table_update(sheet_idx, table_idx, transform_func):
+    # We might need to implement apply_table_update in services later or custom here
+    # For now, let's implement it here using apply_sheet_update
     def sheet_transform(sheet):
         new_tables = list(sheet.tables)
         if table_idx < 0 or table_idx >= len(new_tables):
@@ -57,240 +60,118 @@ def apply_table_update(sheet_idx, table_idx, transform_func):
 
 
 def get_workbook_range(md_text, root_marker, sheet_header_level):
-    lines = md_text.split("\n")
-    start_line = 0
-    found = False
-
-    in_code_block = False
-    if root_marker:
-        for i, line in enumerate(lines):
-            if line.strip().startswith("```"):
-                in_code_block = not in_code_block
-            if not in_code_block and line.strip() == root_marker:
-                start_line = i
-                found = True
-                break
-
-        if not found:
-            start_line = len(lines)
-
-    end_line = len(lines)
-
-    def get_level(s):
-        lvl = 0
-        for c in s:
-            if c == "#":
-                lvl += 1
-            else:
-                break
-        return lvl
-
-    # Start scanning from start_line to keep track of code blocks if needed?
-    # Actually, since start_line is a header (or 0/EOF), we can assume in_code_block is False at start_line.
-    # But if start_line is 0 and we didn't check root_marker (found=False), line 0 might be start of code block.
-    # However, if found=False, start_line=len(lines), so loop doesn't run.
-    # If found=True, start_line is the root marker (a header). So it's not in a code block.
-    # So resetting in_code_block = False is safe.
-
-    in_code_block = False
-    for i in range(start_line + 1, len(lines)):
-        line = lines[i].strip()
-        if line.startswith("```"):
-            in_code_block = not in_code_block
-
-        if not in_code_block and line.startswith("#"):
-            lvl = get_level(line)
-            if lvl < sheet_header_level:
-                end_line = i
-                break
-
-    return start_line, end_line
+    # This logic is duplicated in services/workbook.py but keeps legacy here for now if needed locally
+    # Ideally should use workbook_service version if possible or just keep utility
+    return workbook_service.get_workbook_range(md_text, root_marker, sheet_header_level)
 
 
 def generate_and_get_range():
-    global workbook, schema, md_text, config
+    ctx = EditorContext()
+    global md_text, workbook
+    ctx.update_state(md_text=md_text)
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
+    return workbook_service.generate_and_get_range(ctx)
 
-    # Generate Markdown (Full Workbook)
-    # Fix: If no sheets, remove the section entirely (including root marker)
-    if not workbook or not workbook.sheets:
-        new_md = ""
-    else:
-        assert schema is not None  # Schema should be set after initialize()
-        new_md = generate_workbook_markdown(workbook, schema)
 
-    # Determine replacement range
-    config_dict = json.loads(config) if config else {}
-    root_marker = config_dict.get("rootMarker", "# Tables")
-    sheet_header_level = config_dict.get("sheetHeaderLevel", 2)
-
-    start_line, end_line = get_workbook_range(md_text, root_marker, sheet_header_level)
-    lines = md_text.split("\n")
-
-    end_col = 0
-
-    # Case 1: end_line points beyond the file (workbook is at EOF)
-    # We need to replace up to and including the last character
-    if end_line >= len(lines):
-        end_line = len(lines) - 1
-        end_col = len(lines[end_line])
-    # Case 2: end_line points to a line within the file (workbook is followed by other content)
-    # end_line is the line of the NEXT section (e.g., "# Appendix")
-    # We should NOT include that line in our replacement
-    # So we set end_line to the previous line and end_col to its length
-    else:
-        # Move back to include the blank line before the next section if present
-        # The range should end at line end_line - 1, at its last character
-        if end_line > 0:
-            end_line = end_line - 1
-            end_col = len(lines[end_line])
-
-    # Handle case where start_line is beyond the file (appending to end)
-    if start_line >= len(lines):
-        start_line = len(lines) - 1
-
-    return {
-        "startLine": start_line,
-        "endLine": end_line,
-        "endCol": end_col,
-        "content": new_md + "\n\n",
-    }
+# Shimmed functions using new package structure
+import md_spreadsheet_editor.api as new_api
 
 
 def add_sheet(
     new_name, column_names=None, after_sheet_index=None, target_tab_order_index=None
 ):
-    # Handle add_sheet separately as it handles None workbook
-    global workbook
-    if workbook is None:
-        workbook = Workbook(sheets=[])
+    ctx = EditorContext()
+    global md_text, workbook
+    ctx.update_state(md_text=md_text)
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-    if column_names is None:
-        column_names = ["Column 1", "Column 2", "Column 3"]
+    result = new_api.add_sheet(
+        new_name, column_names, after_sheet_index, target_tab_order_index
+    )
 
-    try:
-        # Create new sheet manually with custom headers
-        new_table = Table(
-            headers=column_names, rows=[["" for _ in column_names]], metadata={}
-        )
-        new_sheet = Sheet(name=new_name, tables=[new_table])
-
-        new_sheets = list(workbook.sheets)
-
-        # Determine insertion position
-        if after_sheet_index is not None and 0 <= after_sheet_index <= len(new_sheets):
-            # Insert at specified position
-            new_sheet_index = after_sheet_index
-            new_sheets.insert(new_sheet_index, new_sheet)
-
-            # Renumber sheet indices in metadata for sheets after insertion point
-            current_metadata = dict(workbook.metadata) if workbook.metadata else {}
-            tab_order = list(current_metadata.get("tab_order", []))
-
-            # Update indices of sheets that come after the insertion point
-            for item in tab_order:
-                if item["type"] == "sheet" and item["index"] >= new_sheet_index:
-                    item["index"] = item["index"] + 1
-
-            # Insert new sheet entry at specified tab_order position
-            if target_tab_order_index is not None:
-                tab_order.insert(
-                    target_tab_order_index, {"type": "sheet", "index": new_sheet_index}
-                )
-            else:
-                tab_order.append({"type": "sheet", "index": new_sheet_index})
-
-            current_metadata["tab_order"] = tab_order
-        else:
-            # Append at end (default behavior)
-            new_sheet_index = len(new_sheets)
-            new_sheets.append(new_sheet)
-
-            # Update tab_order metadata to include the new sheet
-            current_metadata = dict(workbook.metadata) if workbook.metadata else {}
-            tab_order = list(current_metadata.get("tab_order", []))
-
-            # If tab_order is empty, initialize with all existing sheets first
-            if not tab_order and new_sheet_index > 0:
-                for i in range(new_sheet_index):
-                    tab_order.append({"type": "sheet", "index": i})
-
-            # Add new sheet entry at specified position or end
-            if target_tab_order_index is not None:
-                tab_order.insert(
-                    target_tab_order_index, {"type": "sheet", "index": new_sheet_index}
-                )
-            else:
-                tab_order.append({"type": "sheet", "index": new_sheet_index})
-            current_metadata["tab_order"] = tab_order
-
-        workbook = replace(workbook, sheets=new_sheets, metadata=current_metadata)
-        return generate_and_get_range()
-    except Exception as e:
-        return {"error": str(e)}
-
-
-def add_table(sheet_idx, column_names=None):
-    if column_names is None:
-        column_names = ["Column 1", "Column 2", "Column 3"]
-
-    def sheet_transform(sheet):
-        new_tables = list(sheet.tables)
-        new_table = Table(
-            name=f"New Table {len(new_tables) + 1}",
-            description="",
-            headers=column_names,
-            rows=[["" for _ in column_names]],
-            metadata={},
-        )
-        new_tables.append(new_table)
-        return replace(sheet, tables=new_tables)
-
-    return apply_sheet_update(sheet_idx, sheet_transform)
-
-
-def delete_table(sheet_idx, table_idx):
-    def sheet_transform(sheet):
-        new_tables = list(sheet.tables)
-        if table_idx < 0 or table_idx >= len(new_tables):
-            raise IndexError("Invalid table index")
-
-        del new_tables[table_idx]
-        return replace(sheet, tables=new_tables)
-
-    return apply_sheet_update(sheet_idx, sheet_transform)
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def delete_sheet(sheet_idx):
-    return apply_workbook_update(lambda wb: wb.delete_sheet(sheet_idx))
+    ctx = EditorContext()
+    global md_text, workbook
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
+
+    result = new_api.delete_sheet(sheet_idx)
+
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def rename_sheet(sheet_idx, new_name):
-    return apply_sheet_update(sheet_idx, lambda s: replace(s, name=new_name))
+    ctx = EditorContext()
+    global md_text, workbook
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
+
+    result = new_api.rename_sheet(sheet_idx, new_name)
+
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def move_sheet(from_index, to_index, target_tab_order_index=None):
-    def wb_transform(wb):
-        new_sheets = list(wb.sheets)
-        if from_index < 0 or from_index >= len(new_sheets):
-            raise IndexError("Invalid source index")
+    ctx = EditorContext()
+    global md_text, workbook
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-        sheet = new_sheets.pop(from_index)
+    result = new_api.move_sheet(from_index, to_index, target_tab_order_index)
 
-        # Clamp to_index to valid insertion points [0, len(new_sheets)]
-        # len(new_sheets) here is N-1 (after pop)
-        insert_idx = max(0, min(to_index, len(new_sheets)))
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
-        new_sheets.insert(insert_idx, sheet)
-        wb = replace(wb, sheets=new_sheets)
 
-        if target_tab_order_index is not None:
-            wb = _reorder_tab_metadata(
-                wb, "sheet", from_index, insert_idx, target_tab_order_index
-            )
+def add_table(sheet_idx, column_names=None):
+    ctx = EditorContext()
+    global md_text, workbook
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-        return wb
+    result = new_api.add_table(sheet_idx, column_names)
 
-    return apply_workbook_update(wb_transform)
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
+
+
+def delete_table(sheet_idx, table_idx):
+    ctx = EditorContext()
+    global md_text, workbook
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
+
+    result = new_api.delete_table(sheet_idx, table_idx)
+
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
+
+
+def rename_table(sheet_idx, table_idx, new_name):
+    ctx = EditorContext()
+    global md_text, workbook
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
+
+    result = new_api.rename_table(sheet_idx, table_idx, new_name)
+
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def update_workbook_tab_order(tab_order):
@@ -1030,61 +911,7 @@ def get_document_section_range(wb, section_index):
     Returns:
         dict with 'start_line' and 'end_line', or 'error' if not found
     """
-    global md_text, config
-
-    config_dict = json.loads(config) if config else {}
-    root_marker = config_dict.get("rootMarker", "# Tables")
-
-    lines = md_text.split("\n")
-    sections = []
-    current_section = None
-    current_start = None
-
-    in_code_block = False
-
-    for i, line in enumerate(lines):
-        if line.strip().startswith("```"):
-            in_code_block = not in_code_block
-
-        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
-            # End previous section
-            if current_section is not None:
-                sections.append(
-                    {
-                        "start": current_start,
-                        "end": i - 1,
-                        "type": current_section["type"],
-                    }
-                )
-
-            stripped = line.strip()
-            if stripped == root_marker:
-                current_section = {"type": "workbook"}
-            else:
-                current_section = {"type": "document"}
-            current_start = i
-
-    # Add final section
-    if current_section is not None:
-        sections.append(
-            {
-                "start": current_start,
-                "end": len(lines) - 1,
-                "type": current_section["type"],
-            }
-        )
-
-    # Find document sections only
-    doc_sections = [s for s in sections if s["type"] == "document"]
-
-    if section_index < 0 or section_index >= len(doc_sections):
-        return {"error": f"Invalid section index: {section_index}"}
-
-    target = doc_sections[section_index]
-    # Return end_col as length of the end line to cover the full line
-    end_line = target["end"]
-    end_col = len(lines[end_line]) if end_line < len(lines) else 0
-    return {"start_line": target["start"], "end_line": end_line, "end_col": end_col}
+    return new_api.get_document_section_range(section_index)
 
 
 def add_document(
@@ -1102,395 +929,81 @@ def add_document(
     Returns:
         dict with 'content', 'startLine', 'endLine', 'file_changed' or 'error'
     """
-    global md_text, config, workbook
+    ctx = EditorContext()
+    global md_text, workbook
+    ctx.update_state(md_text=md_text)
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-    if not title:
-        title = "New Document"
+    result = new_api.add_document(
+        title, after_doc_index, after_workbook, insert_after_tab_order_index
+    )
 
-    config_dict = json.loads(config) if config else {}
-    root_marker = config_dict.get("rootMarker", "# Tables")
-
-    lines = md_text.split("\n")
-    sections = []
-    current_start = None
-    current_type = None
-
-    in_code_block = False
-
-    for i, line in enumerate(lines):
-        if line.strip().startswith("```"):
-            in_code_block = not in_code_block
-
-        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
-            if current_start is not None:
-                sections.append(
-                    {"start": current_start, "end": i - 1, "type": current_type}
-                )
-
-            stripped = line.strip()
-            if stripped == root_marker:
-                current_type = "workbook"
-            else:
-                current_type = "document"
-            current_start = i
-
-    if current_start is not None:
-        sections.append(
-            {"start": current_start, "end": len(lines) - 1, "type": current_type}
-        )
-
-    # Determine insertion point
-    insert_line = 0
-    doc_count = 0
-
-    if after_workbook:
-        # Find workbook and insert after it
-        for s in sections:
-            if s["type"] == "workbook":
-                insert_line = s["end"] + 1
-                break
-    elif after_doc_index >= 0:
-        # Find the specific document and insert after it
-        for s in sections:
-            if s["type"] == "document":
-                if doc_count == after_doc_index:
-                    insert_line = s["end"] + 1
-                    break
-                doc_count += 1
-        else:
-            # If index not found, insert at end of file
-            insert_line = len(lines)
-    else:
-        # Insert at beginning (before first section or at line 0)
-        insert_line = 0
-
-    # Create new document content (with blank line separator)
-    # Add blank line before title if not at the very beginning of the file
-    if insert_line > 0:
-        new_doc_content = f"\n# {title}\n\n"
-    else:
-        new_doc_content = f"# {title}\n\n"
-
-    # Update md_text to include the new document
-    # This is critical for subsequent calls like generate_and_get_range() to work correctly
-    # Split new_doc_content into lines and insert them
-    new_lines = new_doc_content.split("\n")
-    # Remove trailing empty string from split (if content ends with \n)
-    if new_lines and new_lines[-1] == "":
-        new_lines = new_lines[:-1]
-    for i, line in enumerate(new_lines):
-        lines.insert(insert_line + i, line)
-    md_text = "\n".join(lines)
-
-    # Calculate the edit range
-    # We're inserting new content, so startLine = endLine = insert_line
-    # The frontend will insert the content at that position
-
-    # Update tab_order in workbook metadata
-    if workbook is not None:
-        current_metadata = dict(workbook.metadata) if workbook.metadata else {}
-        tab_order = list(current_metadata.get("tab_order", []))
-
-        # If tab_order is empty, initialize with all existing sheets and documents first
-        # This ensures new item is appended to end, not at beginning
-        if not tab_order:
-            # Add all existing sheets
-            for i in range(len(workbook.sheets)):
-                tab_order.append({"type": "sheet", "index": i})
-            # Note: documents are added to tab_order in this function, so no need to add existing docs
-
-        # Calculate the actual docIndex for the new document
-        # When inserting after doc N, the new doc will be at position N+1 in file order
-        if after_doc_index >= 0:
-            new_doc_index = after_doc_index + 1
-        else:
-            # Inserting at beginning - new doc will be docIndex 0
-            new_doc_index = 0
-
-        # Increment indices of all documents >= new_doc_index in tab_order
-        for i, entry in enumerate(tab_order):
-            if (
-                entry.get("type") == "document"
-                and entry.get("index", -1) >= new_doc_index
-            ):
-                tab_order[i] = {"type": "document", "index": entry["index"] + 1}
-
-        # Create new document entry
-        new_doc_entry = {"type": "document", "index": new_doc_index}
-
-        # Insert at specified position or append
-        if insert_after_tab_order_index >= 0:
-            # Insert after the specified index (clamped to valid range)
-            insert_pos = min(insert_after_tab_order_index + 1, len(tab_order))
-            tab_order.insert(insert_pos, new_doc_entry)
-        else:
-            # Append to end (default behavior)
-            tab_order.append(new_doc_entry)
-
-        current_metadata["tab_order"] = tab_order
-        workbook = replace(workbook, metadata=current_metadata)
-
-    return {
-        "content": new_doc_content,
-        "startLine": insert_line,
-        "endLine": insert_line,
-        "file_changed": True,
-    }
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def rename_document(doc_index, new_title):
-    """
-    Rename a document by changing its header.
-
-    Args:
-        doc_index: Index of the document to rename
-        new_title: New title for the document
-
-    Returns:
-        IUpdateSpec with the changes
-    """
+    ctx = EditorContext()
     global md_text, workbook
+    ctx.update_state(md_text=md_text)
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-    if not md_text:
-        return {"error": "No markdown content"}
+    result = new_api.rename_document(doc_index, new_title)
 
-    lines = md_text.split("\n")
-    config_dict = json.loads(config) if config else {}
-    root_marker = config_dict.get("rootMarker", "# Tables")
-    doc_header_level = config_dict.get("docHeaderLevel", 1)
-
-    # Find the document section
-    current_doc_index = 0
-    in_code_block = False
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-
-        # Track code block state
-        if stripped.startswith("```"):
-            in_code_block = not in_code_block
-            continue
-
-        # Skip lines inside code blocks
-        if in_code_block:
-            continue
-
-        # Check for document header (# Title)
-        if stripped.startswith("#") and stripped != root_marker:
-            # Count the header level
-            level = len(stripped) - len(stripped.lstrip("#"))
-            if level == doc_header_level:
-                if current_doc_index == doc_index:
-                    # Found the document - update the header
-                    old_header_length = len(lines[i])
-                    new_header = "#" * doc_header_level + " " + new_title
-                    lines[i] = new_header
-
-                    # Update md_text
-                    md_text = "\n".join(lines)
-
-                    return {
-                        "content": new_header,
-                        "startLine": i,
-                        "endLine": i,
-                        "endCol": old_header_length,
-                        "file_changed": True,
-                    }
-                current_doc_index += 1
-
-    return {"error": f"Document at index {doc_index} not found"}
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def delete_document(doc_index):
-    """
-    Delete a document section entirely.
-
-    Args:
-        doc_index: Index of the document to delete
-
-    Returns:
-        IUpdateSpec with the deletion line range
-    """
+    ctx = EditorContext()
     global md_text, workbook
+    ctx.update_state(md_text=md_text)
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-    if not md_text:
-        return {"error": "No markdown content"}
+    result = new_api.delete_document(doc_index)
 
-    lines = md_text.split("\n")
-    config_dict = json.loads(config) if config else {}
-    root_marker = config_dict.get("rootMarker", "# Tables")
-    doc_header_level = config_dict.get("docHeaderLevel", 1)
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
-    # Find document sections
-    sections = []
-    current_start = None
-    current_type = None
-    in_code_block = False
 
-    for i, line in enumerate(lines):
-        stripped = line.strip()
+def delete_document_and_get_full_update(doc_index):
+    # Sync globals to context
+    ctx = EditorContext()
+    global md_text, workbook
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-        # Track code block state
-        if stripped.startswith("```"):
-            in_code_block = not in_code_block
-            continue
+    result = new_api.delete_document_and_get_full_update(doc_index)
 
-        # Skip lines inside code blocks
-        if in_code_block:
-            continue
-
-        # Check for section headers
-        if stripped.startswith("#"):
-            level = len(stripped) - len(stripped.lstrip("#"))
-            if level == doc_header_level:
-                # This is a document or workbook header
-                if current_start is not None:
-                    sections.append(
-                        {"start": current_start, "end": i - 1, "type": current_type}
-                    )
-
-                if stripped == root_marker:
-                    current_type = "workbook"
-                else:
-                    current_type = "document"
-                current_start = i
-
-    if current_start is not None:
-        sections.append(
-            {"start": current_start, "end": len(lines) - 1, "type": current_type}
-        )
-
-    # Find the target document
-    current_doc_index = 0
-    target_section = None
-    for s in sections:
-        if s["type"] == "document":
-            if current_doc_index == doc_index:
-                target_section = s
-                break
-            current_doc_index += 1
-
-    if target_section is None:
-        return {"error": f"Document at index {doc_index} not found"}
-
-    # Calculate deletion range
-    start_line = target_section["start"]
-    end_line = target_section["end"]
-
-    # Remove trailing blank lines that belong to this section
-    while end_line > start_line and lines[end_line].strip() == "":
-        end_line -= 1
-
-    # Include one trailing blank line if it exists (for proper separation)
-    if end_line < len(lines) - 1:
-        end_line += 1
-
-    # Delete the section
-    del lines[start_line : end_line + 1]
-    md_text = "\n".join(lines)
-
-    # Update tab_order metadata to remove the document entry
-    if workbook and workbook.metadata:
-        current_metadata = dict(workbook.metadata)
-        tab_order = list(current_metadata.get("tab_order", []))
-        # Remove the document entry and decrement indices of subsequent documents
-        updated_tab_order = []
-        for entry in tab_order:
-            if entry.get("type") == "document":
-                if entry.get("index") == doc_index:
-                    continue  # Skip the deleted document
-                elif entry.get("index", 0) > doc_index:
-                    # Decrement indices of documents after the deleted one
-                    updated_tab_order.append(
-                        {"type": "document", "index": entry["index"] - 1}
-                    )
-                else:
-                    updated_tab_order.append(entry)
-            else:
-                updated_tab_order.append(entry)
-
-        current_metadata["tab_order"] = updated_tab_order
-        workbook = replace(workbook, metadata=current_metadata)
-
-    return {
-        "content": "",
-        "startLine": start_line,
-        "endLine": end_line,
-        "file_changed": True,
-    }
+    # Sync back
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def add_document_and_get_full_update(
     title, after_doc_index=-1, after_workbook=False, insert_after_tab_order_index=-1
 ):
-    """
-    Add a document and return the full file content update.
-    This encapsulates the logic of adding a document and then regenerating the workbook
-    metadata section to ensure atomic updates.
+    # Sync globals to context
+    ctx = EditorContext()
+    global md_text, workbook
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-    Args:
-        title: Title for the new document
-        after_doc_index: Insert after this document index (-1 for beginning)
-        after_workbook: If True, insert after the workbook section
-        insert_after_tab_order_index: Position in tab_order to insert after
-
-    Returns:
-        dict with 'content' (full file), 'workbook', 'structure' or 'error'
-    """
-    # 1. Add the document (updates md_text globally)
-    add_result = add_document(
+    result = new_api.add_document_and_get_full_update(
         title, after_doc_index, after_workbook, insert_after_tab_order_index
     )
 
-    if add_result.get("error"):
-        return add_result
-
-    # 2. Get current md_text (which now includes the new document)
-    # We need to act on the global md_text which add_document modified
-    global md_text
-    current_md = md_text
-    lines = current_md.split("\n")
-    original_line_count = len(lines)
-
-    # 3. Regenerate workbook content (includes metadata comment updates)
-    # This detects the new structure and updates tab_order/metadata
-    wb_update = generate_and_get_range()
-
-    # 4. Embed the regenerated workbook content into the md_text
-    if wb_update and not wb_update.get("error"):
-        wb_start = wb_update["startLine"]
-        wb_end = wb_update["endLine"]
-
-        # Keep trailing newline for proper spacing between metadata and Document
-        # The content from generate_and_get_range usually ends with \n\n
-        # We trim one \n to fit into the line list splice cleanly if needed,
-        # but let's follow the logic: content replaces lines[start:end+1]
-        wb_content = wb_update["content"]
-        # If it ends with multiple newlines, we might want to preserve that structure,
-        # but split('\n') will create empty strings.
-        # Let's just use the content as is.
-        # Note: original TS logic did `.rstrip('\\n') + '\\n'`
-        wb_content_lines = wb_content.rstrip("\n").split("\n")
-        # Ensure at least one newline at end of block if it wasn't empty
-        if wb_content:
-            wb_content_lines.append("")
-
-        # Replace workbook section
-        # lines slice is exclusive at end, so +1 is correct for replacement range
-        lines = lines[:wb_start] + wb_content_lines + lines[wb_end + 1 :]
-        current_md = "\n".join(lines)
-
-    # 5. Get full state for UI update
-    full_state = json.loads(get_state())
-
-    return {
-        "content": current_md,
-        "startLine": 0,
-        "endLine": original_line_count
-        - 1,  # This might be slightly off if line count changed, but 'content' is full replacement
-        "endCol": 0,
-        "workbook": full_state.get("workbook"),
-        "structure": full_state.get("structure"),
-    }
+    # Sync back
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def move_document_section(
@@ -1500,221 +1013,25 @@ def move_document_section(
     to_before_workbook=False,
     target_tab_order_index=None,
 ):
-    """
-    Move a document section to a new position.
+    # Sync globals to context
+    ctx = EditorContext()
+    global md_text, workbook
+    ctx.update_state(md_text=md_text)
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
+    result = new_api.move_document_section(
+        from_doc_index,
+        to_doc_index,
+        to_after_workbook,
+        to_before_workbook,
+        target_tab_order_index,
+    )
 
-    Document-to-Document moves always require file changes because
-    we're physically reordering sections in the Markdown.
-
-    Args:
-        from_doc_index: Index of document to move
-        to_doc_index: Target document index position (optional)
-        to_after_workbook: Move to immediately after workbook
-        to_before_workbook: Move to immediately before workbook
-        target_tab_order_index: Optional target index in tab_order list for metadata update
-
-    Returns:
-        dict with 'content', 'startLine', 'endLine', 'file_changed' or 'error'
-    """
-    global md_text, config, workbook
-
-    config_dict = json.loads(config) if config else {}
-    root_marker = config_dict.get("rootMarker", "# Tables")
-
-    lines = md_text.split("\n")
-    sections = []
-    current_start = None
-    current_type = None
-
-    in_code_block = False
-
-    for i, line in enumerate(lines):
-        if line.strip().startswith("```"):
-            in_code_block = not in_code_block
-
-        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
-            if current_start is not None:
-                sections.append(
-                    {"start": current_start, "end": i - 1, "type": current_type}
-                )
-
-            stripped = line.strip()
-            if stripped == root_marker:
-                current_type = "workbook"
-            else:
-                current_type = "document"
-            current_start = i
-
-    if current_start is not None:
-        sections.append(
-            {"start": current_start, "end": len(lines) - 1, "type": current_type}
-        )
-
-    # Get document sections
-    doc_sections = [(i, s) for i, s in enumerate(sections) if s["type"] == "document"]
-
-    if from_doc_index < 0 or from_doc_index >= len(doc_sections):
-        return {"error": f"Invalid source document index: {from_doc_index}"}
-
-    # Check for no-op (same position)
-    if (
-        to_doc_index is not None
-        and from_doc_index == to_doc_index
-        and target_tab_order_index is None
-    ):
-        return {"file_changed": False, "metadata_changed": False}
-
-    # Get source document
-    source_section_idx, source_section = doc_sections[from_doc_index]
-    source_start = source_section["start"]
-    source_end = source_section["end"]
-
-    # Extract source content
-    source_lines = lines[source_start : source_end + 1]
-
-    # Determin target position physically
-    target_line = 0
-
-    if to_after_workbook:
-        for s in sections:
-            if s["type"] == "workbook":
-                target_line = s["end"] + 1
-                break
-        # Moving to after workbook means becoming the first document *after* workbook?
-        # Or just adjusting position?
-        # We need actual numeric index for metadata update.
-        # This logic is a bit complex for metadata mapping without explicit to_doc_index.
-        # But if to_after_workbook is used, it usually means appending or moving to specific spot.
-    elif to_before_workbook:
-        for s in sections:
-            if s["type"] == "workbook":
-                target_line = s["start"]
-                break
-    elif to_doc_index is not None:
-        if to_doc_index >= len(doc_sections):
-            # Move to end
-            target_line = len(lines)
-        else:
-            _, target_section = doc_sections[to_doc_index]
-            target_line = target_section["start"]
-    else:
-        return {"error": "No target position specified"}
-
-    # If to_doc_index is None (using flags), we need to infer it for metadata update
-    # But for now let's assume UI passes to_doc_index correctly when reusing this for reorder.
-
-    # Build new content by removing source and inserting at target
-    new_lines = []
-    inserted = False
-
-    for i, line in enumerate(lines):
-        # Skip source lines
-        if source_start <= i <= source_end:
-            continue
-
-        # Insert at target position (adjusted for removed lines)
-        adjusted_target = (
-            target_line
-            if target_line <= source_start
-            else target_line - (source_end - source_start + 1)
-        )
-        current_pos = len(new_lines)
-
-        if not inserted and current_pos >= adjusted_target:
-            new_lines.extend(source_lines)
-            inserted = True
-
-        new_lines.append(line)
-
-    # If not inserted yet (target was at end)
-    if not inserted:
-        new_lines.extend(source_lines)
-
-    new_md = "\n".join(new_lines)
-
-    # Update tab_order in workbook metadata
-    updated_workbook = workbook
-    if workbook is not None and target_tab_order_index is not None:
-        # Determine actual to_doc_index for metadata logic
-        # If we moved physically, we simply need to Apply the same index shift logic
-        # move_sheet logic: pop from_index, insert at to_index
-        # We need effective to_index.
-        if to_doc_index is not None:
-            effective_to_index = to_doc_index
-        else:
-            # to_before_workbook=True or to_after_workbook=True case
-            # Derive effective_to_index from target_tab_order_index:
-            # Count how many Document items are in tab_order list BEFORE the target position
-            # (excluding the item being moved)
-            tab_order = (
-                workbook.metadata.get("tab_order", []) if workbook.metadata else []
-            )
-
-            docs_before_target = 0
-            for i in range(min(target_tab_order_index, len(tab_order))):
-                item = tab_order[i]
-                if item["type"] == "document" and item["index"] != from_doc_index:
-                    docs_before_target += 1
-
-            # The moved document will be placed at this document index
-            effective_to_index = docs_before_target
-
-        updated_workbook = _reorder_tab_metadata(
-            workbook,
-            "document",
-            from_doc_index,
-            effective_to_index,
-            target_tab_order_index,
-        )
-    elif workbook is not None:
-        # Just update indices without changing tab_order list order?
-        # Or if no target_tab_order_index is strictly provided but to_doc_index IS provided (reorder case)
-        # For simplicity, Require target_tab_order_index (passed from UI) to trigger metadata fix.
-        pass
-
-    if updated_workbook != workbook:
-        workbook = updated_workbook
-
-        # Replace old metadata comment in new_md with updated metadata
-        # This ensures the returned Markdown has the correct tab_order
-        if workbook.metadata:
-            import re
-
-            new_metadata_json = json.dumps(workbook.metadata, ensure_ascii=False)
-            new_metadata_comment = (
-                f"<!-- md-spreadsheet-workbook-metadata: {new_metadata_json} -->"
-            )
-
-            # Replace existing metadata comment
-            metadata_pattern = r"<!-- md-spreadsheet-workbook-metadata: \{.*?\} -->"
-            if re.search(metadata_pattern, new_md):
-                new_md = re.sub(metadata_pattern, new_metadata_comment, new_md)
-            else:
-                # Metadata comment doesn't exist - need to insert it after the workbook section
-                config_dict = json.loads(config) if config else {}
-                root_marker = config_dict.get("rootMarker", "# Tables")
-                sheet_header_level = config_dict.get("sheetHeaderLevel", 2)
-
-                new_lines_list = new_md.split("\n")
-                wb_start, wb_end = get_workbook_range(
-                    new_md, root_marker, sheet_header_level
-                )
-
-                if wb_end <= len(new_lines_list):
-                    insert_idx = min(wb_end, len(new_lines_list))
-                    new_lines_list.insert(insert_idx, "")
-                    new_lines_list.insert(insert_idx + 1, new_metadata_comment)
-                    new_md = "\n".join(new_lines_list)
-
-    # Return the full new content for the file
-    return {
-        "content": new_md,
-        "startLine": 0,
-        "endLine": len(lines) - 1,
-        "file_changed": True,
-        "metadata_changed": True,
-    }
+    # Sync back
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def move_workbook_section(
@@ -1723,205 +1040,24 @@ def move_workbook_section(
     to_before_doc=False,
     target_tab_order_index=None,
 ):
-    """
-    Move the entire Workbook section to a new position relative to Document sections.
+    # Sync globals to context
+    ctx = EditorContext()
+    global md_text, workbook
+    ctx.update_state(md_text=md_text)
+    if workbook is not ctx.workbook:
+        ctx.update_workbook(workbook)
 
-    The Workbook is treated as a single unit (contains all Sheets).
-    This enables Sheet tabs to cross Document boundaries in the UI.
+    result = new_api.move_workbook_section(
+        to_doc_index,
+        to_after_doc,
+        to_before_doc,
+        target_tab_order_index,
+    )
 
-    Args:
-        to_doc_index: Target document index position. Workbook moves before this doc.
-        to_after_doc: If True with to_doc_index, move after that document.
-        to_before_doc: If True with to_doc_index, move before that document (default).
-        target_tab_order_index: Optional target index in tab_order for metadata update.
-
-    Returns:
-        dict with 'content', 'startLine', 'endLine', 'file_changed' or 'error'
-    """
-    global md_text, config, workbook
-
-    config_dict = json.loads(config) if config else {}
-    root_marker = config_dict.get("rootMarker", "# Tables")
-
-    lines = md_text.split("\n")
-    sections = []
-    current_start = None
-    current_type = None
-
-    in_code_block = False
-
-    for i, line in enumerate(lines):
-        if line.strip().startswith("```"):
-            in_code_block = not in_code_block
-
-        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
-            if current_start is not None:
-                sections.append(
-                    {"start": current_start, "end": i - 1, "type": current_type}
-                )
-
-            stripped = line.strip()
-            if stripped == root_marker:
-                current_type = "workbook"
-            else:
-                current_type = "document"
-            current_start = i
-
-    if current_start is not None:
-        sections.append(
-            {"start": current_start, "end": len(lines) - 1, "type": current_type}
-        )
-
-    # Find workbook section
-    workbook_section = None
-    for s in sections:
-        if s["type"] == "workbook":
-            workbook_section = s
-            break
-
-    if workbook_section is None:
-        return {"error": "No workbook section found"}
-
-    # Get document sections
-    doc_sections = [(i, s) for i, s in enumerate(sections) if s["type"] == "document"]
-
-    if to_doc_index is None:
-        return {"error": "No target document index specified"}
-
-    if to_doc_index < 0 or to_doc_index > len(doc_sections):
-        return {"error": f"Invalid target document index: {to_doc_index}"}
-
-    # Extract workbook content
-    source_start = workbook_section["start"]
-    source_end = workbook_section["end"]
-    source_lines = lines[source_start : source_end + 1]
-
-    # Determine target position
-    target_line = 0
-
-    if to_doc_index >= len(doc_sections):
-        # Move to end of file
-        target_line = len(lines)
-    else:
-        _, target_doc = doc_sections[to_doc_index]
-        if to_after_doc:
-            target_line = target_doc["end"] + 1
-        else:
-            # Default: move before the target document
-            target_line = target_doc["start"]
-
-    # Check for no-op (workbook already at target position)
-    if target_line >= source_start and target_line <= source_end + 1:
-        return {"file_changed": False, "metadata_changed": False}
-
-    # Build new content by removing source and inserting at target
-    new_lines = []
-    inserted = False
-
-    for i, line in enumerate(lines):
-        # Skip source lines
-        if source_start <= i <= source_end:
-            continue
-
-        # Insert at target position (adjusted for removed lines)
-        adjusted_target = (
-            target_line
-            if target_line <= source_start
-            else target_line - (source_end - source_start + 1)
-        )
-        current_pos = len(new_lines)
-
-        if not inserted and current_pos >= adjusted_target:
-            new_lines.extend(source_lines)
-            inserted = True
-
-        new_lines.append(line)
-
-    # If not inserted yet (target was at end)
-    if not inserted:
-        new_lines.extend(source_lines)
-
-    new_md = "\n".join(new_lines)
-
-    # Update global md_text
-    md_text = new_md
-
-    # Update tab_order metadata: Move all sheets to their new position in tab_order list
-    # When Workbook moves (e.g., to position 0), all sheets should be moved to that position
-    updated_workbook = workbook
-    metadata_changed = False
-
-    if workbook is not None and target_tab_order_index is not None:
-        metadata = dict(workbook.metadata) if workbook.metadata else {}
-        tab_order = list(metadata.get("tab_order", []))
-
-        if tab_order:
-            # Extract all sheet items and non-sheet items
-            sheet_items = [item for item in tab_order if item["type"] == "sheet"]
-            non_sheet_items = [item for item in tab_order if item["type"] != "sheet"]
-
-            # Build new tab_order with sheets at target position
-            new_tab_order = []
-            sheets_inserted = False
-
-            # Insert sheets at target_tab_order_index position (relative to non-sheet items)
-            for i, item in enumerate(non_sheet_items):
-                # Calculate position in original non-sheet list
-                if not sheets_inserted and target_tab_order_index <= i:
-                    new_tab_order.extend(sheet_items)
-                    sheets_inserted = True
-                new_tab_order.append(item)
-
-            # If sheets weren't inserted (target is at end)
-            if not sheets_inserted:
-                new_tab_order.extend(sheet_items)
-
-            metadata["tab_order"] = new_tab_order
-            updated_workbook = replace(workbook, metadata=metadata)
-            metadata_changed = True
-
-    if updated_workbook != workbook:
-        workbook = updated_workbook
-
-        # Replace old metadata comment in new_md with updated metadata
-        if workbook.metadata:
-            import re
-
-            new_metadata_json = json.dumps(workbook.metadata, ensure_ascii=False)
-            new_metadata_comment = (
-                f"<!-- md-spreadsheet-workbook-metadata: {new_metadata_json} -->"
-            )
-
-            metadata_pattern = r"<!-- md-spreadsheet-workbook-metadata: \{.*?\} -->"
-            if re.search(metadata_pattern, new_md):
-                new_md = re.sub(metadata_pattern, new_metadata_comment, new_md)
-            else:
-                # Metadata comment doesn't exist - need to insert it after the workbook section
-                # Find the end of the workbook (before the next top-level section or EOF)
-                config_dict = json.loads(config) if config else {}
-                root_marker = config_dict.get("rootMarker", "# Tables")
-                sheet_header_level = config_dict.get("sheetHeaderLevel", 2)
-
-                # Find where workbook ends in the new content
-                new_lines_list = new_md.split("\n")
-                wb_start, wb_end = get_workbook_range(
-                    new_md, root_marker, sheet_header_level
-                )
-
-                # Insert metadata comment at the end of workbook section
-                if wb_end <= len(new_lines_list):
-                    insert_idx = min(wb_end, len(new_lines_list))
-                    new_lines_list.insert(insert_idx, "")
-                    new_lines_list.insert(insert_idx + 1, new_metadata_comment)
-                    new_md = "\n".join(new_lines_list)
-
-    return {
-        "content": new_md,
-        "startLine": 0,
-        "endLine": len(lines) - 1,
-        "file_changed": True,
-        "metadata_changed": metadata_changed,
-    }
+    # Sync back
+    md_text = ctx.md_text
+    workbook = ctx.workbook
+    return result
 
 
 def _reorder_tab_metadata(wb, item_type, from_idx, to_idx, target_tab_order_index):
@@ -2030,48 +1166,30 @@ def _reorder_tab_metadata(wb, item_type, from_idx, to_idx, target_tab_order_inde
             tab_order.insert(safe_target, moved_tab_order_item)
         except ValueError:
             pass  # Should not happen
-
-    metadata["tab_order"] = tab_order
+        metadata["tab_order"] = tab_order
     return replace(wb, metadata=metadata)
 
 
 def initialize_workbook(md_text_input, config_json):
-    global workbook, schema, md_text, config
+    global md_text, config, workbook
     md_text = md_text_input
     config = config_json
-    config_dict = json.loads(config)
+    # Delegate to new API/Context
+    result = new_api.initialize_workbook(md_text_input, config_json)
 
-    schema = MultiTableParsingSchema(
-        root_marker=config_dict.get("rootMarker", "# Tables"),
-        sheet_header_level=config_dict.get("sheetHeaderLevel", 2),
-        table_header_level=config_dict.get("tableHeaderLevel", 3),
-        capture_description=config_dict.get("captureDescription", True),
-        column_separator=config_dict.get("columnSeparator", "|"),
-        header_separator_char=config_dict.get("headerSeparatorChar", "-"),
-        require_outer_pipes=config_dict.get("requireOuterPipes", True),
-        strip_whitespace=config_dict.get("stripWhitespace", True),
-    )
-
-    workbook = parse_workbook(md_text, schema)
+    # Sync workbook global from context
+    ctx = new_api.EditorContext()
+    workbook = ctx.workbook
+    return result
 
 
 def get_state():
-    global workbook, md_text, config
-    if workbook is None:
-        return json.dumps({"error": "No workbook"})
-
-    config_dict = json.loads(config) if config else {}
-    root_marker = config_dict.get("rootMarker", "# Tables")
-    sheet_header_level = config_dict.get("sheetHeaderLevel", 2)
-
-    workbook_json = workbook.json
-    augment_workbook_metadata(workbook_json, md_text, root_marker, sheet_header_level)
-
-    structure_json = extract_structure(md_text, root_marker)
-
-    return json.dumps(
-        {"workbook": workbook_json, "structure": json.loads(structure_json)}
-    )
+    ctx = EditorContext()
+    global workbook, md_text
+    # Sync global workbook change (e.g. workbook = None in tests)
+    if workbook is not ctx.workbook:
+        ctx.workbook = workbook
+    return new_api.get_state()
 
 
 def get_full_markdown():

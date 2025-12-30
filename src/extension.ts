@@ -86,7 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }
 
 export async function newWorkbookHandler() {
     // Get workspace folder
@@ -136,33 +136,38 @@ export async function newWorkbookHandler() {
     await vscode.commands.executeCommand('vscode.openWith', uri, SpreadsheetEditorProvider.viewType);
 }
 
-export async function findWheelFile(context: vscode.ExtensionContext): Promise<string> {
+export async function findWheelFiles(context: vscode.ExtensionContext): Promise<{ parser: string; editor: string }> {
     const isProduction = context.extensionMode === vscode.ExtensionMode.Production;
     const searchUri = isProduction
         ? vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide')
         : vscode.Uri.joinPath(context.extensionUri, 'resources');
 
+    let parser = 'md_spreadsheet_parser-0.7.2-py3-none-any.whl'; // Fallback
+    let editor = 'md_spreadsheet_editor-0.1.5-py3-none-any.whl'; // Fallback
+
     try {
         const entries = await vscode.workspace.fs.readDirectory(searchUri);
-        const wheelEntry = entries.find(([name]) => name.endsWith('.whl'));
-        if (wheelEntry) {
-            return wheelEntry[0];
-        }
+        const parserEntry = entries.find(([name]) => name.startsWith('md_spreadsheet_parser') && name.endsWith('.whl'));
+        const editorEntry = entries.find(([name]) => name.startsWith('md_spreadsheet_editor') && name.endsWith('.whl'));
+
+        if (parserEntry) parser = parserEntry[0];
+        if (editorEntry) editor = editorEntry[0];
     } catch (e) {
-        console.warn(`Failed to find wheel file in ${searchUri.fsPath}`, e);
+        console.warn(`Failed to find wheel files in ${searchUri.fsPath}`, e);
     }
-    return 'md_spreadsheet_parser-0.7.1-py3-none-any.whl'; // Fallback
+    return { parser, editor };
 }
 
 export function getWebviewContent(
     webview: vscode.Webview,
     context: vscode.ExtensionContext,
     document: vscode.TextDocument,
-    wheelFilename: string
+    wheels: { parser: string; editor: string }
 ): string {
     const isProduction = context.extensionMode === vscode.ExtensionMode.Production;
     let scriptUri: vscode.Uri | string;
-    let wheelUri: vscode.Uri | string;
+    let parserWheelUri: vscode.Uri | string;
+    let editorWheelUri: vscode.Uri | string;
     let codiconFontUri: vscode.Uri | string;
     let pyodideUri: vscode.Uri | string;
     let cspScriptSrc: string;
@@ -172,8 +177,11 @@ export function getWebviewContent(
 
     if (isProduction) {
         scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js'));
-        wheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide', wheelFilename)
+        parserWheelUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide', wheels.parser)
+        );
+        editorWheelUri = webview.asWebviewUri(
+            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide', wheels.editor)
         );
         codiconFontUri = webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'codicon.ttf')
@@ -185,7 +193,8 @@ export function getWebviewContent(
         cspFontSrc = `${webview.cspSource}`;
     } else {
         scriptUri = 'http://localhost:5173/webview-ui/main.ts';
-        wheelUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'resources', wheelFilename));
+        parserWheelUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'resources', wheels.parser));
+        editorWheelUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'resources', wheels.editor));
         codiconFontUri = 'http://localhost:5173/node_modules/@vscode/codicons/dist/codicon.ttf';
         pyodideUri = 'http://localhost:5173/pyodide';
 
@@ -224,7 +233,8 @@ export function getWebviewContent(
     <body>
         <md-spreadsheet-editor></md-spreadsheet-editor>
         <script>
-            window.wheelUri = "${wheelUri}";
+            window.wheelUri = "${parserWheelUri}";
+            window.editorWheelUri = "${editorWheelUri}";
             window.pyodideIndexUrl = "${pyodideUri}";
             window.vscodeLanguage = ${JSON.stringify(extensionLanguage)};
             window.initialContent = \`${escapedContent}\`;

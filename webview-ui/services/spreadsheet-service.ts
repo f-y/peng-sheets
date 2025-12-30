@@ -51,8 +51,11 @@ export class SpreadsheetService {
 
             if (this.pyodide) {
                 const wheelUri = (window as unknown as { wheelUri?: string }).wheelUri;
+                const editorWheelUri = (window as unknown as { editorWheelUri?: string }).editorWheelUri;
                 const mountDir = '/local_cache';
                 let isCached = false;
+                // Composite version key to ensure both parser and editor updates invalidate cache
+                const expectedVersion = JSON.stringify({ parser: wheelUri, editor: editorWheelUri });
 
                 if (wheelUri && this.pyodide.FS) {
                     try {
@@ -73,19 +76,20 @@ export class SpreadsheetService {
                         // File might not exist
                     }
 
-                    if (cachedVersion === wheelUri && this.pyodide.FS.analyzePath(`${mountDir}/site-packages`).exists) {
+                    if (cachedVersion === expectedVersion && this.pyodide.FS.analyzePath(`${mountDir}/site-packages`).exists) {
                         isCached = true;
                     }
                 }
 
                 if (isCached) {
-                    console.log('Pyodide: Restoring packages from cache...');
+                    console.log('Pyodide: Restoring packages from cache...', expectedVersion);
                     try {
                         // Load the pyodide_cache functions into global namespace and call setup
                         await this.runPythonAsync(this.pyodideCache);
                         await this.runPythonAsync(`setup_cached_path("${mountDir}/site-packages")`);
-                        // Test import to detect bytecode version mismatch
+                        // Test import to detect bytecode version mismatch or corrupted cache
                         await this.runPythonAsync('import md_spreadsheet_parser');
+                        await this.runPythonAsync('import md_spreadsheet_editor');
                     } catch (cacheError) {
                         // Cache is corrupted or bytecode version mismatch
                         console.warn('Pyodide: Cache invalid, clearing and reinstalling...', cacheError);
@@ -147,16 +151,31 @@ export class SpreadsheetService {
 
                     if (wheelUri) {
                         await micropip.install(wheelUri);
-
-                        if (this.pyodide.FS) {
-                            console.log('Pyodide: Caching packages...');
-                            // Load pyodide_cache functions and call cache function
-                            await this.runPythonAsync(this.pyodideCache);
-                            await this.runPythonAsync(`cache_installed_packages("${mountDir}", "${wheelUri}")`);
-
-                            await new Promise<void>((resolve) => this.pyodide!.FS!.syncfs(false, () => resolve()));
+                    }
+                    if (editorWheelUri) {
+                        try {
+                            await micropip.install(editorWheelUri);
+                            console.log(`Pyodide: Loaded editor wheel from ${editorWheelUri}`);
+                        } catch (e) {
+                            console.error(`Pyodide: Failed to load editor wheel ${editorWheelUri}`, e);
                         }
                     }
+
+                    if (this.pyodide.FS) {
+                        console.log('Pyodide: Caching packages...', expectedVersion);
+                        // Load pyodide_cache functions and call cache function
+                        await this.runPythonAsync(this.pyodideCache);
+                        // Use single quotes for python argument to avoid JSON quote conflict, or leverage _toPythonArg helper if available,
+                        // but here we are composing string manually. escaping quotes in expectedVersion JSON.
+                        // Actually expectedVersion is JSON string, e.g. {"parser":...}. It contains double quotes.
+                        // So wrapping in single quotes works unless it contains single quotes (unlikely for JSON).
+                        // Safer: Use _toPythonArg concept or raw string with triple quotes.
+                        // Let's use triple quotes.
+                        await this.runPythonAsync(`cache_installed_packages("${mountDir}", '''${expectedVersion}''')`);
+
+                        await new Promise<void>((resolve) => this.pyodide!.FS!.syncfs(false, () => resolve()));
+                    }
+
                 }
 
                 await this.runPythonAsync(this.pythonCore);
@@ -608,19 +627,14 @@ export class SpreadsheetService {
             // 3. Batches these two changes into a single update message to VS Code.
             //    This ensures the physical markdown file updates atomically.
 
-            // First call delete_document, then regenerate the workbook section
-            const deleteResult = await this._runPythonFunction<IUpdateSpec>('delete_document', docIdx);
+            // Atomic update using delete_document_and_get_full_update to avoid overlapping ranges
+            const result = await this._runPythonFunction<IUpdateSpec>('delete_document_and_get_full_update', docIdx);
 
-            if (deleteResult) {
-                if (deleteResult.error) {
-                    console.error('Delete Document failed:', deleteResult.error);
+            if (result) {
+                if (result.error) {
+                    console.error('Delete Document failed:', result.error);
                 } else {
-                    // Also regenerate workbook section to update metadata
-                    const regenerateResult = await this._runPythonFunction<IUpdateSpec>('generate_and_get_range');
-
-                    if (regenerateResult) {
-                        this._postBatchUpdateMessage([deleteResult, regenerateResult]);
-                    }
+                    this._postUpdateMessage(result);
                 }
             }
         });
