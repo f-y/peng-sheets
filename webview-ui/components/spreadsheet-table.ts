@@ -139,7 +139,21 @@ export class SpreadsheetTable extends LitElement {
 
         if (changedProperties.has('table') && this.table) {
             const visual = (this.table.metadata as Record<string, unknown>)?.visual as VisualMetadata;
-            if (visual && visual.column_widths) {
+
+            // Prioritize new "columns" structure for width
+            if (visual && visual.columns) {
+                const widths: Record<number, number> = {};
+                const cols = visual.columns as Record<string, { width?: number }>;
+                Object.entries(cols).forEach(([k, v]) => {
+                    if (v.width !== undefined) {
+                        const colIdx = Number(k);
+                        if (!isNaN(colIdx)) {
+                            widths[colIdx] = v.width;
+                        }
+                    }
+                });
+                this.resizeCtrl.setColumnWidths(widths);
+            } else if (visual && visual.column_widths) {
                 if (Array.isArray(visual.column_widths)) {
                     const widths: Record<number, number> = {};
                     visual.column_widths.forEach((w: number, i: number) => (widths[i] = w));
@@ -541,12 +555,12 @@ export class SpreadsheetTable extends LitElement {
 
         const filterMenu = this.filterCtrl.activeFilterMenu
             ? {
-                  x: this.filterCtrl.activeFilterMenu.x,
-                  y: this.filterCtrl.activeFilterMenu.y,
-                  col: this.filterCtrl.activeFilterMenu.colIndex,
-                  values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
-                  hiddenValues: getHiddenValuesFromMetadata(this.filterCtrl.activeFilterMenu.colIndex)
-              }
+                x: this.filterCtrl.activeFilterMenu.x,
+                y: this.filterCtrl.activeFilterMenu.y,
+                col: this.filterCtrl.activeFilterMenu.colIndex,
+                values: this.filterCtrl.getUniqueValues(this.filterCtrl.activeFilterMenu.colIndex),
+                hiddenValues: getHiddenValuesFromMetadata(this.filterCtrl.activeFilterMenu.colIndex)
+            }
             : null;
 
         return html`
@@ -578,40 +592,40 @@ export class SpreadsheetTable extends LitElement {
                 @view-insert-col="${this.eventCtrl.handleInsertCol}"
                 @view-delete-col="${this.eventCtrl.handleDeleteCol}"
                 @view-insert-copied-rows="${(e: CustomEvent<{ index: number; position: string }>) => {
-                    const copiedRowCount = this.clipboardCtrl.copiedData?.length || 0;
-                    const insertAt = e.detail.position === 'below' ? e.detail.index + 1 : e.detail.index;
-                    this.clipboardCtrl.insertCopiedRows(e.detail.index, e.detail.position as 'above' | 'below');
-                    // Store pending selection - will be applied in willUpdate when table has enough rows
-                    if (copiedRowCount > 0) {
-                        const endRow = insertAt + copiedRowCount - 1;
-                        this._pendingSelection = {
-                            anchorRow: endRow,
-                            selectedRow: insertAt,
-                            anchorCol: -2,
-                            selectedCol: -2
-                        };
-                    }
-                    this.contextMenu = null;
-                }}"
+                const copiedRowCount = this.clipboardCtrl.copiedData?.length || 0;
+                const insertAt = e.detail.position === 'below' ? e.detail.index + 1 : e.detail.index;
+                this.clipboardCtrl.insertCopiedRows(e.detail.index, e.detail.position as 'above' | 'below');
+                // Store pending selection - will be applied in willUpdate when table has enough rows
+                if (copiedRowCount > 0) {
+                    const endRow = insertAt + copiedRowCount - 1;
+                    this._pendingSelection = {
+                        anchorRow: endRow,
+                        selectedRow: insertAt,
+                        anchorCol: -2,
+                        selectedCol: -2
+                    };
+                }
+                this.contextMenu = null;
+            }}"
                 @view-insert-copied-cols="${(e: CustomEvent<{ index: number; position: string }>) => {
-                    const copiedColCount = this.clipboardCtrl.copiedData?.[0]?.length || 0;
-                    const insertAt = e.detail.position === 'right' ? e.detail.index + 1 : e.detail.index;
-                    this.clipboardCtrl.insertCopiedColumns(e.detail.index, e.detail.position as 'left' | 'right');
-                    // Store pending selection - will be applied in willUpdate when table has enough cols
-                    if (copiedColCount > 0) {
-                        const endCol = insertAt + copiedColCount - 1;
-                        this._pendingSelection = {
-                            anchorRow: -2,
-                            selectedRow: -2,
-                            anchorCol: insertAt,
-                            selectedCol: endCol
-                        };
-                    }
-                    this.contextMenu = null;
-                }}"
+                const copiedColCount = this.clipboardCtrl.copiedData?.[0]?.length || 0;
+                const insertAt = e.detail.position === 'right' ? e.detail.index + 1 : e.detail.index;
+                this.clipboardCtrl.insertCopiedColumns(e.detail.index, e.detail.position as 'left' | 'right');
+                // Store pending selection - will be applied in willUpdate when table has enough cols
+                if (copiedColCount > 0) {
+                    const endCol = insertAt + copiedColCount - 1;
+                    this._pendingSelection = {
+                        anchorRow: -2,
+                        selectedRow: -2,
+                        anchorCol: insertAt,
+                        selectedCol: endCol
+                    };
+                }
+                this.contextMenu = null;
+            }}"
                 @view-menu-close="${() => {
-                    this.contextMenu = null;
-                }}"
+                this.contextMenu = null;
+            }}"
                 @view-filter-apply="${this.eventCtrl.handleFilterApply}"
                 @view-filter-close="${this.eventCtrl.handleFilterClose}"
                 @view-col-click="${this.eventCtrl.handleColClick}"
@@ -643,9 +657,8 @@ export class SpreadsheetTable extends LitElement {
                 @view-data-validation="${this._handleOpenValidationDialog}"
                 @view-validation-input="${this.eventCtrl.handleValidationInput}"
             ></spreadsheet-table-view>
-            ${
-                this.validationDialog
-                    ? html`
+            ${this.validationDialog
+                ? html`
                           <ss-validation-dialog
                               .colIndex="${this.validationDialog.colIndex}"
                               .currentRule="${this.validationDialog.currentRule}"
@@ -653,7 +666,7 @@ export class SpreadsheetTable extends LitElement {
                               @ss-dialog-close="${this._handleValidationDialogClose}"
                           ></ss-validation-dialog>
                       `
-                    : ''
+                : ''
             }
         `;
     }

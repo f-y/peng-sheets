@@ -107,6 +107,12 @@ def rename_sheet(context, sheet_idx, new_name):
     return apply_sheet_update(context, sheet_idx, lambda s: replace(s, name=new_name))
 
 
+def update_sheet_metadata(context, sheet_idx, metadata):
+    return apply_sheet_update(
+        context, sheet_idx, lambda s: replace(s, metadata=metadata)
+    )
+
+
 def delete_sheet(context, sheet_idx):
     return update_workbook(context, lambda wb: wb.delete_sheet(sheet_idx))
 

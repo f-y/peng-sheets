@@ -1,6 +1,6 @@
 [project]
 name = "md-spreadsheet-editor"
-version = "0.1.5"
+version = "0.1.9"
 description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "f-y", email = "f-y@users.noreply.github.com" }]

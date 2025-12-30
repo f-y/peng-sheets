@@ -27,9 +27,9 @@ python-modules/
 │       └── ...
 ├── tests/
 │   ├── unit/                    # Primary Tests (Mocked Context)
-│   ├── legacy/                  # Legacy Integration Tests (Deprecated for new features)
+
 │   └── conftest.py              # Test Fixtures
-├── headless_editor.py           # Legacy Entry Point / Shim
+
 ├── pyproject.toml               # Build & Dependency Config
 └── DEVELOPMENT.md               # This File
 ```
@@ -62,7 +62,7 @@ We enforce a **"No Regression" policy** on Branch Coverage (C1).
 ## 4. Architecture Standards
 
 1.  **Separation of Concerns**:
-    - **API Layer (`headless_editor.py`)**: Handles JSON I/O and exception catching. **Logic-free**.
+    - **API Layer (`src/md_spreadsheet_editor/api.py`)**: Handles JSON I/O and exception catching. **Logic-free**.
     - **Services Layer**: Pure Python logic. Receives Domain Objects, returns results. **UI-agnostic**.
     - **Context**: Manages ephemeral state.
 

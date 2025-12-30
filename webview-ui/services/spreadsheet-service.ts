@@ -1,4 +1,5 @@
 import { IPyodide, IVSCodeApi, IUpdateSpec, IVisualMetadata } from './types';
+import { t } from '../utils/i18n';
 
 // @ts-expect-error Vite raw import for Python module
 import pyodideCacheModule from '../../python-modules/pyodide_cache.py?raw';
@@ -21,11 +22,9 @@ export class SpreadsheetService {
     private _pendingUpdateSpec: IUpdateSpec | null = null;
     private vscode: IVSCodeApi;
 
-    private pythonCore: string;
     private pyodideCache: string = pyodideCacheModule;
 
-    constructor(pythonCore: string, vscode: IVSCodeApi) {
-        this.pythonCore = pythonCore;
+    constructor(vscode: IVSCodeApi) {
         this.vscode = vscode;
     }
 
@@ -76,7 +75,10 @@ export class SpreadsheetService {
                         // File might not exist
                     }
 
-                    if (cachedVersion === expectedVersion && this.pyodide.FS.analyzePath(`${mountDir}/site-packages`).exists) {
+                    if (
+                        cachedVersion === expectedVersion &&
+                        this.pyodide.FS.analyzePath(`${mountDir}/site-packages`).exists
+                    ) {
                         isCached = true;
                     }
                 }
@@ -178,7 +180,7 @@ export class SpreadsheetService {
 
                 }
 
-                await this.runPythonAsync(this.pythonCore);
+                await this.runPythonAsync('import md_spreadsheet_editor.api as api');
                 await this.runPythonAsync('import json');
             }
         }
@@ -353,7 +355,7 @@ export class SpreadsheetService {
     private async _runPythonFunction<T>(funcName: string, ...args: any[]): Promise<T | null> {
         const argsStr = args.map((a) => this._toPythonArg(a)).join(', ');
         const code = `
-            res = ${funcName}(${argsStr})
+            res = api.${funcName}(${argsStr})
             json.dumps(res) if res else "null"
         `;
         return this.runPython<T>(code);
@@ -395,9 +397,10 @@ export class SpreadsheetService {
         this._performAction('update_sheet_metadata', sheetIdx, metadata);
     }
 
-    public addTable(sheetIdx: number, _tableName: string) {
+    public addTable(sheetIdx: number, tableName: string) {
+        // tableName is now used
         const headers = this._getDefaultColumnHeaders();
-        this._performAction('add_table', sheetIdx, headers);
+        this._performAction('add_table', sheetIdx, headers, tableName);
     }
 
     public renameTable(sheetIdx: number, tableIdx: number, newName: string) {
@@ -460,7 +463,13 @@ export class SpreadsheetService {
     }
 
     public insertColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
-        this._performAction('insert_column', sheetIdx, tableIdx, colIndex);
+        // "New Column" localization
+        // We need to import t from i18n
+        // But this is a class, maybe we should let the caller pass the name?
+        // Or import t here.
+        // Importing t in SpreadsheetService is fine.
+        const header = t('newColumn');
+        this._performAction('insert_column', sheetIdx, tableIdx, colIndex, header);
     }
 
     public clearColumn(sheetIdx: number, tableIdx: number, colIndex: number) {
@@ -643,7 +652,7 @@ export class SpreadsheetService {
     public moveSheet(fromIdx: number, toIdx: number, targetTabOrderIndex: number = -1) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
-                res = move_sheet(
+                res = api.move_sheet(
                     ${fromIdx}, 
                     ${toIdx},
                     target_tab_order_index=${targetTabOrderIndex === -1 ? 'None' : targetTabOrderIndex}
@@ -674,7 +683,7 @@ export class SpreadsheetService {
             // Add the document and regenerate workbook in a single operation
             // This ensures only one undo step is created
             const result = await this.runPython<IUpdateSpec>(`
-                res = add_document_and_get_full_update(
+                res = api.add_document_and_get_full_update(
                     ${JSON.stringify(title)},
                     after_doc_index=${afterDocIndex},
                     after_workbook=${afterWorkbook ? 'True' : 'False'},
@@ -702,7 +711,7 @@ export class SpreadsheetService {
     ) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
-                res = move_document_section(
+                res = api.move_document_section(
                     ${fromDocIndex},
                     to_doc_index=${toDocIndex === null ? 'None' : toDocIndex},
                     to_after_workbook=${toAfterWorkbook ? 'True' : 'False'},
@@ -718,7 +727,7 @@ export class SpreadsheetService {
     public moveWorkbookSection(toDocIndex: number, toAfterDoc: boolean = false, targetTabOrderIndex: number = -1) {
         this._enqueueRequest(async () => {
             const result = await this.runPython<IUpdateSpec>(`
-                res = move_workbook_section(
+                res = api.move_workbook_section(
                     to_doc_index=${toDocIndex},
                     to_after_doc=${toAfterDoc ? 'True' : 'False'},
                     target_tab_order_index=${targetTabOrderIndex === -1 ? 'None' : targetTabOrderIndex}
@@ -732,7 +741,7 @@ export class SpreadsheetService {
     public async getDocumentSectionRange(docIndex: number) {
         // This method might return a different structure, use any or specific interface if known
         const result = await this.runPython<unknown>(`
-            result = get_document_section_range(workbook, ${docIndex})
+            result = api.get_document_section_range(${docIndex})
             json.dumps(result)
         `);
         return result;
@@ -744,8 +753,8 @@ export class SpreadsheetService {
         this.pyodide.globals.set('config', JSON.stringify(config));
 
         const result = await this.runPython<unknown>(`
-            initialize_workbook(md_text, config)
-            get_state()
+            api.initialize_workbook(md_text, config)
+            api.get_state()
         `);
         return result;
     }

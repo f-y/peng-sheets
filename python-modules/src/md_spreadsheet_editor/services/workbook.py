@@ -1,7 +1,27 @@
 import json
 from dataclasses import replace
 
-from md_spreadsheet_parser import Workbook, generate_workbook_markdown
+from md_spreadsheet_parser import generate_workbook_markdown
+
+
+def update_workbook_tab_order(context, tab_order):
+    """
+    Update the tab display order in workbook metadata.
+
+    Args:
+        context: EditorContext
+        tab_order: List of dicts describing tab order
+
+    Returns:
+        dict with 'content', 'startLine', 'endLine' or 'error' if failed
+    """
+
+    def wb_transform(wb):
+        current_metadata = dict(wb.metadata) if wb.metadata else {}
+        current_metadata["tab_order"] = tab_order
+        return replace(wb, metadata=current_metadata)
+
+    return update_workbook(context, wb_transform)
 
 
 def get_workbook_range(md_text, root_marker, sheet_header_level):
@@ -48,6 +68,17 @@ def get_workbook_range(md_text, root_marker, sheet_header_level):
     return start_line, end_line
 
 
+def update_workbook(context, transform_func):
+    if context.workbook is None:
+        return {"error": "No workbook"}
+    try:
+        new_workbook = transform_func(context.workbook)
+        context.update_workbook(new_workbook)
+        return generate_and_get_range(context)
+    except Exception as e:
+        return {"error": str(e)}
+
+
 def generate_and_get_range(context):
     workbook = context.workbook
     schema = context.schema
@@ -59,7 +90,6 @@ def generate_and_get_range(context):
         new_md = ""
     else:
         if schema is None:
-            # Should not happen if initialized, but safer
             new_md = ""
         else:
             new_md = generate_workbook_markdown(workbook, schema)
@@ -71,9 +101,8 @@ def generate_and_get_range(context):
 
     start_line, end_line = get_workbook_range(md_text, root_marker, sheet_header_level)
     lines = md_text.split("\n")
-
+    # ... (existing calculation) ...
     end_col = 0
-
     if end_line >= len(lines):
         end_line = len(lines) - 1
         end_col = len(lines[end_line]) if end_line >= 0 else 0
@@ -91,17 +120,6 @@ def generate_and_get_range(context):
         "endCol": end_col,
         "content": new_md + "\n\n",
     }
-
-
-def update_workbook(context, transform_func):
-    if context.workbook is None:
-        return {"error": "No workbook"}
-    try:
-        new_workbook = transform_func(context.workbook)
-        context.update_workbook(new_workbook)
-        return generate_and_get_range(context)
-    except Exception as e:
-        return {"error": str(e)}
 
 
 def reorder_tab_metadata(wb, item_type, from_idx, to_idx, target_tab_order_index):

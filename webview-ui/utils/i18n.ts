@@ -84,10 +84,9 @@ const translations = {
         errorInvalidEmail: 'Invalid email format',
         errorInvalidUrl: 'Invalid URL format',
         validationTooltipPrefix: 'Data Validation',
-        insertCopiedRowsAbove: 'Insert Copied Row(s) Above',
-        insertCopiedRowsBelow: 'Insert Copied Row(s) Below',
-        insertCopiedColsLeft: 'Insert Copied Column(s) Left',
-        insertCopiedColsRight: 'Insert Copied Column(s) Right'
+        newColumn: 'New Column',
+        sheetNamePrefix: 'Sheet',
+        documentNamePrefix: 'Document'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -105,7 +104,7 @@ const translations = {
         noTableSelected: 'テーブルが選択されていません',
         loading: '読み込み中...',
         initializing: 'Pyodideを初期化中...',
-        newTable: '新しいテーブル',
+        newTable: '新規テーブル',
         insertRowAbove: '上に行を挿入',
         insertRowBelow: '下に行を挿入',
         deleteRow: '行を削除',
@@ -177,7 +176,10 @@ const translations = {
         insertCopiedRowsAbove: 'コピーした行を上に挿入',
         insertCopiedRowsBelow: 'コピーした行を下に挿入',
         insertCopiedColsLeft: 'コピーした列を左に挿入',
-        insertCopiedColsRight: 'コピーした列を右に挿入'
+        insertCopiedColsRight: 'コピーした列を右に挿入',
+        newColumn: '新しい列',
+        sheetNamePrefix: 'シート',
+        documentNamePrefix: 'ドキュメント'
     }
 };
 
@@ -200,3 +202,4 @@ export function t(key: I18nKey, ...args: string[]): string {
     });
     return text;
 }
+

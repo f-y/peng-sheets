@@ -65,12 +65,9 @@ def build_pyc_wheel():
         subprocess.check_call(
             [
                 "uv",
-                "run",
-                "python",
-                "-m",
                 "build",
                 "--wheel",
-                "--outdir",
+                "--out-dir",
                 str(build_root / "dist"),
             ],
             cwd=project_root,

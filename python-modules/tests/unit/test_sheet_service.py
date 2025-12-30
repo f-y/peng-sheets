@@ -81,3 +81,18 @@ def test_move_sheet(context):
     assert context.workbook.sheets[0].name == "B"
     assert context.workbook.sheets[1].name == "A"
     assert context.workbook.sheets[2].name == "C"
+
+def test_update_sheet_metadata(context):
+    from md_spreadsheet_parser import Sheet, Workbook
+    s1 = Sheet(name="S1", tables=[], metadata={"old": "val"})
+    context.workbook = Workbook(sheets=[s1])
+    context.md_text = ""
+    
+    new_meta = {"old": "val", "new": "data"}
+    # Call service
+    try:
+        sheet_service.update_sheet_metadata(context, 0, new_meta)
+    except AttributeError:
+        pytest.fail("update_sheet_metadata not implemented")
+        
+    assert context.workbook.sheets[0].metadata == new_meta

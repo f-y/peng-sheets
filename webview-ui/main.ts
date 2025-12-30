@@ -65,13 +65,13 @@ declare global {
 const vscode = acquireVsCodeApi();
 
 // @ts-expect-error Vite raw import for Python module
-import pythonCore from '../python-modules/headless_editor.py?raw';
+// import pythonCore from '../python-modules/headless_editor.py?raw';
 
 @customElement('md-spreadsheet-editor')
 export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     static styles = [unsafeCSS(mainStyles)];
 
-    public readonly spreadsheetService = new SpreadsheetService(pythonCore, vscode);
+    public readonly spreadsheetService = new SpreadsheetService(vscode);
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private _globalEventController = new GlobalEventController(this);
     // Promise for Pyodide initialization, started early in connectedCallback
@@ -222,8 +222,14 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     }
 
     _handleRequestAddTable(detail: IRequestAddTableDetail) {
+        if (!this.workbook || !this.workbook.sheets) return;
         const { sheetIndex } = detail;
-        this.spreadsheetService.addTable(sheetIndex, t('newTable'));
+
+        const sheet = this.workbook.sheets[sheetIndex];
+        const tableCount = sheet ? sheet.tables.length : 0;
+        const newName = t('table', (tableCount + 1).toString());
+
+        this.spreadsheetService.addTable(sheetIndex, newName);
     }
 
     _handleRequestRenameTable(detail: IRequestRenameTableDetail) {
@@ -797,7 +803,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
         // Generate default document name
         const docCount = this.tabs.filter((t) => t.type === 'document').length;
-        const newDocName = `Document ${docCount + 1}`;
+        const newDocName = `${t('documentNamePrefix')} ${docCount + 1}`;
 
         // Store pending new tab index
         this._pendingNewTabIndex = targetTabOrderIndex;
@@ -822,9 +828,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         const afterSheetIndex = sheetsBeforeTarget;
 
         // Generate default sheet name
-        let newSheetName = 'Sheet 1';
+        let newSheetName = `${t('sheetNamePrefix')} 1`;
         if (this.workbook && this.workbook.sheets) {
-            newSheetName = `Sheet ${this.workbook.sheets.length + 1}`;
+            newSheetName = `${t('sheetNamePrefix')} ${this.workbook.sheets.length + 1}`;
         }
 
         // Store pending add state

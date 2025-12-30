@@ -57,11 +57,9 @@ models = table.to_models(FeatureComparison)
 ```
 
 
-# Document 3
-
 # Tables
 
-## Sheet 4
+## Test Sheet
 
 | 列名1 | 列名2 | 列名3 |
 | --- | --- | --- |
@@ -86,7 +84,7 @@ models = table.to_models(FeatureComparison)
 
 <!-- md-spreadsheet-metadata: {"validation": {"1": {"type": "list", "values": ["Yes", "No"]}, "2": {"type": "date"}}} -->
 
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [38.76190476190476, 61.23809523809524], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 1}, {"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2], "activeTableIndex": 0}]}} -->
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [29.970695970695967, 70.02930402930403], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 0}, {"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2], "activeTableIndex": 0}]}} -->
 
 ## Comparison
 
@@ -175,7 +173,7 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | **June** | US-Region | +8% | $12,000 | High | 50% |
 | **Total** | - | - | $35,000 | - | - |
 
-<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "document", "index": 1}, {"type": "sheet", "index": 0}, {"type": "sheet", "index": 1}, {"type": "document", "index": 2}, {"type": "sheet", "index": 2}, {"type": "sheet", "index": 3}]} -->
+<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "sheet", "index": 1}, {"type": "document", "index": 1}, {"type": "sheet", "index": 2}, {"type": "sheet", "index": 3}]} -->
 
 
 # Appendix
