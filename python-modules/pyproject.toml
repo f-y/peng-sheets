@@ -1,6 +1,6 @@
 [project]
-name = "python-modules"
-version = "0.1.0"
+name = "md-spreadsheet-editor"
+version = "0.1.5"
 description = "Add your description here"
 readme = "README.md"
 authors = [{ name = "f-y", email = "f-y@users.noreply.github.com" }]
@@ -15,7 +15,7 @@ build-backend = "uv_build"
 md-spreadsheet-parser = { workspace = true }
 
 [dependency-groups]
-dev = ["pytest>=9.0.2", "pytest-cov>=4.1.0", "pyright>=1.1.338"]
+dev = ["pytest>=9.0.2", "pytest-cov>=4.1.0", "pyright>=1.1.338", "build>=1.0.0"]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
+pythonpath = ["src", "."]

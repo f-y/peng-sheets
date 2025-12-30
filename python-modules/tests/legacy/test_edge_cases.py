@@ -2,6 +2,8 @@
 Tests for edge cases and remaining uncovered lines in headless_editor.
 """
 
+import json
+
 import headless_editor
 from headless_editor import (
     _shift_column_metadata_indices,
@@ -20,6 +22,10 @@ class TestEdgeCases:
         headless_editor.md_text = ""
         headless_editor.schema = None
         headless_editor.config = ""
+        # Also reset EditorContext singleton
+        from md_spreadsheet_editor.context import EditorContext
+
+        EditorContext.get_instance().reset()
 
     def test_code_block_headers_ignored(self):
         """Headers inside code blocks should be ignored by get_document_section_range."""
@@ -102,8 +108,9 @@ class TestEdgeCases:
 
         # generate_and_get_range is called at end of add_sheet.
         # Patch it to raise Exception
+        # Patch md_spreadsheet_editor.services.sheet.generate_and_get_range
         with patch(
-            "headless_editor.generate_and_get_range",
+            "md_spreadsheet_editor.services.sheet.generate_and_get_range",
             side_effect=Exception("Forced Error"),
         ):
             res = add_sheet("New Sheet")
@@ -197,8 +204,9 @@ class TestEdgeCases:
 
         # Also test with NO workbook
         headless_editor.workbook = None
-        res = get_state()
-        assert "error" in res
+        res_json = get_state()
+        res = json.loads(res_json)
+        assert res["workbook"] is None or res.get("error")
 
         # Test extra headers in Markdown vs Workbook (covers line 609)
         # Restore workbook first

@@ -57,11 +57,10 @@ def test_move_sheet_updates_metadata(editor):
     # Current tab_order: [Doc0, Sheet0, Sheet1, Doc1]
     # We want to move Sheet0 to AFTER Sheet1.
     # New tab_order should be: [Doc0, Sheet1, Sheet0, Doc1]
-    # Target index in tab_order list: 2 (0, 1, 2)
+    # Target index in tab_order list: 3 (After Sheet 1)
+    # move_sheet(from=0, to=1, target=3)
 
-    # move_sheet(from=0, to=1, target=2)
-
-    result = editor.move_sheet(0, 1, target_tab_order_index=2)
+    result = editor.move_sheet(0, 1, target_tab_order_index=3)
 
     assert "error" not in result
 
@@ -135,9 +134,9 @@ def test_move_document_updates_metadata(editor):
     # Move Doc0 to 1.
     # Target tab order: [Sheet0, Sheet1, Doc1, Doc0] ... maybe?
     # If we drag Doc A to the end.
-    # Target list index: 3 or 4.
+    # Target list index: 4 (Append)
 
-    result = editor.move_document_section(0, 1, target_tab_order_index=3)
+    result = editor.move_document_section(0, 1, target_tab_order_index=4)
 
     assert "error" not in result
 
