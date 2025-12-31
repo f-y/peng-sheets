@@ -10,8 +10,8 @@ export function activate(context: vscode.ExtensionContext) {
     // Listen for configuration changes
     context.subscriptions.push(
         vscode.workspace.onDidChangeConfiguration((e) => {
-            if (e.affectsConfiguration('mdSpreadsheet.validation')) {
-                const newConfig = vscode.workspace.getConfiguration('mdSpreadsheet.validation');
+            if (e.affectsConfiguration('pengSheets.validation')) {
+                const newConfig = vscode.workspace.getConfiguration('pengSheets.validation');
                 SpreadsheetEditorProvider.postMessageToActive({
                     type: 'update_config',
                     config: { validation: newConfig }
@@ -21,9 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // New Workbook command: create a new .md file with workbook template
-    context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-md-spreadsheet.newWorkbook', newWorkbookHandler)
-    );
+    context.subscriptions.push(vscode.commands.registerCommand('peng-sheets.newWorkbook', newWorkbookHandler));
 
     // Open Editor command (wrapper for vscode.openWith)
     const openEditorFunction = async () => {
@@ -38,11 +36,11 @@ export function activate(context: vscode.ExtensionContext) {
             vscode.window.showErrorMessage('No active editor found to open.');
         }
     };
-    context.subscriptions.push(vscode.commands.registerCommand('vscode-md-spreadsheet.openEditor', openEditorFunction));
+    context.subscriptions.push(vscode.commands.registerCommand('peng-sheets.openEditor', openEditorFunction));
 
     // Open Editor from Context Menu command
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-md-spreadsheet.openEditorFromContextMenu', async (uri: vscode.Uri) => {
+        vscode.commands.registerCommand('peng-sheets.openEditorFromContextMenu', async (uri: vscode.Uri) => {
             if (uri) {
                 await vscode.commands.executeCommand('vscode.openWith', uri, SpreadsheetEditorProvider.viewType);
             } else {
@@ -54,7 +52,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Insert current date command (Excel-like: Ctrl+;)
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-md-spreadsheet.insertDate', () => {
+        vscode.commands.registerCommand('peng-sheets.insertDate', () => {
             const now = new Date();
             const dateStr = now.toISOString().slice(0, 10); // YYYY-MM-DD
             SpreadsheetEditorProvider.postMessageToActive({
@@ -66,7 +64,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Insert current time command (Excel-like: Ctrl+Shift+;)
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-md-spreadsheet.insertTime', () => {
+        vscode.commands.registerCommand('peng-sheets.insertTime', () => {
             const now = new Date();
             const timeStr = now.toTimeString().slice(0, 5); // HH:MM
             SpreadsheetEditorProvider.postMessageToActive({
@@ -78,7 +76,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Insert copied cells command (Excel-like: Ctrl+Shift+=)
     context.subscriptions.push(
-        vscode.commands.registerCommand('vscode-md-spreadsheet.insertCopiedCells', () => {
+        vscode.commands.registerCommand('peng-sheets.insertCopiedCells', () => {
             SpreadsheetEditorProvider.postMessageToActive({
                 type: 'insertCopiedCells'
             });
@@ -123,7 +121,7 @@ export async function newWorkbookHandler() {
     }
 
     // Create template content
-    const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
+    const config = vscode.workspace.getConfiguration('pengSheets.parsing');
     const rootMarker = config.get<string>('rootMarker') || '# Tables';
     const [col1, col2, col3] = getDefaultColumnNames();
     const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| ${col1} | ${col2} | ${col3} |\n|---|---|---|\n|   |   |   |\n`;
@@ -204,13 +202,13 @@ export function getWebviewContent(
         viteClient = '<script type="module" src="http://localhost:5173/@vite/client"></script>';
     }
 
-    const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
-    const validationConfig = vscode.workspace.getConfiguration('mdSpreadsheet.validation');
+    const config = vscode.workspace.getConfiguration('pengSheets.parsing');
+    const validationConfig = vscode.workspace.getConfiguration('pengSheets.validation');
     const initialConfig = {
         ...config,
         validation: validationConfig
     };
-    const generalConfig = vscode.workspace.getConfiguration('mdSpreadsheet');
+    const generalConfig = vscode.workspace.getConfiguration('pengSheets');
     const languageSetting = generalConfig.get<string>('language') || 'auto';
     const extensionLanguage = languageSetting === 'auto' ? vscode.env.language : languageSetting;
     const initialContent = document.getText();

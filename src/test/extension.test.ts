@@ -17,11 +17,11 @@ suite('Extension Test Suite', () => {
     });
 
     test('Extension should be present', () => {
-        assert.ok(vscode.extensions.getExtension('f-y.vscode-md-spreadsheet'));
+        assert.ok(vscode.extensions.getExtension('f-y.peng-sheets'));
     });
 
     test('Extension should activate', async () => {
-        const ext = vscode.extensions.getExtension('f-y.vscode-md-spreadsheet');
+        const ext = vscode.extensions.getExtension('f-y.peng-sheets');
         assert.ok(ext);
         if (ext) {
             await ext.activate();
@@ -31,8 +31,8 @@ suite('Extension Test Suite', () => {
 
     test('Command: newWorkbook should register', async () => {
         const commands = await vscode.commands.getCommands(true);
-        assert.ok(commands.includes('vscode-md-spreadsheet.openEditor'));
-        assert.ok(commands.includes('vscode-md-spreadsheet.newWorkbook'));
+        assert.ok(commands.includes('peng-sheets.openEditor'));
+        assert.ok(commands.includes('peng-sheets.newWorkbook'));
     });
 
     suite('getWebviewContent', () => {
@@ -108,7 +108,7 @@ suite('Extension Test Suite', () => {
             assert.ok(writeFileStub.calledOnce, 'writeFile should be called');
 
             assert.ok(
-                executeCommandStub.calledWith('vscode.openWith', sinon.match.any, 'vscode-md-spreadsheet.editor'),
+                executeCommandStub.calledWith('vscode.openWith', sinon.match.any, 'peng-sheets.editor'),
                 'openWith command should be executed with correct viewType'
             );
         });

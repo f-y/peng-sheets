@@ -4,7 +4,7 @@ import { getWebviewContent, findWheelFiles } from './extension';
 import { MessageDispatcher } from './message-dispatcher';
 
 export class SpreadsheetEditorProvider implements vscode.CustomTextEditorProvider {
-    public static readonly viewType = 'vscode-md-spreadsheet.editor';
+    public static readonly viewType = 'peng-sheets.editor';
 
     // Track all active webview panels
     private static activePanels: Map<string, vscode.WebviewPanel> = new Map();
@@ -89,10 +89,10 @@ export class SpreadsheetEditorProvider implements vscode.CustomTextEditorProvide
         });
 
         const changeConfigSubscription = vscode.workspace.onDidChangeConfiguration((e) => {
-            if (e.affectsConfiguration('mdSpreadsheet.parsing')) {
+            if (e.affectsConfiguration('pengSheets.parsing')) {
                 webviewPanel.webview.postMessage({
                     type: 'configUpdate',
-                    config: vscode.workspace.getConfiguration('mdSpreadsheet.parsing')
+                    config: vscode.workspace.getConfiguration('pengSheets.parsing')
                 });
             }
         });

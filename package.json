@@ -13,48 +13,48 @@
     ],
     "repository": {
         "type": "git",
-        "url": "https://github.com/f-y/vscode-md-spreadsheet.git"
+        "url": "https://github.com/f-y/peng-sheets.git"
     },
     "main": "./out/extension.js",
     "contributes": {
         "commands": [
             {
-                "command": "vscode-md-spreadsheet.openEditor",
+                "command": "peng-sheets.openEditor",
                 "title": "%command.openEditor.title%",
                 "icon": "$(table)"
             },
             {
-                "command": "vscode-md-spreadsheet.openEditorFromContextMenu",
+                "command": "peng-sheets.openEditorFromContextMenu",
                 "title": "%command.openEditorFromContextMenu.title%"
             },
             {
-                "command": "vscode-md-spreadsheet.newWorkbook",
+                "command": "peng-sheets.newWorkbook",
                 "title": "%command.newWorkbook.title%"
             },
             {
-                "command": "vscode-md-spreadsheet.insertDate",
+                "command": "peng-sheets.insertDate",
                 "title": "Insert Current Date"
             },
             {
-                "command": "vscode-md-spreadsheet.insertTime",
+                "command": "peng-sheets.insertTime",
                 "title": "Insert Current Time"
             },
             {
-                "command": "vscode-md-spreadsheet.insertCopiedCells",
+                "command": "peng-sheets.insertCopiedCells",
                 "title": "Insert Copied Cells"
             }
         ],
         "menus": {
             "editor/title": [
                 {
-                    "command": "vscode-md-spreadsheet.openEditor",
-                    "when": "resourceLangId == markdown && activeCustomEditorId != vscode-md-spreadsheet.editor",
+                    "command": "peng-sheets.openEditor",
+                    "when": "resourceLangId == markdown && activeCustomEditorId != peng-sheets.editor",
                     "group": "navigation"
                 }
             ],
             "explorer/context": [
                 {
-                    "command": "vscode-md-spreadsheet.openEditorFromContextMenu",
+                    "command": "peng-sheets.openEditorFromContextMenu",
                     "when": "resourceLangId == markdown",
                     "group": "navigation"
                 }
@@ -62,7 +62,7 @@
         },
         "customEditors": [
             {
-                "viewType": "vscode-md-spreadsheet.editor",
+                "viewType": "peng-sheets.editor",
                 "displayName": "Markdown Spreadsheet",
                 "selector": [
                     {
@@ -76,37 +76,37 @@
             {
                 "key": "ctrl+;",
                 "mac": "cmd+;",
-                "command": "vscode-md-spreadsheet.insertDate",
-                "when": "activeCustomEditorId == 'vscode-md-spreadsheet.editor'"
+                "command": "peng-sheets.insertDate",
+                "when": "activeCustomEditorId == 'peng-sheets.editor'"
             },
             {
                 "key": "ctrl+shift+;",
                 "mac": "cmd+shift+;",
-                "command": "vscode-md-spreadsheet.insertTime",
-                "when": "activeCustomEditorId == 'vscode-md-spreadsheet.editor'"
+                "command": "peng-sheets.insertTime",
+                "when": "activeCustomEditorId == 'peng-sheets.editor'"
             },
             {
                 "key": "ctrl+shift+=",
                 "mac": "cmd+shift+=",
-                "command": "vscode-md-spreadsheet.insertCopiedCells",
-                "when": "activeCustomEditorId == 'vscode-md-spreadsheet.editor'"
+                "command": "peng-sheets.insertCopiedCells",
+                "when": "activeCustomEditorId == 'peng-sheets.editor'"
             }
         ]
     },
     "configuration": {
         "title": "Markdown Spreadsheet",
         "properties": {
-            "mdSpreadsheet.parsing.rootMarker": {
+            "pengSheets.parsing.rootMarker": {
                 "type": "string",
                 "default": "# Tables",
                 "description": "The marker indicating the start of the data section."
             },
-            "mdSpreadsheet.parsing.sheetHeaderLevel": {
+            "pengSheets.parsing.sheetHeaderLevel": {
                 "type": "integer",
                 "default": 2,
                 "description": "The markdown header level for sheets."
             },
-            "mdSpreadsheet.parsing.tableHeaderLevel": {
+            "pengSheets.parsing.tableHeaderLevel": {
                 "type": [
                     "integer",
                     "null"
@@ -114,32 +114,32 @@
                 "default": 3,
                 "description": "The markdown header level for tables. If null, table names are not extracted."
             },
-            "mdSpreadsheet.parsing.captureDescription": {
+            "pengSheets.parsing.captureDescription": {
                 "type": "boolean",
                 "default": true,
                 "description": "Whether to capture text between the table header and the table as a description."
             },
-            "mdSpreadsheet.parsing.columnSeparator": {
+            "pengSheets.parsing.columnSeparator": {
                 "type": "string",
                 "default": "|",
                 "description": "Character used to separate columns."
             },
-            "mdSpreadsheet.parsing.headerSeparatorChar": {
+            "pengSheets.parsing.headerSeparatorChar": {
                 "type": "string",
                 "default": "-",
                 "description": "Character used in the separator row."
             },
-            "mdSpreadsheet.parsing.requireOuterPipes": {
+            "pengSheets.parsing.requireOuterPipes": {
                 "type": "boolean",
                 "default": true,
-                "description": "Whether tables must have outer pipes."
+                "description": "Whether to tables must have outer pipes."
             },
-            "mdSpreadsheet.parsing.stripWhitespace": {
+            "pengSheets.parsing.stripWhitespace": {
                 "type": "boolean",
                 "default": true,
                 "description": "Whether to strip whitespace from cell values."
             },
-            "mdSpreadsheet.language": {
+            "pengSheets.language": {
                 "type": "string",
                 "enum": [
                     "auto",
@@ -149,7 +149,7 @@
                 "default": "auto",
                 "description": "Language for the spreadsheet UI."
             },
-            "mdSpreadsheet.validation.dateFormat": {
+            "pengSheets.validation.dateFormat": {
                 "type": "string",
                 "enum": [
                     "YYYY-MM-DD",

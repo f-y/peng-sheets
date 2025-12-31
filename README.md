@@ -1,10 +1,10 @@
-# Markdown Spreadsheet Editor
+# PengSheets (Markdown Spreadsheet)
 
 <p align="center">
-  <a href="https://github.com/f-y/vscode-md-spreadsheet/blob/main/LICENSE">
+  <a href="https://github.com/f-y/peng-sheets/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
   </a>
-  <a href="https://github.com/f-y/vscode-md-spreadsheet">
+  <a href="https://github.com/f-y/peng-sheets">
     <img src="https://img.shields.io/badge/repository-github-green.svg" alt="Repository" />
   </a>
 </p>
@@ -15,7 +15,7 @@
 
 ---
 
-**Markdown Spreadsheet Editor** transforms your Markdown tables into a rich, interactive spreadsheet view. Powered by [md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser) and **Pyodide**, it runs a robust Python parser directly in your editor, offering superior parsing accuracy and multi-sheet support.
+**PengSheets** transforms your Markdown tables into a rich, interactive spreadsheet view. Powered by [md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser) and **Pyodide**, it runs a robust Python parser directly in your editor, offering superior parsing accuracy and multi-sheet support.
 
 ## ✨ Features
 
@@ -29,7 +29,7 @@
 
 1.  Open any Markdown file (`.md`) containing tables.
 2.  Open the Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`).
-3.  Run the command: **`Markdown Spreadsheet: Open Editor`**.
+3.  Run the command: **`PengSheets: Open Editor`**.
     - *Tip: You can also find this command in the editor title menu.*
 4.  A new tab will open with the spreadsheet view.
 5.  Edit your Markdown file, and watch the spreadsheet update in real-time!
@@ -40,14 +40,14 @@ This extension contributes the following settings:
 
 | ID | Description | Default |
 | :--- | :--- | :--- |
-| `mdSpreadsheet.parsing.rootMarker` | The marker indicating the start of the data section. | `# Tables` |
-| `mdSpreadsheet.parsing.sheetHeaderLevel` | The header level used to identify sheets (e.g., 2 for `## Sheet`). | `2` |
-| `mdSpreadsheet.parsing.tableHeaderLevel` | The header level used to identify tables (e.g., 3 for `### Table`). | `3` |
-| `mdSpreadsheet.parsing.captureDescription` | Capture text between the header and the table as a description. | `true` |
-| `mdSpreadsheet.parsing.columnSeparator` | Character used to separate columns in the Markdown source. | `\|` |
-| `mdSpreadsheet.parsing.headerSeparatorChar` | Character used in the separator row. | `-` |
-| `mdSpreadsheet.parsing.requireOuterPipes` | Whether generated tables must have outer pipes. | `true` |
-| `mdSpreadsheet.parsing.stripWhitespace` | Whether to strip whitespace from cell values. | `true` |
+| `pengSheets.parsing.rootMarker` | The marker indicating the start of the data section. | `# Tables` |
+| `pengSheets.parsing.sheetHeaderLevel` | The header level used to identify sheets (e.g., 2 for `## Sheet`). | `2` |
+| `pengSheets.parsing.tableHeaderLevel` | The header level used to identify tables (e.g., 3 for `### Table`). | `3` |
+| `pengSheets.parsing.captureDescription` | Capture text between the header and the table as a description. | `true` |
+| `pengSheets.parsing.columnSeparator` | Character used to separate columns in the Markdown source. | `\|` |
+| `pengSheets.parsing.headerSeparatorChar` | Character used in the separator row. | `-` |
+| `pengSheets.parsing.requireOuterPipes` | Whether generated tables must have outer pipes. | `true` |
+| `pengSheets.parsing.stripWhitespace` | Whether to strip whitespace from cell values. | `true` |
 
 ## 🔧 Architecture
 
