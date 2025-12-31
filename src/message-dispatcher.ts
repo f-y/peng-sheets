@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { WebviewMessage, UpdateRangeMessage, BatchUpdateMessage } from './types/messages';
-import { getDefaultColumnNames } from './i18n-utils';
+
 
 export interface HandlerContext {
     activeDocument: vscode.TextDocument | undefined;
@@ -41,9 +41,7 @@ export class MessageDispatcher {
             case 'batchUpdate':
                 await this.handleBatchUpdate(message);
                 break;
-            case 'createSpreadsheet':
-                await this.handleCreateSpreadsheet();
-                break;
+
             case 'save':
                 await this.handleSave();
                 break;
@@ -63,7 +61,7 @@ export class MessageDispatcher {
             typeof message === 'object' &&
             typeof msg.type === 'string' &&
             typeof msg.type === 'string' &&
-            ['updateRange', 'batchUpdate', 'createSpreadsheet', 'save', 'undo', 'redo'].includes(msg.type)
+            ['updateRange', 'batchUpdate', 'save', 'undo', 'redo'].includes(msg.type)
         );
     }
 
@@ -190,44 +188,7 @@ export class MessageDispatcher {
         }
     }
 
-    private async handleCreateSpreadsheet() {
-        if (!this.context.activeDocument) return;
-        const { activeDocument } = this.context;
 
-        const wsEdit = new vscode.WorkspaceEdit();
-        const docText = activeDocument.getText();
-        const config = vscode.workspace.getConfiguration('mdSpreadsheet.parsing');
-        const rawRootMarker = config.get<string>('rootMarker');
-        const rootMarker = rawRootMarker && rawRootMarker.trim().length > 0 ? rawRootMarker : '# Tables';
-
-        const escapedRoot = rootMarker.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const pattern = escapedRoot.replace(/\\ /g, '\\s+').replace(/\s+/g, '\\s+');
-        const rootRegex = new RegExp(pattern);
-
-        const hasRoot = rootRegex.test(docText);
-        const isEmpty = docText.trim().length === 0;
-        const isZombie = isEmpty || !!docText.trim().match(new RegExp(`^${pattern}$`));
-
-        const [col1, col2] = getDefaultColumnNames();
-
-        if (isZombie) {
-            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| ${col1} | ${col2} |\n|---|---|\n|   |   |\n`;
-            const fullRange = new vscode.Range(activeDocument.positionAt(0), activeDocument.positionAt(docText.length));
-            wsEdit.replace(activeDocument.uri, fullRange, template);
-        } else if (hasRoot) {
-            const template = `## Sheet 1\n\n### Table 1\n\n| ${col1} | ${col2} |\n|---|---|\n|   |   |\n`;
-            const prefix = !docText.endsWith('\n') ? '\n\n' : '\n';
-            const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
-            wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
-        } else {
-            const template = `${rootMarker}\n\n## Sheet 1\n\n### Table 1\n\n| ${col1} | ${col2} |\n|---|---|\n|   |   |\n`;
-            const prefix = docText.length > 0 && !docText.endsWith('\n') ? '\n\n' : docText.length > 0 ? '\n' : '';
-            const insertPos = activeDocument.lineAt(activeDocument.lineCount - 1).range.end;
-            wsEdit.insert(activeDocument.uri, insertPos, prefix + template);
-        }
-
-        await vscode.workspace.applyEdit(wsEdit);
-    }
 
     private async handleSave() {
         console.log('Received save request');

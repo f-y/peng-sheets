@@ -1,6 +1,6 @@
 # Introduction
 
-This file does not contain a `# Tables` section. 
+This file does not contain a `# Table` section. 
 It represents a standard Markdown document that might be opened in the editor.
 
 ## Section 1

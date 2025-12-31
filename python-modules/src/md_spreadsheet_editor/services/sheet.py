@@ -95,6 +95,21 @@ def add_sheet(
                 tab_order.append({"type": "sheet", "index": new_sheet_index})
             current_metadata["tab_order"] = tab_order
 
+        # Cleanup redundant tab_order
+        # If tab_order matches the physical order of sheets exactly, we don't need to persist it.
+        # This keeps new workbooks clean ("pure addition").
+        is_redundant = True
+        if len(tab_order) != len(new_sheets):
+            is_redundant = False
+        else:
+            for i, item in enumerate(tab_order):
+                if item["type"] != "sheet" or item["index"] != i:
+                    is_redundant = False
+                    break
+
+        if is_redundant and "tab_order" in current_metadata:
+            del current_metadata["tab_order"]
+
         new_workbook = replace(workbook, sheets=new_sheets, metadata=current_metadata)
         context.update_workbook(new_workbook)
         return generate_and_get_range(context)

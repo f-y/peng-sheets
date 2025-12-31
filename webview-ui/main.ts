@@ -947,7 +947,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     }
 
     private _onCreateSpreadsheet() {
-        vscode.postMessage({ type: 'createSpreadsheet' });
+        this.spreadsheetService.createSpreadsheet();
     }
 
     async _parseWorkbook() {
@@ -1011,11 +1011,14 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             }
 
             // Add "Add Sheet" button - this will be placed at the very end after reordering
-            newTabs.push({
-                type: 'add-sheet',
-                title: '+',
-                index: newTabs.length
-            });
+            const hasSheets = newTabs.some((t) => t.type === 'sheet');
+            if (hasSheets) {
+                newTabs.push({
+                    type: 'add-sheet',
+                    title: '+',
+                    index: newTabs.length
+                });
+            }
 
             // Reorder tabs based on tab_order metadata if available
             const tabOrder = this.workbook?.metadata?.tab_order as Array<{ type: string; index: number }> | undefined;

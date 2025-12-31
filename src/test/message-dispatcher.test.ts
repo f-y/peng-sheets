@@ -129,103 +129,9 @@ suite('MessageDispatcher Test Suite', () => {
         assert.ok(applyEditStub.notCalled, 'Should NOT use workspace.applyEdit fallback');
     });
 
-    test('CreateSpreadsheet: Should insert generic sheet if marker exists', async () => {
-        // Mock config
-        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
-            get: (key: string) => (key.includes('rootMarker') ? '# Tables' : undefined)
-        } as any);
 
-        // Document has marker
-        const docText = '# Tables\nExisting Content';
-        (mockContext.activeDocument!.getText as sinon.SinonStub).returns(docText);
 
-        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
 
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'createSpreadsheet' });
-
-        assert.ok(applyEditStub.calledOnce, 'Should apply edit');
-        // Logic should use insert, but checking call count is enough for coverage here
-    });
-
-    test('CreateSpreadsheet: Should append new structure if marker missing', async () => {
-        // Mock config
-        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
-            get: (key: string) => (key.includes('rootMarker') ? '# Tables' : undefined)
-        } as any);
-
-        // Document has NO marker
-        const docText = 'Some other text';
-        (mockContext.activeDocument!.getText as sinon.SinonStub).returns(docText);
-
-        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
-
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'createSpreadsheet' });
-
-        assert.ok(applyEditStub.calledOnce, 'Should apply edit');
-    });
-
-    test('CreateSpreadsheet: Should replace ALL if zombie state (only marker)', async () => {
-        // Mock config
-        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
-            get: (key: string) => (key.includes('rootMarker') ? '# Tables' : undefined)
-        } as any);
-
-        // Document is JUST the marker (Zombie state)
-        const docText = '# Tables\n';
-        (mockContext.activeDocument!.getText as sinon.SinonStub).returns(docText);
-
-        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
-
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'createSpreadsheet' });
-
-        assert.ok(applyEditStub.calledOnce, 'Should apply edit');
-    });
-
-    test('CreateSpreadsheet: Should use default marker when config is undefined', async () => {
-        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
-            get: (_key: string) => undefined
-        } as any);
-        (mockContext.activeDocument!.getText as sinon.SinonStub).returns('');
-        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
-
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'createSpreadsheet' });
-
-        assert.ok(applyEditStub.calledOnce);
-    });
-
-    test('CreateSpreadsheet: Should handle document ending with newline', async () => {
-        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
-            get: (_key: string) => '# Tables'
-        } as any);
-        // hasRoot = false (no marker), but ends with newline
-        (mockContext.activeDocument!.getText as sinon.SinonStub).returns('Some text\n');
-
-        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
-
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'createSpreadsheet' });
-
-        assert.ok(applyEditStub.calledOnce);
-    });
-
-    test('CreateSpreadsheet: Should handle marker presence with trailing newline', async () => {
-        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
-            get: (_key: string) => '# Tables'
-        } as any);
-        // hasRoot = true, and ends with newline
-        (mockContext.activeDocument!.getText as sinon.SinonStub).returns('# Tables\nContent\n');
-
-        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
-
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'createSpreadsheet' });
-
-        assert.ok(applyEditStub.calledOnce);
-    });
 
     // --- New Tests for Full Coverage ---
 
@@ -314,14 +220,7 @@ suite('MessageDispatcher Test Suite', () => {
 
     // Undo/Redo null/error handling tests removed
 
-    test('CreateSpreadsheet: Should handle null activeDocument', async () => {
-        mockContext.activeDocument = undefined;
-        const dispatcher = new MessageDispatcher(mockContext);
-        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit');
 
-        await dispatcher.dispatch({ type: 'createSpreadsheet' });
-        assert.ok(applyEditStub.notCalled);
-    });
 
     test('Save: Should skip if already saving', async () => {
         mockContext.getSavingState = () => true; // Locked
@@ -465,38 +364,4 @@ suite('MessageDispatcher Test Suite', () => {
             'Edit options should use start of first and end of last update'
         );
     });
-
-    test('CreateSpreadsheet: REPRO - Should include root marker when document is empty', async () => {
-        // Mock config to return empty string/undefined to trigger fallback to default
-        sandbox.stub(vscode.workspace, 'getConfiguration').returns({
-            get: (_key: string) => '' // Simulate empty config
-        } as any);
-
-        // Document is empty
-        (mockContext.activeDocument!.getText as sinon.SinonStub).returns('');
-        // Mock line count for insert
-        (mockContext.activeDocument!.lineCount as any) = 1;
-        (mockContext.activeDocument!.lineAt as sinon.SinonStub).returns({
-            range: { end: new vscode.Position(0, 0) }
-        });
-
-        const applyEditStub = sandbox.stub(vscode.workspace, 'applyEdit').resolves(true);
-
-        const dispatcher = new MessageDispatcher(mockContext);
-        await dispatcher.dispatch({ type: 'createSpreadsheet' });
-
-        assert.ok(applyEditStub.calledOnce);
-        const args = applyEditStub.firstCall.args[0] as vscode.WorkspaceEdit;
-
-        // WorkspaceEdit structure is complex, but we can check if it has entries
-        const entries = args.entries();
-        // [ [uri, [TextEdit]]]
-        assert.ok(entries.length > 0);
-        const edits = entries[0][1];
-        assert.ok(edits.length > 0);
-        const insertedText = edits[0].newText;
-
-        assert.ok(insertedText.includes('# Tables'), `Expected '# Tables' in output, got: ${insertedText}`);
-    });
 });
-

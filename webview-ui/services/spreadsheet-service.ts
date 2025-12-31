@@ -616,6 +616,11 @@ export class SpreadsheetService {
         this._performAction('add_sheet', newSheetName, headers, afterIdx, targetIdx);
     }
 
+    public createSpreadsheet() {
+        const headers = this._getDefaultColumnHeaders();
+        this._performAction('create_new_spreadsheet', headers);
+    }
+
     public renameSheet(sheetIdx: number, newName: string) {
         this._performAction('rename_sheet', sheetIdx, newName);
     }

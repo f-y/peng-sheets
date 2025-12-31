@@ -111,14 +111,26 @@ def generate_and_get_range(context):
             end_line = end_line - 1
             end_col = len(lines[end_line])
 
-    if start_line >= len(lines):
-        start_line = len(lines) - 1 if len(lines) > 0 else 0
+    content = new_md + "\n"
+
+    # Ensure empty line before appended content if file is not empty
+    # We want 2 newlines separation between previous content and new content.
+    if start_line >= len(lines) and md_text:
+        trailing_newlines = 0
+        for char in reversed(md_text):
+            if char == "\n":
+                trailing_newlines += 1
+            else:
+                break
+
+        needed = max(0, 2 - trailing_newlines)
+        content = ("\n" * needed) + content
 
     return {
         "startLine": start_line,
         "endLine": end_line,
         "endCol": end_col,
-        "content": new_md + "\n\n",
+        "content": content,
     }
 
 

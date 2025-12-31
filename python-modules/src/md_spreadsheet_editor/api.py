@@ -64,6 +64,14 @@ def initialize_workbook(md_text, config_json):
     return ctx.initialize_workbook(md_text, config_json)
 
 
+def create_new_spreadsheet(column_names=None):
+    """
+    Creates a new spreadsheet (initializes workbook if needed and adds first sheet).
+    """
+    ctx = EditorContext.get_instance()
+    return sheet_service.add_sheet(ctx, new_name=None, column_names=column_names)
+
+
 def get_state():
     ctx = EditorContext.get_instance()
     return ctx.get_state()
