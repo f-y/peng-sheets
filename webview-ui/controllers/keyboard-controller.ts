@@ -119,6 +119,14 @@ export class KeyboardController implements ReactiveController {
             return;
         }
 
+        // Ctrl+A: Select entire table (same as clicking corner cell)
+        if (isControl && (e.key === 'a' || e.key === 'A')) {
+            e.preventDefault();
+            this.host.selectionCtrl.selectCell(-2, -2);
+            this.host.focusCell();
+            return;
+        }
+
         if (e.key === 'Delete' || e.key === 'Backspace') {
             e.preventDefault();
             this.host.editCtrl.deleteSelection();
@@ -148,6 +156,25 @@ export class KeyboardController implements ReactiveController {
 
     private handleEditModeKey(e: KeyboardEvent) {
         e.stopPropagation();
+
+        // Ctrl+A (Select All) in edit mode: explicitly select all text in cell
+        // Browser default might not work properly in Shadow DOM
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'a' || e.key === 'A')) {
+            e.preventDefault(); // Take control of selection
+            const root = this.host.viewShadowRoot || this.host.shadowRoot;
+            const editingCell = root?.querySelector('.cell.editing') as HTMLElement | null;
+            if (editingCell) {
+                const selection = window.getSelection();
+                if (selection) {
+                    const range = document.createRange();
+                    range.selectNodeContents(editingCell);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+            }
+            return;
+        }
+
         if (isRealEnterKey(e)) {
             if (e.altKey || e.ctrlKey || e.metaKey) {
                 e.stopPropagation();
@@ -237,7 +264,65 @@ export class KeyboardController implements ReactiveController {
             }
             // Let browser handle normal Backspace
         } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-            // Arrow keys in edit mode: commit edit and navigate
+            // In edit mode: allow text selection and cursor movement within cell
+
+            // Shift+Arrow: let browser handle text selection
+            if (e.shiftKey) {
+                return;
+            }
+
+            // Ctrl/Cmd+Arrow: let browser handle word-by-word movement
+            if (e.ctrlKey || e.metaKey) {
+                return;
+            }
+
+            // Get the editing cell's text content to determine behavior
+            const root = this.host.viewShadowRoot || this.host.shadowRoot;
+            const editingCell = root?.querySelector('.cell.editing') as HTMLElement | null;
+            const cellText = editingCell?.textContent || '';
+            const isMultiline = cellText.includes('\n') || editingCell?.querySelector('br') !== null;
+
+            // ArrowUp/Down in multiline cells: always stay in cell (prevent accidental exit)
+            if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && isMultiline) {
+                return; // Let browser handle
+            }
+
+            // Check if cursor is at boundary for committing and navigating
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const isCollapsed = range.collapsed;
+
+                if (isCollapsed && editingCell) {
+                    // ArrowLeft at position 0: commit & navigate left
+                    if (e.key === 'ArrowLeft') {
+                        const atStart = range.startOffset === 0 &&
+                            (range.startContainer === editingCell ||
+                                range.startContainer === editingCell.firstChild ||
+                                (range.startContainer.nodeType === Node.TEXT_NODE &&
+                                    range.startContainer === editingCell.childNodes[0]));
+                        if (!atStart) {
+                            return; // Let browser move cursor within text
+                        }
+                    }
+
+                    // ArrowRight at end of text: commit & navigate right
+                    if (e.key === 'ArrowRight') {
+                        const textLength = cellText.length;
+                        const lastChild = editingCell.lastChild;
+                        const atEnd = (range.startContainer === editingCell && range.startOffset === editingCell.childNodes.length) ||
+                            (range.startContainer === lastChild && range.startOffset === (lastChild.textContent?.length || 0)) ||
+                            (range.startContainer.nodeType === Node.TEXT_NODE &&
+                                range.startOffset === range.startContainer.textContent?.length &&
+                                !range.startContainer.nextSibling);
+                        if (!atEnd) {
+                            return; // Let browser move cursor within text
+                        }
+                    }
+                }
+            }
+
+            // At boundary or single-line ArrowUp/Down: commit edit and navigate
             e.preventDefault();
 
             this.host.commitEdit(e);
