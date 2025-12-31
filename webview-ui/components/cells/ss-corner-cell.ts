@@ -44,7 +44,7 @@ export class SSCornerCell extends LitElement {
                 @click="${this._onClick}"
                 @keydown="${this._onKeydown}"
             >
-                <span class="codicon codicon-table" style="font-size: 12px; opacity: 0.7;"></span>
+                <span class="codicon codicon-symbol-constant" style="font-size: 12px; opacity: 0.7;"></span>
             </div>
         `;
     }

@@ -283,7 +283,7 @@
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     text-align: center;
-    color: var(--header-bg);
+    color: var(--vscode-descriptionForeground);
     user-select: none;
     outline-offset: -2px;
     display: flex;
