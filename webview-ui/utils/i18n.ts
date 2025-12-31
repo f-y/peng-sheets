@@ -90,6 +90,7 @@ const translations = {
         copy: 'Copy',
         cut: 'Cut',
         paste: 'Paste',
+        editTableDescription: 'Edit Table Description',
         insertCopiedRowsAbove: 'Insert Copied Row(s) Above',
         insertCopiedRowsBelow: 'Insert Copied Row(s) Below',
         insertCopiedColsLeft: 'Insert Copied Column(s) Left',
@@ -191,6 +192,7 @@ const translations = {
         copy: 'コピー',
         cut: '切り取り',
         paste: '貼り付け',
+        editTableDescription: 'このテーブルの説明を編集',
         selectTable: 'テーブルを選択'
     }
 };

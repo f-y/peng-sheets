@@ -25,6 +25,7 @@ export class SSMetadataEditor extends LitElement {
 
     @property({ type: String }) description = '';
     @property({ type: String }) placeholder = '';
+    @property({ type: Boolean }) forceOpen = false;
     @state() private _isEditing = false;
     @state() private _pendingDescription = '';
 
@@ -41,6 +42,19 @@ export class SSMetadataEditor extends LitElement {
                 this._pendingDescription = '';
             }
         }
+        // Handle forceOpen property change
+        if (changedProperties.has('forceOpen') && this.forceOpen && !this._isEditing) {
+            this._handleClick();
+            // Reset forceOpen after handling
+            this.forceOpen = false;
+        }
+    }
+
+    /**
+     * Public method to trigger edit mode from outside
+     */
+    public openEditor() {
+        this._handleClick();
     }
 
     private _handleClick() {

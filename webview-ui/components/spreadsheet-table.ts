@@ -108,6 +108,20 @@ export class SpreadsheetTable extends LitElement {
         this.requestUpdate();
     }
 
+    /**
+     * Open the description editor for this table.
+     * Called from pane-view when user selects "Edit Table Description" from context menu.
+     */
+    public openDescriptionEditor() {
+        const view = this.shadowRoot?.querySelector('spreadsheet-table-view');
+        if (view) {
+            const editor = view.shadowRoot?.querySelector('ss-metadata-editor') as { openEditor?: () => void } | null;
+            if (editor?.openEditor) {
+                editor.openEditor();
+            }
+        }
+    }
+
     willUpdate(changedProperties: PropertyValues) {
         // Track focus before update to prevent focus stealing/loss across re-renders
         // If we currently have focus (or a child has focus), we want to try to restore it after update

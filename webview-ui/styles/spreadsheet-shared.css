@@ -223,7 +223,7 @@
 /* Metadata editor styles */
 .metadata-container {
     margin-bottom: 0;
-    min-height: 8px;
+    min-height: 0px;
 }
 
 .metadata-container.empty {
@@ -248,23 +248,13 @@
     min-height: 0;
     overflow: hidden;
     opacity: 0;
-    transition:
-        opacity 0.2s,
-        min-height 0.2s,
-        padding 0.2s,
-        margin 0.2s;
+    pointer-events: none;
+    /* Not clickable - use context menu to edit */
 }
 
-.metadata-container:hover .metadata-desc.empty {
-    min-height: 2em;
-    margin: 0;
-    padding: 4px;
-    opacity: 1;
-}
-
-.metadata-desc.empty:hover {
-    opacity: 1;
-    background: rgba(0, 0, 0, 0.02);
+/* When not empty, show description normally */
+.metadata-desc:not(.empty) {
+    pointer-events: auto;
 }
 
 .placeholder {

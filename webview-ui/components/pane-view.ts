@@ -453,6 +453,9 @@ export class PaneView extends LitElement {
         return html`
             <div class="context-menu" style="top: ${this._tabContextMenu.y}px; left: ${this._tabContextMenu.x}px;">
                 <div class="context-menu-item" @click="${this._triggerRenameFromMenu}">${t('renameTable')}</div>
+                <div class="context-menu-item" @click="${this._triggerEditDescriptionFromMenu}">
+                    ${t('editTableDescription')}
+                </div>
                 <div class="context-menu-item" @click="${this._triggerDeleteFromMenu}">${t('deleteTable')}</div>
             </div>
         `;
@@ -465,6 +468,30 @@ export class PaneView extends LitElement {
             const table = this.tables[globalIndex];
             this._startRenaming(globalIndex, table?.name || undefined);
             this._tabContextMenu = null;
+        }
+    }
+
+    private _triggerEditDescriptionFromMenu(e: Event) {
+        e.stopPropagation();
+        if (this._tabContextMenu) {
+            const { index } = this._tabContextMenu;
+            // First switch to the table tab if not already active
+            if (this.node.activeTableIndex !== index) {
+                this._switchTab(index);
+            }
+            this._tabContextMenu = null;
+
+            // Wait for render then trigger description editor on the spreadsheet-table
+            this.updateComplete.then(() => {
+                requestAnimationFrame(() => {
+                    const spreadsheetTable = this.shadowRoot?.querySelector('spreadsheet-table') as {
+                        openDescriptionEditor?: () => void;
+                    } | null;
+                    if (spreadsheetTable?.openDescriptionEditor) {
+                        spreadsheetTable.openDescriptionEditor();
+                    }
+                });
+            });
         }
     }
 
