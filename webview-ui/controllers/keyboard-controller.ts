@@ -5,6 +5,7 @@ import {
     insertLineBreakAtSelection,
     handleBackspaceAtZWS
 } from '../utils/edit-mode-helpers';
+import { isRealEnterKey } from '../utils/keyboard-utils';
 
 export class KeyboardController implements ReactiveController {
     host: SpreadsheetTable;
@@ -14,8 +15,8 @@ export class KeyboardController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
     handleKeyDown(e: KeyboardEvent) {
         if (this.host.editCtrl.isEditing) {
@@ -147,7 +148,7 @@ export class KeyboardController implements ReactiveController {
 
     private handleEditModeKey(e: KeyboardEvent) {
         e.stopPropagation();
-        if (e.key === 'Enter') {
+        if (isRealEnterKey(e)) {
             if (e.altKey || e.ctrlKey || e.metaKey) {
                 e.stopPropagation();
                 e.stopImmediatePropagation();

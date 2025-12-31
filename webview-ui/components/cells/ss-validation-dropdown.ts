@@ -8,6 +8,7 @@
  */
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { isRealEnterKey } from '../../utils/keyboard-utils';
 
 @customElement('ss-validation-dropdown')
 export class SSValidationDropdown extends LitElement {
@@ -35,7 +36,7 @@ export class SSValidationDropdown extends LitElement {
     };
 
     private _handleTriggerKeydown = (e: KeyboardEvent) => {
-        if (e.key === 'Enter' || e.key === ' ') {
+        if (isRealEnterKey(e) || e.key === ' ') {
             e.preventDefault();
             e.stopPropagation();
             this._isOpen = !this._isOpen;
@@ -183,11 +184,11 @@ export class SSValidationDropdown extends LitElement {
                 ? html`
                       <div class="validation-dropdown-menu" style="${this._menuStyle}" role="listbox">
                           ${this.values.map(
-                              (value) => html`
+                    (value) => html`
                                   <div
                                       class="validation-dropdown-option ${value === this.currentValue
-                                          ? 'selected'
-                                          : ''}"
+                            ? 'selected'
+                            : ''}"
                                       role="option"
                                       aria-selected="${value === this.currentValue}"
                                       @click="${(e: Event) => this._handleOptionClick(value, e)}"
@@ -196,7 +197,7 @@ export class SSValidationDropdown extends LitElement {
                                       ${value}
                                   </div>
                               `
-                          )}
+                )}
                       </div>
                   `
                 : nothing}

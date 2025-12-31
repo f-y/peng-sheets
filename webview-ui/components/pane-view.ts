@@ -4,6 +4,7 @@ import { TableJSON, LeafNode } from '../types';
 import paneViewStyles from './styles/pane-view.css?inline';
 import './spreadsheet-table';
 import { t } from '../utils/i18n';
+import { isRealEnterKey } from '../utils/keyboard-utils';
 
 @customElement('pane-view')
 export class PaneView extends LitElement {
@@ -155,7 +156,7 @@ export class PaneView extends LitElement {
     }
 
     private _handleRenameKeydown(e: KeyboardEvent) {
-        if (e.key === 'Enter') {
+        if (isRealEnterKey(e)) {
             this._finishRenaming();
         } else if (e.key === 'Escape') {
             this._cancelRenaming();

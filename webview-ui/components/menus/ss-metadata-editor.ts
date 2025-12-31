@@ -10,6 +10,7 @@ import { LitElement, html, css, PropertyValues, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { t } from '../../utils/i18n';
 import sharedStyles from '../../styles/spreadsheet-shared.css?inline';
+import { isIMEComposing } from '../../utils/keyboard-utils';
 
 @customElement('ss-metadata-editor')
 export class SSMetadataEditor extends LitElement {
@@ -64,7 +65,7 @@ export class SSMetadataEditor extends LitElement {
     }
 
     private _handleKeyDown(e: KeyboardEvent) {
-        if (e.isComposing) return;
+        if (isIMEComposing(e)) return;
 
         if (e.key === 'Escape') {
             e.preventDefault();

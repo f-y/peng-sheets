@@ -4,6 +4,7 @@ import { t } from '../utils/i18n';
 import styles from './styles/bottom-tabs.css?inline';
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 import { TabDragController } from '../controllers/tab-drag-controller';
+import { isRealEnterKey } from '../utils/keyboard-utils';
 
 export interface TabDefinition {
     title: string;
@@ -148,7 +149,7 @@ export class BottomTabs extends LitElement {
     }
 
     private _handleInputKeydown(e: KeyboardEvent) {
-        if (e.key === 'Enter' || e.key === 'Escape') {
+        if (isRealEnterKey(e) || e.key === 'Escape') {
             e.preventDefault();
             (e.target as HTMLInputElement).blur();
         }
