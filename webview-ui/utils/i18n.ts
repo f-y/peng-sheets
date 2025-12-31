@@ -93,7 +93,8 @@ const translations = {
         insertCopiedRowsAbove: 'Insert Copied Row(s) Above',
         insertCopiedRowsBelow: 'Insert Copied Row(s) Below',
         insertCopiedColsLeft: 'Insert Copied Column(s) Left',
-        insertCopiedColsRight: 'Insert Copied Column(s) Right'
+        insertCopiedColsRight: 'Insert Copied Column(s) Right',
+        selectTable: 'Select Table'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -189,7 +190,8 @@ const translations = {
         documentNamePrefix: 'ドキュメント',
         copy: 'コピー',
         cut: '切り取り',
-        paste: '貼り付け'
+        paste: '貼り付け',
+        selectTable: 'テーブルを選択'
     }
 };
 

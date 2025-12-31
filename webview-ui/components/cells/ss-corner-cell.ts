@@ -10,6 +10,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { emitCellEvent } from '../mixins/cell-events';
+import { t } from '../../utils/i18n';
 
 @customElement('ss-corner-cell')
 export class SSCornerCell extends LitElement {
@@ -38,9 +39,13 @@ export class SSCornerCell extends LitElement {
             <div
                 class="cell header-corner ${this.isSelected ? 'selected' : ''}"
                 tabindex="0"
+                title="${t('selectTable')}"
+                style="cursor: pointer; display: flex; align-items: center; justify-content: center;"
                 @click="${this._onClick}"
                 @keydown="${this._onKeydown}"
-            ></div>
+            >
+                <span class="codicon codicon-table" style="font-size: 12px; opacity: 0.7;"></span>
+            </div>
         `;
     }
 }
