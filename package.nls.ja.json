@@ -1,5 +1,5 @@
 {
-    "command.openEditor.title": "Markdown: 表計算エディタで開く",
-    "command.openEditorFromContextMenu.title": "表計算エディタで開く",
+    "command.openEditor.title": "Markdown: PengSheetsで開く",
+    "command.openEditorFromContextMenu.title": "PengSheetsで開く",
     "command.newWorkbook.title": "Markdown: 新規に表計算ファイルを作成"
 }

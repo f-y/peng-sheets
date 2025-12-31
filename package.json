@@ -2,9 +2,9 @@
     "name": "peng-sheets",
     "publisher": "f-y",
     "displayName": "PengSheets - Markdown Spreadsheet Editor",
-    "description": "WYSIWYG editor for Markdown tables using md-spreadsheet-parser",
+    "description": "Markdown Spreadsheet editor",
     "icon": "images/icon.png",
-    "version": "0.0.1",
+    "version": "1.0.0",
     "engines": {
         "vscode": "^1.90.0"
     },
@@ -63,7 +63,7 @@
         "customEditors": [
             {
                 "viewType": "peng-sheets.editor",
-                "displayName": "Markdown Spreadsheet",
+                "displayName": "PengSheets",
                 "selector": [
                     {
                         "filenamePattern": "*.md"
@@ -94,7 +94,7 @@
         ]
     },
     "configuration": {
-        "title": "Markdown Spreadsheet",
+        "title": "PengSheets",
         "properties": {
             "pengSheets.parsing.rootMarker": {
                 "type": "string",
