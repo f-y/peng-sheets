@@ -30,8 +30,9 @@
     cursor: pointer;
     color: var(--vscode-tab-inactiveForeground);
     background-color: var(--vscode-tab-inactiveBackground);
-    border-right: 1px solid var(--vscode-tab-border);
-    border-top: 1px solid var(--vscode-tab-border);
+    border-top: 4px solid var(--vscode-editor-background);
+    border-right: 1px solid var(--vscode-editor-background);
+    border-left: 1px solid var(--vscode-editor-background);
     white-space: nowrap;
     user-select: none;
     display: flex;
@@ -41,7 +42,7 @@
 .tab.active {
     color: var(--vscode-tab-activeForeground);
     background-color: var(--vscode-tab-activeBackground);
-    border-top: 1px solid var(--vscode-tab-activeBorderTop);
+    border-top: 1px solid var(--vscode-editorWidget-border);
 }
 
 .tab:hover {

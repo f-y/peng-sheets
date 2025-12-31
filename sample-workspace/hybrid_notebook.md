@@ -92,7 +92,7 @@ models = table.to_models(FeatureComparison)
 | --- | --- | --- |
 |  |  |  |
 
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [29.970695970695967, 70.02930402930403], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 0}, {"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2, 3], "activeTableIndex": 0}]}} -->
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [58.908424908424905, 41.09157509157509], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 1}, {"type": "split", "id": "HY2l0BqxRiRDXNbOTBiCc", "direction": "horizontal", "sizes": [41.66666666666667, 58.33333333333333], "children": [{"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2, 4], "activeTableIndex": 1}, {"type": "pane", "id": "mzStJk31RtqOOSBWqobDQ", "tables": [3], "activeTableIndex": 0}]}]}} -->
 
 ## Comparison
 
@@ -184,7 +184,6 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | **Total** | - | - | $35,000 | - | - |
 
 <!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "sheet", "index": 1}, {"type": "document", "index": 1}, {"type": "sheet", "index": 2}, {"type": "sheet", "index": 3}]} -->
-
 
 # Appendix
 

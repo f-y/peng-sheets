@@ -9,6 +9,9 @@
     color: var(--vscode-foreground);
     font-family: var(--vscode-font-family);
     background: var(--vscode-editor-background);
+    border-left: 1px solid var(--vscode-editorWidget-border);
+    border-right: 1px solid var(--vscode-editorWidget-border);
+    border-bottom: 1px solid var(--vscode-editorWidget-border);
 }
 
 /* Toolbar Section */
