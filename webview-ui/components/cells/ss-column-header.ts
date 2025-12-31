@@ -53,6 +53,11 @@ export class SSColumnHeader extends LitElement {
     @property({ type: Boolean }) isDropTarget = false;
     @property({ type: Boolean }) isDropTargetEnd = false;
 
+    // Copied range edge properties (for dashed border indicator)
+    @property({ type: Boolean }) copyTop = false;
+    @property({ type: Boolean }) copyLeft = false;
+    @property({ type: Boolean }) copyRight = false;
+
     private _onClick = (e: MouseEvent) => {
         emitCellEvent<CellMouseEventDetail>(this, 'ss-col-click', {
             row: -2, // Column selection mode
@@ -131,6 +136,16 @@ export class SSColumnHeader extends LitElement {
             .filter(Boolean)
             .join(' ');
 
+        // Build copy range border style (per-edge dashed border)
+        const copyBorderParts: string[] = [];
+        if (this.copyTop) copyBorderParts.push('border-top: 1px dashed #0078d7 !important');
+        if (this.copyLeft) copyBorderParts.push('border-left: 1px dashed #0078d7 !important');
+        if (this.copyRight) copyBorderParts.push('border-right: 1px dashed #0078d7 !important');
+        const copyBorderStyle = copyBorderParts.length > 0 ? copyBorderParts.join('; ') + ';' : '';
+
+        // Build drop target style
+        const dropTargetStyle = `${this.isDropTarget ? 'border-left: 3px solid var(--selection-color, #0078d7);' : ''}${this.isDropTargetEnd ? 'border-right: 3px solid var(--selection-color, #0078d7);' : ''}`;
+
         return html`
             <div
                 class="${classes}"
@@ -138,10 +153,7 @@ export class SSColumnHeader extends LitElement {
                 data-row="-1"
                 tabindex="0"
                 contenteditable="false"
-                style="${this.isDropTarget ? 'border-left: 3px solid var(--selection-color, #0078d7);' : ''}${this
-                    .isDropTargetEnd
-                    ? 'border-right: 3px solid var(--selection-color, #0078d7);'
-                    : ''}"
+                style="${dropTargetStyle}${copyBorderStyle}"
                 @click="${this._onClick}"
                 @mousedown="${this._onMousedown}"
                 @dblclick="${this._onDblclick}"

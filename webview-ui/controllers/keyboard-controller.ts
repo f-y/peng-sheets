@@ -296,7 +296,8 @@ export class KeyboardController implements ReactiveController {
                 if (isCollapsed && editingCell) {
                     // ArrowLeft at position 0: commit & navigate left
                     if (e.key === 'ArrowLeft') {
-                        const atStart = range.startOffset === 0 &&
+                        const atStart =
+                            range.startOffset === 0 &&
                             (range.startContainer === editingCell ||
                                 range.startContainer === editingCell.firstChild ||
                                 (range.startContainer.nodeType === Node.TEXT_NODE &&
@@ -308,10 +309,12 @@ export class KeyboardController implements ReactiveController {
 
                     // ArrowRight at end of text: commit & navigate right
                     if (e.key === 'ArrowRight') {
-                        const textLength = cellText.length;
                         const lastChild = editingCell.lastChild;
-                        const atEnd = (range.startContainer === editingCell && range.startOffset === editingCell.childNodes.length) ||
-                            (range.startContainer === lastChild && range.startOffset === (lastChild.textContent?.length || 0)) ||
+                        const atEnd =
+                            (range.startContainer === editingCell &&
+                                range.startOffset === editingCell.childNodes.length) ||
+                            (range.startContainer === lastChild &&
+                                range.startOffset === (lastChild.textContent?.length || 0)) ||
                             (range.startContainer.nodeType === Node.TEXT_NODE &&
                                 range.startOffset === range.startContainer.textContent?.length &&
                                 !range.startContainer.nextSibling);
