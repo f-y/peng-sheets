@@ -165,8 +165,8 @@ export class SSColumnHeader extends LitElement {
                 <span
                     class="cell-content ${this.hasValidation ? 'has-validation' : ''}"
                     contenteditable="${this.isEditing ? 'true' : 'false'}"
-                    style="display:inline-block; min-width: 10px; padding: 3px;"
-                    title="${this.hasValidation ? this.validationType : ''}"
+                    style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 0;"
+                    title="${this.hasValidation ? `${this.value} (${this.validationType})` : this.value}"
                     @blur="${this._onBlur}"
                     .textContent="${live(this.value)}"
                 ></span>
