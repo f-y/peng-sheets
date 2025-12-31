@@ -6,7 +6,7 @@
  *
  * Fix: Check window.activeSpreadsheetTable before processing insert-value-at-selection
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('Multi-table insert value isolation', () => {
     let dispatchedEvents: CustomEvent[] = [];

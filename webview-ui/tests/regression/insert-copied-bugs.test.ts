@@ -60,11 +60,11 @@ import { ClipboardController } from '../../controllers/clipboard-controller';
 
 describe('Bug: Column Headers Not Copied', () => {
     let host: ReturnType<typeof createMockHost>;
-    let controller: ClipboardController;
 
     beforeEach(() => {
         host = createMockHost();
-        controller = new ClipboardController(host as any);
+        // Initialize controller (not directly used, but needed for side effects)
+        new ClipboardController(host as any);
     });
 
     it('should include header in copiedData when copying a column', () => {

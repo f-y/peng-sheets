@@ -347,11 +347,11 @@ export class SpreadsheetService {
      * - Prevents syntax errors from unescaped quotes in string arguments.
      * - More robust than manual string interpolation.
      */
-    private _toPythonArg(v: any): string {
+    private _toPythonArg(v: unknown): string {
         return `json.loads(${JSON.stringify(JSON.stringify(v === undefined ? null : v))})`;
     }
 
-    private async _runPythonFunction<T>(funcName: string, ...args: any[]): Promise<T | null> {
+    private async _runPythonFunction<T>(funcName: string, ...args: unknown[]): Promise<T | null> {
         const argsStr = args.map((a) => this._toPythonArg(a)).join(', ');
         const code = `
             res = api.${funcName}(${argsStr})
@@ -366,7 +366,7 @@ export class SpreadsheetService {
      * 2. Executes the Python function.
      * 3. Posts the result back to VS Code (communication).
      */
-    private _performAction(funcName: string, ...args: any[]) {
+    private _performAction(funcName: string, ...args: unknown[]) {
         this._enqueueRequest(async () => {
             const result = await this._runPythonFunction<IUpdateSpec>(funcName, ...args);
             if (result) this._postUpdateMessage(result);

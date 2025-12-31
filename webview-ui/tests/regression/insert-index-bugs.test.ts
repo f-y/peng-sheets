@@ -4,7 +4,7 @@
  * Bug 1: Insert Row Above does nothing - event not propagating
  * Bug 2: Insert Copied Column Right inserts one column too far - double index increment
  */
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 describe('Bug: Insert Row Above Event Propagation', () => {
     describe('ss-context-menu event dispatch', () => {
