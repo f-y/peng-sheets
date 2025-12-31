@@ -32,7 +32,7 @@ export interface CellBlurEventDetail extends CellEventDetail {
 }
 
 export interface ContextMenuEventDetail {
-    type: 'row' | 'col';
+    type: 'row' | 'col' | 'cell';
     index: number;
     x: number;
     y: number;

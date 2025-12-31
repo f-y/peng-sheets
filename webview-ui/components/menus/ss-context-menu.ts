@@ -28,7 +28,7 @@ export class SSContextMenu extends LitElement {
 
     @property({ type: Number }) x = 0;
     @property({ type: Number }) y = 0;
-    @property({ type: String }) menuType: 'row' | 'col' = 'row';
+    @property({ type: String }) menuType: 'row' | 'col' | 'cell' = 'row';
     @property({ type: Number }) index = 0;
     @property({ type: Boolean }) hasCopiedRows = false;
     @property({ type: Boolean }) hasCopiedColumns = false;
@@ -174,28 +174,66 @@ export class SSContextMenu extends LitElement {
         );
     }
 
+    private _handleCopy(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-copy', {
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
+    private _handleCut(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-cut', {
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
+    private _handlePaste(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-paste', {
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
     private _stopPropagation(e: MouseEvent) {
         e.stopPropagation();
     }
 
     render() {
-        if (this.menuType === 'row') {
+        if (this.menuType === 'cell') {
+            return html`
+                <div class="context-menu" style="left: ${this.x}px; top: ${this.y}px" @click="${this._stopPropagation}">
+                    <div class="context-menu-item" @click="${this._handleCopy}">${t('copy')}</div>
+                    <div class="context-menu-item" @click="${this._handleCut}">${t('cut')}</div>
+                    <div class="context-menu-item" @click="${this._handlePaste}">${t('paste')}</div>
+                </div>
+            `;
+        } else if (this.menuType === 'row') {
             return html`
                 <div class="context-menu" style="left: ${this.x}px; top: ${this.y}px" @click="${this._stopPropagation}">
                     <div class="context-menu-item" @click="${this._handleInsertAbove}">${t('insertRowAbove')}</div>
                     <div class="context-menu-item" @click="${this._handleInsertBelow}">${t('insertRowBelow')}</div>
                     <div class="context-menu-item" @click="${this._handleDeleteRow}">${t('deleteRow')}</div>
                     ${this.hasCopiedRows
-                        ? html`
+                    ? html`
                               <div class="context-menu-separator"></div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedAbove}">
-                                  ${t('insertCopiedRowsAbove') || 'Insert Copied Row(s) Above'}
+                                  ${t('insertCopiedRowsAbove')}
                               </div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedBelow}">
-                                  ${t('insertCopiedRowsBelow') || 'Insert Copied Row(s) Below'}
+                                  ${t('insertCopiedRowsBelow')}
                               </div>
                           `
-                        : ''}
+                    : ''}
                 </div>
             `;
         } else {
@@ -205,19 +243,19 @@ export class SSContextMenu extends LitElement {
                     <div class="context-menu-item" @click="${this._handleInsertRight}">${t('insertColRight')}</div>
                     <div class="context-menu-item" @click="${this._handleDeleteCol}">${t('deleteCol')}</div>
                     ${this.hasCopiedColumns
-                        ? html`
+                    ? html`
                               <div class="context-menu-separator"></div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedLeft}">
-                                  ${t('insertCopiedColsLeft') || 'Insert Copied Column(s) Left'}
+                                  ${t('insertCopiedColsLeft')}
                               </div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedRight}">
-                                  ${t('insertCopiedColsRight') || 'Insert Copied Column(s) Right'}
+                                  ${t('insertCopiedColsRight')}
                               </div>
                           `
-                        : ''}
+                    : ''}
                     <div class="context-menu-separator"></div>
                     <div class="context-menu-item" @click="${this._handleDataValidation}">
-                        ${t('dataValidation') || 'Data Validation...'}
+                        ${t('dataValidation')}
                     </div>
                 </div>
             `;

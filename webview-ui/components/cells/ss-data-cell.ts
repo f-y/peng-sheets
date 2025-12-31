@@ -113,6 +113,18 @@ export class SSDataCell extends LitElement {
         emitCellMousemove(this, this.row, this.col);
     };
 
+    private _onContextMenu = (e: MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-cell-contextmenu', {
+                detail: { row: this.row, col: this.col, x: e.clientX, y: e.clientY },
+                bubbles: true,
+                composed: true
+            })
+        );
+    };
+
     /**
      * Validate the current value against the validation rule.
      * Returns error message if invalid, null if valid.
@@ -236,6 +248,7 @@ export class SSDataCell extends LitElement {
                 @blur="${this._onBlur}"
                 @keydown="${this._onKeydown}"
                 @mousemove="${this._onMousemove}"
+                @contextmenu="${this._onContextMenu}"
             ></div>
             ${this._renderValidationControl()}
         `;

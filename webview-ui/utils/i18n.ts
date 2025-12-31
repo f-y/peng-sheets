@@ -86,7 +86,14 @@ const translations = {
         validationTooltipPrefix: 'Data Validation',
         newColumn: 'New Column',
         sheetNamePrefix: 'Sheet',
-        documentNamePrefix: 'Document'
+        documentNamePrefix: 'Document',
+        copy: 'Copy',
+        cut: 'Cut',
+        paste: 'Paste',
+        insertCopiedRowsAbove: 'Insert Copied Row(s) Above',
+        insertCopiedRowsBelow: 'Insert Copied Row(s) Below',
+        insertCopiedColsLeft: 'Insert Copied Column(s) Left',
+        insertCopiedColsRight: 'Insert Copied Column(s) Right'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -179,7 +186,10 @@ const translations = {
         insertCopiedColsRight: 'コピーした列を右に挿入',
         newColumn: '新しい列',
         sheetNamePrefix: 'シート',
-        documentNamePrefix: 'ドキュメント'
+        documentNamePrefix: 'ドキュメント',
+        copy: 'コピー',
+        cut: '切り取り',
+        paste: '貼り付け'
     }
 };
 

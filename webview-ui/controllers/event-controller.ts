@@ -272,8 +272,8 @@ export class EventController implements ReactiveController {
             {
                 clientX: e.detail.x,
                 clientY: e.detail.y,
-                preventDefault: () => {},
-                stopPropagation: () => {}
+                preventDefault: () => { },
+                stopPropagation: () => { }
             } as MouseEvent,
             'col',
             e.detail.index
@@ -297,7 +297,7 @@ export class EventController implements ReactiveController {
             {
                 clientX: e.detail.x,
                 clientY: e.detail.y,
-                stopPropagation: () => {},
+                stopPropagation: () => { },
                 target: {
                     getBoundingClientRect: () => ({
                         left: e.detail.x,
@@ -312,7 +312,7 @@ export class EventController implements ReactiveController {
 
     handleResizeStart = (e: CustomEvent<{ col: number; x: number; width: number }>) => {
         this.host.resizeCtrl.startResize(
-            { clientX: e.detail.x, preventDefault: () => {}, stopPropagation: () => {} } as MouseEvent,
+            { clientX: e.detail.x, preventDefault: () => { }, stopPropagation: () => { } } as MouseEvent,
             e.detail.col,
             e.detail.width
         );
@@ -358,8 +358,8 @@ export class EventController implements ReactiveController {
             {
                 clientX: e.detail.x,
                 clientY: e.detail.y,
-                preventDefault: () => {},
-                stopPropagation: () => {}
+                preventDefault: () => { },
+                stopPropagation: () => { }
             } as MouseEvent,
             'row',
             e.detail.index
@@ -479,6 +479,40 @@ export class EventController implements ReactiveController {
 
     handleCellKeydown = (e: CustomEvent<{ row: number; col: number; originalEvent: KeyboardEvent }>) => {
         this.host.keyboardCtrl.handleKeyDown(e.detail.originalEvent);
+    };
+
+    handleCellContextMenu = (e: CustomEvent<{ row: number; col: number; x: number; y: number }>) => {
+        const { row, col, x, y } = e.detail;
+
+        // Set context menu state with 'cell' type
+        this.host.contextMenu = {
+            x,
+            y,
+            type: 'cell',
+            index: row, // row is used for index in cell context
+        };
+
+        // Check if this cell is within current selection
+        const { selectedRow, selectedCol, selectionAnchorRow, selectionAnchorCol } = this.host.selectionCtrl;
+        let isInsideSelection = false;
+
+        if (selectedRow >= 0 && selectedCol >= 0 && selectionAnchorRow >= 0 && selectionAnchorCol >= 0) {
+            const minR = Math.min(selectedRow, selectionAnchorRow);
+            const maxR = Math.max(selectedRow, selectionAnchorRow);
+            const minC = Math.min(selectedCol, selectionAnchorCol);
+            const maxC = Math.max(selectedCol, selectionAnchorCol);
+
+            if (row >= minR && row <= maxR && col >= minC && col <= maxC) {
+                isInsideSelection = true;
+            }
+        }
+
+        // Only update selection if clicked outside current selection
+        if (!isInsideSelection) {
+            this.host.selectionCtrl.selectCell(row, col);
+        }
+
+        this.host.focusCell();
     };
 
     handleValidationInput = (e: CustomEvent<{ row: number; col: number; value: string }>) => {

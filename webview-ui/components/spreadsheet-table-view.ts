@@ -30,7 +30,7 @@ export interface SelectionRange {
 export interface ContextMenuState {
     x: number;
     y: number;
-    type: 'row' | 'col';
+    type: 'row' | 'col' | 'cell';
     index: number;
     hasCopiedRows?: boolean;
     hasCopiedColumns?: boolean;
@@ -186,6 +186,15 @@ export class SpreadsheetTableView extends LitElement {
                     }}"
                           @ss-data-validation="${(e: CustomEvent<{ index: number }>) => {
                         this._bubbleEvent('view-data-validation', e.detail);
+                    }}"
+                          @ss-copy="${() => {
+                        this._bubbleEvent('view-copy', {});
+                    }}"
+                          @ss-cut="${() => {
+                        this._bubbleEvent('view-cut', {});
+                    }}"
+                          @ss-paste="${() => {
+                        this._bubbleEvent('view-paste', {});
                     }}"
                           @ss-menu-close="${() => {
                         this.dispatchEvent(new CustomEvent('view-menu-close', { bubbles: true, composed: true }));
@@ -460,6 +469,7 @@ export class SpreadsheetTableView extends LitElement {
                         @ss-cell-input="${(e: CustomEvent) => this._bubbleEvent('view-cell-input', e.detail)}"
                         @ss-cell-blur="${(e: CustomEvent) => this._bubbleEvent('view-cell-blur', e.detail)}"
                         @ss-cell-keydown="${(e: CustomEvent) => this._bubbleEvent('view-cell-keydown', e.detail)}"
+                        @ss-cell-contextmenu="${(e: CustomEvent) => this._bubbleEvent('view-cell-contextmenu', e.detail)}"
                         @ss-validation-input="${(e: CustomEvent) =>
                     this._bubbleEvent('view-validation-input', e.detail)}"
                     ></ss-data-cell>

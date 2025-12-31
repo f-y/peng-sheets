@@ -82,7 +82,7 @@ export class SpreadsheetTable extends LitElement {
     contextMenu: {
         x: number;
         y: number;
-        type: 'row' | 'col';
+        type: 'row' | 'col' | 'cell';
         index: number;
         hasCopiedRows?: boolean;
         hasCopiedColumns?: boolean;
@@ -655,6 +655,20 @@ export class SpreadsheetTable extends LitElement {
                 @view-filter-change="${this.filterCtrl.handleFilterChange}"
                 @view-clear-filter="${this.filterCtrl.handleClearFilter}"
                 @view-data-validation="${this._handleOpenValidationDialog}"
+                @view-cell-contextmenu="${this.eventCtrl.handleCellContextMenu}"
+                @view-copy="${() => {
+                this.clipboardCtrl.copyToClipboard();
+                this.contextMenu = null;
+            }}"
+                @view-cut="${async () => {
+                await this.clipboardCtrl.copyToClipboard();
+                this.editCtrl.deleteSelection();
+                this.contextMenu = null;
+            }}"
+                @view-paste="${async () => {
+                await this.clipboardCtrl.paste();
+                this.contextMenu = null;
+            }}"
                 @view-validation-input="${this.eventCtrl.handleValidationInput}"
             ></spreadsheet-table-view>
             ${this.validationDialog
