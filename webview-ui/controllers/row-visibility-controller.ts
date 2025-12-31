@@ -9,7 +9,7 @@ import type { VisualMetadata } from '../types/metadata';
 
 export { VisualMetadata };
 
-// Re-export ColumnFormat as ColumnDisplayFormat for compatibility if needed, 
+// Re-export ColumnFormat as ColumnDisplayFormat for compatibility if needed,
 // or denote that it is from metadata.
 // However, ColumnFormat from metadata.d.ts uses its own NumberFormat definition (structural).
 // We might need to cast or align them.

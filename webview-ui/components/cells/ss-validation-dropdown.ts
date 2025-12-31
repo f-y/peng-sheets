@@ -184,11 +184,11 @@ export class SSValidationDropdown extends LitElement {
                 ? html`
                       <div class="validation-dropdown-menu" style="${this._menuStyle}" role="listbox">
                           ${this.values.map(
-                    (value) => html`
+                              (value) => html`
                                   <div
                                       class="validation-dropdown-option ${value === this.currentValue
-                            ? 'selected'
-                            : ''}"
+                                          ? 'selected'
+                                          : ''}"
                                       role="option"
                                       aria-selected="${value === this.currentValue}"
                                       @click="${(e: Event) => this._handleOptionClick(value, e)}"
@@ -197,7 +197,7 @@ export class SSValidationDropdown extends LitElement {
                                       ${value}
                                   </div>
                               `
-                )}
+                          )}
                       </div>
                   `
                 : nothing}

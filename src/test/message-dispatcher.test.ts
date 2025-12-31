@@ -129,10 +129,6 @@ suite('MessageDispatcher Test Suite', () => {
         assert.ok(applyEditStub.notCalled, 'Should NOT use workspace.applyEdit fallback');
     });
 
-
-
-
-
     // --- New Tests for Full Coverage ---
 
     test('updateRange: Should handle null activeDocument gracefully', async () => {
@@ -219,8 +215,6 @@ suite('MessageDispatcher Test Suite', () => {
     });
 
     // Undo/Redo null/error handling tests removed
-
-
 
     test('Save: Should skip if already saving', async () => {
         mockContext.getSavingState = () => true; // Locked

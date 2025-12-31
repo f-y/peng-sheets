@@ -51,7 +51,10 @@ suite('Extension Test Suite', () => {
                 getText: () => 'Initial Content'
             } as vscode.TextDocument;
 
-            const html = getWebviewContent(mockWebview, mockContext, mockDocument, { parser: 'mock-wheel.whl', editor: 'mock-editor.whl' });
+            const html = getWebviewContent(mockWebview, mockContext, mockDocument, {
+                parser: 'mock-wheel.whl',
+                editor: 'mock-editor.whl'
+            });
 
             assert.ok(html.includes('<title>Markdown Spreadsheet</title>'));
             assert.ok(html.includes('window.initialContent = `Initial Content`'));
@@ -73,7 +76,10 @@ suite('Extension Test Suite', () => {
                 getText: () => 'Initial Content'
             } as vscode.TextDocument;
 
-            const html = getWebviewContent(mockWebview, mockContext, mockDocument, { parser: 'mock-wheel.whl', editor: 'mock-editor.whl' });
+            const html = getWebviewContent(mockWebview, mockContext, mockDocument, {
+                parser: 'mock-wheel.whl',
+                editor: 'mock-editor.whl'
+            });
 
             assert.ok(html.includes('http://localhost:5173'), 'Should include localhost in Dev mode');
             assert.ok(html.includes('type="module"'), 'Should use module script');

@@ -29,13 +29,7 @@ export type ValidationRule =
     | UrlValidationRule;
 
 // Export these for consumers
-export type {
-    ListValidationRule,
-    DateValidationRule,
-    IntegerValidationRule,
-    EmailValidationRule,
-    UrlValidationRule
-};
+export type { ListValidationRule, DateValidationRule, IntegerValidationRule, EmailValidationRule, UrlValidationRule };
 
 /**
  * Validation rule types
@@ -73,8 +67,8 @@ export class ValidationController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected(): void { }
-    hostDisconnected(): void { }
+    hostConnected(): void {}
+    hostDisconnected(): void {}
 
     /**
      * Get the validation rule for a specific column

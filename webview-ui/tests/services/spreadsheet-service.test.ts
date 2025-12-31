@@ -81,7 +81,7 @@ describe('SpreadsheetService', () => {
     it('should call deleteDocument using atomic update function', async () => {
         // Setup mock return for full file update
         const mockUpdate = {
-            content: "new content",
+            content: 'new content',
             startLine: 0,
             endLine: 100,
             file_changed: true,
@@ -98,15 +98,13 @@ describe('SpreadsheetService', () => {
         expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(
             expect.stringContaining('api.delete_document_and_get_full_update(')
         );
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(
-            expect.stringContaining('json.loads("1")')
-        );
+        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('json.loads("1")'));
 
         // Verify single message posted (not batch)
         expect(mockVscode.postMessage).toHaveBeenCalledTimes(1);
         expect(mockVscode.postMessage).toHaveBeenCalledWith(
             expect.objectContaining({
-                content: "new content",
+                content: 'new content',
                 startLine: 0,
                 endLine: 100
             })
@@ -124,9 +122,7 @@ describe('SpreadsheetService', () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
 
         // Should use api prefix
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(
-            expect.stringContaining('api.update_table_metadata(')
-        );
+        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('api.update_table_metadata('));
     });
 
     it('should initialize using api', async () => {

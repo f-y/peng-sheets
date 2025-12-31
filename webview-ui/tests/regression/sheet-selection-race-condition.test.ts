@@ -1,4 +1,3 @@
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fixture, html } from '@open-wc/testing-helpers';
 import '../../main';
@@ -20,7 +19,7 @@ describe('Regression: Sheet Selection Race Condition', () => {
             renameDocument: vi.fn(),
             moveDocumentSection: vi.fn(),
             moveWorkbookSection: vi.fn(),
-            updateWorkbookTabOrder: vi.fn(),
+            updateWorkbookTabOrder: vi.fn()
         };
 
         // Mock postMessage
@@ -49,7 +48,7 @@ describe('Regression: Sheet Selection Race Condition', () => {
         const targetIndex = contextMenuIndex + 1; // 2
 
         // Manually trigger the "Add Sheet" logic which sets pending state
-        // (el as any)._addSheetAtPosition(targetIndex); 
+        // (el as any)._addSheetAtPosition(targetIndex);
         // We can just set the state manually to simulate call
         el.pendingAddSheet = true;
         (el as any)._pendingNewTabIndex = targetIndex;

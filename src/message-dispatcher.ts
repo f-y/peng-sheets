@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { WebviewMessage, UpdateRangeMessage, BatchUpdateMessage } from './types/messages';
 
-
 export interface HandlerContext {
     activeDocument: vscode.TextDocument | undefined;
     webviewPanel: vscode.WebviewPanel | undefined;
@@ -12,7 +11,7 @@ export interface HandlerContext {
 export class MessageDispatcher {
     private _messageQueue: Promise<void> = Promise.resolve();
 
-    constructor(private context: HandlerContext) { }
+    constructor(private context: HandlerContext) {}
 
     public async dispatch(message: unknown): Promise<void> {
         if (!this.isValidMessage(message)) {
@@ -187,8 +186,6 @@ export class MessageDispatcher {
             vscode.window.showErrorMessage('Failed to apply batch updates.');
         }
     }
-
-
 
     private async handleSave() {
         console.log('Received save request');

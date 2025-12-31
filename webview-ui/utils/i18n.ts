@@ -212,4 +212,3 @@ export function t(key: I18nKey, ...args: string[]): string {
     });
     return text;
 }
-

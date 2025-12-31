@@ -177,7 +177,6 @@ export class SpreadsheetService {
 
                         await new Promise<void>((resolve) => this.pyodide!.FS!.syncfs(false, () => resolve()));
                     }
-
                 }
 
                 await this.runPythonAsync('import md_spreadsheet_editor.api as api');
