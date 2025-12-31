@@ -14,8 +14,7 @@
 /* Container */
 .container {
     width: 100%;
-    padding: 0.2rem;
-    margin-top: 20px;
+    margin-top: 0;
     height: 100%;
     box-sizing: border-box;
     display: flex;
@@ -24,6 +23,7 @@
 
 /* Rendered output */
 .output {
+    margin: 0 0.5rem;
     font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, sans-serif);
     font-size: var(--vscode-font-size, 13px);
     line-height: 1.6;
@@ -31,12 +31,12 @@
     min-height: 100px;
     height: 100%;
     border-radius: 4px;
-    padding: 0.5rem;
+    padding: 0 0.5rem;
     transition: background-color 0.15s ease;
 }
 
 .output:hover {
-    background: rgba(128, 128, 128, 0.05);
+    background: rgba(128, 128, 128, 0.01);
 }
 
 .output.hidden {
@@ -45,6 +45,7 @@
 
 /* Edit mode */
 .edit-container {
+    width: 100%;
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -52,14 +53,14 @@
 }
 
 .editor {
-    width: 100%;
     flex: 1;
     min-height: 400px;
-    padding: 0.75rem;
+    margin: 0.1rem 0.5rem;
+    padding: 0.5rem;
     font-family: var(--vscode-editor-font-family, monospace);
     font-size: var(--vscode-editor-font-size, 13px);
     line-height: 1.5;
-    background: var(--vscode-input-background);
+    background: var(--vscode-editor-background);
     color: var(--vscode-input-foreground);
     border: 1px solid var(--vscode-input-border, var(--vscode-widget-border));
     border-radius: 4px;
@@ -77,8 +78,8 @@
 
 .edit-hint {
     position: absolute;
-    top: 6px;
-    right: 6px;
+    top: 4px;
+    right: 1.2em;
     font-size: 0.85em;
     color: var(--vscode-descriptionForeground);
     opacity: 0;
@@ -94,12 +95,12 @@
 /* Save button */
 .save-button {
     position: absolute;
-    bottom: 24px;
+    bottom: 1em;
     right: 24px;
     padding: 5px 12px;
-    background: rgba(128, 128, 128, 0.3);
-    color: var(--vscode-foreground);
-    border: 1px solid rgba(128, 128, 128, 0.4);
+    background: var(--vscode-button-background);
+    color: var(--vscode-button-foreground);
+    border: 1px solid var(--vscode-button-border);
     border-radius: 4px;
     font-size: 12px;
     font-weight: normal;
@@ -112,11 +113,11 @@
 }
 
 .save-button:hover {
-    background: rgba(128, 128, 128, 0.5);
+    background: var(--vscode-button-hoverBackground);
 }
 
 .save-button:active {
-    background: rgba(128, 128, 128, 0.6);
+    background: var(--vscode-button-hoverBackground);
 }
 
 .save-button .codicon {

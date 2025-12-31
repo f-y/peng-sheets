@@ -46,6 +46,8 @@ import {
 
 // Register the VS Code Design System components
 import { SpreadsheetService } from './services/spreadsheet-service';
+import { IVisualMetadata } from './services/types';
+import { Validation } from './types/metadata';
 
 // Register the VS Code Design System components
 provideVSCodeDesignSystem().register();
@@ -64,15 +66,11 @@ declare global {
 // Acquire VS Code API
 const vscode = acquireVsCodeApi();
 
-// @ts-expect-error Vite raw import for Python module
-// import pythonCore from '../python-modules/headless_editor.py?raw';
-
 @customElement('md-spreadsheet-editor')
 export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     static styles = [unsafeCSS(mainStyles)];
 
     public readonly spreadsheetService = new SpreadsheetService(vscode);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     private _globalEventController = new GlobalEventController(this);
     // Promise for Pyodide initialization, started early in connectedCallback
     private _initPromise: Promise<unknown> | null = null;
@@ -179,24 +177,29 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             const table = tab.data.tables[tableIndex];
             if (table) {
                 // Initialize or update validation in visual metadata
-                const currentVisual =
-                    ((table.metadata as Record<string, unknown>)?.visual as Record<string, unknown>) || {};
-                const currentValidation = (currentVisual.validation as Record<string, unknown>) || {};
+                // Treat visual metadata as typed object from the start
+                const currentVisual = ((table.metadata as Record<string, unknown>)?.visual as IVisualMetadata) || {};
+
+                // Ensure validation object exists and matches Type
+                const currentValidation: Validation = currentVisual.validation || {};
 
                 if (rule === null) {
                     // Remove validation for this column
                     delete currentValidation[colIndex.toString()];
                 } else {
                     // Set validation rule for this column
-                    currentValidation[colIndex.toString()] = rule;
+                    // We cast rule to 'any' because strict union check is difficult here,
+                    // but we trust the UI to pass valid rules.
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    currentValidation[colIndex.toString()] = rule as any;
                 }
 
-                const newVisual = {
+                const newVisual: IVisualMetadata = {
                     ...currentVisual,
                     validation: Object.keys(currentValidation).length > 0 ? currentValidation : undefined
                 };
 
-                // Clean up undefined validation key
+                // Clean up undefined validation key if spread created one (though explicit undefined above handles it)
                 if (newVisual.validation === undefined) {
                     delete newVisual.validation;
                 }

@@ -16,7 +16,6 @@
 .tab-bar {
     display: flex;
     background-color: var(--vscode-editorGroupHeader-tabsBackground);
-    border-bottom: 1px solid var(--vscode-editorGroup-border);
     overflow-x: auto;
     min-height: 35px;
 }
@@ -32,6 +31,7 @@
     color: var(--vscode-tab-inactiveForeground);
     background-color: var(--vscode-tab-inactiveBackground);
     border-right: 1px solid var(--vscode-tab-border);
+    border-top: 1px solid var(--vscode-tab-border);
     white-space: nowrap;
     user-select: none;
     display: flex;

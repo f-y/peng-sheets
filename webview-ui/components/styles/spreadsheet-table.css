@@ -9,7 +9,7 @@
     height: 100%;
     overflow: hidden;
     position: relative;
-    --cell-padding: 2px;
+    --cell-padding: 2px 3px;
     --header-bg: var(--vscode-editor-background);
     --header-fg: var(--vscode-editor-foreground);
     --border-color: var(--vscode-editorWidget-border);
@@ -207,7 +207,7 @@
 .cell.header-col {
     background-color: var(--header-bg);
     font-weight: normal;
-    color: var(--vscode-descriptionForeground);
+    color: var(--vscode-foreground);
     text-align: center;
     position: sticky;
     top: 0;
@@ -216,7 +216,7 @@
     border-top: 1px solid var(--border-color);
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
-    padding: 0 4px;
+    padding: 2px 4px;
     outline-offset: -2px;
     display: flex;
     align-items: center;
@@ -225,7 +225,7 @@
 
 .cell.header-col.selected {
     background-color: var(--vscode-editor-selectionBackground);
-    color: var(--vscode-editor-selectionForeground);
+    color: var(--vscode-editor-foreground);
     outline: none;
 }
 
@@ -235,6 +235,7 @@
 }
 
 .header-row {
+    font-family: var(--vscode-editor-font-family);
     font-size: 0.8em;
     background-color: var(--header-bg);
     text-align: center;
@@ -245,7 +246,6 @@
     z-index: 1002;
     transform: translateZ(15px);
     user-select: none;
-    border-left: 1px solid var(--border-color);
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     padding: 0;
@@ -279,7 +279,6 @@
     top: 0;
     left: 0;
     border-top: 1px solid var(--border-color);
-    border-left: 1px solid var(--border-color);
     border-right: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     text-align: center;

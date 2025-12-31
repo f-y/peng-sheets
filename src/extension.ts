@@ -228,6 +228,10 @@ export function getWebviewContent(
                 font-family: "codicon";
                 src: url("${codiconFontUri}") format("truetype");
             }
+            
+            html, body {
+                padding: 0;
+            }
         </style>
     </head>
     <body>

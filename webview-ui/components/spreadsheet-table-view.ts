@@ -118,6 +118,9 @@ export class SpreadsheetTableView extends LitElement {
      */
     private _getRowHeaderWidth(): number {
         const digits = String(this.rowCount).length;
+        if (digits <= 2) {
+            return 30;
+        }
         if (digits <= 3) {
             return 35; // 3 digits or fewer need slightly more space
         }
