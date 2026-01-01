@@ -30,9 +30,9 @@
     cursor: pointer;
     color: var(--vscode-tab-inactiveForeground);
     background-color: var(--vscode-tab-inactiveBackground);
-    border-top: 4px solid var(--vscode-editor-background);
-    border-right: 1px solid var(--vscode-editor-background);
-    border-left: 1px solid var(--vscode-editor-background);
+    border-top: 1px solid var(--vscode-editorWidget-border);
+    border-right: 1px solid var(--vscode-editorWidget-border);
+    border-left: 1px solid var(--vscode-editorWidget-border);
     white-space: nowrap;
     user-select: none;
     display: flex;

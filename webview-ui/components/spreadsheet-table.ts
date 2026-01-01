@@ -101,6 +101,8 @@ export class SpreadsheetTable extends LitElement {
         anchorCol: number;
         selectedCol: number;
     } | null = null;
+    private _lastSelectedCol: number = -999; // Track last column for selection-change events
+    private _hasRenderedOnce: boolean = false; // Skip selection-change on first render
 
     // Exposed for Controllers
     public focusCell() {
@@ -261,6 +263,25 @@ export class SpreadsheetTable extends LitElement {
             }
             this._wasFocusedBeforeUpdate = false;
         }
+
+        // Dispatch selection-change event if selected column changed
+        // Skip on first render to prevent toolbar from showing active state on initial load
+        const currentCol = this.selectionCtrl.selectedCol;
+        if (this._hasRenderedOnce && currentCol !== this._lastSelectedCol) {
+            this._lastSelectedCol = currentCol;
+            this.dispatchEvent(
+                new CustomEvent('selection-change', {
+                    detail: {
+                        sheetIndex: this.sheetIndex,
+                        tableIndex: this.tableIndex,
+                        selectedCol: currentCol
+                    },
+                    bubbles: true,
+                    composed: true
+                })
+            );
+        }
+        this._hasRenderedOnce = true;
     }
 
     // Existing Focus Listeners

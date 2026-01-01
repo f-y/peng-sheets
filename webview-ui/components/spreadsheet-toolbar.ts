@@ -1,5 +1,5 @@
 import { html, LitElement, unsafeCSS } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, property } from 'lit/decorators.js';
 import { provideVSCodeDesignSystem, vsCodeButton, vsCodeDivider } from '@vscode/webview-ui-toolkit';
 import { t } from '../utils/i18n';
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
@@ -7,9 +7,22 @@ import toolbarStyles from './styles/toolbar.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton(), vsCodeDivider());
 
+/**
+ * Format state of the currently selected column.
+ * Used to show active state on toolbar buttons.
+ */
+export interface ToolbarFormatState {
+    hasCommaSeparator?: boolean;
+    hasPercent?: boolean;
+    decimals?: number;
+    alignment?: 'left' | 'center' | 'right';
+}
+
 @customElement('spreadsheet-toolbar')
 export class SpreadsheetToolbar extends LitElement {
     static styles = [unsafeCSS(codiconsStyles), unsafeCSS(toolbarStyles)];
+
+    @property({ type: Object }) activeFormat: ToolbarFormatState = {};
 
     render() {
         return html`
@@ -48,6 +61,7 @@ export class SpreadsheetToolbar extends LitElement {
 
                 <vscode-button
                     appearance="icon"
+                    class="${this.activeFormat.alignment === 'left' ? 'active' : ''}"
                     aria-label="${t('toolbarAlignLeft')}"
                     title="${t('toolbarAlignLeft')}"
                     @click="${() => this._dispatch('align-left')}"
@@ -64,6 +78,7 @@ export class SpreadsheetToolbar extends LitElement {
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
+                    class="${this.activeFormat.alignment === 'center' ? 'active' : ''}"
                     aria-label="${t('toolbarAlignCenter')}"
                     title="${t('toolbarAlignCenter')}"
                     @click="${() => this._dispatch('align-center')}"
@@ -80,6 +95,7 @@ export class SpreadsheetToolbar extends LitElement {
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
+                    class="${this.activeFormat.alignment === 'right' ? 'active' : ''}"
                     aria-label="${t('toolbarAlignRight')}"
                     title="${t('toolbarAlignRight')}"
                     @click="${() => this._dispatch('align-right')}"
@@ -99,6 +115,7 @@ export class SpreadsheetToolbar extends LitElement {
 
                 <vscode-button
                     appearance="icon"
+                    class="${this.activeFormat.hasCommaSeparator ? 'active' : ''}"
                     aria-label="${t('toolbarCommaSeparator')}"
                     title="${t('toolbarCommaSeparator')}"
                     @click="${() => this._dispatch('format-comma')}"
@@ -109,6 +126,7 @@ export class SpreadsheetToolbar extends LitElement {
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
+                    class="${this.activeFormat.hasPercent ? 'active' : ''}"
                     aria-label="${t('toolbarPercent')}"
                     title="${t('toolbarPercent')}"
                     @click="${() => this._dispatch('format-percent')}"
@@ -127,6 +145,9 @@ export class SpreadsheetToolbar extends LitElement {
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
+                    class="${this.activeFormat.decimals !== undefined && this.activeFormat.decimals > 0
+                        ? 'active'
+                        : ''}"
                     aria-label="${t('toolbarDecimalIncrease')}"
                     title="${t('toolbarDecimalIncrease')}"
                     @click="${() => this._dispatch('format-decimal-increase')}"
@@ -138,6 +159,9 @@ export class SpreadsheetToolbar extends LitElement {
                 </vscode-button>
                 <vscode-button
                     appearance="icon"
+                    class="${this.activeFormat.decimals !== undefined && this.activeFormat.decimals > 0
+                        ? 'active'
+                        : ''}"
                     aria-label="${t('toolbarDecimalDecrease')}"
                     title="${t('toolbarDecimalDecrease')}"
                     @click="${() => this._dispatch('format-decimal-decrease')}"

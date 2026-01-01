@@ -6,6 +6,7 @@ import { t } from './utils/i18n';
 import mainStyles from './styles/main.css?inline';
 
 import './components/spreadsheet-toolbar';
+import { ToolbarFormatState } from './components/spreadsheet-toolbar';
 import './components/spreadsheet-table';
 import './components/spreadsheet-onboarding';
 import './components/spreadsheet-document-view';
@@ -116,6 +117,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     // Track pending new tab index for selection after add (original tab index + 1)
     private _pendingNewTabIndex: number | null = null;
+
+    @state()
+    private _activeToolbarFormat: ToolbarFormatState = {};
+
+    // Track current selection for toolbar format state
+    private _currentSelectionInfo: { sheetIndex: number; tableIndex: number; selectedCol: number } | null = null;
 
     _handleMetadataEdit(detail: IMetadataEditDetail) {
         if (!this.workbook) return;
@@ -378,6 +385,52 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         }
     }
 
+    _handleSelectionChange(e: CustomEvent<{ sheetIndex: number; tableIndex: number; selectedCol: number }>) {
+        const { sheetIndex, tableIndex, selectedCol } = e.detail;
+        this._currentSelectionInfo = { sheetIndex, tableIndex, selectedCol };
+        this._computeToolbarFormat();
+    }
+
+    /** Compute toolbar format state from current selection and column metadata. */
+    private _computeToolbarFormat() {
+        const info = this._currentSelectionInfo;
+        if (!info || info.selectedCol < 0) {
+            this._activeToolbarFormat = {};
+            return;
+        }
+
+        // Find tab by sheetIndex, not activeTabIndex
+        const matchingTab = this.tabs.find((tab) => tab.type === 'sheet' && tab.sheetIndex === info.sheetIndex);
+        if (!matchingTab || !isSheetJSON(matchingTab.data)) {
+            this._activeToolbarFormat = {};
+            return;
+        }
+
+        const table = (matchingTab.data as SheetJSON).tables?.[info.tableIndex];
+        if (!table) {
+            this._activeToolbarFormat = {};
+            return;
+        }
+
+        // Alignment is stored at TableJSON.alignments array, NOT in column metadata
+        const alignments = table.alignments;
+        const align = alignments?.[info.selectedCol];
+
+        // Format info is in visual metadata
+        const visual = (table.metadata as Record<string, unknown>)?.visual as Record<string, unknown> | undefined;
+        const columns = visual?.columns as Record<string, Record<string, unknown>> | undefined;
+        const colMeta = columns?.[String(info.selectedCol)];
+        const format = colMeta?.format as Record<string, unknown> | undefined;
+        const numberFormat = format?.numberFormat as Record<string, unknown> | undefined;
+
+        this._activeToolbarFormat = {
+            alignment: align && align !== 'default' ? (align as 'left' | 'center' | 'right') : undefined,
+            hasCommaSeparator: numberFormat?.useThousandsSeparator === true,
+            hasPercent: numberFormat?.type === 'percent',
+            decimals: typeof numberFormat?.decimals === 'number' ? numberFormat.decimals : undefined
+        };
+    }
+
     async _handleDocumentChange(detail: { sectionIndex: number; content: string; title?: string; save?: boolean }) {
         console.log('Document change received:', detail);
 
@@ -533,6 +586,17 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     }
 
     willUpdate(changedProperties: PropertyValues<this>) {
+        // Reset toolbar format when switching tabs (no selection info for new tab yet)
+        if (changedProperties.has('activeTabIndex')) {
+            this._currentSelectionInfo = null;
+            this._activeToolbarFormat = {};
+        }
+
+        // Update toolbar format when tabs change (e.g., after format applied via toolbar)
+        if (changedProperties.has('tabs') && this._currentSelectionInfo) {
+            this._computeToolbarFormat();
+        }
+
         if (changedProperties.has('tabs')) {
             const tabs = this.tabs;
             const currentSheetCount = tabs.filter((t) => t.type === 'sheet').length;
@@ -614,7 +678,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
         return html`
             ${activeTab.type !== 'document' && activeTab.type !== 'onboarding'
-                ? html` <spreadsheet-toolbar @toolbar-action="${this._handleToolbarAction}"></spreadsheet-toolbar> `
+                ? html`
+                      <spreadsheet-toolbar
+                          .activeFormat="${this._activeToolbarFormat}"
+                          @toolbar-action="${this._handleToolbarAction}"
+                      ></spreadsheet-toolbar>
+                  `
                 : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet' && isSheetJSON(activeTab.data)
@@ -627,6 +696,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                                   .dateFormat="${((this.config?.validation as Record<string, unknown>)
                                       ?.dateFormat as string) || 'YYYY-MM-DD'}"
                                   @save-requested="${this._handleSave}"
+                                  @selection-change="${this._handleSelectionChange}"
                               ></layout-container>
                           </div>
                       `

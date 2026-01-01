@@ -27,3 +27,9 @@
     background-color: var(--vscode-widget-border);
     margin: 0 4px;
 }
+
+/* Active state for toolbar buttons (when column has this format) */
+vscode-button.active::part(control) {
+    background-color: var(--vscode-toolbar-activeBackground, rgba(90, 93, 94, 0.31));
+    border-radius: 3px;
+}

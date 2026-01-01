@@ -62,13 +62,13 @@ models = table.to_models(FeatureComparison)
 ## Test Sheet
 
 | 列名1 | 列名2 | 列名3 |
-| --- | --- | --- |
-|  |  |  |
+| :---: | --- | --- |
+| Center |  |  |
 | a | 1 | 2 |
 | a | 1 | 2 |
 | a | 1 | 2 |
 
-<!-- md-spreadsheet-table-metadata: {"filters": {"1": []}, "column_widths": {"1": 172, "2": 238}, "columns": {"1": {"format": {"numberFormat": {"type": "percent", "decimals": 0}}}, "2": {"format": {"numberFormat": {"type": "number", "decimals": 2}}}}} -->
+<!-- md-spreadsheet-table-metadata: {"filters": {"1": []}, "column_widths": {"1": 172, "2": 238}, "columns": {"1": {"format": {"numberFormat": {"type": "percent", "decimals": 0}}}, "2": {"format": {"numberFormat": {"type": "number", "decimals": 2}}}, "0": {"format": null}}} -->
 
 ### New Table 2
 
@@ -89,8 +89,10 @@ models = table.to_models(FeatureComparison)
 ### テーブル 4
 
 | 列名1 | 列名2 | 列名3 |
-| --- | --- | --- |
-|  |  |  |
+| ---: | --- | --- |
+| 10000 |  |  |
+
+<!-- md-spreadsheet-table-metadata: {"columns": {"0": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}}}} -->
 
 <!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [58.908424908424905, 41.09157509157509], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 1}, {"type": "split", "id": "HY2l0BqxRiRDXNbOTBiCc", "direction": "horizontal", "sizes": [41.66666666666667, 58.33333333333333], "children": [{"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2, 4], "activeTableIndex": 1}, {"type": "pane", "id": "mzStJk31RtqOOSBWqobDQ", "tables": [3], "activeTableIndex": 0}]}]}} -->
 
