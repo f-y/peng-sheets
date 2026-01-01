@@ -82,7 +82,7 @@ models = table.to_models(FeatureComparison)
 
 | 列名1 | 列名2 | 新しい列 | 列名3 |
 | --- | --- | --- | --- |
-|  | Yes |  | 2025-12-02 |
+|  | Yes<br> |  | 2025-12-02 |
 
 <!-- md-spreadsheet-table-metadata: {"validation": {"1": {"type": "list", "values": ["Yes", "No"]}, "3": {"type": "date"}}} -->
 
@@ -94,7 +94,7 @@ models = table.to_models(FeatureComparison)
 
 <!-- md-spreadsheet-table-metadata: {"columns": {"0": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}}}} -->
 
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [58.908424908424905, 41.09157509157509], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 1}, {"type": "split", "id": "HY2l0BqxRiRDXNbOTBiCc", "direction": "horizontal", "sizes": [41.66666666666667, 58.33333333333333], "children": [{"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2, 4], "activeTableIndex": 1}, {"type": "pane", "id": "mzStJk31RtqOOSBWqobDQ", "tables": [3], "activeTableIndex": 0}]}]}} -->
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [58.908424908424905, 41.09157509157509], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 1}, {"type": "split", "id": "HY2l0BqxRiRDXNbOTBiCc", "direction": "horizontal", "sizes": [68.80570409982175, 31.19429590017825], "children": [{"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2], "activeTableIndex": 0}, {"type": "pane", "id": "mzStJk31RtqOOSBWqobDQ", "tables": [3], "activeTableIndex": 0}]}]}} -->
 
 ## Comparison
 

@@ -455,12 +455,17 @@ export class SpreadsheetTable extends LitElement {
             const contentSpan = cell.querySelector('.cell-content') as HTMLElement;
             let newValue = '';
 
-            // Read from DOM for WYSIWYG correctness
-            const targetEl = contentSpan || cell;
-            newValue = getDOMText(targetEl);
-
-            // Normalize content (strip trailing newlines, handle empty content)
-            newValue = normalizeEditContent(newValue, this.editCtrl.hasUserInsertedNewline);
+            // Use tracked value (updated via input events) as primary source
+            // This avoids issues with contenteditable phantom BR elements
+            if (this.editCtrl.trackedValue !== null) {
+                newValue = this.editCtrl.trackedValue;
+            } else {
+                // Fallback to DOM parsing if trackedValue is not available
+                const targetEl = contentSpan || cell;
+                newValue = getDOMText(targetEl);
+                // Normalize content (strip trailing newlines, handle empty content)
+                newValue = normalizeEditContent(newValue, this.editCtrl.hasUserInsertedNewline);
+            }
 
             // In replacement mode, pendingEditValue is the authoritative value.
             // DOM may be empty or stale due to timing between mousedown and commit.
@@ -516,6 +521,15 @@ export class SpreadsheetTable extends LitElement {
         } finally {
             this._isCommitting = false;
         }
+    }
+
+    /**
+     * Helper to extract text from an element using getDOMText utility.
+     * Used by KeyboardController to update trackedValue after Option+Enter.
+     */
+    public getDOMTextFromElement(element: HTMLElement): string {
+        const contentSpan = element.querySelector('.cell-content') as HTMLElement;
+        return getDOMText(contentSpan || element);
     }
 
     /**

@@ -37,6 +37,8 @@ describe('SpreadsheetTable Roundtrip Newlines', () => {
         // Simulate what happens when user types multiple lines in contenteditable
         // Browsers insert <br> for line breaks
         cell.innerHTML = 'Line1<br>Line2';
+        // Dispatch input event to trigger trackedValue update
+        cell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
 
         // Commit with Enter key
         cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));
@@ -80,6 +82,8 @@ describe('SpreadsheetTable Roundtrip Newlines', () => {
 
         // Chrome often wraps lines in <div> elements
         cell.innerHTML = '<div>LineA</div><div>LineB</div>';
+        // Dispatch input event to trigger trackedValue update
+        cell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
 
         // Commit
         cell.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, composed: true }));

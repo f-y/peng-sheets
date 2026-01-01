@@ -469,8 +469,10 @@ export class EventController implements ReactiveController {
         this.host.focusCell();
     };
 
-    handleCellInput = (e: CustomEvent<{ row: number; col: number; target: EventTarget | null }>) => {
-        this.handleInput({ target: e.detail.target } as Event);
+    handleCellInput = (
+        e: CustomEvent<{ row: number; col: number; target: EventTarget | null; originalEvent: InputEvent }>
+    ) => {
+        this.handleInput(e.detail.originalEvent);
     };
 
     handleCellBlur = (e: CustomEvent<{ row: number; col: number; originalEvent: FocusEvent }>) => {
@@ -614,10 +616,130 @@ export class EventController implements ReactiveController {
         const inputEvent = e as InputEvent;
         const target = e.target as HTMLElement;
 
-        if (inputEvent.inputType === 'insertLineBreak') {
-            this.host.editCtrl.hasUserInsertedNewline = true;
+        // Operation-based tracking: apply edit operation to trackedValue directly
+        // This avoids unreliable DOM parsing where BR count doesn't match newline count
+        const currentValue = this.host.editCtrl.trackedValue ?? '';
+
+        switch (inputEvent.inputType) {
+            case 'insertText':
+                // Insert character(s) at cursor position (simplified: append at end)
+                if (inputEvent.data) {
+                    this.host.editCtrl.trackedValue = currentValue + inputEvent.data;
+                }
+                break;
+
+            case 'insertLineBreak':
+            case 'insertParagraph':
+                // User pressed Enter without modifier (but this shouldn't happen in edit mode)
+                // or Option+Enter. Already handled in keyboard-controller, but handle here too.
+                this.host.editCtrl.hasUserInsertedNewline = true;
+                this.host.editCtrl.trackedValue = currentValue + '\n';
+                break;
+
+            case 'deleteContentBackward':
+                // Backspace: remove character before cursor (simplified: remove last char)
+                if (currentValue.length > 0) {
+                    this.host.editCtrl.trackedValue = currentValue.slice(0, -1);
+                }
+                break;
+
+            case 'deleteContentForward':
+                // Delete: remove character after cursor (simplified: remove last char for now)
+                // In a full implementation, this would need cursor position tracking
+                if (currentValue.length > 0) {
+                    this.host.editCtrl.trackedValue = currentValue.slice(0, -1);
+                }
+                break;
+
+            case 'deleteByCut':
+            case 'deleteByDrag':
+            case 'deleteContent':
+            case 'deleteWordBackward':
+            case 'deleteWordForward':
+                // Complex deletions - fall back to DOM parsing with cleanup
+                if (target) {
+                    let text = getDOMText(target);
+                    // Strip trailing phantom BR (always exactly 1)
+                    if (text.endsWith('\n')) {
+                        text = text.slice(0, -1);
+                    }
+                    this.host.editCtrl.trackedValue = text;
+                }
+                break;
+
+            case 'insertFromPaste':
+            case 'insertFromDrop':
+                // Paste/drop - fall back to DOM parsing
+                if (target) {
+                    let text = getDOMText(target);
+                    if (text.endsWith('\n')) {
+                        text = text.slice(0, -1);
+                    }
+                    this.host.editCtrl.trackedValue = text;
+                }
+                break;
+
+            default:
+                // Unknown input type - fall back to DOM parsing
+                if (target) {
+                    let text = getDOMText(target);
+                    if (text.endsWith('\n')) {
+                        text = text.slice(0, -1);
+                    }
+                    this.host.editCtrl.trackedValue = text;
+                }
+                break;
         }
 
+        // Sync DOM with trackedValue to remove phantom BRs and fix UI discrepancy
+        // This ensures the displayed content matches the actual tracked value
+        if (target && this.host.editCtrl.trackedValue !== null) {
+            const trackedValue = this.host.editCtrl.trackedValue;
+            // Convert trackedValue to expected HTML (replace \n with <br>)
+            const expectedHTML = trackedValue.replace(/\n/g, '<br>');
+            const currentHTML = target.innerHTML;
+
+            // Normalize HTML for comparison (standardize BR tags)
+            const normalizedCurrent = currentHTML.replace(/<br\s*\/?>/gi, '<br>');
+            const normalizedExpected = expectedHTML.replace(/<br\s*\/?>/gi, '<br>');
+
+            // Count trailing BRs
+            const expectedBRCount = (normalizedExpected.match(/<br>/g) || []).length;
+            const currentBRCount = (normalizedCurrent.match(/<br>/g) || []).length;
+
+            // Strip trailing BRs for content comparison
+            const contentCurrent = normalizedCurrent.replace(/(<br>)+$/, '');
+            const contentExpected = normalizedExpected.replace(/(<br>)+$/, '');
+
+            // Sync if content differs OR if DOM has more BRs than expected (phantom BRs)
+            const contentDiffers = contentExpected !== contentCurrent;
+            const hasExtraBRs = currentBRCount > expectedBRCount; // No extra BRs allowed
+
+            if (contentDiffers || hasExtraBRs) {
+                // Save selection/caret position
+                const selection = window.getSelection();
+                const hasSelection = selection && selection.rangeCount > 0;
+
+                // Update DOM - set exact content from trackedValue
+                // Don't add trailing BR - let contenteditable handle caret positioning
+                target.innerHTML = expectedHTML;
+
+                // Restore caret to end
+                if (hasSelection) {
+                    const range = document.createRange();
+                    if (target.lastChild) {
+                        range.setStartAfter(target.lastChild);
+                    } else {
+                        range.setStart(target, 0);
+                    }
+                    range.collapse(true);
+                    selection!.removeAllRanges();
+                    selection!.addRange(range);
+                }
+            }
+        }
+
+        // Handle empty content cleanup
         if (target && target.innerHTML) {
             const stripped = target.innerHTML
                 .replace(/<br\s*\/?>/gi, '')

@@ -62,7 +62,7 @@ export class SSGhostCell extends LitElement {
     };
 
     private _onInput = (e: Event) => {
-        emitCellInput(this, this.row, this.col, e.target);
+        emitCellInput(this, this.row, this.col, e.target, e as InputEvent);
     };
 
     private _onBlur = (e: FocusEvent) => {

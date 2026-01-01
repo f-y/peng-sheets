@@ -78,6 +78,8 @@ describe('Ghost Cell Empty Edit Bug', () => {
         // Type a value into the cell
         const content = editingCell.querySelector('.cell-content') || editingCell;
         (content as HTMLElement).textContent = 'New Value';
+        // Dispatch input event to trigger trackedValue update
+        editingCell.dispatchEvent(new InputEvent('input', { bubbles: true, composed: true }));
         editingCell.dispatchEvent(new FocusEvent('blur', { bubbles: true, composed: true }));
         await awaitView(table);
 

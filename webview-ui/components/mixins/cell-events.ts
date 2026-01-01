@@ -20,6 +20,7 @@ export interface CellMouseEventDetail extends CellEventDetail {
 
 export interface CellInputEventDetail extends CellEventDetail {
     target: EventTarget | null;
+    originalEvent: InputEvent;
 }
 
 export interface CellKeyEventDetail extends CellEventDetail {
@@ -90,11 +91,18 @@ export function emitCellDblclick(host: HTMLElement, row: number, col: number): v
     emitCellEvent<CellEventDetail>(host, 'ss-cell-dblclick', { row, col });
 }
 
-export function emitCellInput(host: HTMLElement, row: number, col: number, target: EventTarget | null): void {
+export function emitCellInput(
+    host: HTMLElement,
+    row: number,
+    col: number,
+    target: EventTarget | null,
+    originalEvent: InputEvent
+): void {
     emitCellEvent<CellInputEventDetail>(host, 'ss-cell-input', {
         row,
         col,
-        target
+        target,
+        originalEvent
     });
 }
 

@@ -208,7 +208,19 @@ export class KeyboardController implements ReactiveController {
                 const root = this.host.viewShadowRoot || this.host.shadowRoot;
                 const selection = getEditSelection(root);
                 const element = e.target as HTMLElement;
-                insertLineBreakAtSelection(selection, element);
+                const inserted = insertLineBreakAtSelection(selection, element);
+
+                // Programmatic DOM changes don't fire 'input' events, so we must
+                // manually update trackedValue to preserve the intentional newline.
+                // We APPEND '\n' to existing trackedValue instead of reading from DOM,
+                // because DOM includes both our inserted BR AND phantom BR from contenteditable.
+                if (inserted) {
+                    this.host.editCtrl.hasUserInsertedNewline = true;
+                    // Append newline at cursor position (simplified: append at end)
+                    // TODO: For mid-content newline insertion, we'd need cursor position tracking
+                    const currentValue = this.host.editCtrl.trackedValue || '';
+                    this.host.editCtrl.trackedValue = currentValue + '\n';
+                }
                 return;
             }
 

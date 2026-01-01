@@ -14,6 +14,9 @@ export class EditController implements ReactiveController {
     // Flag to track if user explicitly inserted a newline via Option+Enter
     // Used to distinguish intentional newlines from browser-inserted cursor placeholders
     hasUserInsertedNewline: boolean = false;
+    // Canonical text content being edited, tracked via input events to avoid
+    // issues with contenteditable phantom BR elements
+    trackedValue: string | null = null;
 
     // Metadata State
     pendingTitle: string = '';
@@ -31,6 +34,8 @@ export class EditController implements ReactiveController {
         this.isEditing = true;
         this.pendingEditValue = initialValue === null || initialValue === undefined ? '' : initialValue;
         this.isReplacementMode = isReplacement;
+        // Initialize tracked value with the starting content
+        this.trackedValue = this.pendingEditValue;
         // Clear copy range indicator when editing starts (centralized for all entry points)
         this.host.clipboardCtrl.clearCopiedRange();
         this.host.requestUpdate();
@@ -42,6 +47,7 @@ export class EditController implements ReactiveController {
         this.pendingEditValue = null;
         this.isReplacementMode = false;
         this.hasUserInsertedNewline = false;
+        this.trackedValue = null;
         this.host.requestUpdate();
     }
 

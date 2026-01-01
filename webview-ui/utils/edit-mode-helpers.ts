@@ -131,9 +131,11 @@ export function handleBackspaceAtZWS(selection: Selection | null): boolean {
 export function normalizeEditContent(content: string, hasUserInsertedNewline: boolean): string {
     let result = content;
 
-    // contenteditable often adds a trailing <br> for caret positioning.
-    // This results in an extra \n when extracting. We strip only ONE trailing \n
-    if (result.endsWith('\n')) {
+    // contenteditable often adds trailing <br> elements for caret positioning.
+    // This results in extra \n when extracting. We strip ALL trailing \n characters
+    // because the editing DOM may have multiple BR elements (e.g., "a<br>" becomes "a\n\n").
+    // User-significant trailing newlines are preserved via hasUserInsertedNewline flag.
+    while (result.endsWith('\n')) {
         result = result.slice(0, -1);
     }
 

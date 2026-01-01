@@ -128,7 +128,7 @@ export class SSValidationDropdown extends LitElement {
         // Formula: relativeTop = (cellTop - containerTop) + scrollTop
         // With position: absolute inside .table-container, top:0 is the top of scrollable content area.
         // Align to top of cell (with small offset) instead of center for multiline cells
-        const top = cellRect.top - containerRect.top + container.scrollTop + 1;
+        const top = cellRect.top - containerRect.top + container.scrollTop + 2;
         // Place button outside the cell, to the right
         const left = cellRect.right - containerRect.left + container.scrollLeft;
 
