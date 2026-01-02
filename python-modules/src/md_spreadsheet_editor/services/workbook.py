@@ -4,6 +4,60 @@ from dataclasses import replace
 from md_spreadsheet_parser import generate_workbook_markdown
 
 
+def initialize_tab_order_from_structure(md_text, config, num_sheets):
+    """
+    Initialize tab_order by parsing the structure of the markdown document.
+
+    This function extracts both documents and sheets in their physical order
+    from the markdown text, ensuring that when tab_order is empty, we populate
+    it with ALL existing items (not just sheets).
+
+    Args:
+        md_text: The markdown text to parse
+        config: JSON config string containing rootMarker etc.
+        num_sheets: Number of sheets in the workbook (before any new additions)
+
+    Returns:
+        List of tab_order items in structural order
+    """
+    config_dict = json.loads(config) if config else {}
+    root_marker = config_dict.get("rootMarker", "# Tables")
+
+    if not md_text:
+        # No markdown text, just return sheets in order
+        return [{"type": "sheet", "index": i} for i in range(num_sheets)]
+
+    lines = md_text.split("\n")
+    tab_order = []
+    doc_index = 0
+    workbook_found = False
+
+    in_code_block = False
+
+    for line in lines:
+        if line.strip().startswith("```"):
+            in_code_block = not in_code_block
+
+        if not in_code_block and line.startswith("# ") and not line.startswith("##"):
+            stripped = line.strip()
+            if stripped == root_marker:
+                # Workbook section - add all sheets at this position
+                workbook_found = True
+                for i in range(num_sheets):
+                    tab_order.append({"type": "sheet", "index": i})
+            else:
+                # Document section
+                tab_order.append({"type": "document", "index": doc_index})
+                doc_index += 1
+
+    # If no workbook found but we have sheets, append them at the end
+    if not workbook_found and num_sheets > 0:
+        for i in range(num_sheets):
+            tab_order.append({"type": "sheet", "index": i})
+
+    return tab_order
+
+
 def update_workbook_tab_order(context, tab_order):
     """
     Update the tab display order in workbook metadata.

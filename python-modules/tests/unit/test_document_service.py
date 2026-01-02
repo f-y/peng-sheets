@@ -187,3 +187,67 @@ def test_document_service_exceptions(context):
         res = document_service.delete_document(context, 0)
         assert "error" in res
         assert "Boom" in res["error"]
+
+
+def test_add_document_with_existing_documents_no_metadata(context):
+    """Test that adding a document includes existing items in tab_order.
+
+    Bug reproduction: When tab_order metadata doesn't exist and there are
+    existing documents and sheets, adding a new document should include ALL
+    existing items in the tab_order, not just sheets.
+
+    This test simulates what bottom-tabs does: uses insert_after_tab_order_index
+    to specify where in the UI order the new document should appear.
+    """
+    import json
+
+    from md_spreadsheet_parser import Sheet, Table, Workbook
+
+    # Setup: Document -> Sheet (no tab_order metadata)
+    md = """# My Document
+
+Some content here.
+
+# Tables
+
+## Sheet 1
+
+### Table 1
+
+| A | B |
+|---|---|
+| 1 | 2 |
+"""
+    context.md_text = md
+    context.config = json.dumps({"rootMarker": "# Tables"})
+
+    # Create workbook with one existing sheet but NO tab_order metadata
+    existing_table = Table(headers=["A", "B"], rows=[["1", "2"]], metadata={})
+    existing_sheet = Sheet(name="Sheet 1", tables=[existing_table])
+    context.workbook = Workbook(sheets=[existing_sheet], metadata={})
+
+    # Add a new document at the end (after last tab, which is sheet at position 1)
+    # bottom-tabs would call: addDocument(name, afterDocIndex, afterWorkbook, insertAfterTabOrderIndex)
+    # For appending: afterWorkbook=True, insertAfterTabOrderIndex=1 (after the sheet)
+    document_service.add_document(
+        context, "New Document", after_workbook=True, insert_after_tab_order_index=1
+    )
+
+    # Verify: tab_order should include the existing document, sheet, AND new document
+    tab_order = context.workbook.metadata.get("tab_order", [])
+
+    # The new tab_order should reflect the COMPLETE structure order
+    assert len(tab_order) == 3, (
+        f"Expected 3 items in tab_order, got {len(tab_order)}: {tab_order}"
+    )
+
+    # Verify the structure contains all expected types
+    types_in_order = [(item["type"], item["index"]) for item in tab_order]
+
+    # Should have: 1 existing document, 1 sheet, 1 new document
+    doc_entries = [t for t in types_in_order if t[0] == "document"]
+    sheet_entries = [t for t in types_in_order if t[0] == "sheet"]
+
+    assert len(doc_entries) == 2, f"Expected 2 document entries, got {doc_entries}"
+    assert len(sheet_entries) == 1, f"Expected 1 sheet entry, got {sheet_entries}"
+    assert sheet_entries[0] == ("sheet", 0), "Sheet should have index 0"

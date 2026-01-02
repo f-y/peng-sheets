@@ -1,11 +1,14 @@
 import json
 import re
 from dataclasses import replace
-from typing import Any, Dict, Optional, Union
 
-from md_spreadsheet_parser import Workbook
 
-from .workbook import generate_and_get_range, get_workbook_range, reorder_tab_metadata
+from .workbook import (
+    generate_and_get_range,
+    get_workbook_range,
+    initialize_tab_order_from_structure,
+    reorder_tab_metadata,
+)
 
 
 def get_document_section_range(context, section_index):
@@ -167,8 +170,11 @@ def add_document(
             tab_order = list(current_metadata.get("tab_order", []))
 
             if not tab_order:
-                for i in range(len(workbook.sheets)):
-                    tab_order.append({"type": "sheet", "index": i})
+                # Initialize from structure using ORIGINAL md_text (before new doc added)
+                # This ensures we don't include the just-added document in the initial order
+                tab_order = initialize_tab_order_from_structure(
+                    md_text, config, len(workbook.sheets)
+                )
 
             if after_doc_index >= 0:
                 new_doc_index = after_doc_index + 1

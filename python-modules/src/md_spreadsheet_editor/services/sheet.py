@@ -5,6 +5,7 @@ from md_spreadsheet_parser import Sheet, Table, Workbook
 from .workbook import (
     apply_sheet_update,
     generate_and_get_range,
+    initialize_tab_order_from_structure,
     reorder_tab_metadata,
     update_workbook,
 )
@@ -58,6 +59,13 @@ def add_sheet(
             current_metadata = dict(workbook.metadata) if workbook.metadata else {}
             tab_order = list(current_metadata.get("tab_order", []))
 
+            # If tab_order is empty, initialize from structure (includes documents AND sheets)
+            # Use current sheet count BEFORE insertion for proper structure parsing
+            if not tab_order:
+                tab_order = initialize_tab_order_from_structure(
+                    context.md_text, context.config, len(workbook.sheets)
+                )
+
             # Update indices of sheets that come after the insertion point
             for item in tab_order:
                 if item["type"] == "sheet" and item["index"] >= new_sheet_index:
@@ -81,10 +89,11 @@ def add_sheet(
             current_metadata = dict(workbook.metadata) if workbook.metadata else {}
             tab_order = list(current_metadata.get("tab_order", []))
 
-            # If tab_order is empty, initialize with all existing sheets first
+            # If tab_order is empty, initialize from structure (includes documents AND sheets)
             if not tab_order and new_sheet_index > 0:
-                for i in range(new_sheet_index):
-                    tab_order.append({"type": "sheet", "index": i})
+                tab_order = initialize_tab_order_from_structure(
+                    context.md_text, context.config, new_sheet_index
+                )
 
             # Add new sheet entry at specified position or end
             if target_tab_order_index is not None:

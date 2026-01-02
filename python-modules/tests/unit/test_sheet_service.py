@@ -82,17 +82,79 @@ def test_move_sheet(context):
     assert context.workbook.sheets[1].name == "A"
     assert context.workbook.sheets[2].name == "C"
 
+
 def test_update_sheet_metadata(context):
     from md_spreadsheet_parser import Sheet, Workbook
+
     s1 = Sheet(name="S1", tables=[], metadata={"old": "val"})
     context.workbook = Workbook(sheets=[s1])
     context.md_text = ""
-    
+
     new_meta = {"old": "val", "new": "data"}
     # Call service
     try:
         sheet_service.update_sheet_metadata(context, 0, new_meta)
     except AttributeError:
         pytest.fail("update_sheet_metadata not implemented")
-        
+
     assert context.workbook.sheets[0].metadata == new_meta
+
+
+def test_add_sheet_with_existing_documents_no_metadata(context):
+    """Test that adding a sheet includes existing documents in tab_order.
+
+    Bug reproduction: When tab_order metadata doesn't exist and there are
+    existing documents, adding a new sheet should include both the existing
+    documents AND sheets in the tab_order, not just sheets.
+    """
+    import json
+    from md_spreadsheet_parser import Sheet, Table, Workbook
+
+    # Setup: Document -> Sheet (no tab_order metadata)
+    md = """# My Document
+
+Some content here.
+
+# Tables
+
+## Sheet 1
+
+### Table 1
+
+| A | B |
+|---|---|
+| 1 | 2 |
+"""
+    context.md_text = md
+    context.config = json.dumps({"rootMarker": "# Tables"})
+
+    # Create workbook with one existing sheet but NO tab_order metadata
+    existing_table = Table(headers=["A", "B"], rows=[["1", "2"]], metadata={})
+    existing_sheet = Sheet(name="Sheet 1", tables=[existing_table])
+    context.workbook = Workbook(sheets=[existing_sheet], metadata={})
+
+    # Add a new sheet (this is what bottom-tabs + button does)
+    sheet_service.add_sheet(context, "New Sheet")
+
+    # Verify: tab_order should include both the document AND sheets
+    # Expected order based on structure: document(0), sheet(0), sheet(1)
+    tab_order = context.workbook.metadata.get("tab_order", [])
+
+    # The new tab_order should reflect the COMPLETE structure order
+    # Document comes first (index 0), then existing sheet (index 0), then new sheet (index 1)
+    assert len(tab_order) == 3, (
+        f"Expected 3 items in tab_order, got {len(tab_order)}: {tab_order}"
+    )
+
+    # First item should be document
+    assert tab_order[0] == {"type": "document", "index": 0}, (
+        f"Expected document at position 0, got {tab_order[0]}"
+    )
+    # Second item should be existing sheet
+    assert tab_order[1] == {"type": "sheet", "index": 0}, (
+        f"Expected sheet 0 at position 1, got {tab_order[1]}"
+    )
+    # Third item should be new sheet (appended at end)
+    assert tab_order[2] == {"type": "sheet", "index": 1}, (
+        f"Expected sheet 1 at position 2, got {tab_order[2]}"
+    )
