@@ -40,6 +40,8 @@
 
 **PengSheets** transforms your Markdown tables into a rich, interactive spreadsheet view. Powered by [md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser), it runs a robust Python parser directly in your editor via WebAssembly, offering superior parsing accuracy and seamless multi-sheet support.
 
+Read in Japanese: 日本語版はこちら(<a href="https://github.com/f-y/peng-sheets/blob/main/README.ja.md">README</a>)
+
 ## ✨ Highlights
 
 | Feature | Description |
