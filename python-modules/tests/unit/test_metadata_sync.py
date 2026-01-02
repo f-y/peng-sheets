@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from md_spreadsheet_editor.context import EditorContext
 from md_spreadsheet_editor.services import table as table_service
 from md_spreadsheet_parser import Sheet, Table, Workbook
 
@@ -91,6 +90,8 @@ def test_delete_column_shifts_validation(
     assert "0" in validation, "Validation rule should have shifted to column 0"
     assert "1" not in validation, "Old column index should be gone"
     assert validation["0"]["type"] == "integer"
+
+
 @patch("md_spreadsheet_editor.services.table.apply_sheet_update")
 def test_move_columns_shifts_validation(
     mock_apply_update, mock_context, sample_workbook

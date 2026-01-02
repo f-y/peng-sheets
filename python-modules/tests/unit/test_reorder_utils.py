@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict
 
-import pytest
 from md_spreadsheet_editor.services.workbook import reorder_tab_metadata
 
 

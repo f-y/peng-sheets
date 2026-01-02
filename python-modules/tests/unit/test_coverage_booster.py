@@ -4,7 +4,7 @@ import pytest
 from md_spreadsheet_editor.context import EditorContext
 from md_spreadsheet_editor.services import document as document_service
 from md_spreadsheet_editor.services import sheet as sheet_service
-from md_spreadsheet_parser import Sheet, Workbook
+from md_spreadsheet_parser import Workbook
 
 
 @pytest.fixture

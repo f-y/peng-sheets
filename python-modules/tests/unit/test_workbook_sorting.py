@@ -1,9 +1,7 @@
 from dataclasses import replace
 
-import pytest
-from md_spreadsheet_editor.context import EditorContext
 from md_spreadsheet_editor.services.workbook import reorder_tab_metadata
-from md_spreadsheet_parser import Sheet, Workbook
+from md_spreadsheet_parser import Workbook
 
 
 def test_reorder_tab_metadata_scenario():

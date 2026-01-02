@@ -397,6 +397,8 @@ def test_update_column_filter(mock_apply_update, mock_context, sample_workbook):
     visual = new_table.metadata.get("visual", {})
     filters = visual.get("filters", {})
     assert filters["0"] == ["hidden"]
+
+
 @patch("md_spreadsheet_editor.services.table.apply_sheet_update")
 def test_insert_column_with_name(mock_apply_update, mock_context, sample_workbook):
     mock_context.workbook = sample_workbook
