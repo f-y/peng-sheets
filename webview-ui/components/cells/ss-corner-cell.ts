@@ -43,6 +43,9 @@ export class SSCornerCell extends LitElement {
                 style="cursor: pointer; display: flex; align-items: center; justify-content: center;"
                 @click="${this._onClick}"
                 @keydown="${this._onKeydown}"
+                @contextmenu="${(e: MouseEvent) => {
+                    emitCellEvent(this, 'ss-corner-contextmenu', { originalEvent: e });
+                }}"
             >
                 <span class="codicon codicon-symbol-constant" style="font-size: 12px; opacity: 0.7;"></span>
             </div>

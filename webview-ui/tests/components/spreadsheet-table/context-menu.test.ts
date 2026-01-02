@@ -285,6 +285,66 @@ describe('Context Menu Verification', () => {
         });
     });
 
+    describe('Corner Context Menu', () => {
+        it('shows on corner header right-click', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await awaitView(el);
+
+            const cornerCell = queryView(el, '.cell.header-corner') as HTMLElement;
+            cornerCell.dispatchEvent(
+                new MouseEvent('contextmenu', {
+                    bubbles: true,
+                    cancelable: true,
+                    composed: true,
+                    clientX: 50,
+                    clientY: 50
+                })
+            );
+            await awaitView(el);
+
+            const menu = getContextMenu(el);
+            expect(menu).to.exist;
+            expect(menu?.content).to.exist;
+        });
+
+        it('contains Copy/Cut/Paste items', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await awaitView(el);
+
+            const cornerCell = queryView(el, '.cell.header-corner') as HTMLElement;
+            cornerCell.dispatchEvent(
+                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
+            );
+            await awaitView(el);
+
+            const menu = getContextMenu(el);
+            expect(menu?.content?.textContent).to.include('Copy');
+            expect(menu?.content?.textContent).to.include('Cut');
+            expect(menu?.content?.textContent).to.include('Paste');
+        });
+
+        it('selects all cells on right-click', async () => {
+            const el = await fixture<SpreadsheetTable>(
+                html`<spreadsheet-table .table="${createMockTable()}"></spreadsheet-table>`
+            );
+            await awaitView(el);
+
+            const cornerCell = queryView(el, '.cell.header-corner') as HTMLElement;
+            cornerCell.dispatchEvent(
+                new MouseEvent('contextmenu', { bubbles: true, cancelable: true, composed: true })
+            );
+            await awaitView(el);
+
+            // Check selection state
+            expect(el.selectionCtrl.selectedRow).to.equal(-2);
+            expect(el.selectionCtrl.selectedCol).to.equal(-2);
+        });
+    });
+
     describe('Menu Dismissal', () => {
         it('closes on outside click', async () => {
             const el = await fixture<SpreadsheetTable>(

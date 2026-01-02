@@ -544,6 +544,27 @@ export class EventController implements ReactiveController {
         this.host.keyboardCtrl.handleKeyDown(e.detail.originalEvent);
     };
 
+    handleCornerContextMenu = (e: CustomEvent<{ originalEvent: MouseEvent }>) => {
+        e.detail.originalEvent.preventDefault();
+        const { clientX, clientY } = e.detail.originalEvent;
+
+        // Force select all cells
+        this.host.selectionCtrl.selectCell(-2, -2);
+        this.host.focusCell();
+
+        // Show context menu with 'cell' type
+        // Use dummy index -1 as 'cell' type context menu operations (copy/paste) don't rely on index
+        // but rather on the current selection or clipboard state.
+        this.host.contextMenu = {
+            x: clientX,
+            y: clientY,
+            type: 'cell',
+            index: -1,
+            hasCopiedRows: ClipboardStore.hasCopiedRows,
+            hasCopiedColumns: ClipboardStore.hasCopiedColumns
+        };
+    };
+
     handleMenuAction = (e: CustomEvent<{ action: string; type: string; index: number }>) => {
         const { action, type, index } = e.detail;
         if (action === 'insert') {

@@ -697,6 +697,7 @@ export class SpreadsheetTable extends LitElement {
                 @view-cell-mousemove="${this.eventCtrl.handleCellMousemove}"
                 @view-corner-click="${this.eventCtrl.handleCornerClick}"
                 @view-corner-keydown="${this.eventCtrl.handleCornerKeydown}"
+                @view-corner-contextmenu="${this.eventCtrl.handleCornerContextMenu}"
                 @view-filter-click="${this.eventCtrl.handleFilterClick}"
                 @view-resize-start="${this.eventCtrl.handleResizeStart}"
                 @ss-metadata-change="${this.eventCtrl.handleMetadataChange}"

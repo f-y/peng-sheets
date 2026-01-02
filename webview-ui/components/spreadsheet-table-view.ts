@@ -278,6 +278,9 @@ export class SpreadsheetTableView extends LitElement {
                 @ss-corner-keydown="${(e: CustomEvent<{ originalEvent: KeyboardEvent }>) => {
                     this._bubbleEvent('view-corner-keydown', { originalEvent: e.detail.originalEvent });
                 }}"
+                @ss-corner-contextmenu="${(e: CustomEvent<{ originalEvent: MouseEvent }>) => {
+                    this._bubbleEvent('view-corner-contextmenu', { originalEvent: e.detail.originalEvent });
+                }}"
             ></ss-corner-cell>
 
             <!-- Column Headers -->

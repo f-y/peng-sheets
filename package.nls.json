@@ -1,5 +1,5 @@
 {
-    "command.openEditor.title": "Markdown: Open in PengSheets",
-    "command.openEditorFromContextMenu.title": "Open in PengSheets",
+    "command.openEditor.title": "Markdown: Open with PengSheets",
+    "command.openEditorFromContextMenu.title": "Open with PengSheets",
     "command.newWorkbook.title": "Markdown: Create New Spreadsheet File"
 }

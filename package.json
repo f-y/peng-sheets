@@ -2,15 +2,33 @@
     "name": "peng-sheets",
     "publisher": "f-y",
     "displayName": "PengSheets - Markdown Spreadsheet Editor",
-    "description": "Markdown Spreadsheet editor",
+    "description": "Transform Markdown tables into a powerful spreadsheet editor with Excel-like editing, multi-sheet workbooks, and real-time synchronization. Powered by Python via WebAssembly.",
     "icon": "images/icon.png",
     "version": "1.0.0",
     "engines": {
         "vscode": "^1.90.0"
     },
     "categories": [
+        "Visualization",
+        "Formatters",
         "Other"
     ],
+    "keywords": [
+        "markdown",
+        "spreadsheet",
+        "table",
+        "editor",
+        "excel",
+        "csv",
+        "workbook",
+        "data",
+        "webassembly",
+        "python"
+    ],
+    "galleryBanner": {
+        "color": "#1e1e1e",
+        "theme": "dark"
+    },
     "repository": {
         "type": "git",
         "url": "https://github.com/f-y/peng-sheets.git"
