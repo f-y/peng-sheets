@@ -20,3 +20,4 @@ out/test/**
 vitest.config.ts
 test-setup.ts
 *.vsix
+images/demo.gif

@@ -34,10 +34,9 @@
 
 ---
 
-<!-- TODO: Add demo.gif here after recording -->
-<!-- <p align="center">
+<p align="center">
   <img src="./images/demo.gif" alt="PengSheets Demo" width="800">
-</p> -->
+</p>
 
 **PengSheets** transforms your Markdown tables into a rich, interactive spreadsheet view. Powered by [md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser), it runs a robust Python parser directly in your editor via WebAssembly, offering superior parsing accuracy and seamless multi-sheet support.
 
