@@ -63,11 +63,11 @@
      ![Table icon in title bar](./images/screenshot-title-bar-icon.png)
    
    - Or right-click a `.md` file in the Explorer and select **`Open with PengSheets`**
-   - Or open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and run: **`PengSheets: Open Editor`**
+   - Or open Command Palette (`Cmd+Shift+P` / `Ctrl+Shift+P`) and run: **`Markdown: Open with PengSheets`**
 
 4. **Edit** your tables with the spreadsheet interface — changes sync automatically!
 
-> **Tip:** Create a new workbook with `PengSheets: New Workbook` command.
+> **Tip:** Create a new workbook with `Markdown: Create New Spreadsheet File` command.
 
 ## ⚙️ Settings
 

@@ -63,11 +63,11 @@
      ![タイトルバーのテーブルアイコン](./images/screenshot-title-bar-icon.png)
    
    - または、エクスプローラーで`.md`ファイルを右クリックし、**`PengSheetsで開く`**を選択
-   - または、コマンドパレット（`Cmd+Shift+P` / `Ctrl+Shift+P`）を開いて実行: **`PengSheets: Open Editor`**
+   - または、コマンドパレット（`Cmd+Shift+P` / `Ctrl+Shift+P`）を開いて実行: **`Markdown: PengSheetsで開く`**
 
 4. **編集** - スプレッドシートインターフェースでテーブルを編集 — 変更は自動的に同期されます！
 
-> **ヒント:** `PengSheets: New Workbook`コマンドで新しいワークブックを作成できます。
+> **ヒント:** `Markdown: 新規に表計算ファイルを作成`コマンドで新しいワークブックを作成できます。
 
 ## ⚙️ 設定
 
