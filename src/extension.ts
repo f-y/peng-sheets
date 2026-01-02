@@ -229,11 +229,62 @@ export function getWebviewContent(
             
             html, body {
                 padding: 0;
+                margin: 0;
+                height: 100%;
+            }
+
+            /* Loading Indicator - Material Design Style */
+            .loading-container {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                width: 100%;
+                background: var(--vscode-editor-background);
+            }
+
+            .loader {
+                font-family: var(--vscode-font-family), system-ui, -apple-system, sans-serif;
+                font-size: 1.25rem;
+                font-weight: 500;
+                letter-spacing: 0.15em;
+                color: var(--vscode-foreground);
+                opacity: 0.5;
+                display: flex;
+                gap: 0.08em;
+            }
+
+            .loader span {
+                display: inline-block;
+                animation: wave 1.4s ease-in-out infinite;
+            }
+
+            .loader span:nth-child(1) { animation-delay: 0s; }
+            .loader span:nth-child(2) { animation-delay: 0.05s; }
+            .loader span:nth-child(3) { animation-delay: 0.1s; }
+            .loader span:nth-child(4) { animation-delay: 0.15s; }
+            .loader span:nth-child(5) { animation-delay: 0.2s; }
+            .loader span:nth-child(6) { animation-delay: 0.25s; }
+            .loader span:nth-child(7) { animation-delay: 0.3s; }
+            .loader span:nth-child(8) { animation-delay: 0.35s; }
+            .loader span:nth-child(9) { animation-delay: 0.4s; }
+            .loader span:nth-child(10) { animation-delay: 0.45s; }
+
+            @keyframes wave {
+                0%, 60%, 100% {
+                    transform: translateY(0);
+                    opacity: 1;
+                }
+                30% {
+                    transform: translateY(-0.25em);
+                    opacity: 0.6;
+                }
             }
         </style>
     </head>
     <body>
         <md-spreadsheet-editor></md-spreadsheet-editor>
+        <div class="loading-container"><div class="loader"><span>N</span><span>o</span><span>w</span><span>&nbsp;</span><span>L</span><span>o</span><span>a</span><span>d</span><span>i</span><span>n</span><span>g</span><span>.</span><span>.</span><span>.</span></div></div>
         <script>
             window.wheelUri = "${parserWheelUri}";
             window.editorWheelUri = "${editorWheelUri}";

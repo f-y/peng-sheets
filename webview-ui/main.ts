@@ -576,6 +576,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
             console.log('Pyodide initialized. Parsing initial content...');
             await this._parseWorkbook();
+
+            // Remove the loading indicator now that initialization is complete
+            const loader = document.querySelector('.loading-container');
+            if (loader) {
+                loader.remove();
+            }
         } catch (e: unknown) {
             console.error('Error initializing Pyodide:', e);
             let errorMessage = String(e);
@@ -660,6 +666,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     }
 
     render() {
+        // Show nothing during initialization (extension.ts provides loading indicator)
         if (!this.tabs.length && !this.output) {
             return html``;
         }
