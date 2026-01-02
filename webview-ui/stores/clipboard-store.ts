@@ -62,6 +62,98 @@ class ClipboardStoreClass extends EventTarget {
     isFromTable(sheetIndex: number, tableIndex: number): boolean {
         return this.copiedRange?.sheetIndex === sheetIndex && this.copiedRange?.tableIndex === tableIndex;
     }
+
+    /**
+     * Adjust copied range when rows are inserted.
+     * If rows are inserted before or within the copied range, shift the range accordingly.
+     */
+    adjustForRowInsert(sheetIndex: number, tableIndex: number, insertedAt: number, count: number): void {
+        if (!this.copiedRange || !this.isFromTable(sheetIndex, tableIndex)) return;
+
+        // If insertion is at or before the copied range start, shift the entire range
+        if (insertedAt <= this.copiedRange.minR) {
+            this.copiedRange.minR += count;
+            this.copiedRange.maxR += count;
+            this.dispatchEvent(new CustomEvent('change'));
+        }
+        // If insertion is within the range, we could expand it, but simpler to clear
+        else if (insertedAt <= this.copiedRange.maxR) {
+            this.clear();
+        }
+        // If insertion is after the range, no adjustment needed
+    }
+
+    /**
+     * Adjust copied range when rows are deleted.
+     * If deleted rows overlap with the copied range, clear it.
+     * If deleted rows are before the range, shift accordingly.
+     */
+    adjustForRowDelete(sheetIndex: number, tableIndex: number, deletedAt: number, count: number): void {
+        if (!this.copiedRange || !this.isFromTable(sheetIndex, tableIndex)) return;
+
+        const deleteEnd = deletedAt + count - 1;
+
+        // Check if deleted range overlaps with copied range
+        if (deletedAt <= this.copiedRange.maxR && deleteEnd >= this.copiedRange.minR) {
+            // Overlap detected - clear the copied range
+            this.clear();
+            return;
+        }
+
+        // If deletion is entirely before the copied range, shift it
+        if (deleteEnd < this.copiedRange.minR) {
+            this.copiedRange.minR -= count;
+            this.copiedRange.maxR -= count;
+            this.dispatchEvent(new CustomEvent('change'));
+        }
+        // If deletion is entirely after the range, no adjustment needed
+    }
+
+    /**
+     * Adjust copied range when columns are inserted.
+     * If columns are inserted before or within the copied range, shift the range accordingly.
+     */
+    adjustForColumnInsert(sheetIndex: number, tableIndex: number, insertedAt: number, count: number): void {
+        if (!this.copiedRange || !this.isFromTable(sheetIndex, tableIndex)) return;
+
+        // If insertion is at or before the copied range start, shift the entire range
+        if (insertedAt <= this.copiedRange.minC) {
+            this.copiedRange.minC += count;
+            this.copiedRange.maxC += count;
+            this.dispatchEvent(new CustomEvent('change'));
+        }
+        // If insertion is within the range, clear to avoid complexity
+        else if (insertedAt <= this.copiedRange.maxC) {
+            this.clear();
+        }
+        // If insertion is after the range, no adjustment needed
+    }
+
+    /**
+     * Adjust copied range when columns are deleted.
+     * If deleted columns overlap with the copied range, clear it.
+     * If deleted columns are before the range, shift accordingly.
+     */
+    adjustForColumnDelete(sheetIndex: number, tableIndex: number, deletedAt: number, count: number): void {
+        if (!this.copiedRange || !this.isFromTable(sheetIndex, tableIndex)) return;
+
+        const deleteEnd = deletedAt + count - 1;
+
+        // Check if deleted range overlaps with copied range
+        if (deletedAt <= this.copiedRange.maxC && deleteEnd >= this.copiedRange.minC) {
+            // Overlap detected - clear the copied range
+            this.clear();
+            return;
+        }
+
+        // If deletion is entirely before the copied range, shift it
+        if (deleteEnd < this.copiedRange.minC) {
+            this.copiedRange.minC -= count;
+            this.copiedRange.maxC -= count;
+            this.dispatchEvent(new CustomEvent('change'));
+        }
+        // If deletion is entirely after the range, no adjustment needed
+    }
 }
 
 /** Singleton instance of ClipboardStore */

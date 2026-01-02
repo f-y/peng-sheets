@@ -636,7 +636,6 @@ export class SpreadsheetTable extends LitElement {
                 .tableIndex="${this.tableIndex}"
                 .copiedRange="${this.clipboardCtrl.copiedRange}"
                 .copyType="${this.clipboardCtrl.copyType}"
-            }}"
                 @view-insert-row="${this.eventCtrl.handleInsertRow}"
                 @view-delete-row="${this.eventCtrl.handleDeleteRow}"
                 @view-insert-col="${this.eventCtrl.handleInsertCol}"
@@ -721,18 +720,16 @@ export class SpreadsheetTable extends LitElement {
                 }}"
                 @view-validation-input="${this.eventCtrl.handleValidationInput}"
             ></spreadsheet-table-view>
-            ${
-                this.validationDialog
-                    ? html`
-                          <ss-validation-dialog
-                              .colIndex="${this.validationDialog.colIndex}"
-                              .currentRule="${this.validationDialog.currentRule}"
-                              @ss-validation-update="${this._handleValidationUpdate}"
-                              @ss-dialog-close="${this._handleValidationDialogClose}"
-                          ></ss-validation-dialog>
-                      `
-                    : ''
-            }
+            ${this.validationDialog
+                ? html`
+                      <ss-validation-dialog
+                          .colIndex="${this.validationDialog.colIndex}"
+                          .currentRule="${this.validationDialog.currentRule}"
+                          @ss-validation-update="${this._handleValidationUpdate}"
+                          @ss-dialog-close="${this._handleValidationDialogClose}"
+                      ></ss-validation-dialog>
+                  `
+                : ''}
         `;
     }
 

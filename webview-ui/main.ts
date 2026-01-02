@@ -49,6 +49,7 @@ import {
 import { SpreadsheetService } from './services/spreadsheet-service';
 import { IVisualMetadata } from './services/types';
 import { Validation } from './types/metadata';
+import { ClipboardStore } from './stores/clipboard-store';
 
 // Register the VS Code Design System components
 provideVSCodeDesignSystem().register();
@@ -520,10 +521,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     private _handleUndo() {
         vscode.postMessage({ type: 'undo' });
+        ClipboardStore.clear();
     }
 
     private _handleRedo() {
         vscode.postMessage({ type: 'redo' });
+        ClipboardStore.clear();
     }
 
     private _saveDebounceTimer: number | null = null;

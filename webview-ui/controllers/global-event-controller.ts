@@ -1,5 +1,6 @@
 import { ReactiveController, ReactiveControllerHost } from 'lit';
 import { SpreadsheetService } from '../services/spreadsheet-service';
+import { ClipboardStore } from '../stores/clipboard-store';
 import {
     ICellEditDetail,
     IRangeEditDetail,
@@ -238,9 +239,17 @@ export class GlobalEventController implements ReactiveController {
     // Event handlers delegate to host methods
 
     private _handleKeyDown(e: KeyboardEvent): void {
-        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+        const isModifier = e.ctrlKey || e.metaKey;
+        const key = e.key.toLowerCase();
+
+        if (isModifier && key === 's') {
             e.preventDefault();
             this.host._handleSave();
+        }
+
+        // Clear clipboard indicator on Undo (Cmd/Ctrl+Z) or Redo (Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y)
+        if (isModifier && (key === 'z' || key === 'y')) {
+            ClipboardStore.clear();
         }
     }
 
@@ -273,31 +282,50 @@ export class GlobalEventController implements ReactiveController {
     private _handleRowDelete(e: Event): void {
         const detail = (e as CustomEvent<IRowOperationDetail>).detail;
         this.host._handleDeleteRow(detail.sheetIndex, detail.tableIndex, detail.rowIndex);
+        ClipboardStore.adjustForRowDelete(detail.sheetIndex, detail.tableIndex, detail.rowIndex, 1);
     }
 
     private _handleRowsDelete(e: Event): void {
         const detail = (e as CustomEvent<{ sheetIndex: number; tableIndex: number; rowIndices: number[] }>).detail;
         this.host._handleDeleteRows(detail.sheetIndex, detail.tableIndex, detail.rowIndices);
+        // For multiple row deletion, use the first row index and count
+        if (detail.rowIndices.length > 0) {
+            const minRow = Math.min(...detail.rowIndices);
+            ClipboardStore.adjustForRowDelete(detail.sheetIndex, detail.tableIndex, minRow, detail.rowIndices.length);
+        }
     }
 
     private _handleRowInsert(e: Event): void {
         const detail = (e as CustomEvent<IRowOperationDetail>).detail;
         this.host._handleInsertRow(detail.sheetIndex, detail.tableIndex, detail.rowIndex);
+        ClipboardStore.adjustForRowInsert(detail.sheetIndex, detail.tableIndex, detail.rowIndex, 1);
     }
 
     private _handleColumnDelete(e: Event): void {
         const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
         this.host._handleDeleteColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
+        ClipboardStore.adjustForColumnDelete(detail.sheetIndex, detail.tableIndex, detail.colIndex, 1);
     }
 
     private _boundColumnsDelete = (e: Event) => {
         const detail = (e as CustomEvent<IColumnOperationsDetail>).detail;
         this.host._handleDeleteColumns(detail.sheetIndex, detail.tableIndex, detail.colIndices);
+        // For multiple column deletion, use the first column index and count
+        if (detail.colIndices.length > 0) {
+            const minCol = Math.min(...detail.colIndices);
+            ClipboardStore.adjustForColumnDelete(
+                detail.sheetIndex,
+                detail.tableIndex,
+                minCol,
+                detail.colIndices.length
+            );
+        }
     };
 
     private _handleColumnInsert(e: Event): void {
         const detail = (e as CustomEvent<IColumnOperationDetail>).detail;
         this.host._handleInsertColumn(detail.sheetIndex, detail.tableIndex, detail.colIndex);
+        ClipboardStore.adjustForColumnInsert(detail.sheetIndex, detail.tableIndex, detail.colIndex, 1);
     }
 
     private _handleColumnClear(e: Event): void {
@@ -384,6 +412,12 @@ export class GlobalEventController implements ReactiveController {
             e as CustomEvent<{ sheetIndex: number; tableIndex: number; targetRow: number; rowsData: string[][] }>
         ).detail;
         this.host._handleInsertRowsAt(detail);
+        ClipboardStore.adjustForRowInsert(
+            detail.sheetIndex,
+            detail.tableIndex,
+            detail.targetRow,
+            detail.rowsData.length
+        );
     }
 
     private _handleInsertColumnsAt(e: Event): void {
@@ -391,6 +425,12 @@ export class GlobalEventController implements ReactiveController {
             e as CustomEvent<{ sheetIndex: number; tableIndex: number; targetCol: number; columnsData: string[][] }>
         ).detail;
         this.host._handleInsertColumnsAt(detail);
+        ClipboardStore.adjustForColumnInsert(
+            detail.sheetIndex,
+            detail.tableIndex,
+            detail.targetCol,
+            detail.columnsData.length
+        );
     }
 
     private async _handleMessage(event: MessageEvent): Promise<void> {
