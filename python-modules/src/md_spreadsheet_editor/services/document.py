@@ -2,7 +2,6 @@ import json
 import re
 from dataclasses import replace
 
-
 from .workbook import (
     generate_and_get_range,
     get_workbook_range,
@@ -179,7 +178,12 @@ def add_document(
             if after_doc_index >= 0:
                 new_doc_index = after_doc_index + 1
             else:
-                new_doc_index = 0
+                # When after_workbook=True or no specific doc index, calculate based on existing docs
+                # Count existing documents in tab_order to determine the correct index
+                existing_doc_count = sum(
+                    1 for item in tab_order if item.get("type") == "document"
+                )
+                new_doc_index = existing_doc_count
 
             for i, entry in enumerate(tab_order):
                 if (
