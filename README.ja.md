@@ -40,8 +40,6 @@
 
 **PengSheets**は、Markdownテーブルをリッチでインタラクティブなスプレッドシートビューに変換します。[md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser)を活用し、堅牢なPythonパーサーをWebAssembly経由でエディタ内で直接実行することで、優れた解析精度とシームレスなマルチシートサポートを提供します。
 
-Read in English: 英語版はこちら(<a href="https://github.com/f-y/peng-sheets/blob/main/README.md">README</a>)
-
 ## ✨ 特徴
 
 | 機能 | 説明 |
@@ -98,13 +96,6 @@ PengeSheets はドキュメントスタイルに合わせて幅広くカスタ�
 | **メタデータ対応** | ✅ テーブル説明、シート構成 | ❌ なし |
 | **キーボードショートカット** | ✅ Excel風のナビゲーション | ⚠️ 限定的 |
 
-## 🔧 アーキテクチャ
-
-PengSheetsは最高のパフォーマンスと互換性のためにハイブリッドアーキテクチャを採用しています：
-
-- **フロントエンド**: **Lit**と**VS Code Webview UI Toolkit**でネイティブな外観を実現
-- **バックエンド（ブラウザ内）**: WebAssembly経由で**Python 3.12**を実行し、`md-spreadsheet-parser`ライブラリを動作
-- **通信**: 標準のVS Codeメッセージング APIでエディタとWebview間をシームレスに同期
 
 ## 🐍 Pythonで利用
 

@@ -40,7 +40,7 @@
 
 **PengSheets** transforms your Markdown tables into a rich, interactive spreadsheet view. Powered by [md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser), it runs a robust Python parser directly in your editor via WebAssembly, offering superior parsing accuracy and seamless multi-sheet support.
 
-Read in Japanese: 日本語版はこちら(<a href="https://github.com/f-y/peng-sheets/blob/main/README.ja.md">README</a>)
+> Read in Japanese: 日本語版はこちら（ <a href="https://github.com/f-y/peng-sheets/blob/main/README.ja.md">README</a> ）
 
 ## ✨ Highlights
 
@@ -98,13 +98,6 @@ PengSheets offers extensive customization to match your documentation style:
 | **Metadata Support** | ✅ Table descriptions, sheet organization | ❌ None |
 | **Keyboard Shortcuts** | ✅ Excel-like navigation | ⚠️ Limited |
 
-## 🔧 Architecture
-
-PengSheets uses a hybrid architecture for maximum performance and compatibility:
-
-- **Frontend**: Built with **Lit** and **VS Code Webview UI Toolkit** for a native look and feel
-- **Backend (In-Browser)**: Runs **Python 3.12** via WebAssembly to execute the `md-spreadsheet-parser` library
-- **Communication**: Standard VS Code messaging API for seamless editor-webview synchronization
 
 ## � Use with Python
 
