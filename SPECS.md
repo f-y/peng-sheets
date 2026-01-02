@@ -1,6 +1,6 @@
 # Excel-like UI/UX Specification
 
-This document defines the "Excel-like" user experience targeted for `vscode-md-spreadsheet`. The goal is to provide a seamless, keyboard-centric, and intuitive interface that matches the mental model of users familiar with spreadsheet software (Excel, Google Sheets), while respecting the constraints and features of Markdown.
+This document defines the "Excel-like" user experience targeted for `PengSheets`. The goal is to provide a seamless, keyboard-centric, and intuitive interface that matches the mental model of users familiar with spreadsheet software (Excel, Google Sheets), while respecting the constraints and features of Markdown.
 
 ## 1. Core Philosophy
 *   **Keyboard First**: Every action must be performable via keyboard shortcuts.

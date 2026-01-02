@@ -1,6 +1,10 @@
 # Development Guide (Full Stack)
 
-This document outlines the development practices for the `vscode-md-spreadsheet` extension, covering the Extension Host (Node.js), Webview (Lit), and the Python Kernel (Pyodide).
+
+> [!NOTE] 
+> Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before starting development.
+
+This document outlines the development practices for the `PengSheets` extension, covering the Extension Host (Node.js), Webview (Lit), and the Python Kernel (Pyodide).
 
 ## 1. Architecture Overview
 
