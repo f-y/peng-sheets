@@ -227,7 +227,7 @@ Unlike Excel, our data model includes metadata specific to the Markdown context.
     - [x] Drag boundaries between column headers to resize width.
     - [x] Double-click boundary to "Auto-fit" width to content.
 *   **Move**:
-    - [ ] **Drag & Drop rows/columns by grabbing the header**. (High Priority)
+    - [x] **Drag & Drop rows/columns by grabbing the header**. (High Priority)
 
 ### 11.2. Sorting
 - [ ] Clicking a sort icon in the column header (Toggle: Asc -> Desc -> Off).

@@ -129,11 +129,11 @@ pip install md-spreadsheet-parser
 
 We're actively developing PengSheets! Planned features include:
 
-- [ ] Export to CSV/Excel
-- [ ] Formula support (basic calculations)
-- [ ] Cell formatting (bold, italic, code)
-- [ ] Data validation enhancements
-- [ ] Performance improvements for large tables
+- **Computed Columns**: Support for simple formulas and VLOOKUP-style cross-table references
+- **Performance Improvements**: Optimization for handling large tables smoothly
+- **Advanced Document Editing**: Image insertion, list completion, and richer Markdown support for document tabs
+- **Search & Replace**: Functionality to find and replace text within the grid
+- **Visual Enhancements**: Conditional formatting for data visualization
 
 ## 🤝 Contributing
 
