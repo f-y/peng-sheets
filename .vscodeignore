@@ -11,6 +11,7 @@ vite.config.ts
 
 # Build & Test Artifacts
 coverage/**
+.coverage
 python-modules/**
 sample-workspace/**
 out/test/**
