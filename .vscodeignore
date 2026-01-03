@@ -21,3 +21,14 @@ vitest.config.ts
 test-setup.ts
 *.vsix
 images/demo.gif
+images/socialPreview.png
+
+# Optimization Exclusions
+.vscode-test.mjs
+vite.config.mts
+SPECS.md
+DEVELOPMENT.md
+CONTRIBUTING.md
+.github/**
+scripts/**
+schemas/**
