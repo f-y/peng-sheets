@@ -87,4 +87,22 @@ To package the full extension (`.vsix`):
 ```bash
 vsce package
 ```
-Ensure all Python wheels are correctly placed in `webview-ui/resources/pyodide_pkgs/` before packaging.
+Ensure all Python wheels are correctly placed in `resources/pyodide_pkgs/` before packaging.
+
+### Publishing to Marketplace
+
+1.  **Bump Version**:
+    ```bash
+    npm version patch # or minor/major
+    ```
+
+2.  **Publish to VS Code Marketplace**:
+    ```bash
+    vsce publish
+    ```
+
+3.  **Publish to Open VSX Registry**:
+    ```bash
+    # Requires 'ovsx' CLI: npm install -g ovsx
+    ovsx publish peng-sheets-x.x.x.vsix -p <OPEN_VSX_TOKEN>
+    ```
