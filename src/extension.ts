@@ -140,7 +140,7 @@ export async function findWheelFiles(context: vscode.ExtensionContext): Promise<
         ? vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide')
         : vscode.Uri.joinPath(context.extensionUri, 'resources');
 
-    let parser = 'md_spreadsheet_parser-0.8.0-py3-none-any.whl'; // Fallback
+    let parser = 'md_spreadsheet_parser-1.1.0-py3-none-any.whl'; // Fallback
     let editor = 'md_spreadsheet_editor-0.1.10-py3-none-any.whl'; // Fallback
 
     try {
@@ -235,12 +235,16 @@ export function getWebviewContent(
 
             /* Loading Indicator - Material Design Style */
             .loading-container {
+                position: fixed;
+                top: 0;
+                left: 0;
                 display: flex;
                 align-items: center;
                 justify-content: center;
                 height: 100vh;
                 width: 100%;
                 background: var(--vscode-editor-background);
+                z-index: 9999;
             }
 
             .loader {
