@@ -26,8 +26,8 @@
 <p align="center">
   <a href="#-highlights">Highlights</a> •
   <a href="#-quick-start">Quick Start</a> •
-  <a href="#️-settings">Settings</a> •
   <a href="#-why-pengsheets">Why PengSheets</a> •
+  <a href="#️-settings">Settings</a> •
   <a href="#-roadmap">Roadmap</a> •
   <a href="#-contributing">Contributing</a>
 </p>
@@ -52,12 +52,13 @@
 | 🐍 **Python-Powered Parsing** | Robust WebAssembly-based Python parser for reliable table handling |
 | 🌍 **Multilingual UI** | English and Japanese interface support |
 | 🎨 **Native VS Code Look** | Seamlessly integrates with your VS Code theme |
+| 🛠️ **Python & Node.js Ready** | Instantly load your workbooks in Python and Node.js scripts |
 
 ## 🚀 Quick Start
 
 1. **Install** the extension from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=f-y.peng-sheets)
 
-2. **Open** any Markdown file (`.md`) containing tables
+2. **Open** any Markdown file (`.md`)
 
 3. **Launch** the spreadsheet editor:
    - Click the **table icon** in the editor title bar (fastest!)
@@ -70,6 +71,17 @@
 4. **Edit** your tables with the spreadsheet interface — changes sync automatically!
 
 > **Tip:** Create a new workbook with `Markdown: Create New Spreadsheet File` command.
+
+## 🤔 Why PengSheets?
+
+| | PengSheets | Other Markdown Table Editors |
+|:--|:--|:--|
+| **Multi-Sheet Support** | ✅ Full workbook organization | ❌ Single table only |
+| **Parsing Engine** | Python (WebAssembly) — battle-tested | JavaScript — limited edge case handling |
+| **Real-time Sync** | ✅ Bidirectional | ⚠️ Often one-way |
+| **Metadata Support** | ✅ Table descriptions, sheet organization | ❌ None |
+| **Keyboard Shortcuts** | ✅ Excel-like navigation | ⚠️ Limited |
+
 
 ## ⚙️ Settings
 
@@ -87,19 +99,7 @@ PengSheets offers extensive customization to match your documentation style:
 | `pengSheets.parsing.stripWhitespace` | Strip whitespace from cell values | `true` |
 | `pengSheets.language` | UI language (`auto`, `en`, `ja`) | `auto` |
 | `pengSheets.validation.dateFormat` | Date format for validation cells | `YYYY-MM-DD` |
-
-## 🤔 Why PengSheets?
-
-| | PengSheets | Other Markdown Table Editors |
-|:--|:--|:--|
-| **Multi-Sheet Support** | ✅ Full workbook organization | ❌ Single table only |
-| **Parsing Engine** | Python (WebAssembly) — battle-tested | JavaScript — limited edge case handling |
-| **Real-time Sync** | ✅ Bidirectional | ⚠️ Often one-way |
-| **Metadata Support** | ✅ Table descriptions, sheet organization | ❌ None |
-| **Keyboard Shortcuts** | ✅ Excel-like navigation | ⚠️ Limited |
-
-
-## � Use with Python
+## 🐍 Use with Python
 
 Files created with PengSheets can be easily read in your Python scripts using [md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser). The Lookup API lets you access specific sheets and tables by name:
 
@@ -125,7 +125,31 @@ pip install md-spreadsheet-parser
 
 📚 See the [Cookbook](https://github.com/f-y/md-spreadsheet-parser/blob/main/COOKBOOK.md) for more recipes (Pandas, Excel, type-safe validation, and more).
 
-## �🗺️ Roadmap
+## 📦 Use with Node.js
+
+The `md-spreadsheet-parser` is also available as an NPM package, allowing you to parse and manipulate Markdown spreadsheets in Node.js environments with the same reliability as the Python core.
+
+```javascript
+import { parseWorkbookFromFile } from 'md-spreadsheet-parser';
+
+// Load your PengSheets workbook
+const workbook = parseWorkbookFromFile("data.md");
+
+// Access sheet and table by name
+const sheet = workbook.getSheet("Sales Data");
+const table = sheet.getTable("Q1 Results");
+
+// Use your data
+console.log(table.headers); // ['Year', 'Revenue']
+console.log(table.rows);    // [['2024', '1000'], ['2025', '1500']]
+```
+
+Install the package:
+```bash
+npm install md-spreadsheet-parser
+```
+
+## 🗺️ Roadmap
 
 We're actively developing PengSheets! Planned features include:
 

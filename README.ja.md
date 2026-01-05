@@ -26,8 +26,8 @@
 <p align="center">
   <a href="#-特徴">特徴</a> •
   <a href="#-クイックスタート">クイックスタート</a> •
-  <a href="#️-設定">設定</a> •
   <a href="#-なぜpengsheets">PengSheetsの利点</a> •
+  <a href="#️-設定">設定</a> •
   <a href="#️-ロードマップ">ロードマップ</a> •
   <a href="#-コントリビューション">コントリビューション</a>
 </p>
@@ -38,7 +38,7 @@
   <img src="./images/demo.gif" alt="PengSheets デモ" width="800">
 </p>
 
-**PengSheets**は、Markdownテーブルをリッチでインタラクティブなスプレッドシートビューに変換します。[md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser)を活用し、堅牢なPythonパーサーをWebAssembly経由でエディタ内で直接実行することで、優れた解析精度とシームレスなマルチシートサポートを提供します。
+**PengSheets**は、Markdownテーブルをリッチなスプレッドシートビューに変換します。[md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser)を活用し、堅牢なPythonパーサーをWebAssembly経由でエディタ内で直接実行することで、優れた解析精度とシームレスなマルチシートサポートを提供します。
 
 ## ✨ 特徴
 
@@ -50,15 +50,16 @@
 | 🐍 **Python駆動の解析** | 信頼性の高いWebAssemblyベースのPythonパーサー |
 | 🌍 **多言語対応UI** | 英語と日本語のインターフェースをサポート |
 | 🎨 **ネイティブなVS Codeルック** | VS Codeテーマとシームレスに統合 |
+| 🛠️ **Python & Node.js 対応** | 作成したワークブックを Python や Node.js スクリプトですぐに読込可能 |
 
 ## 🚀 クイックスタート
 
 1. **インストール** - [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=f-y.peng-sheets)から拡張機能をインストール
 
-2. **開く** - テーブルを含むMarkdownファイル（`.md`）を開く
+2. **開く** - Markdownファイル（`.md`）を開く
 
 3. **起動** - スプレッドシートエディタを起動:
-   - エディタのタイトルバーにある**テーブルアイコン**をクリック（最速！）
+   - エディタのタイトルバーにある**テーブルアイコン**をクリック
    
      ![タイトルバーのテーブルアイコン](./images/screenshot-title-bar-icon.png)
    
@@ -68,6 +69,17 @@
 4. **編集** - スプレッドシートインターフェースでテーブルを編集 — 変更は自動的に同期されます！
 
 > **ヒント:** `Markdown: 新規に表計算ファイルを作成`コマンドで新しいワークブックを作成できます。
+
+## 🤔 なぜPengSheets？
+
+| | PengSheets | 他のMarkdownテーブルエディタ |
+|:--|:--|:--|
+| **マルチシート対応** | ✅ 完全なワークブック構成 | ❌ 単一テーブルのみ |
+| **解析エンジン** | Python（WebAssembly）— 実戦で検証済み | JavaScript — エッジケース処理が限定的 |
+| **リアルタイム同期** | ✅ 双方向 | ⚠️ 一方向が多い |
+| **メタデータ対応** | ✅ テーブル説明、シート構成 | ❌ なし |
+| **キーボードショートカット** | ✅ Excel風のナビゲーション | ⚠️ 限定的 |
+
 
 ## ⚙️ 設定
 
@@ -85,21 +97,9 @@ PengeSheets はドキュメントスタイルに合わせて幅広くカスタ�
 | `pengSheets.parsing.stripWhitespace` | セル値から空白を除去 | `true` |
 | `pengSheets.language` | UI言語（`auto`, `en`, `ja`） | `auto` |
 | `pengSheets.validation.dateFormat` | バリデーションセルの日付形式 | `YYYY-MM-DD` |
-
-## 🤔 なぜPengSheets？
-
-| | PengSheets | 他のMarkdownテーブルエディタ |
-|:--|:--|:--|
-| **マルチシート対応** | ✅ 完全なワークブック構成 | ❌ 単一テーブルのみ |
-| **解析エンジン** | Python（WebAssembly）— 実戦で検証済み | JavaScript — エッジケース処理が限定的 |
-| **リアルタイム同期** | ✅ 双方向 | ⚠️ 一方向が多い |
-| **メタデータ対応** | ✅ テーブル説明、シート構成 | ❌ なし |
-| **キーボードショートカット** | ✅ Excel風のナビゲーション | ⚠️ 限定的 |
-
-
 ## 🐍 Pythonで利用
 
-PengSheetsで作成したファイルは、[md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser)を使ってPythonスクリプトから簡単に読み込めます。Lookup APIで特定のシートとテーブルに名前でアクセス：
+PengSheetsで作成したファイルは、[md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser)を使ってPythonスクリプトから簡単に読み込めます。Lookup APIで特定のシートとテーブルに名前でアクセスできます：
 
 ```python
 from md_spreadsheet_parser import parse_workbook_from_file
@@ -122,6 +122,30 @@ pip install md-spreadsheet-parser
 ```
 
 📚 詳しいレシピは[Cookbook（日本語）](https://github.com/f-y/md-spreadsheet-parser/blob/main/COOKBOOK.ja.md)をご覧ください（Pandas連携、Excel変換、型安全なバリデーションなど）。
+
+## 📦 Node.js で使う
+
+`md-spreadsheet-parser` は NPM パッケージとしても提供されており、Python 版と同様の信頼性で、Node.js 環境でも Markdown スプレッドシートのパースや操作が可能です。
+
+```javascript
+import { parseWorkbookFromFile } from 'md-spreadsheet-parser';
+
+// PengSheets ワークブックを読み込み
+const workbook = parseWorkbookFromFile("data.md");
+
+// シートとテーブルに名前でアクセス
+const sheet = workbook.getSheet("売上データ");
+const table = sheet.getTable("Q1実績");
+
+// データを利用
+console.log(table.headers); // ['年度', '売上']
+console.log(table.rows);    // [['2024', '1000'], ['2025', '1500']]
+```
+
+パッケージのインストール：
+```bash
+npm install md-spreadsheet-parser
+```
 
 ## 🗺️ ロードマップ
 
