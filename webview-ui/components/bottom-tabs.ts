@@ -168,6 +168,17 @@ export class BottomTabs extends LitElement {
 
     // Mouse-based drag handlers
     private _handleMouseDown(e: MouseEvent, index: number, tab: TabDefinition) {
+        // Blur any currently focused element to ensure editing components
+        // (e.g., document textarea) properly receive the blur event
+        // We need to traverse Shadow DOM boundaries to find the actual focused element
+        let activeElement = document.activeElement as HTMLElement | null;
+        while (activeElement?.shadowRoot?.activeElement) {
+            activeElement = activeElement.shadowRoot.activeElement as HTMLElement;
+        }
+        if (activeElement && typeof activeElement.blur === 'function') {
+            activeElement.blur();
+        }
+
         if (tab.type === 'add-sheet') return;
         if (this.editingIndex === index) return;
         this._dragCtrl.startPotentialDrag(e, index);

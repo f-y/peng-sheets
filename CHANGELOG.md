@@ -4,6 +4,12 @@ All notable changes to the "PengSheets" extension will be documented in this fil
 
 ## [Unreleased]
 
+### Fixed
+- Fix document edit mode not being cancelled when clicking on bottom tabs.
+
+### Improved
+- Add scroll spacer at the end of document view for better scrolling experience.
+
 ## [1.0.2] - 2026-01-05
 
 ### Fixed

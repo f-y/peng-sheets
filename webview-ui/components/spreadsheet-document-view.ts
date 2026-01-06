@@ -173,6 +173,7 @@ export class SpreadsheetDocumentView extends LitElement {
                           <div class="output" @click=${this._enterEditMode}>
                               ${unsafeHTML(this._getRenderedContent())}
                           </div>
+                          <div class="scroll-spacer"></div>
                           <div class="edit-hint">${t('clickToEdit')}</div>
                       `}
             </div>
