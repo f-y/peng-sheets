@@ -84,7 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 }
 
-export function deactivate() {}
+export function deactivate() { }
 
 export async function newWorkbookHandler() {
     // Get workspace folder
@@ -134,40 +134,14 @@ export async function newWorkbookHandler() {
     await vscode.commands.executeCommand('vscode.openWith', uri, SpreadsheetEditorProvider.viewType);
 }
 
-export async function findWheelFiles(context: vscode.ExtensionContext): Promise<{ parser: string; editor: string }> {
-    const isProduction = context.extensionMode === vscode.ExtensionMode.Production;
-    const searchUri = isProduction
-        ? vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide')
-        : vscode.Uri.joinPath(context.extensionUri, 'resources');
-
-    let parser = 'md_spreadsheet_parser-1.1.0-py3-none-any.whl'; // Fallback
-    let editor = 'md_spreadsheet_editor-0.1.10-py3-none-any.whl'; // Fallback
-
-    try {
-        const entries = await vscode.workspace.fs.readDirectory(searchUri);
-        const parserEntry = entries.find(([name]) => name.startsWith('md_spreadsheet_parser') && name.endsWith('.whl'));
-        const editorEntry = entries.find(([name]) => name.startsWith('md_spreadsheet_editor') && name.endsWith('.whl'));
-
-        if (parserEntry) parser = parserEntry[0];
-        if (editorEntry) editor = editorEntry[0];
-    } catch (e) {
-        console.warn(`Failed to find wheel files in ${searchUri.fsPath}`, e);
-    }
-    return { parser, editor };
-}
-
 export function getWebviewContent(
     webview: vscode.Webview,
     context: vscode.ExtensionContext,
-    document: vscode.TextDocument,
-    wheels: { parser: string; editor: string }
+    document: vscode.TextDocument
 ): string {
     const isProduction = context.extensionMode === vscode.ExtensionMode.Production;
     let scriptUri: vscode.Uri | string;
-    let parserWheelUri: vscode.Uri | string;
-    let editorWheelUri: vscode.Uri | string;
     let codiconFontUri: vscode.Uri | string;
-    let pyodideUri: vscode.Uri | string;
     let cspScriptSrc: string;
     let cspConnectSrc: string;
     let cspFontSrc: string;
@@ -175,26 +149,16 @@ export function getWebviewContent(
 
     if (isProduction) {
         scriptUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'main.js'));
-        parserWheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide', wheels.parser)
-        );
-        editorWheelUri = webview.asWebviewUri(
-            vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide', wheels.editor)
-        );
         codiconFontUri = webview.asWebviewUri(
             vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'codicon.ttf')
         );
-        pyodideUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'out', 'webview', 'pyodide'));
 
         cspScriptSrc = `'unsafe-eval' ${webview.cspSource}`;
         cspConnectSrc = `${webview.cspSource}`;
         cspFontSrc = `${webview.cspSource}`;
     } else {
         scriptUri = 'http://localhost:5173/webview-ui/main.ts';
-        parserWheelUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'resources', wheels.parser));
-        editorWheelUri = webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'resources', wheels.editor));
         codiconFontUri = 'http://localhost:5173/node_modules/@vscode/codicons/dist/codicon.ttf';
-        pyodideUri = 'http://localhost:5173/pyodide';
 
         cspScriptSrc = `'unsafe-eval' http://localhost:5173`;
         cspConnectSrc = `http://localhost:5173 ws://localhost:5173 ${webview.cspSource}`;
@@ -290,14 +254,10 @@ export function getWebviewContent(
         <md-spreadsheet-editor></md-spreadsheet-editor>
         <div class="loading-container"><div class="loader"><span>N</span><span>o</span><span>w</span><span>&nbsp;</span><span>L</span><span>o</span><span>a</span><span>d</span><span>i</span><span>n</span><span>g</span><span>.</span><span>.</span><span>.</span></div></div>
         <script>
-            window.wheelUri = "${parserWheelUri}";
-            window.editorWheelUri = "${editorWheelUri}";
-            window.pyodideIndexUrl = "${pyodideUri}";
             window.vscodeLanguage = ${JSON.stringify(extensionLanguage)};
             window.initialContent = \`${escapedContent}\`;
             window.initialConfig = ${JSON.stringify(initialConfig)};
         </script>
-        <script src="${pyodideUri}/pyodide.js"></script>
         ${viteClient}
         <script type="module" src="${scriptUri}"></script>
     </body>

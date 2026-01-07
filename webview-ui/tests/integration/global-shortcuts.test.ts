@@ -5,21 +5,13 @@ const postMessageMock = vi.fn();
 (global as any).acquireVsCodeApi = () => ({
     postMessage: postMessageMock,
     getState: () => ({}),
-    setState: () => {}
+    setState: () => { }
 });
 
 // Mock i18n
 vi.mock('../utils/i18n', () => ({
     t: (key: string) => key
 }));
-
-// Mock Pyodide loading to avoid errors
-(global as any).loadPyodide = async () => ({
-    loadPackage: async () => {},
-    pyimport: () => ({ install: async () => {} }),
-    runPythonAsync: async () => JSON.stringify({ workbook: {}, structure: [] }),
-    globals: { set: vi.fn() }
-});
 
 describe('MyEditor Ctrl+S Bug', () => {
     let element: HTMLElement;

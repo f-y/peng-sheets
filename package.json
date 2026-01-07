@@ -2,7 +2,7 @@
     "name": "peng-sheets",
     "publisher": "f-y",
     "displayName": "PengSheets - Markdown Spreadsheet Editor",
-    "description": "Transform Markdown tables into a powerful spreadsheet editor with Excel-like editing, multi-sheet workbooks, and real-time synchronization. Powered by Python via WebAssembly.",
+    "description": "Transform Markdown tables into a powerful spreadsheet editor with Excel-like editing, multi-sheet workbooks, and real-time synchronization.",
     "icon": "images/icon.png",
     "version": "1.0.3",
     "engines": {
@@ -21,9 +21,7 @@
         "excel",
         "csv",
         "workbook",
-        "data",
-        "webassembly",
-        "python"
+        "data"
     ],
     "galleryBanner": {
         "color": "#1e1e1e",
@@ -187,8 +185,8 @@
         "compile": "npm run build:webview && tsc -p ./",
         "generate:types": "node scripts/generate-ts-types.js",
         "build:python": "uv run --python 3.12 python python-modules/scripts/build_wheel.py",
-        "build:webview": "npm run generate:types && npm run build:python && vite build",
-        "dev": "npm run build:python && vite",
+        "build:webview": "npm run generate:types && vite build",
+        "dev": "vite",
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src webview-ui --ext ts",
@@ -227,11 +225,13 @@
         "marked": "^17.0.1",
         "nanoid": "^5.1.6",
         "prettier": "^3.7.4",
-        "pyodide": "^0.26.2",
         "sinon": "^21.0.1",
         "typescript": "^5.4.5",
         "vite": "^7.2.4",
         "vite-plugin-static-copy": "^3.1.4",
         "vitest": "^4.0.15"
+    },
+    "dependencies": {
+        "md-spreadsheet-parser": "^1.1.8"
     }
 }

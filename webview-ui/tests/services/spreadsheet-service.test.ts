@@ -1,11 +1,23 @@
+/**
+ * SpreadsheetService Tests (TypeScript Implementation)
+ *
+ * Tests the TypeScript-based SpreadsheetService which wraps the editor module.
+ * The editor module itself is tested separately in webview-ui/tests/editor/.
+ * These tests focus on the service layer behavior:
+ * - Initialization
+ * - Message posting to VS Code
+ * - Batching behavior
+ * - Error handling
+ */
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { SpreadsheetService } from '../../services/spreadsheet-service';
-import { IVSCodeApi, IPyodide } from '../../services/types';
+import { IVSCodeApi } from '../../services/types';
+import * as editor from '../../../src/editor';
 
-describe('SpreadsheetService', () => {
+describe('SpreadsheetService (TypeScript)', () => {
     let service: SpreadsheetService;
     let mockVscode: IVSCodeApi;
-    let mockPyodide: IPyodide;
 
     beforeEach(async () => {
         mockVscode = {
@@ -14,23 +26,19 @@ describe('SpreadsheetService', () => {
             setState: vi.fn()
         };
 
-        mockPyodide = {
-            runPythonAsync: vi.fn(),
-            loadPackage: vi.fn(),
-            pyimport: vi.fn(),
-            globals: new Map(),
-            FS: undefined
-        };
+        // Initialize editor context with sample markdown
+        const sampleMd = `# Tables
 
-        // Mock global loadPyodide
-        (globalThis as any).loadPyodide = vi.fn().mockResolvedValue(mockPyodide);
+## Sheet1
 
-        // Mock window properties used in initialize
-        vi.stubGlobal('window', {
-            pyodideIndexUrl: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/',
-            wheelUri: undefined,
-            vscodeLanguage: 'en'
-        });
+### Products
+
+| Name | Price |
+| ---- | ----- |
+| Apple | 100 |
+| Banana | 200 |
+`;
+        editor.initializeWorkbook(sampleMd, '');
 
         service = new SpreadsheetService(mockVscode);
         await service.initialize();
@@ -38,100 +46,132 @@ describe('SpreadsheetService', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
-        vi.unstubAllGlobals();
     });
 
-    it('should call addTable with correct python code', async () => {
-        // Setup mock return
-        (mockPyodide.runPythonAsync as any).mockResolvedValue(JSON.stringify({ type: 'updateRange', startLine: 0 }));
+    // --- Initialization Tests ---
 
-        service.addTable(0, 'New Table');
+    describe('initialization', () => {
+        it('should be initialized after calling initialize()', async () => {
+            const newService = new SpreadsheetService(mockVscode);
+            expect(newService.isInitialized).toBe(false);
 
-        // Wait for queue processing (it uses setTimeout 0)
-        await new Promise((resolve) => setTimeout(resolve, 10));
+            await newService.initialize();
 
-        // Verify runPythonAsync call
-        // Expect: res = api.add_table(0, ["Column 1","Column 2","Column 3"])\n                json.dumps(res) if res else "null"
-        // Expect: res = api.add_table(json.loads("0"), ...)\n        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('api.add_table(json.loads("0")'));
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('Column 1'));
+            expect(newService.isInitialized).toBe(true);
+        });
 
-        // Verify postMessage
-        expect(mockVscode.postMessage).toHaveBeenCalledWith(
-            expect.objectContaining({
-                type: 'updateRange',
-                startLine: 0
-            })
-        );
+        it('should return itself from initialize() for chaining', async () => {
+            const newService = new SpreadsheetService(mockVscode);
+            const result = await newService.initialize();
+
+            expect(result).toBe(newService);
+        });
     });
 
-    it('should call updateTableMetadata with correct python code', async () => {
-        (mockPyodide.runPythonAsync as any).mockResolvedValue(JSON.stringify({ type: 'updateRange', startLine: 10 }));
+    // --- Operation Tests ---
 
-        service.updateTableMetadata(0, 1, 'My Table', 'My Desc');
+    describe('operations', () => {
+        it('should post message when updating a cell', async () => {
+            service.updateRange(0, 0, 0, 0, 0, 0, 'Orange');
 
-        await new Promise((resolve) => setTimeout(resolve, 10));
+            // Wait for queue processing
+            await new Promise((r) => setTimeout(r, 50));
 
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('api.update_table_metadata('));
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('json.loads("0"),')); // sheetIdx
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('json.loads("1"),')); // tableIdx
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('My Table'));
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('My Desc'));
+            expect(mockVscode.postMessage).toHaveBeenCalled();
+            const call = (mockVscode.postMessage as ReturnType<typeof vi.fn>).mock.calls[0][0];
+            expect(call.content).toBeDefined();
+            expect(call.startLine).toBeDefined();
+        });
+
+        it('should post message when adding a table', async () => {
+            service.addTable(0, 'New Table');
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(mockVscode.postMessage).toHaveBeenCalled();
+        });
+
+        it('should post message when inserting a row', async () => {
+            service.insertRow(0, 0, 1);
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(mockVscode.postMessage).toHaveBeenCalled();
+        });
+
+        it('should post message when deleting rows', async () => {
+            service.deleteRows(0, 0, [0]);
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            expect(mockVscode.postMessage).toHaveBeenCalled();
+        });
     });
 
-    it('should call deleteDocument using atomic update function', async () => {
-        // Setup mock return for full file update
-        const mockUpdate = {
-            content: 'new content',
-            startLine: 0,
-            endLine: 100,
-            file_changed: true,
-            structure: {}
-        };
-        (mockPyodide.runPythonAsync as any).mockResolvedValue(JSON.stringify(mockUpdate));
+    // --- Batching Tests ---
 
-        service.deleteDocument(1);
+    describe('batching', () => {
+        it('should not post messages during batch', async () => {
+            service.startBatch();
 
-        // Wait for queue
-        await new Promise((resolve) => setTimeout(resolve, 10));
+            service.updateRange(0, 0, 0, 0, 0, 0, 'Value1');
+            service.updateRange(0, 0, 1, 1, 0, 0, 'Value2');
 
-        // Verify correct Python function used
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(
-            expect.stringContaining('api.delete_document_and_get_full_update(')
-        );
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('json.loads("1")'));
+            await new Promise((r) => setTimeout(r, 50));
 
-        // Verify single message posted (not batch)
-        expect(mockVscode.postMessage).toHaveBeenCalledTimes(1);
-        expect(mockVscode.postMessage).toHaveBeenCalledWith(
-            expect.objectContaining({
-                content: 'new content',
-                startLine: 0,
-                endLine: 100
-            })
-        );
-        // Verify it is NOT an array (batch)
-        const callArgs = (mockVscode.postMessage as any).mock.calls[0][0];
-        expect(Array.isArray(callArgs)).toBe(false);
+            // No messages should be posted during batch
+            expect(mockVscode.postMessage).not.toHaveBeenCalled();
+        });
+
+        it('should post single message when batch ends', async () => {
+            service.startBatch();
+
+            service.updateRange(0, 0, 0, 0, 0, 0, 'Value1');
+            service.updateRange(0, 0, 1, 1, 0, 0, 'Value2');
+
+            await new Promise((r) => setTimeout(r, 50));
+
+            service.endBatch();
+
+            expect(mockVscode.postMessage).toHaveBeenCalledTimes(1);
+        });
     });
 
-    it('should use md_spreadsheet_editor.api for operations', async () => {
-        (mockPyodide.runPythonAsync as any).mockResolvedValue(JSON.stringify({}));
+    // --- State Query Tests ---
 
-        service.updateTableMetadata(0, 1, 'My Table', 'My Desc');
+    describe('initializeWorkbook', () => {
+        it('should return state after initialization', async () => {
+            const sampleMd = `# Tables
 
-        await new Promise((resolve) => setTimeout(resolve, 10));
+## Sheet1
 
-        // Should use api prefix
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(expect.stringContaining('api.update_table_metadata('));
-    });
+### Table1
 
-    it('should initialize using api', async () => {
-        (mockPyodide.runPythonAsync as any).mockResolvedValue(JSON.stringify({}));
+| A | B |
+| - | - |
+| 1 | 2 |
+`;
+            const state = await service.initializeWorkbook(sampleMd, {});
 
-        await service.initializeWorkbook('# Test', {});
+            expect(state).toBeDefined();
+            expect(state.workbook).toBeDefined();
+            expect(state.workbook.sheets).toBeDefined();
+        });
 
-        expect(mockPyodide.runPythonAsync).toHaveBeenCalledWith(
-            expect.stringContaining('api.initialize_workbook(md_text, config)')
-        );
+        it('should return structure in state', async () => {
+            const sampleMd = `# Tables
+
+## Sheet1
+
+### Table1
+
+| A | B |
+| - | - |
+| 1 | 2 |
+`;
+            const state = await service.initializeWorkbook(sampleMd, {});
+
+            expect(state.structure).toBeDefined();
+        });
     });
 });

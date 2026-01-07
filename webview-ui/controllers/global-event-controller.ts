@@ -437,9 +437,9 @@ export class GlobalEventController implements ReactiveController {
         const message = event.data;
         switch (message.type) {
             case 'update':
-                // Store the markdown content - this is safe even before Pyodide is initialized
+                // Store the markdown content - this is safe even before service is initialized
                 this.host.markdownInput = message.content;
-                // Only parse if Pyodide is initialized, otherwise content will be parsed in firstUpdated
+                // Only parse if service is initialized, otherwise content will be parsed in firstUpdated
                 if (this.host.spreadsheetService.isInitialized) {
                     await this.host._parseWorkbook();
                     this.host.spreadsheetService.notifyUpdateReceived();
@@ -447,7 +447,7 @@ export class GlobalEventController implements ReactiveController {
                 break;
             case 'configUpdate':
                 this.host.config = message.config;
-                // Only parse if Pyodide is initialized
+                // Only parse if service is initialized
                 if (this.host.spreadsheetService.isInitialized) {
                     await this.host._parseWorkbook();
                 }

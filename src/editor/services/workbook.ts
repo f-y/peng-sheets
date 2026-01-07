@@ -1,0 +1,341 @@
+/**
+ * Workbook service - Core workbook operations.
+ * Converted from python-modules/src/md_spreadsheet_editor/services/workbook.py
+ */
+
+import { Workbook, Sheet } from 'md-spreadsheet-parser';
+import type { EditorContext } from '../context';
+import type { UpdateResult, TabOrderItem, EditorConfig } from '../types';
+
+/**
+ * Initialize tab_order by parsing the structure of the markdown document.
+ */
+export function initializeTabOrderFromStructure(
+    mdText: string,
+    config: string | null,
+    numSheets: number
+): TabOrderItem[] {
+    const configDict: EditorConfig = config ? JSON.parse(config) : {};
+    const rootMarker = configDict.rootMarker ?? '# Tables';
+
+    if (!mdText) {
+        // No markdown text, just return sheets in order
+        return Array.from({ length: numSheets }, (_, i) => ({
+            type: 'sheet' as const,
+            index: i,
+        }));
+    }
+
+    const lines = mdText.split('\n');
+    const tabOrder: TabOrderItem[] = [];
+    let docIndex = 0;
+    let workbookFound = false;
+    let inCodeBlock = false;
+
+    for (const line of lines) {
+        if (line.trim().startsWith('```')) {
+            inCodeBlock = !inCodeBlock;
+        }
+
+        if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
+            const stripped = line.trim();
+            if (stripped === rootMarker) {
+                // Workbook section - add all sheets at this position
+                workbookFound = true;
+                for (let i = 0; i < numSheets; i++) {
+                    tabOrder.push({ type: 'sheet', index: i });
+                }
+            } else {
+                // Document section
+                tabOrder.push({ type: 'document', index: docIndex });
+                docIndex++;
+            }
+        }
+    }
+
+    // If no workbook found but we have sheets, append them at the end
+    if (!workbookFound && numSheets > 0) {
+        for (let i = 0; i < numSheets; i++) {
+            tabOrder.push({ type: 'sheet', index: i });
+        }
+    }
+
+    return tabOrder;
+}
+
+/**
+ * Update the tab display order in workbook metadata.
+ */
+export function updateWorkbookTabOrder(
+    context: EditorContext,
+    tabOrder: TabOrderItem[]
+): UpdateResult {
+    const wbTransform = (wb: Workbook): Workbook => {
+        const currentMetadata = wb.metadata ? { ...wb.metadata } : {};
+        currentMetadata.tab_order = tabOrder;
+        return new Workbook({
+            ...wb,
+            metadata: currentMetadata,
+        });
+    };
+
+    return updateWorkbook(context, wbTransform);
+}
+
+/**
+ * Get the line range of the workbook section in markdown.
+ */
+export function getWorkbookRange(
+    mdText: string,
+    rootMarker: string,
+    sheetHeaderLevel: number
+): [number, number] {
+    const lines = mdText.split('\n');
+    let startLine = 0;
+    let found = false;
+    let inCodeBlock = false;
+
+    if (rootMarker) {
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.trim().startsWith('```')) {
+                inCodeBlock = !inCodeBlock;
+            }
+            if (!inCodeBlock && line.trim() === rootMarker) {
+                startLine = i;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            startLine = lines.length;
+        }
+    }
+
+    let endLine = lines.length;
+
+    const getLevel = (s: string): number => {
+        let lvl = 0;
+        for (const c of s) {
+            if (c === '#') {
+                lvl++;
+            } else {
+                break;
+            }
+        }
+        return lvl;
+    };
+
+    inCodeBlock = false;
+    for (let i = startLine + 1; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (line.startsWith('```')) {
+            inCodeBlock = !inCodeBlock;
+        }
+
+        if (!inCodeBlock && line.startsWith('#')) {
+            const lvl = getLevel(line);
+            if (lvl < sheetHeaderLevel) {
+                endLine = i;
+                break;
+            }
+        }
+    }
+
+    return [startLine, endLine];
+}
+
+/**
+ * Update the workbook using a transform function.
+ */
+export function updateWorkbook(
+    context: EditorContext,
+    transformFunc: (wb: Workbook) => Workbook
+): UpdateResult {
+    if (context.workbook === null) {
+        return { error: 'No workbook' };
+    }
+
+    try {
+        const newWorkbook = transformFunc(context.workbook);
+        context.updateWorkbook(newWorkbook);
+        return generateAndGetRange(context);
+    } catch (e) {
+        return { error: String(e) };
+    }
+}
+
+/**
+ * Generate markdown and get the replacement range.
+ */
+export function generateAndGetRange(context: EditorContext): UpdateResult {
+    const workbook = context.workbook;
+    const schema = context.schema;
+    const mdText = context.mdText;
+    const config = context.config;
+
+    // Generate Markdown (Full Workbook)
+    let newMd = '';
+    if (workbook && (workbook.sheets ?? []).length > 0) {
+        if (schema) {
+            newMd = workbook.toMarkdown(schema);
+        }
+    }
+
+    // Determine replacement range
+    const configDict: EditorConfig = config ? JSON.parse(config) : {};
+    const rootMarker = configDict.rootMarker ?? '# Tables';
+    const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
+
+    const [startLine, rawEndLine] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
+    const lines = mdText.split('\n');
+
+    let endLine = rawEndLine;
+    let endCol = 0;
+
+    if (endLine >= lines.length) {
+        endLine = lines.length - 1;
+        endCol = endLine >= 0 ? lines[endLine].length : 0;
+    } else {
+        if (endLine > 0) {
+            endLine = endLine - 1;
+            endCol = lines[endLine].length;
+        }
+    }
+
+    let content = newMd + '\n';
+
+    // Ensure empty line before appended content if file is not empty
+    if (startLine >= lines.length && mdText) {
+        let trailingNewlines = 0;
+        for (let i = mdText.length - 1; i >= 0; i--) {
+            if (mdText[i] === '\n') {
+                trailingNewlines++;
+            } else {
+                break;
+            }
+        }
+
+        const needed = Math.max(0, 2 - trailingNewlines);
+        content = '\n'.repeat(needed) + content;
+    }
+
+    return {
+        startLine,
+        endLine,
+        endCol,
+        content,
+    };
+}
+
+/**
+ * Reorder tab_order metadata after a physical move of a sheet or document.
+ */
+export function reorderTabMetadata(
+    wb: Workbook | null,
+    itemType: 'sheet' | 'document',
+    fromIdx: number,
+    toIdx: number,
+    targetTabOrderIndex: number | null
+): Workbook | null {
+    if (!wb || !wb.metadata) {
+        return wb;
+    }
+
+    const metadata = { ...wb.metadata };
+    const tabOrder: TabOrderItem[] = [...(metadata.tab_order || [])];
+
+    if (!tabOrder.length) {
+        return wb;
+    }
+
+    const indicesInTabOrder = tabOrder
+        .filter((item) => item.type === itemType)
+        .map((item) => item.index);
+
+    if (!indicesInTabOrder.length) {
+        return wb;
+    }
+
+    let maxIndex = Math.max(...indicesInTabOrder);
+    maxIndex = Math.max(maxIndex, fromIdx);
+    const clampedToIdx = Math.min(toIdx, maxIndex);
+
+    const dummyList = Array.from({ length: maxIndex + 1 }, (_, i) => i);
+
+    if (fromIdx < dummyList.length) {
+        const movedItem = dummyList.splice(fromIdx, 1)[0];
+        const insertIdx = Math.max(0, Math.min(clampedToIdx, dummyList.length));
+        dummyList.splice(insertIdx, 0, movedItem);
+    }
+
+    const newIndexMap = new Map<number, number>();
+    dummyList.forEach((old, newPos) => {
+        newIndexMap.set(old, newPos);
+    });
+
+    let movedTabOrderItem: TabOrderItem | null = null;
+
+    for (const item of tabOrder) {
+        if (item.type === itemType) {
+            const oldIdx = item.index;
+            if (newIndexMap.has(oldIdx)) {
+                item.index = newIndexMap.get(oldIdx)!;
+            }
+
+            if (oldIdx === fromIdx) {
+                movedTabOrderItem = item;
+            }
+        }
+    }
+
+    if (movedTabOrderItem && targetTabOrderIndex !== null) {
+        const currPos = tabOrder.indexOf(movedTabOrderItem);
+        if (currPos >= 0) {
+            tabOrder.splice(currPos, 1);
+
+            // Adjust target index if we removed an item that was before the target
+            let adjustedTarget = targetTabOrderIndex;
+            if (currPos < targetTabOrderIndex) {
+                adjustedTarget--;
+            }
+
+            const safeTarget = Math.max(0, Math.min(adjustedTarget, tabOrder.length));
+            tabOrder.splice(safeTarget, 0, movedTabOrderItem);
+        }
+    }
+
+    metadata.tab_order = tabOrder;
+    return new Workbook({
+        ...wb,
+        metadata,
+    });
+}
+
+/**
+ * Apply a sheet-level update using a transform function.
+ */
+export function applySheetUpdate(
+    context: EditorContext,
+    sheetIdx: number,
+    transformFunc: (sheet: Sheet) => Sheet
+): UpdateResult {
+    const wbTransform = (wb: Workbook): Workbook => {
+        const newSheets = [...(wb.sheets ?? [])];
+        if (sheetIdx < 0 || sheetIdx >= newSheets.length) {
+            throw new Error('Invalid sheet index');
+        }
+
+        const targetSheet = newSheets[sheetIdx];
+        const newSheet = transformFunc(targetSheet);
+        newSheets[sheetIdx] = newSheet;
+
+        return new Workbook({
+            ...wb,
+            sheets: newSheets,
+        });
+    };
+
+    return updateWorkbook(context, wbTransform);
+}
