@@ -4,6 +4,8 @@ All notable changes to the "PengSheets" extension will be documented in this fil
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-01-07
+
 ### Fixed
 - Fix document edit mode not being cancelled when clicking on bottom tabs.
 
