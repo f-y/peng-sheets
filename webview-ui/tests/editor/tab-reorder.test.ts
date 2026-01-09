@@ -101,11 +101,9 @@ Second document.
         });
 
         /**
-         * Fix attempted: header boundary detection improved.
-         * Complex interaction with document indexing after workbook removal.
-         * Needs further investigation.
+         * Testing moveWorkbookSection toAfterDoc
          */
-        it.skip('should move workbook section to after document', () => {
+        it('should move workbook section to after document', () => {
             // Move workbook to after Doc One (end of file)
             const result = moveWorkbookSection(1, true, false, 2);
 
@@ -123,10 +121,9 @@ Second document.
 
     describe('Tab order initialization', () => {
         /**
-         * BUG: tab_order is not automatically initialized from structure
-         * when metadata comment is missing from markdown.
+         * Testing tab_order initialization from structure
          */
-        it.skip('should initialize tab_order from structure when missing', () => {
+        it('should initialize tab_order from structure when missing', () => {
             // Markdown without metadata comment
             const MD_NO_METADATA = `# Doc Zero
 

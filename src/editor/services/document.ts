@@ -484,7 +484,7 @@ export function moveDocumentSection(
 
     // Insert at new position
     linesWithoutDoc.splice(insertLine, 0, ...docContent);
-    const newMdText = linesWithoutDoc.join('\n');
+    let newMdText = linesWithoutDoc.join('\n');
     context.mdText = newMdText;
 
     // Update tab_order (matching Python's effective_to_index calculation)
@@ -516,11 +516,22 @@ export function moveDocumentSection(
         );
         if (updatedWb) {
             context.updateWorkbook(updatedWb);
+
+            // Update metadata comment in markdown (matching Python behavior)
+            const newMetadata = JSON.stringify(updatedWb.metadata);
+            const metadataComment = `<!-- md-spreadsheet-workbook-metadata: ${newMetadata} -->`;
+
+            // Replace existing metadata comment or append
+            const metadataPattern = /<!-- md-spreadsheet-workbook-metadata: \{.*?\} -->/;
+            if (metadataPattern.test(newMdText)) {
+                newMdText = newMdText.replace(metadataPattern, metadataComment);
+                context.mdText = newMdText;
+            }
         }
     }
 
     return {
-        content: newMdText,
+        content: context.mdText,
         startLine: 0,
         endLine: lines.length,
         file_changed: true,
@@ -581,16 +592,12 @@ export function moveWorkbookSection(
             if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
                 const stripped = line.trim();
                 if (stripped !== rootMarker) {
-                    if (docIdx === toDocIndex) {
-                        targetLine = toBeforeDoc ? i : i; // Will be adjusted
-                        break;
-                    }
-                    docIdx++;
-
-                    if (toAfterDoc && docIdx > toDocIndex) {
+                    if (docIdx === toDocIndex && toBeforeDoc) {
+                        // For toBeforeDoc, insert before this document
                         targetLine = i;
                         break;
                     }
+                    docIdx++;
                 }
             }
         }

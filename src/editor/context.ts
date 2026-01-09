@@ -10,6 +10,7 @@ import {
 } from 'md-spreadsheet-parser';
 import type { EditorConfig, StructureSection } from './types';
 import { extractStructure, augmentWorkbookMetadata } from './utils/structure';
+import { initializeTabOrderFromStructure } from './services/workbook';
 
 // =============================================================================
 // Editor State
@@ -168,7 +169,18 @@ export class EditorContext {
             stripWhitespace: configDict.stripWhitespace ?? true,
         });
 
-        this.state.workbook = parseWorkbook(this.state.mdText, this.state.schema);
+        let workbook = parseWorkbook(this.state.mdText, this.state.schema);
+
+        // Initialize tab_order if not present in metadata
+        if (!workbook.metadata?.tab_order) {
+            const numSheets = (workbook.sheets ?? []).length;
+            const tabOrder = initializeTabOrderFromStructure(mdText, configJson, numSheets);
+
+            const metadata = { ...(workbook.metadata || {}), tab_order: tabOrder };
+            workbook = new Workbook({ ...workbook, metadata });
+        }
+
+        this.state.workbook = workbook;
     }
 }
 

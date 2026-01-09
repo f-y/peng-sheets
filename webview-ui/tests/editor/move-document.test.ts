@@ -159,18 +159,20 @@ More content.
          * ```
          */
         /**
-         * effective_to_index calculation fix applied.
-         * Test expectation may need refinement - reorderTabMetadata interaction is complex.
+         * Testing effective_to_index calculation
          */
-        it.skip('should correctly calculate effective_to_index when toDocIndex is null', () => {
+        it('should correctly calculate effective_to_index when toDocIndex is null', () => {
             const result = moveDocumentSection(0, null, true, false, 1);
             expect(result.error).toBeUndefined();
+
             const state = JSON.parse(getState());
             const tabOrder = state.workbook.metadata.tab_order;
+
             const doc0Position = tabOrder.findIndex(
                 (item: { type: string; index: number }) =>
                     item.type === 'document' && item.index === 0
             );
+
             expect(doc0Position).toBe(1);
         });
     });
@@ -200,19 +202,9 @@ More content.
         });
 
         /**
-         * BUG: Metadata comment is not updated in markdown after move.
-         *
-         * Python updates the metadata comment in the markdown:
-         * ```python
-         * if updated_workbook != workbook:
-         *     # ... update metadata comment in new_md
-         *     metadata_pattern = r"<!-- md-spreadsheet-workbook-metadata: \{.*?\} -->"
-         *     new_md = re.sub(metadata_pattern, new_metadata_comment, new_md)
-         * ```
-         *
-         * TypeScript does NOT update the markdown, only the workbook object.
+         * Testing: Metadata comment should be updated in markdown after move
          */
-        it.skip('should update metadata comment in markdown after move', () => {
+        it('should update metadata comment in markdown after move', () => {
             // Move Doc Zero to after workbook
             const result = moveDocumentSection(0, null, true, false, 1);
 
