@@ -101,8 +101,9 @@ Second document.
         });
 
         /**
-         * BUG: moveWorkbookSection to after document fails
-         * Similar issue to moveDocumentSection toAfterWorkbook
+         * Fix attempted: header boundary detection improved.
+         * Complex interaction with document indexing after workbook removal.
+         * Needs further investigation.
          */
         it.skip('should move workbook section to after document', () => {
             // Move workbook to after Doc One (end of file)

@@ -609,12 +609,16 @@ export function moveWorkbookSection(
 
                 if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
                     const stripped = line.trim();
+
+                    // If we found the target doc and hit ANY level-1 header, end here
+                    if (foundDoc) {
+                        targetLine = i;
+                        break;
+                    }
+
                     if (stripped !== rootMarker) {
                         if (docIdx === toDocIndex) {
                             foundDoc = true;
-                        } else if (foundDoc) {
-                            targetLine = i;
-                            break;
                         }
                         docIdx++;
                     }
