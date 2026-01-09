@@ -188,11 +188,9 @@ More content.
         });
 
         /**
-         * BUG: Adding document at file beginning (afterDocIndex=-1, afterWorkbook=false)
-         * When workbook is at the start of file and no documents exist,
-         * new document should be inserted before the workbook.
+         * Testing: Adding document at file beginning
          */
-        it.skip('should add document at beginning when afterDocIndex=-1 and afterWorkbook=false', () => {
+        it('should add document at beginning when afterDocIndex=-1 and afterWorkbook=false', () => {
             const WORKBOOK_ONLY = `# Tables
 
 ## Sheet 1

@@ -88,7 +88,9 @@ export function addDocument(
     const rootMarker = configDict.rootMarker ?? '# Tables';
 
     const lines = mdText.split('\n');
-    let insertLine = lines.length;
+    // Python uses insertLine = 0 by default (insert at beginning)
+    // Only set to len(lines) if afterDocIndex >= 0 and doc not found
+    let insertLine = afterDocIndex >= 0 || afterWorkbook ? lines.length : 0;
     let docCount = 0;
 
     let inCodeBlock = false;
