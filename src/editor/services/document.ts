@@ -43,17 +43,20 @@ export function getDocumentSectionRange(
 
         if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
             const stripped = line.trim();
+
+            // If we were tracking a document and hit ANY level-1 header, end it here
+            if (currentDocStart !== null) {
+                return { startLine: currentDocStart, endLine: i };
+            }
+
             if (stripped === rootMarker) {
-                // Workbook section - not a document
+                // Workbook section - not a document, skip
                 continue;
             }
 
             // Found a document section
             if (docIdx === sectionIndex) {
                 currentDocStart = i;
-            } else if (currentDocStart !== null) {
-                // Found next section, so previous ends here
-                return { startLine: currentDocStart, endLine: i };
             }
             docIdx++;
         }
@@ -155,15 +158,24 @@ export function addDocument(
             );
         }
 
-        // Shift document indices after the insertion point
+        // Calculate new document index (matching Python logic)
+        let newDocIndex: number;
+        if (afterDocIndex >= 0) {
+            newDocIndex = afterDocIndex + 1;
+        } else {
+            // Count existing documents in tab_order
+            newDocIndex = tabOrder.filter((item) => item.type === 'document').length;
+        }
+
+        // Shift document indices >= newDocIndex
         for (const item of tabOrder) {
-            if (item.type === 'document' && item.index >= docCount) {
+            if (item.type === 'document' && item.index >= newDocIndex) {
                 item.index++;
             }
         }
 
         // Add new document
-        const newDocItem: TabOrderItem = { type: 'document', index: docCount };
+        const newDocItem: TabOrderItem = { type: 'document', index: newDocIndex };
         if (insertAfterTabOrderIndex >= 0 && insertAfterTabOrderIndex < tabOrder.length) {
             tabOrder.splice(insertAfterTabOrderIndex + 1, 0, newDocItem);
         } else {
@@ -270,24 +282,73 @@ export function deleteDocument(
 
 /**
  * Delete document and return full update.
+ * Matches Python's delete_document_and_get_full_update behavior:
+ * 1. Delete document from md_text
+ * 2. Regenerate workbook content
+ * 3. Embed regenerated workbook back into md_text
+ * 4. Return full md_text with workbook and structure
  */
 export function deleteDocumentAndGetFullUpdate(
     context: EditorContext,
     docIndex: number
 ): UpdateResult {
-    const result = deleteDocument(context, docIndex);
-    if (result.error) {
-        return result;
+    // 1. Get original line count
+    const originalMd = context.mdText;
+    const originalLineCount = originalMd.split('\n').length;
+
+    // 2. Delete the document (updates md_text in context)
+    const deleteResult = deleteDocument(context, docIndex);
+    if (deleteResult.error) {
+        return deleteResult;
     }
 
+    // 3. Regenerate workbook content
+    const wbUpdate = generateAndGetRange(context);
+
+    // 4. Embed the regenerated workbook content into the md_text
+    let currentMd = context.mdText;
+    let currentLines = currentMd.split('\n');
+
+    if (wbUpdate && !wbUpdate.error && wbUpdate.content !== undefined) {
+        const wbStart = wbUpdate.startLine!;
+        const wbEnd = wbUpdate.endLine!;
+        const wbContent = wbUpdate.content;
+        const wbContentLines = wbContent.trimEnd().split('\n');
+        if (wbContent) {
+            wbContentLines.push('');
+        }
+
+        currentLines = [
+            ...currentLines.slice(0, wbStart),
+            ...wbContentLines,
+            ...currentLines.slice(wbEnd + 1),
+        ];
+        currentMd = currentLines.join('\n');
+        context.mdText = currentMd;
+    }
+
+    // 5. Get full state
+    const fullStateJson = context.getFullStateDict();
+    const fullState = JSON.parse(fullStateJson);
+
     return {
-        ...result,
-        ...generateAndGetRange(context),
+        content: currentMd,
+        startLine: 0,
+        endLine: originalLineCount - 1,
+        endCol: 0,
+        workbook: fullState.workbook,
+        structure: fullState.structure,
+        file_changed: true,
     };
 }
 
 /**
  * Add document and return full update.
+ * Matches Python's add_document_and_get_full_update behavior:
+ * 1. Add document to md_text
+ * 2. Regenerate workbook content
+ * 3. Embed regenerated workbook back into md_text
+ * 4. Return full md_text with workbook and structure
  */
 export function addDocumentAndGetFullUpdate(
     context: EditorContext,
@@ -296,14 +357,51 @@ export function addDocumentAndGetFullUpdate(
     afterWorkbook = false,
     insertAfterTabOrderIndex = -1
 ): UpdateResult {
-    const result = addDocument(context, title, afterDocIndex, afterWorkbook, insertAfterTabOrderIndex);
-    if (result.error) {
-        return result;
+    // 1. Add the document (updates md_text in context)
+    const addResult = addDocument(context, title, afterDocIndex, afterWorkbook, insertAfterTabOrderIndex);
+    if (addResult.error) {
+        return addResult;
     }
 
+    // 2. Get current md_text from context
+    let currentMd = context.mdText;
+    let lines = currentMd.split('\n');
+    const originalLineCount = lines.length;
+
+    // 3. Regenerate workbook content
+    const wbUpdate = generateAndGetRange(context);
+
+    // 4. Embed the regenerated workbook content into the md_text
+    if (wbUpdate && !wbUpdate.error && wbUpdate.content !== undefined) {
+        const wbStart = wbUpdate.startLine!;
+        const wbEnd = wbUpdate.endLine!;
+        const wbContent = wbUpdate.content;
+        let wbContentLines = wbContent.trimEnd().split('\n');
+        if (wbContent) {
+            wbContentLines.push('');
+        }
+
+        lines = [
+            ...lines.slice(0, wbStart),
+            ...wbContentLines,
+            ...lines.slice(wbEnd + 1),
+        ];
+        currentMd = lines.join('\n');
+        context.mdText = currentMd;
+    }
+
+    // 5. Get full state
+    const fullStateJson = context.getFullStateDict();
+    const fullState = JSON.parse(fullStateJson);
+
     return {
-        ...result,
-        ...generateAndGetRange(context),
+        content: currentMd,
+        startLine: 0,
+        endLine: originalLineCount - 1,
+        endCol: 0,
+        workbook: fullState.workbook,
+        structure: fullState.structure,
+        file_changed: true,
     };
 }
 
@@ -387,14 +485,31 @@ export function moveDocumentSection(
     const newMdText = linesWithoutDoc.join('\n');
     context.mdText = newMdText;
 
-    // Update tab_order
+    // Update tab_order (matching Python's effective_to_index calculation)
     const workbook = context.workbook;
     if (workbook && targetTabOrderIndex !== null) {
+        let effectiveToIndex: number;
+
+        if (toDocIndex !== null) {
+            effectiveToIndex = toDocIndex;
+        } else {
+            // Count documents before target position (excluding the moved doc)
+            const tabOrder = workbook.metadata?.tab_order || [];
+            let docsBeforeTarget = 0;
+            for (let i = 0; i < Math.min(targetTabOrderIndex, tabOrder.length); i++) {
+                const item = tabOrder[i];
+                if (item.type === 'document' && item.index !== fromDocIndex) {
+                    docsBeforeTarget++;
+                }
+            }
+            effectiveToIndex = docsBeforeTarget;
+        }
+
         const updatedWb = reorderTabMetadata(
             workbook,
             'document',
             fromDocIndex,
-            toDocIndex ?? fromDocIndex,
+            effectiveToIndex,
             targetTabOrderIndex
         );
         if (updatedWb) {

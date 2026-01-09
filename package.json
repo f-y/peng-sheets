@@ -209,6 +209,7 @@
         "@types/vscode": "^1.90.0",
         "@typescript-eslint/eslint-plugin": "^7.11.0",
         "@typescript-eslint/parser": "^7.11.0",
+        "@vitest/coverage-v8": "^4.0.16",
         "@vscode/codicons": "^0.0.43",
         "@vscode/test-cli": "^0.0.9",
         "@vscode/test-electron": "^2.4.0",
@@ -232,6 +233,6 @@
         "vitest": "^4.0.15"
     },
     "dependencies": {
-        "md-spreadsheet-parser": "^1.1.8"
+        "md-spreadsheet-parser": "^1.1.10"
     }
 }

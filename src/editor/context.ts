@@ -108,7 +108,9 @@ export class EditorContext {
             return JSON.stringify({ workbook: null, structure: null });
         }
 
-        let workbookJson = this.state.workbook.toDTO();
+        // Use .json getter (not toDTO()) to get metadata as plain objects
+        // This matches Python's .json property behavior
+        let workbookJson = this.state.workbook.json;
         let structure: StructureSection[] | null = null;
 
         if (this.state.schema) {
