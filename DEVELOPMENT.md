@@ -4,54 +4,30 @@
 > [!NOTE] 
 > Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before starting development.
 
-This document outlines the development practices for the `PengSheets` extension, covering the Extension Host (Node.js), Webview (Lit), and the Python Kernel (Pyodide).
+This document outlines the development practices for the `PengSheets` extension, covering the Extension Host (Node.js) and Webview (Lit).
 
 ## 1. Architecture Overview
 
 ```mermaid
 graph TD
     EXT[Extension Host (Node)] <-->|Messages| WB[Webview (HTML/Lit)]
-    WB <-->|Pyodide Bridge| WASM[Pyodide (WASM)]
-    WASM -->|Loads| WHL[md_spreadsheet_editor.whl (Python)]
+    WB <-->|TypeScript Editor| WASM[md-spreadsheet-parser (WASM)]
 ```
 
 -   **Extension Host**: Handles file I/O, VS Code API, and Undo/Redo stack.
--   **Webview**: Renders the UI and hosts the Pyodide runtime.
--   **Pyodide**: Executes the core business logic provided by the `python-modules` package.
+-   **Webview**: Renders the UI and hosts the TypeScript editor logic.
+-   **md-spreadsheet-parser**: NPM package providing Markdown table parsing via WASM.
 
 ## 2. Directory Structure
 
 -   `src/`: Extension Host (Node.js) code.
+-   `src/editor/`: TypeScript editor services (ported from Python).
 -   `webview-ui/`: Frontend (Lit) code.
--   `python-modules/`: Core Python business logic (Separate project).
--   `resources/pyodide_pkgs/`: Directory where Python wheels are bundled.
+-   `webview-ui/tests/`: Vitest tests for webview and editor.
 
-## 3. Python Integration & Workflow
+## 3. Parser Package
 
-The extension runs Python logic locally via Pyodide.
-
-### Architecture
--   **Bundled Pyodide**: We bundle a local version of Pyodide for offline support and speed.
--   **Wheels**: The core logic is defined in `python-modules/` and built into a `.whl` file.
-
-### Modifying Python Logic
-**CRITICAL**: Pyodide caches packages by version. To update Python logic, you **MUST bump the version**.
-
-1.  **Modify & Test**:
-    ```bash
-    cd python-modules
-    # Edit code...
-    uv run pytest
-    ```
-2.  **Bump Version**:
-    Update `version` in `python-modules/pyproject.toml`.
-3.  **Build Wheel**:
-    ```bash
-    uv build
-    ```
-4.  **Install Wheel** (Copy to Extension):
-    Copy the generated `.whl` file from `python-modules/dist/` to `webview-ui/resources/pyodide_pkgs/`.
-    *(Ensure you delete old versions of the wheel to avoid confusion)*.
+The extension uses the `md-spreadsheet-parser` NPM package for Markdown parsing. This package is installed as a dependency and bundled with the extension.
 
 ## 4. Frontend Development (Webview)
 
@@ -60,7 +36,7 @@ The extension runs Python logic locally via Pyodide.
     ```bash
     npm run test:webview
     ```
-    Test UI components in isolation (`webview-ui/tests/`).
+    Test UI components and editor services in isolation (`webview-ui/tests/`).
 
 ### Internationalization (i18n)
 -   Use `t('key')`.
@@ -87,7 +63,6 @@ To package the full extension (`.vsix`):
 ```bash
 vsce package
 ```
-Ensure all Python wheels are correctly placed in `resources/pyodide_pkgs/` before packaging.
 
 ### Publishing to Marketplace
 
