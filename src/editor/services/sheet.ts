@@ -169,7 +169,33 @@ export function updateSheetMetadata(
  * Delete a sheet.
  */
 export function deleteSheet(context: EditorContext, sheetIdx: number): UpdateResult {
-    return updateWorkbook(context, (wb) => wb.deleteSheet(sheetIdx));
+    return updateWorkbook(context, (wb) => {
+        // 1. Delete the sheet
+        const newWb = wb.deleteSheet(sheetIdx);
+
+        // 2. Update tab_order metadata
+        const metadata = { ...(newWb.metadata || {}) };
+        if (metadata.tab_order && Array.isArray(metadata.tab_order)) {
+            let tabOrder: TabOrderItem[] = [...metadata.tab_order];
+
+            // Remove deleted sheet entry
+            tabOrder = tabOrder.filter(
+                (item) => !(item.type === 'sheet' && item.index === sheetIdx)
+            );
+
+            // Shift remaining sheet indices
+            for (const item of tabOrder) {
+                if (item.type === 'sheet' && item.index > sheetIdx) {
+                    item.index--;
+                }
+            }
+
+            metadata.tab_order = tabOrder;
+            return new Workbook({ ...newWb, metadata });
+        }
+
+        return newWb;
+    });
 }
 
 /**

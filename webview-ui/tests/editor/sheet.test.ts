@@ -181,6 +181,68 @@ describe('Sheet Service Tests', () => {
             const result = deleteSheet(99);
             expect(result.error).toBeDefined();
         });
+
+        it('should remove deleted sheet from tab_order', () => {
+            // Before: tab_order = [sheet:0, sheet:1]
+            const state1 = JSON.parse(getState());
+            expect(state1.workbook.metadata?.tab_order?.length).toBe(2);
+
+            const result = deleteSheet(0);
+            expect(result.error).toBeUndefined();
+
+            // After: tab_order should NOT contain sheet:0
+            const state2 = JSON.parse(getState());
+            const tabOrder = state2.workbook.metadata?.tab_order;
+            // Entry for deleted sheet should be removed
+            const deletedEntry = tabOrder?.find(
+                (item: { type: string; index: number }) => item.type === 'sheet' && item.index === 0
+            );
+            expect(deletedEntry).toBeUndefined();
+        });
+
+        it('should shift remaining sheet indices in tab_order after deletion', () => {
+            // Before: tab_order = [sheet:0, sheet:1]
+            const result = deleteSheet(0);
+            expect(result.error).toBeUndefined();
+
+            // After: remaining sheet (was index 1) should now be index 0
+            const state = JSON.parse(getState());
+            const tabOrder = state.workbook.metadata?.tab_order;
+            if (tabOrder && tabOrder.length > 0) {
+                const sheetEntries = tabOrder.filter(
+                    (item: { type: string }) => item.type === 'sheet'
+                );
+                // The remaining sheet should have index 0
+                expect(sheetEntries[0]?.index).toBe(0);
+            }
+        });
+
+        it('should handle deleting middle sheet with tab_order', () => {
+            // Add a third sheet
+            addSheet('Sheet 3');
+            const state1 = JSON.parse(getState());
+            expect(state1.workbook.sheets.length).toBe(3);
+
+            // Delete middle sheet (index 1)
+            const result = deleteSheet(1);
+            expect(result.error).toBeUndefined();
+
+            const state2 = JSON.parse(getState());
+            expect(state2.workbook.sheets.length).toBe(2);
+            // Sheet 3 should now be at index 1
+            expect(state2.workbook.sheets[1].name).toBe('Sheet 3');
+
+            // tab_order should be updated: old index 2 should become index 1
+            const tabOrder = state2.workbook.metadata?.tab_order;
+            if (tabOrder) {
+                const sheetEntries = tabOrder.filter(
+                    (item: { type: string }) => item.type === 'sheet'
+                );
+                // Should have 2 sheet entries with indices 0 and 1
+                const indices = sheetEntries.map((e: { index: number }) => e.index).sort();
+                expect(indices).toEqual([0, 1]);
+            }
+        });
     });
 
     // =========================================================================
