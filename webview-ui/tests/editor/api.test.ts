@@ -26,7 +26,7 @@ import {
     addDocument,
     renameDocument,
     deleteDocument,
-    generateAndGetRange,
+    generateAndGetRange
 } from '../../../src/editor';
 
 // Sample markdown for testing
@@ -42,7 +42,7 @@ const SAMPLE_MD = `# Tables
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 describe('Editor API', () => {
@@ -237,7 +237,7 @@ describe('Editor API', () => {
         it('should paste cells', () => {
             const pasteData = [
                 ['X', 'Y'],
-                ['Z', 'W'],
+                ['Z', 'W']
             ];
             const result = pasteCells(0, 0, 0, 0, pasteData);
             expect(result.error).toBeUndefined();
@@ -305,5 +305,148 @@ More content.
         const result = deleteDocument(0);
         expect(result.error).toBeUndefined();
         expect(result.content).not.toContain('# My Document');
+    });
+});
+
+// =============================================================================
+// Phase 3: Utility Functions and Edge Cases
+// =============================================================================
+
+import {
+    getFullMarkdown,
+    getWorkbookRange,
+    createNewSpreadsheet,
+    updateWorkbookTabOrder,
+    deleteRows,
+    clearColumns,
+    moveRows,
+    moveColumns,
+    getDocumentSectionRange
+} from '../../../src/editor';
+
+describe('Utility Functions', () => {
+    beforeEach(() => {
+        resetContext();
+    });
+
+    describe('getFullMarkdown', () => {
+        it('should return generated markdown even with no sheets', () => {
+            // Initialize with text that has no tables
+            initializeWorkbook('# Just Text\n\nNo tables here.', SAMPLE_CONFIG);
+            const markdown = getFullMarkdown();
+            // getFullMarkdown generates markdown, so it includes the rootMarker
+            expect(markdown).toContain('# Tables');
+        });
+
+        it('should return full markdown with workbook', () => {
+            initializeWorkbook(SAMPLE_MD, SAMPLE_CONFIG);
+            const markdown = getFullMarkdown();
+            expect(markdown).toContain('Sheet 1');
+            expect(markdown).toContain('|');
+        });
+    });
+
+    describe('getWorkbookRange', () => {
+        it('should return start and end lines for workbook section', () => {
+            const [start, end] = getWorkbookRange(SAMPLE_MD, '# Tables', 2);
+            expect(start).toBe(0);
+            expect(end).toBeGreaterThan(start);
+        });
+
+        it('should handle missing root marker', () => {
+            const md = '# Other\n\nNo tables section.';
+            const [start] = getWorkbookRange(md, '# Tables', 2);
+            // When not found, start = end of file
+            expect(start).toBe(3);
+        });
+    });
+
+    describe('createNewSpreadsheet', () => {
+        it('should create new spreadsheet with default columns', () => {
+            const result = createNewSpreadsheet();
+            expect(result.error).toBeUndefined();
+
+            const state = JSON.parse(getState());
+            expect(state.workbook.sheets.length).toBeGreaterThanOrEqual(1);
+        });
+
+        it('should create new spreadsheet with custom columns', () => {
+            const result = createNewSpreadsheet(['Name', 'Email']);
+            expect(result.error).toBeUndefined();
+
+            const state = JSON.parse(getState());
+            const lastSheet = state.workbook.sheets[state.workbook.sheets.length - 1];
+            expect(lastSheet.tables[0].headers).toContain('Name');
+        });
+    });
+
+    describe('updateWorkbookTabOrder', () => {
+        beforeEach(() => {
+            initializeWorkbook(SAMPLE_MD, SAMPLE_CONFIG);
+        });
+
+        it('should update tab order', () => {
+            const newTabOrder = [{ type: 'sheet' as const, index: 0 }];
+            const result = updateWorkbookTabOrder(newTabOrder);
+            expect(result.error).toBeUndefined();
+        });
+    });
+});
+
+describe('Edge Cases - Bulk Operations', () => {
+    beforeEach(() => {
+        resetContext();
+        initializeWorkbook(SAMPLE_MD, SAMPLE_CONFIG);
+    });
+
+    describe('deleteRows wrapper', () => {
+        it('should delete multiple rows at once', () => {
+            insertRow(0, 0, 0);
+            insertRow(0, 0, 0);
+            // Now have 4 rows
+
+            const result = deleteRows(0, 0, [0, 1]);
+            expect(result.error).toBeUndefined();
+
+            const state = JSON.parse(getState());
+            expect(state.workbook.sheets[0].tables[0].rows.length).toBe(2);
+        });
+    });
+
+    describe('clearColumns', () => {
+        it('should clear multiple columns', () => {
+            const result = clearColumns(0, 0, [0, 1]);
+            expect(result.error).toBeUndefined();
+
+            const state = JSON.parse(getState());
+            expect(state.workbook.sheets[0].tables[0].rows[0][0]).toBe('');
+            expect(state.workbook.sheets[0].tables[0].rows[0][1]).toBe('');
+        });
+    });
+
+    describe('moveRows', () => {
+        it('should move multiple rows', () => {
+            insertRow(0, 0, 2); // Add third row
+            const result = moveRows(0, 0, [0, 1], 3);
+            expect(result.error).toBeUndefined();
+        });
+    });
+
+    describe('moveColumns', () => {
+        it('should move multiple columns', () => {
+            const result = moveColumns(0, 0, [0, 1], 3);
+            expect(result.error).toBeUndefined();
+
+            const state = JSON.parse(getState());
+            // Columns should be reordered
+            expect(state.workbook.sheets[0].tables[0].headers[0]).toBe('C');
+        });
+    });
+
+    describe('getDocumentSectionRange', () => {
+        it('should return error for invalid document index', () => {
+            const result = getDocumentSectionRange(99);
+            expect(result).toHaveProperty('error');
+        });
     });
 });

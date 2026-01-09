@@ -27,12 +27,12 @@ import {
     updateColumnWidth,
     updateColumnFormat,
     updateColumnFilter,
-    updateColumnAlign,
+    updateColumnAlign
 } from '../../../src/editor';
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 const SIMPLE_MD = `# Tables

@@ -29,7 +29,7 @@ export function extractStructure(mdText: string, rootMarker: string): string {
                 sections.push({
                     type: 'document',
                     title: currentTitle,
-                    content: currentLines.join('\n'),
+                    content: currentLines.join('\n')
                 } as DocumentSection);
             }
 
@@ -55,7 +55,7 @@ export function extractStructure(mdText: string, rootMarker: string): string {
         sections.push({
             type: 'document',
             title: currentTitle,
-            content: currentLines.join('\n'),
+            content: currentLines.join('\n')
         } as DocumentSection);
     }
 

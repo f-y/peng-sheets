@@ -190,6 +190,7 @@
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src webview-ui --ext ts",
+        "lint:fix": "npm run lint --fix",
         "format": "prettier --write \"src/**/*.ts\" \"webview-ui/**/*.ts\"",
         "test": "vscode-test",
         "test:coverage": "npm run compile && node out/test/runTest.js && c8 report --temp-directory coverage/tmp --clean false --reporter=text --reporter=html",

@@ -15,12 +15,12 @@ import {
     getState,
     resetContext,
     addDocument,
-    addDocumentAndGetFullUpdate,
+    addDocumentAndGetFullUpdate
 } from '../../../src/editor';
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 describe('Add Document API Tests', () => {
@@ -265,7 +265,7 @@ More content.
                 { type: 'document', index: 0 },
                 { type: 'sheet', index: 1 },
                 { type: 'sheet', index: 0 },
-                { type: 'document', index: 1 },
+                { type: 'document', index: 1 }
             ]);
 
             // Add document after tab index 1 (sheet index 1)
@@ -283,31 +283,26 @@ More content.
 
             // Find the new document entry
             const newDocEntry = newTabOrder.find(
-                (item: { type: string; index: number }) =>
-                    item.type === 'document' && item.index === 2
+                (item: { type: string; index: number }) => item.type === 'document' && item.index === 2
             );
             expect(newDocEntry).toBeDefined();
 
             // Original document indices should NOT be changed
             const doc0 = newTabOrder.find(
-                (item: { type: string; index: number }) =>
-                    item.type === 'document' && item.index === 0
+                (item: { type: string; index: number }) => item.type === 'document' && item.index === 0
             );
             const doc1 = newTabOrder.find(
-                (item: { type: string; index: number }) =>
-                    item.type === 'document' && item.index === 1
+                (item: { type: string; index: number }) => item.type === 'document' && item.index === 1
             );
             expect(doc0).toBeDefined();
             expect(doc1).toBeDefined();
 
             // Sheet indices should NOT be changed
             const sheet0 = newTabOrder.find(
-                (item: { type: string; index: number }) =>
-                    item.type === 'sheet' && item.index === 0
+                (item: { type: string; index: number }) => item.type === 'sheet' && item.index === 0
             );
             const sheet1 = newTabOrder.find(
-                (item: { type: string; index: number }) =>
-                    item.type === 'sheet' && item.index === 1
+                (item: { type: string; index: number }) => item.type === 'sheet' && item.index === 1
             );
             expect(sheet0).toBeDefined();
             expect(sheet1).toBeDefined();

@@ -10,16 +10,11 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import {
-    initializeWorkbook,
-    getState,
-    resetContext,
-    moveDocumentSection,
-} from '../../../src/editor';
+import { initializeWorkbook, getState, resetContext, moveDocumentSection } from '../../../src/editor';
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 describe('Move Document Section Tests', () => {
@@ -169,8 +164,7 @@ More content.
             const tabOrder = state.workbook.metadata.tab_order;
 
             const doc0Position = tabOrder.findIndex(
-                (item: { type: string; index: number }) =>
-                    item.type === 'document' && item.index === 0
+                (item: { type: string; index: number }) => item.type === 'document' && item.index === 0
             );
 
             expect(doc0Position).toBe(1);
@@ -213,9 +207,7 @@ More content.
             const content = result.content!;
 
             // The metadata comment in the markdown should reflect the new tab_order
-            const metadataMatch = content.match(
-                /<!-- md-spreadsheet-workbook-metadata: ({.*?}) -->/
-            );
+            const metadataMatch = content.match(/<!-- md-spreadsheet-workbook-metadata: ({.*?}) -->/);
             expect(metadataMatch).not.toBeNull();
 
             const embeddedMetadata = JSON.parse(metadataMatch![1]);

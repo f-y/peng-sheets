@@ -11,12 +11,12 @@ import {
     getState,
     resetContext,
     deleteDocument,
-    deleteDocumentAndGetFullUpdate,
+    deleteDocumentAndGetFullUpdate
 } from '../../../src/editor';
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 describe('Delete Document Tests', () => {
@@ -76,9 +76,7 @@ Second document content.
             expect(tabOrder.length).toBe(2);
 
             // The remaining document should have index 0
-            const docEntry = tabOrder.find(
-                (item: { type: string }) => item.type === 'document'
-            );
+            const docEntry = tabOrder.find((item: { type: string }) => item.type === 'document');
             expect(docEntry).toBeDefined();
             expect(docEntry.index).toBe(0);
         });

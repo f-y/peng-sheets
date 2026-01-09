@@ -11,7 +11,7 @@ import {
     generateAndGetRange,
     initializeTabOrderFromStructure,
     reorderTabMetadata,
-    updateWorkbook,
+    updateWorkbook
 } from './workbook';
 
 /**
@@ -48,15 +48,15 @@ export function addSheet(
         const newTable = new Table({
             headers: finalCols,
             rows: [finalCols.map(() => '')],
-            metadata: {},
+            metadata: {}
         });
         const newSheet = new Sheet({
             name: finalName,
-            tables: [newTable],
+            tables: [newTable]
         });
 
         const newSheets = [...(workbook.sheets ?? [])];
-        let currentMetadata = workbook.metadata ? { ...workbook.metadata } : {};
+        const currentMetadata = workbook.metadata ? { ...workbook.metadata } : {};
         let tabOrder: TabOrderItem[] = [...(currentMetadata.tab_order || [])];
         let newSheetIndex: number;
 
@@ -97,11 +97,7 @@ export function addSheet(
 
             // If tab_order is empty, initialize from structure
             if (!tabOrder.length && newSheetIndex > 0) {
-                tabOrder = initializeTabOrderFromStructure(
-                    context.mdText,
-                    context.config,
-                    newSheetIndex
-                );
+                tabOrder = initializeTabOrderFromStructure(context.mdText, context.config, newSheetIndex);
             }
 
             // Add new sheet entry
@@ -132,7 +128,7 @@ export function addSheet(
 
         const newWorkbook = new Workbook({
             sheets: newSheets,
-            metadata: currentMetadata,
+            metadata: currentMetadata
         });
         context.updateWorkbook(newWorkbook);
         return generateAndGetRange(context);
@@ -144,15 +140,11 @@ export function addSheet(
 /**
  * Rename a sheet.
  */
-export function renameSheet(
-    context: EditorContext,
-    sheetIdx: number,
-    newName: string
-): UpdateResult {
+export function renameSheet(context: EditorContext, sheetIdx: number, newName: string): UpdateResult {
     return applySheetUpdate(context, sheetIdx, (sheet) => {
         return new Sheet({
             ...sheet,
-            name: newName,
+            name: newName
         });
     });
 }
@@ -168,7 +160,7 @@ export function updateSheetMetadata(
     return applySheetUpdate(context, sheetIdx, (sheet) => {
         return new Sheet({
             ...sheet,
-            metadata,
+            metadata
         });
     });
 }
@@ -203,17 +195,11 @@ export function moveSheet(
 
         let updatedWb = new Workbook({
             ...wb,
-            sheets: newSheets,
+            sheets: newSheets
         });
 
         if (targetTabOrderIndex !== null) {
-            updatedWb = reorderTabMetadata(
-                updatedWb,
-                'sheet',
-                fromIndex,
-                insertIdx,
-                targetTabOrderIndex
-            )!;
+            updatedWb = reorderTabMetadata(updatedWb, 'sheet', fromIndex, insertIdx, targetTabOrderIndex)!;
         }
 
         return updatedWb;

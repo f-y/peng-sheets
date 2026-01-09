@@ -11,12 +11,12 @@ import {
     getState,
     resetContext,
     updateWorkbookTabOrder,
-    moveWorkbookSection,
+    moveWorkbookSection
 } from '../../../src/editor';
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 describe('Tab Reorder Tests', () => {
@@ -47,7 +47,7 @@ describe('Tab Reorder Tests', () => {
         it('should update tab_order in metadata', () => {
             const newTabOrder = [
                 { type: 'sheet' as const, index: 1 },
-                { type: 'sheet' as const, index: 0 },
+                { type: 'sheet' as const, index: 0 }
             ];
 
             const result = updateWorkbookTabOrder(newTabOrder);

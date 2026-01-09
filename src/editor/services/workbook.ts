@@ -22,7 +22,7 @@ export function initializeTabOrderFromStructure(
         // No markdown text, just return sheets in order
         return Array.from({ length: numSheets }, (_, i) => ({
             type: 'sheet' as const,
-            index: i,
+            index: i
         }));
     }
 
@@ -66,16 +66,13 @@ export function initializeTabOrderFromStructure(
 /**
  * Update the tab display order in workbook metadata.
  */
-export function updateWorkbookTabOrder(
-    context: EditorContext,
-    tabOrder: TabOrderItem[]
-): UpdateResult {
+export function updateWorkbookTabOrder(context: EditorContext, tabOrder: TabOrderItem[]): UpdateResult {
     const wbTransform = (wb: Workbook): Workbook => {
         const currentMetadata = wb.metadata ? { ...wb.metadata } : {};
         currentMetadata.tab_order = tabOrder;
         return new Workbook({
             ...wb,
-            metadata: currentMetadata,
+            metadata: currentMetadata
         });
     };
 
@@ -85,11 +82,7 @@ export function updateWorkbookTabOrder(
 /**
  * Get the line range of the workbook section in markdown.
  */
-export function getWorkbookRange(
-    mdText: string,
-    rootMarker: string,
-    sheetHeaderLevel: number
-): [number, number] {
+export function getWorkbookRange(mdText: string, rootMarker: string, sheetHeaderLevel: number): [number, number] {
     const lines = mdText.split('\n');
     let startLine = 0;
     let found = false;
@@ -149,10 +142,7 @@ export function getWorkbookRange(
 /**
  * Update the workbook using a transform function.
  */
-export function updateWorkbook(
-    context: EditorContext,
-    transformFunc: (wb: Workbook) => Workbook
-): UpdateResult {
+export function updateWorkbook(context: EditorContext, transformFunc: (wb: Workbook) => Workbook): UpdateResult {
     if (context.workbook === null) {
         return { error: 'No workbook' };
     }
@@ -225,7 +215,7 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
         startLine,
         endLine,
         endCol,
-        content,
+        content
     };
 }
 
@@ -250,9 +240,7 @@ export function reorderTabMetadata(
         return wb;
     }
 
-    const indicesInTabOrder = tabOrder
-        .filter((item) => item.type === itemType)
-        .map((item) => item.index);
+    const indicesInTabOrder = tabOrder.filter((item) => item.type === itemType).map((item) => item.index);
 
     if (!indicesInTabOrder.length) {
         return wb;
@@ -304,7 +292,7 @@ export function reorderTabMetadata(
     metadata.tab_order = tabOrder;
     return new Workbook({
         ...wb,
-        metadata,
+        metadata
     });
 }
 
@@ -328,7 +316,7 @@ export function applySheetUpdate(
 
         return new Workbook({
             ...wb,
-            sheets: newSheets,
+            sheets: newSheets
         });
     };
 

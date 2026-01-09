@@ -21,71 +21,71 @@ export type Max = number;
 export type Type4 = 'email';
 export type Type5 = 'url';
 export type ColumnWidths =
-  | {
-      [k: string]: number;
-    }
-  | number[];
+    | {
+          [k: string]: number;
+      }
+    | number[];
 
 export interface VisualMetadata {
-  columns?: Columns;
-  validation?: Validation;
-  filters?: Filters;
-  column_widths?: ColumnWidths;
-  [k: string]: unknown;
+    columns?: Columns;
+    validation?: Validation;
+    filters?: Filters;
+    column_widths?: ColumnWidths;
+    [k: string]: unknown;
 }
 export interface Columns {
-  [k: string]: ColumnMetadata;
+    [k: string]: ColumnMetadata;
 }
 export interface ColumnMetadata {
-  width?: Width;
-  format?: ColumnFormat;
-  align?: Align;
-  hidden?: Hidden;
-  [k: string]: unknown;
+    width?: Width;
+    format?: ColumnFormat;
+    align?: Align;
+    hidden?: Hidden;
+    [k: string]: unknown;
 }
 export interface ColumnFormat {
-  wordWrap?: Wordwrap;
-  numberFormat?: NumberFormat;
-  [k: string]: unknown;
+    wordWrap?: Wordwrap;
+    numberFormat?: NumberFormat;
+    [k: string]: unknown;
 }
 export interface NumberFormat {
-  type?: Type;
-  decimals?: Decimals;
-  useThousandsSeparator?: Usethousandsseparator;
-  currencySymbol?: Currencysymbol;
-  [k: string]: unknown;
+    type?: Type;
+    decimals?: Decimals;
+    useThousandsSeparator?: Usethousandsseparator;
+    currencySymbol?: Currencysymbol;
+    [k: string]: unknown;
 }
 export interface Validation {
-  [k: string]:
-    | ListValidationRule
-    | DateValidationRule
-    | IntegerValidationRule
-    | EmailValidationRule
-    | UrlValidationRule;
+    [k: string]:
+        | ListValidationRule
+        | DateValidationRule
+        | IntegerValidationRule
+        | EmailValidationRule
+        | UrlValidationRule;
 }
 export interface ListValidationRule {
-  type: Type1;
-  values: Values;
-  [k: string]: unknown;
+    type: Type1;
+    values: Values;
+    [k: string]: unknown;
 }
 export interface DateValidationRule {
-  type: Type2;
-  [k: string]: unknown;
+    type: Type2;
+    [k: string]: unknown;
 }
 export interface IntegerValidationRule {
-  type?: Type3;
-  min?: Min;
-  max?: Max;
-  [k: string]: unknown;
+    type?: Type3;
+    min?: Min;
+    max?: Max;
+    [k: string]: unknown;
 }
 export interface EmailValidationRule {
-  type: Type4;
-  [k: string]: unknown;
+    type: Type4;
+    [k: string]: unknown;
 }
 export interface UrlValidationRule {
-  type: Type5;
-  [k: string]: unknown;
+    type: Type5;
+    [k: string]: unknown;
 }
 export interface Filters {
-  [k: string]: string[];
+    [k: string]: string[];
 }

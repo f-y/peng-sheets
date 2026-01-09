@@ -97,11 +97,7 @@ export function deleteSheet(sheetIdx: number): UpdateResult {
 /**
  * Move a sheet.
  */
-export function moveSheet(
-    fromIndex: number,
-    toIndex: number,
-    targetTabOrderIndex: number | null = null
-): UpdateResult {
+export function moveSheet(fromIndex: number, toIndex: number, targetTabOrderIndex: number | null = null): UpdateResult {
     return sheetService.moveSheet(getContext(), fromIndex, toIndex, targetTabOrderIndex);
 }
 
@@ -209,24 +205,14 @@ export function deleteRow(sheetIdx: number, tableIdx: number, rowIdx: number): U
 /**
  * Move rows.
  */
-export function moveRows(
-    sheetIdx: number,
-    tableIdx: number,
-    rowIndices: number[],
-    targetIndex: number
-): UpdateResult {
+export function moveRows(sheetIdx: number, tableIdx: number, rowIndices: number[], targetIndex: number): UpdateResult {
     return tableService.moveRows(getContext(), sheetIdx, tableIdx, rowIndices, targetIndex);
 }
 
 /**
  * Sort rows by column.
  */
-export function sortRows(
-    sheetIdx: number,
-    tableIdx: number,
-    colIdx: number,
-    ascending: boolean
-): UpdateResult {
+export function sortRows(sheetIdx: number, tableIdx: number, colIdx: number, ascending: boolean): UpdateResult {
     return tableService.sortRows(getContext(), sheetIdx, tableIdx, colIdx, ascending);
 }
 
@@ -289,24 +275,14 @@ export function clearColumn(sheetIdx: number, tableIdx: number, colIdx: number):
 /**
  * Update column width.
  */
-export function updateColumnWidth(
-    sheetIdx: number,
-    tableIdx: number,
-    colIdx: number,
-    width: number
-): UpdateResult {
+export function updateColumnWidth(sheetIdx: number, tableIdx: number, colIdx: number, width: number): UpdateResult {
     return tableService.updateColumnWidth(getContext(), sheetIdx, tableIdx, colIdx, width);
 }
 
 /**
  * Update column format.
  */
-export function updateColumnFormat(
-    sheetIdx: number,
-    tableIdx: number,
-    colIdx: number,
-    fmt: unknown
-): UpdateResult {
+export function updateColumnFormat(sheetIdx: number, tableIdx: number, colIdx: number, fmt: unknown): UpdateResult {
     return tableService.updateColumnFormat(getContext(), sheetIdx, tableIdx, colIdx, fmt);
 }
 
@@ -372,7 +348,9 @@ export function moveCells(
 /**
  * Get document section range.
  */
-export function getDocumentSectionRange(sectionIndex: number): { startLine: number; endLine: number } | { error: string } {
+export function getDocumentSectionRange(
+    sectionIndex: number
+): { startLine: number; endLine: number } | { error: string } {
     return documentService.getDocumentSectionRange(getContext(), sectionIndex);
 }
 
@@ -456,13 +434,7 @@ export function moveWorkbookSection(
     toBeforeDoc = false,
     targetTabOrderIndex: number | null = null
 ): UpdateResult {
-    return documentService.moveWorkbookSection(
-        getContext(),
-        toDocIndex,
-        toAfterDoc,
-        toBeforeDoc,
-        targetTabOrderIndex
-    );
+    return documentService.moveWorkbookSection(getContext(), toDocIndex, toAfterDoc, toBeforeDoc, targetTabOrderIndex);
 }
 
 // =============================================================================
@@ -490,11 +462,7 @@ export function generateAndGetRange(): UpdateResult {
 /**
  * Get workbook range in markdown.
  */
-export function getWorkbookRange(
-    mdText: string,
-    rootMarker: string,
-    sheetHeaderLevel: number
-): [number, number] {
+export function getWorkbookRange(mdText: string, rootMarker: string, sheetHeaderLevel: number): [number, number] {
     return workbookService.getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
 }
 

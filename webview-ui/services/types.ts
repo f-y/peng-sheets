@@ -16,7 +16,7 @@ export type {
     ColumnFormat,
     NumberFormat,
     ValidationRule,
-    EditorConfig,
+    EditorConfig
 } from '../../src/editor/types';
 
 // VSCode API interface (specific to webview context)

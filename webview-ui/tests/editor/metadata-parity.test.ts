@@ -16,12 +16,12 @@ import {
     updateVisualMetadata,
     updateColumnWidth,
     updateColumnFormat,
-    updateColumnAlign,
+    updateColumnAlign
 } from '../../../src/editor';
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 describe('Metadata Parity Tests', () => {
@@ -86,7 +86,7 @@ describe('Metadata Parity Tests', () => {
 
         it('should update visual metadata', () => {
             const metadata = {
-                columns: { '0': { width: 100 } },
+                columns: { '0': { width: 100 } }
             };
 
             const result = updateVisualMetadata(0, 0, metadata);
@@ -114,7 +114,7 @@ describe('Metadata Parity Tests', () => {
         it('should update column format', () => {
             const format = {
                 type: 'number' as const,
-                decimals: 2,
+                decimals: 2
             };
 
             const result = updateColumnFormat(0, 0, 0, format);

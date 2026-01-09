@@ -10,17 +10,16 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
     initializeWorkbook,
-    getState,
     resetContext,
     insertColumn,
     deleteColumns,
     moveColumns,
-    generateAndGetRange,
+    generateAndGetRange
 } from '../../../src/editor';
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 describe('Metadata Shift Tests', () => {

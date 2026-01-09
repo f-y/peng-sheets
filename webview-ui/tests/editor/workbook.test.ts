@@ -9,12 +9,12 @@ import {
     resetContext,
     addSheet,
     moveSheet,
-    updateWorkbookTabOrder,
+    updateWorkbookTabOrder
 } from '../../../src/editor';
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 describe('Workbook Service Edge Cases', () => {
@@ -42,7 +42,7 @@ describe('Workbook Service Edge Cases', () => {
 
             const newTabOrder = [
                 { type: 'sheet' as const, index: 1 },
-                { type: 'sheet' as const, index: 0 },
+                { type: 'sheet' as const, index: 0 }
             ];
 
             const result = updateWorkbookTabOrder(newTabOrder);

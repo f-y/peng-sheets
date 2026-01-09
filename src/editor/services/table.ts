@@ -31,7 +31,7 @@ export function addTable(
             description: '',
             headers: cols,
             rows: [cols.map(() => '')],
-            metadata: {},
+            metadata: {}
         });
         newTables.push(newTable);
         return new Sheet({ ...sheet, tables: newTables });
@@ -41,11 +41,7 @@ export function addTable(
 /**
  * Delete a table from a sheet.
  */
-export function deleteTable(
-    context: EditorContext,
-    sheetIdx: number,
-    tableIdx: number
-): UpdateResult {
+export function deleteTable(context: EditorContext, sheetIdx: number, tableIdx: number): UpdateResult {
     return applySheetUpdate(context, sheetIdx, (sheet) => {
         const newTables = [...(sheet.tables ?? [])];
         if (tableIdx < 0 || tableIdx >= newTables.length) {
@@ -59,12 +55,7 @@ export function deleteTable(
 /**
  * Rename a table.
  */
-export function renameTable(
-    context: EditorContext,
-    sheetIdx: number,
-    tableIdx: number,
-    newName: string
-): UpdateResult {
+export function renameTable(context: EditorContext, sheetIdx: number, tableIdx: number, newName: string): UpdateResult {
     return applySheetUpdate(context, sheetIdx, (sheet) => {
         const newTables = [...(sheet.tables ?? [])];
         if (tableIdx < 0 || tableIdx >= newTables.length) {
@@ -95,7 +86,7 @@ export function updateTableMetadata(
         newTables[tableIdx] = new Table({
             ...targetTable,
             name: newName,
-            description: newDescription,
+            description: newDescription
         });
         return new Sheet({ ...sheet, tables: newTables });
     });
@@ -212,12 +203,7 @@ export function updateCell(
 /**
  * Insert a new row at the specified index.
  */
-export function insertRow(
-    context: EditorContext,
-    sheetIdx: number,
-    tableIdx: number,
-    rowIdx: number
-): UpdateResult {
+export function insertRow(context: EditorContext, sheetIdx: number, tableIdx: number, rowIdx: number): UpdateResult {
     return applySheetUpdate(context, sheetIdx, (sheet) => {
         const newTables = [...(sheet.tables ?? [])];
         if (tableIdx < 0 || tableIdx >= newTables.length) {
@@ -322,11 +308,7 @@ export function moveRows(
 /**
  * Infer column type from data.
  */
-function inferColumnType(
-    rows: string[][],
-    colIdx: number,
-    metadata: Record<string, unknown>
-): string {
+function inferColumnType(rows: string[][], colIdx: number, metadata: Record<string, unknown>): string {
     // Check Metadata for explicit type
     const visual = metadata.visual as Record<string, unknown> | undefined;
     if (visual && visual.columns) {
@@ -702,18 +684,13 @@ export function clearColumns(
 /**
  * Helper to update column metadata.
  */
-function updateColumnMetadataHelper(
-    table: Table,
-    colIdx: number,
-    key: string,
-    value: unknown
-): Table {
+function updateColumnMetadataHelper(table: Table, colIdx: number, key: string, value: unknown): Table {
     const metadata = { ...(table.metadata || {}) };
-    const visual = { ...(metadata.visual as Record<string, unknown> || {}) };
-    const columns = { ...(visual.columns as Record<string, unknown> || {}) };
+    const visual = { ...((metadata.visual as Record<string, unknown>) || {}) };
+    const columns = { ...((visual.columns as Record<string, unknown>) || {}) };
 
     const colStr = String(colIdx);
-    const colMeta = { ...(columns[colStr] as Record<string, unknown> || {}) };
+    const colMeta = { ...((columns[colStr] as Record<string, unknown>) || {}) };
     colMeta[key] = value;
     columns[colStr] = colMeta;
     visual.columns = columns;
@@ -779,8 +756,8 @@ export function updateColumnFilter(
         }
         const targetTable = newTables[tableIdx];
         const metadata = { ...(targetTable.metadata || {}) };
-        const visual = { ...(metadata.visual as Record<string, unknown> || {}) };
-        const filters = { ...(visual.filters as Record<string, string[]> || {}) };
+        const visual = { ...((metadata.visual as Record<string, unknown>) || {}) };
+        const filters = { ...((visual.filters as Record<string, string[]>) || {}) };
         filters[String(colIdx)] = hiddenValues;
         visual.filters = filters;
         metadata.visual = visual;
@@ -961,7 +938,7 @@ export function moveCells(
 
         // Expand grid if needed for destination
         const neededRows = destRow + height;
-        const numCols = targetTable.headers.length || (currentRows[0]?.length || 0);
+        const numCols = targetTable.headers.length || currentRows[0]?.length || 0;
         const neededCols = destCol + width;
 
         while (currentRows.length < neededRows) {

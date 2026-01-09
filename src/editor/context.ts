@@ -3,11 +3,7 @@
  * Converted from python-modules/src/md_spreadsheet_editor/context.py
  */
 
-import {
-    parseWorkbook,
-    Workbook,
-    MultiTableParsingSchema,
-} from 'md-spreadsheet-parser';
+import { parseWorkbook, Workbook, MultiTableParsingSchema } from 'md-spreadsheet-parser';
 import type { EditorConfig, StructureSection } from './types';
 import { extractStructure, augmentWorkbookMetadata } from './utils/structure';
 import { initializeTabOrderFromStructure } from './services/workbook';
@@ -28,7 +24,7 @@ function createEditorState(): EditorState {
         workbook: null,
         schema: null,
         mdText: '',
-        config: null,
+        config: null
     };
 }
 
@@ -40,7 +36,7 @@ export class EditorContext {
     private static instance: EditorContext | null = null;
     private state: EditorState = createEditorState();
 
-    private constructor() { }
+    private constructor() {}
 
     static getInstance(): EditorContext {
         if (!EditorContext.instance) {
@@ -119,24 +115,16 @@ export class EditorContext {
             const sheetHeaderLevel = this.state.schema.sheetHeaderLevel ?? 2;
 
             // Augment workbook with line numbers
-            workbookJson = augmentWorkbookMetadata(
-                workbookJson,
-                this.state.mdText,
-                rootMarker,
-                sheetHeaderLevel
-            );
+            workbookJson = augmentWorkbookMetadata(workbookJson, this.state.mdText, rootMarker, sheetHeaderLevel);
 
             // Extract structure
-            const structureJson = extractStructure(
-                this.state.mdText,
-                rootMarker
-            );
+            const structureJson = extractStructure(this.state.mdText, rootMarker);
             structure = JSON.parse(structureJson);
         }
 
         return JSON.stringify({
             workbook: workbookJson,
-            structure: structure,
+            structure: structure
         });
     }
 
@@ -166,7 +154,7 @@ export class EditorContext {
             columnSeparator: configDict.columnSeparator ?? '|',
             headerSeparatorChar: configDict.headerSeparatorChar ?? '-',
             requireOuterPipes: configDict.requireOuterPipes ?? true,
-            stripWhitespace: configDict.stripWhitespace ?? true,
+            stripWhitespace: configDict.stripWhitespace ?? true
         });
 
         let workbook = parseWorkbook(this.state.mdText, this.state.schema);

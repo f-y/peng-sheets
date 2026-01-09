@@ -28,7 +28,7 @@ export type {
     DateValidationRule,
     IntegerValidationRule,
     EmailValidationRule,
-    UrlValidationRule,
+    UrlValidationRule
 } from './types';
 
 // Export context class for advanced usage

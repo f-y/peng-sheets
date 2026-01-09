@@ -5,7 +5,7 @@ const postMessageMock = vi.fn();
 (global as any).acquireVsCodeApi = () => ({
     postMessage: postMessageMock,
     getState: () => ({}),
-    setState: () => { }
+    setState: () => {}
 });
 
 // Mock i18n

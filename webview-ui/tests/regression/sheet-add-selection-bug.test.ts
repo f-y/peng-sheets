@@ -17,7 +17,7 @@ const postMessage = vi.fn();
 vi.stubGlobal('acquireVsCodeApi', () => ({
     postMessage: postMessage,
     getState: () => ({}),
-    setState: () => { }
+    setState: () => {}
 }));
 
 describe('Sheet Add Selection Bug - Regression', () => {
@@ -26,7 +26,7 @@ describe('Sheet Add Selection Bug - Regression', () => {
     beforeEach(async () => {
         document.body.innerHTML = '';
         // Stub _parseWorkbook to prevent it from resetting tabs
-        (MdSpreadsheetEditor.prototype as any)._parseWorkbook = async () => { };
+        (MdSpreadsheetEditor.prototype as any)._parseWorkbook = async () => {};
 
         el = (await fixture(html`<md-spreadsheet-editor></md-spreadsheet-editor>`)) as MdSpreadsheetEditor;
     });

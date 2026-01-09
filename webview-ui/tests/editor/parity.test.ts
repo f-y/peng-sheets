@@ -21,12 +21,12 @@ import {
     pasteCells,
     moveCells,
     addSheet,
-    generateAndGetRange,
+    generateAndGetRange
 } from '../../../src/editor';
 
 const SAMPLE_CONFIG = JSON.stringify({
     rootMarker: '# Tables',
-    sheetHeaderLevel: 2,
+    sheetHeaderLevel: 2
 });
 
 describe('Python-TypeScript Parity Tests', () => {
@@ -194,9 +194,7 @@ describe('Python-TypeScript Parity Tests', () => {
         });
 
         it('should paste cells and expand grid if needed', () => {
-            const pasteData = [
-                ['X', 'Y', 'Z', 'W'],
-            ];
+            const pasteData = [['X', 'Y', 'Z', 'W']];
             pasteCells(0, 0, 0, 0, pasteData);
             const state = JSON.parse(getState());
 
@@ -207,12 +205,7 @@ describe('Python-TypeScript Parity Tests', () => {
         });
 
         it('should paste cells and expand rows if needed', () => {
-            const pasteData = [
-                ['A1'],
-                ['A2'],
-                ['A3'],
-                ['A4'],
-            ];
+            const pasteData = [['A1'], ['A2'], ['A3'], ['A4']];
             pasteCells(0, 0, 0, 0, pasteData);
             const state = JSON.parse(getState());
 

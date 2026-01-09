@@ -8,12 +8,7 @@
 import { Workbook } from 'md-spreadsheet-parser';
 import type { EditorContext } from '../context';
 import type { UpdateResult, EditorConfig, TabOrderItem } from '../types';
-import {
-    generateAndGetRange,
-    getWorkbookRange,
-    initializeTabOrderFromStructure,
-    reorderTabMetadata,
-} from './workbook';
+import { generateAndGetRange, getWorkbookRange, initializeTabOrderFromStructure, reorderTabMetadata } from './workbook';
 
 // =============================================================================
 // Document Section Range
@@ -153,11 +148,7 @@ export function addDocument(
 
         // If tab_order is empty, initialize from structure
         if (!tabOrder.length) {
-            tabOrder = initializeTabOrderFromStructure(
-                mdText,
-                context.config,
-                (workbook.sheets ?? []).length
-            );
+            tabOrder = initializeTabOrderFromStructure(mdText, context.config, (workbook.sheets ?? []).length);
         }
 
         // Calculate new document index (matching Python logic)
@@ -193,7 +184,7 @@ export function addDocument(
         content: newMdText,
         startLine: 0,
         endLine: lines.length - 1,
-        file_changed: true,
+        file_changed: true
     };
 }
 
@@ -204,11 +195,7 @@ export function addDocument(
 /**
  * Rename a document section.
  */
-export function renameDocument(
-    context: EditorContext,
-    docIndex: number,
-    newTitle: string
-): UpdateResult {
+export function renameDocument(context: EditorContext, docIndex: number, newTitle: string): UpdateResult {
     const rangeResult = getDocumentSectionRange(context, docIndex);
     if ('error' in rangeResult) {
         return { error: rangeResult.error };
@@ -226,7 +213,7 @@ export function renameDocument(
         content: newMdText,
         startLine: 0,
         endLine: lines.length - 1,
-        file_changed: true,
+        file_changed: true
     };
 }
 
@@ -237,10 +224,7 @@ export function renameDocument(
 /**
  * Delete a document section.
  */
-export function deleteDocument(
-    context: EditorContext,
-    docIndex: number
-): UpdateResult {
+export function deleteDocument(context: EditorContext, docIndex: number): UpdateResult {
     const rangeResult = getDocumentSectionRange(context, docIndex);
     if ('error' in rangeResult) {
         return { error: rangeResult.error };
@@ -278,7 +262,7 @@ export function deleteDocument(
         content: newMdText,
         startLine: 0,
         endLine: lines.length,
-        file_changed: true,
+        file_changed: true
     };
 }
 
@@ -290,10 +274,7 @@ export function deleteDocument(
  * 3. Embed regenerated workbook back into md_text
  * 4. Return full md_text with workbook and structure
  */
-export function deleteDocumentAndGetFullUpdate(
-    context: EditorContext,
-    docIndex: number
-): UpdateResult {
+export function deleteDocumentAndGetFullUpdate(context: EditorContext, docIndex: number): UpdateResult {
     // 1. Get original line count
     const originalMd = context.mdText;
     const originalLineCount = originalMd.split('\n').length;
@@ -320,11 +301,7 @@ export function deleteDocumentAndGetFullUpdate(
             wbContentLines.push('');
         }
 
-        currentLines = [
-            ...currentLines.slice(0, wbStart),
-            ...wbContentLines,
-            ...currentLines.slice(wbEnd + 1),
-        ];
+        currentLines = [...currentLines.slice(0, wbStart), ...wbContentLines, ...currentLines.slice(wbEnd + 1)];
         currentMd = currentLines.join('\n');
         context.mdText = currentMd;
     }
@@ -340,7 +317,7 @@ export function deleteDocumentAndGetFullUpdate(
         endCol: 0,
         workbook: fullState.workbook,
         structure: fullState.structure,
-        file_changed: true,
+        file_changed: true
     };
 }
 
@@ -378,16 +355,12 @@ export function addDocumentAndGetFullUpdate(
         const wbStart = wbUpdate.startLine!;
         const wbEnd = wbUpdate.endLine!;
         const wbContent = wbUpdate.content;
-        let wbContentLines = wbContent.trimEnd().split('\n');
+        const wbContentLines = wbContent.trimEnd().split('\n');
         if (wbContent) {
             wbContentLines.push('');
         }
 
-        lines = [
-            ...lines.slice(0, wbStart),
-            ...wbContentLines,
-            ...lines.slice(wbEnd + 1),
-        ];
+        lines = [...lines.slice(0, wbStart), ...wbContentLines, ...lines.slice(wbEnd + 1)];
         currentMd = lines.join('\n');
         context.mdText = currentMd;
     }
@@ -403,7 +376,7 @@ export function addDocumentAndGetFullUpdate(
         endCol: 0,
         workbook: fullState.workbook,
         structure: fullState.structure,
-        file_changed: true,
+        file_changed: true
     };
 }
 
@@ -507,13 +480,7 @@ export function moveDocumentSection(
             effectiveToIndex = docsBeforeTarget;
         }
 
-        const updatedWb = reorderTabMetadata(
-            workbook,
-            'document',
-            fromDocIndex,
-            effectiveToIndex,
-            targetTabOrderIndex
-        );
+        const updatedWb = reorderTabMetadata(workbook, 'document', fromDocIndex, effectiveToIndex, targetTabOrderIndex);
         if (updatedWb) {
             context.updateWorkbook(updatedWb);
 
@@ -534,7 +501,7 @@ export function moveDocumentSection(
         content: context.mdText,
         startLine: 0,
         endLine: lines.length,
-        file_changed: true,
+        file_changed: true
     };
 }
 
@@ -666,6 +633,6 @@ export function moveWorkbookSection(
         content: newMdText,
         startLine: 0,
         endLine: lines.length,
-        file_changed: true,
+        file_changed: true
     };
 }
