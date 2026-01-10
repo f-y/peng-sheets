@@ -14,6 +14,10 @@ export default defineConfig({
             ]
         })
     ],
+    // Use relative paths for assets - crucial for VS Code Webview
+    // Without this, import.meta.url resolves to the webview's base URL
+    // and WASM files can't be found
+    base: './',
     build: {
         outDir: 'out/webview',
         rollupOptions: {

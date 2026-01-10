@@ -8,6 +8,7 @@ tsconfig.json
 vite.config.ts
 **/*.map
 .DS_Store
+.env
 
 # Build & Test Artifacts
 coverage/**
@@ -33,3 +34,6 @@ CONTRIBUTING.md
 .github/**
 scripts/**
 schemas/**
+
+# Exclude duplicate WASM files (already copied to out/webview/)
+node_modules/md-spreadsheet-parser/dist/*.wasm
