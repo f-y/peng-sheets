@@ -141,11 +141,8 @@ export function addSheet(
  * Rename a sheet.
  */
 export function renameSheet(context: EditorContext, sheetIdx: number, newName: string): UpdateResult {
-    return applySheetUpdate(context, sheetIdx, (sheet) => {
-        return new Sheet({
-            ...sheet,
-            name: newName
-        });
+    return updateWorkbook(context, (wb) => {
+        return wb.renameSheet(sheetIdx, newName);
     });
 }
 

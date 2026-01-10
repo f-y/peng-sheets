@@ -283,8 +283,13 @@ export function reorderTabMetadata(
         if (currPos >= 0) {
             tabOrder.splice(currPos, 1);
 
-            // Insert directly at target position (no adjustment needed)
-            const safeTarget = Math.max(0, Math.min(targetTabOrderIndex, tabOrder.length));
+            // Adjust target index if we removed an item that was before the target
+            let adjustedTarget = targetTabOrderIndex;
+            if (currPos < targetTabOrderIndex) {
+                adjustedTarget -= 1;
+            }
+
+            const safeTarget = Math.max(0, Math.min(adjustedTarget, tabOrder.length));
             tabOrder.splice(safeTarget, 0, movedTabOrderItem);
         }
     }

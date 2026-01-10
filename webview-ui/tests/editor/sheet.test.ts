@@ -190,14 +190,15 @@ describe('Sheet Service Tests', () => {
             const result = deleteSheet(0);
             expect(result.error).toBeUndefined();
 
-            // After: tab_order should NOT contain sheet:0
+            // After: tab_order should have 1 entry (the remaining sheet, now shifted to index 0)
             const state2 = JSON.parse(getState());
             const tabOrder = state2.workbook.metadata?.tab_order;
-            // Entry for deleted sheet should be removed
-            const deletedEntry = tabOrder?.find(
-                (item: { type: string; index: number }) => item.type === 'sheet' && item.index === 0
-            );
-            expect(deletedEntry).toBeUndefined();
+
+            // Should have exactly 1 entry after deleting 1 of 2 sheets
+            expect(tabOrder?.length).toBe(1);
+
+            // The remaining entry should be index 0 (shifted from original index 1)
+            expect(tabOrder?.[0]).toEqual({ type: 'sheet', index: 0 });
         });
 
         it('should shift remaining sheet indices in tab_order after deletion', () => {
@@ -283,8 +284,10 @@ describe('Sheet Service Tests', () => {
 
             const state = JSON.parse(getState());
             // Check that tab_order is updated
+            // After move: sheet 0 moves to physical position 1, becomes logical index 1
+            // The moved sheet should be at tab_order position 0 (adjusted from 1 because currPos=0 < target=1)
             if (state.workbook.metadata?.tab_order) {
-                expect(state.workbook.metadata.tab_order[1].index).toBe(1);
+                expect(state.workbook.metadata.tab_order[0].index).toBe(1);
             }
         });
     });

@@ -43,12 +43,7 @@ export function addTable(
  */
 export function deleteTable(context: EditorContext, sheetIdx: number, tableIdx: number): UpdateResult {
     return applySheetUpdate(context, sheetIdx, (sheet) => {
-        const newTables = [...(sheet.tables ?? [])];
-        if (tableIdx < 0 || tableIdx >= newTables.length) {
-            throw new Error('Invalid table index');
-        }
-        newTables.splice(tableIdx, 1);
-        return new Sheet({ ...sheet, tables: newTables });
+        return sheet.deleteTable(tableIdx);
     });
 }
 
@@ -57,13 +52,13 @@ export function deleteTable(context: EditorContext, sheetIdx: number, tableIdx: 
  */
 export function renameTable(context: EditorContext, sheetIdx: number, tableIdx: number, newName: string): UpdateResult {
     return applySheetUpdate(context, sheetIdx, (sheet) => {
-        const newTables = [...(sheet.tables ?? [])];
-        if (tableIdx < 0 || tableIdx >= newTables.length) {
+        const tables = sheet.tables ?? [];
+        if (tableIdx < 0 || tableIdx >= tables.length) {
             throw new Error('Invalid table index');
         }
-        const targetTable = newTables[tableIdx];
-        newTables[tableIdx] = new Table({ ...targetTable, name: newName });
-        return new Sheet({ ...sheet, tables: newTables });
+        const table = tables[tableIdx];
+        const renamedTable = table.rename(newName);
+        return sheet.replaceTable(tableIdx, renamedTable);
     });
 }
 
