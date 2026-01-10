@@ -97,7 +97,23 @@ const translations = {
         insertCopiedColsRight: 'Insert Copied Column(s) Right',
         selectTable: 'Select Table',
         deletePane: 'Delete Pane',
-        emptyPaneHint: 'Use + to add a table, or drag one here'
+        emptyPaneHint: 'Use + to add a table, or drag one here',
+        formulaColumn: 'Formula Column...',
+        formulaColumnTitle: 'Formula Column Settings',
+        formulaType: 'Formula Type',
+        calculation: 'Calculation',
+        tableLookup: 'Table Lookup',
+        functionType: 'Function',
+        expression: 'Expression',
+        columnSource: 'Column Source',
+        thisTable: 'This Table',
+        otherTable: 'Other Table',
+        selectColumns: 'Select Columns',
+        sourceTable: 'Source Table',
+        joinKey: 'Join Key',
+        returnColumn: 'Return Column',
+        preview: 'Preview',
+        remove: 'Remove'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -197,7 +213,23 @@ const translations = {
         editTableDescription: 'このテーブルの説明を編集',
         selectTable: 'テーブルを選択',
         deletePane: 'ペインを削除',
-        emptyPaneHint: '+でテーブルを追加、またはドラッグで移動'
+        emptyPaneHint: '+でテーブルを追加、またはドラッグで移動',
+        formulaColumn: '算出列の設定...',
+        formulaColumnTitle: '算出列の設定',
+        formulaType: '数式タイプ',
+        calculation: '計算',
+        tableLookup: 'テーブル参照',
+        functionType: '関数',
+        expression: '数式',
+        columnSource: '参照元',
+        thisTable: 'このテーブル',
+        otherTable: '他のテーブル',
+        selectColumns: '列を選択',
+        sourceTable: '参照テーブル',
+        joinKey: '結合キー',
+        returnColumn: '取得列',
+        preview: 'プレビュー',
+        remove: '削除'
     }
 };
 
