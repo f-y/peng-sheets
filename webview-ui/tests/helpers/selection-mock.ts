@@ -418,8 +418,6 @@ export class MockSelection implements Selection {
 }
 
 // Store original functions for cleanup
-let originalGetSelection: typeof window.getSelection | null = null;
-let originalCreateRange: typeof document.createRange | null = null;
 let getSelectionSpy: SpyInstance | null = null;
 let createRangeSpy: SpyInstance | null = null;
 
@@ -431,10 +429,6 @@ let mockSelection: MockSelection | null = null;
  */
 export function setupSelectionMock(): MockSelection {
     mockSelection = new MockSelection();
-
-    // Store originals
-    originalGetSelection = window.getSelection;
-    originalCreateRange = document.createRange;
 
     // Mock getSelection
     getSelectionSpy = vi.spyOn(window, 'getSelection').mockReturnValue(mockSelection as unknown as Selection);

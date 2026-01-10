@@ -96,7 +96,7 @@ export class TabContextMenu extends LitElement {
         return html`
             <div class="context-menu" style="top: ${displayY}px; left: ${displayX}px;">
                 ${this.tabType === 'sheet'
-                ? html`
+                    ? html`
                           <div class="context-menu-item" @click="${() => this._dispatchAction('rename')}">
                               ${t('renameSheet')}
                           </div>
@@ -104,7 +104,7 @@ export class TabContextMenu extends LitElement {
                               ${t('deleteSheet')}
                           </div>
                       `
-                : html`
+                    : html`
                           <div class="context-menu-item" @click="${() => this._dispatchAction('rename')}">
                               ${t('renameDocument')}
                           </div>

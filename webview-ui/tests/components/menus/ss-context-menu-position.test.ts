@@ -36,8 +36,7 @@ describe('SSContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 600);
 
             const el = await fixture<SSContextMenu>(html`
-                <ss-context-menu .x=${550} .y=${100} .menuType=${'row'} .index=${0}>
-                </ss-context-menu>
+                <ss-context-menu .x=${550} .y=${100} .menuType=${'row'} .index=${0}> </ss-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -55,8 +54,7 @@ describe('SSContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 600);
 
             const el = await fixture<SSContextMenu>(html`
-                <ss-context-menu .x=${550} .y=${100} .menuType=${'col'} .index=${0}>
-                </ss-context-menu>
+                <ss-context-menu .x=${550} .y=${100} .menuType=${'col'} .index=${0}> </ss-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -74,8 +72,7 @@ describe('SSContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 600);
 
             const el = await fixture<SSContextMenu>(html`
-                <ss-context-menu .x=${550} .y=${100} .menuType=${'cell'} .index=${0}>
-                </ss-context-menu>
+                <ss-context-menu .x=${550} .y=${100} .menuType=${'cell'} .index=${0}> </ss-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -95,8 +92,7 @@ describe('SSContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 300);
 
             const el = await fixture<SSContextMenu>(html`
-                <ss-context-menu .x=${100} .y=${250} .menuType=${'row'} .index=${0}>
-                </ss-context-menu>
+                <ss-context-menu .x=${100} .y=${250} .menuType=${'row'} .index=${0}> </ss-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -114,8 +110,7 @@ describe('SSContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 300);
 
             const el = await fixture<SSContextMenu>(html`
-                <ss-context-menu .x=${100} .y=${250} .menuType=${'col'} .index=${0}>
-                </ss-context-menu>
+                <ss-context-menu .x=${100} .y=${250} .menuType=${'col'} .index=${0}> </ss-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -135,8 +130,7 @@ describe('SSContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 200);
 
             const el = await fixture<SSContextMenu>(html`
-                <ss-context-menu .x=${250} .y=${180} .menuType=${'row'} .index=${0}>
-                </ss-context-menu>
+                <ss-context-menu .x=${250} .y=${180} .menuType=${'row'} .index=${0}> </ss-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -157,8 +151,7 @@ describe('SSContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 600);
 
             const el = await fixture<SSContextMenu>(html`
-                <ss-context-menu .x=${100} .y=${100} .menuType=${'row'} .index=${0}>
-                </ss-context-menu>
+                <ss-context-menu .x=${100} .y=${100} .menuType=${'row'} .index=${0}> </ss-context-menu>
             `);
 
             await waitForPositionAdjustment();

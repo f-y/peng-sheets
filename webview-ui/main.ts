@@ -974,18 +974,24 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     private async _addSheet() {
         this.addTabDropdown = null;
         this.pendingAddSheet = true;
+        // NOTE: Do NOT set _pendingNewTabIndex here - the willUpdate fallback logic
+        // (selecting tab before add-sheet button) handles append-at-end correctly.
+        // Setting _pendingNewTabIndex would point to the add-sheet button position,
+        // which breaks selection.
 
-        let newSheetName = 'Sheet 1';
+        // Calculate the sheet name
+        let newSheetName = `${t('sheetNamePrefix')} 1`;
         if (this.workbook && this.workbook.sheets) {
-            newSheetName = `Sheet ${this.workbook.sheets.length + 1}`;
+            newSheetName = `${t('sheetNamePrefix')} ${this.workbook.sheets.length + 1}`;
         }
 
-        // Calculate append indices
+        // Calculate append indices (same as _addSheetAtPosition for end-of-list)
         const validTabs = this.tabs.filter((t) => t.type === 'sheet' || t.type === 'document');
         const targetTabOrderIndex = validTabs.length;
 
-        const sheetCount = this.workbook?.sheets?.length ?? 0;
-        const afterSheetIndex = sheetCount - 1; // Append after last sheet
+        // Count sheets to append after the last one
+        const sheetsBeforeTarget = this.tabs.filter((t) => t.type === 'sheet').length;
+        const afterSheetIndex = sheetsBeforeTarget; // Append after last sheet
 
         this.spreadsheetService.addSheet(newSheetName, afterSheetIndex, targetTabOrderIndex);
     }
@@ -999,43 +1005,10 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     private async _addDocument() {
         this.addTabDropdown = null;
-
-        // Calculate append indices based on last visible tab position
+        // Delegate to _addDocumentAtPosition for consistent behavior with context menu
         const validTabs = this.tabs.filter((t) => t.type === 'sheet' || t.type === 'document');
-        const docTabs = this.tabs.filter((t) => t.type === 'document');
-
-        let afterDocIndex = -1;
-        let afterWorkbook = false;
-
-        if (validTabs.length > 0) {
-            const lastTab = validTabs[validTabs.length - 1];
-            if (lastTab.type === 'sheet') {
-                // Last visible tab is a sheet - insert after workbook (at end of file)
-                afterWorkbook = true;
-            } else if (lastTab.type === 'document') {
-                // Last visible tab is a document - insert after that document
-                afterDocIndex = lastTab.docIndex!;
-            }
-        } else if (docTabs.length > 0) {
-            // Fallback: add after the last document found
-            afterDocIndex = Math.max(...docTabs.map((t) => t.docIndex!));
-        } else {
-            // No tabs exist - add after workbook (at end of file)
-            afterWorkbook = true;
-        }
-
-        // insertAfter: validTabs.length - 1 (last valid tab)
-        const insertAfterTabOrderIndex = validTabs.length - 1;
-
-        // Generate default document name
-        const docCount = this.tabs.filter((t) => t.type === 'document').length;
-        const newDocName = `Document ${docCount + 1}`;
-
-        // Store pending new tab index to select after update
-        // New tab will be appended at the end
-        this._pendingNewTabIndex = validTabs.length;
-
-        this.spreadsheetService.addDocument(newDocName, afterDocIndex, afterWorkbook, insertAfterTabOrderIndex);
+        const targetTabOrderIndex = validTabs.length;
+        this._addDocumentAtPosition(targetTabOrderIndex);
     }
 
     private _onCreateSpreadsheet() {

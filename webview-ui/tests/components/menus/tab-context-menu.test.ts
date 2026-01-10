@@ -39,8 +39,7 @@ describe('TabContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 600);
 
             const el = await fixture<TabContextMenu>(html`
-                <tab-context-menu .open=${true} .x=${750} .y=${100} .tabType=${'sheet'}>
-                </tab-context-menu>
+                <tab-context-menu .open=${true} .x=${750} .y=${100} .tabType=${'sheet'}> </tab-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -59,8 +58,7 @@ describe('TabContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 600);
 
             const el = await fixture<TabContextMenu>(html`
-                <tab-context-menu .open=${true} .x=${100} .y=${100} .tabType=${'sheet'}>
-                </tab-context-menu>
+                <tab-context-menu .open=${true} .x=${100} .y=${100} .tabType=${'sheet'}> </tab-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -80,8 +78,7 @@ describe('TabContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 400);
 
             const el = await fixture<TabContextMenu>(html`
-                <tab-context-menu .open=${true} .x=${100} .y=${380} .tabType=${'sheet'}>
-                </tab-context-menu>
+                <tab-context-menu .open=${true} .x=${100} .y=${380} .tabType=${'sheet'}> </tab-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -100,8 +97,7 @@ describe('TabContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 600);
 
             const el = await fixture<TabContextMenu>(html`
-                <tab-context-menu .open=${true} .x=${100} .y=${100} .tabType=${'sheet'}>
-                </tab-context-menu>
+                <tab-context-menu .open=${true} .x=${100} .y=${100} .tabType=${'sheet'}> </tab-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -121,8 +117,7 @@ describe('TabContextMenu Viewport Adjustment', () => {
             vi.stubGlobal('innerHeight', 300);
 
             const el = await fixture<TabContextMenu>(html`
-                <tab-context-menu .open=${true} .x=${350} .y=${280} .tabType=${'sheet'}>
-                </tab-context-menu>
+                <tab-context-menu .open=${true} .x=${350} .y=${280} .tabType=${'sheet'}> </tab-context-menu>
             `);
 
             await waitForPositionAdjustment();
@@ -140,8 +135,7 @@ describe('TabContextMenu Viewport Adjustment', () => {
     describe('Menu visibility', () => {
         it('should not render menu when not open', async () => {
             const el = await fixture<TabContextMenu>(html`
-                <tab-context-menu .open=${false} .x=${100} .y=${100} .tabType=${'sheet'}>
-                </tab-context-menu>
+                <tab-context-menu .open=${false} .x=${100} .y=${100} .tabType=${'sheet'}> </tab-context-menu>
             `);
 
             const menuEl = el.shadowRoot?.querySelector('.context-menu');

@@ -250,7 +250,11 @@ export class SSContextMenu extends LitElement {
 
         if (this.menuType === 'cell') {
             return html`
-                <div class="context-menu" style="left: ${displayX}px; top: ${displayY}px" @click="${this._stopPropagation}">
+                <div
+                    class="context-menu"
+                    style="left: ${displayX}px; top: ${displayY}px"
+                    @click="${this._stopPropagation}"
+                >
                     <div class="context-menu-item" @click="${this._handleCopy}">${t('copy')}</div>
                     <div class="context-menu-item" @click="${this._handleCut}">${t('cut')}</div>
                     <div class="context-menu-item" @click="${this._handlePaste}">${t('paste')}</div>
@@ -258,12 +262,16 @@ export class SSContextMenu extends LitElement {
             `;
         } else if (this.menuType === 'row') {
             return html`
-                <div class="context-menu" style="left: ${displayX}px; top: ${displayY}px" @click="${this._stopPropagation}">
+                <div
+                    class="context-menu"
+                    style="left: ${displayX}px; top: ${displayY}px"
+                    @click="${this._stopPropagation}"
+                >
                     <div class="context-menu-item" @click="${this._handleInsertAbove}">${t('insertRowAbove')}</div>
                     <div class="context-menu-item" @click="${this._handleInsertBelow}">${t('insertRowBelow')}</div>
                     <div class="context-menu-item" @click="${this._handleDeleteRow}">${t('deleteRow')}</div>
                     ${this.hasCopiedRows
-                    ? html`
+                        ? html`
                               <div class="context-menu-separator"></div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedAbove}">
                                   ${t('insertCopiedRowsAbove')}
@@ -272,17 +280,21 @@ export class SSContextMenu extends LitElement {
                                   ${t('insertCopiedRowsBelow')}
                               </div>
                           `
-                    : ''}
+                        : ''}
                 </div>
             `;
         } else {
             return html`
-                <div class="context-menu" style="left: ${displayX}px; top: ${displayY}px" @click="${this._stopPropagation}">
+                <div
+                    class="context-menu"
+                    style="left: ${displayX}px; top: ${displayY}px"
+                    @click="${this._stopPropagation}"
+                >
                     <div class="context-menu-item" @click="${this._handleInsertLeft}">${t('insertColLeft')}</div>
                     <div class="context-menu-item" @click="${this._handleInsertRight}">${t('insertColRight')}</div>
                     <div class="context-menu-item" @click="${this._handleDeleteCol}">${t('deleteCol')}</div>
                     ${this.hasCopiedColumns
-                    ? html`
+                        ? html`
                               <div class="context-menu-separator"></div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedLeft}">
                                   ${t('insertCopiedColsLeft')}
@@ -291,7 +303,7 @@ export class SSContextMenu extends LitElement {
                                   ${t('insertCopiedColsRight')}
                               </div>
                           `
-                    : ''}
+                        : ''}
                     <div class="context-menu-separator"></div>
                     <div class="context-menu-item" @click="${this._handleDataValidation}">${t('dataValidation')}</div>
                 </div>
