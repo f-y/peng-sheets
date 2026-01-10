@@ -269,10 +269,130 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         endCol: number,
         newValue: string
     ) {
+        // Check if this is a header cell edit (column rename)
+        if (startRow === -1 && endRow === -1) {
+            this._handleColumnRename(sheetIdx, tableIdx, startCol, endCol, newValue);
+            return;
+        }
+
         this.spreadsheetService.updateRange(sheetIdx, tableIdx, startRow, endRow, startCol, endCol, newValue);
 
         // Trigger formula recalculation for affected columns
         this._recalculateFormulas(sheetIdx, tableIdx, startCol, endCol);
+    }
+
+    /**
+     * Handle column header rename with formula reference propagation.
+     */
+    private _handleColumnRename(
+        sheetIdx: number,
+        tableIdx: number,
+        startCol: number,
+        endCol: number,
+        newValue: string
+    ) {
+        if (!this.workbook) {
+            this.spreadsheetService.updateRange(sheetIdx, tableIdx, -1, -1, startCol, endCol, newValue);
+            return;
+        }
+
+        const sheet = this.workbook.sheets[sheetIdx];
+        if (!sheet) {
+            this.spreadsheetService.updateRange(sheetIdx, tableIdx, -1, -1, startCol, endCol, newValue);
+            return;
+        }
+
+        const table = sheet.tables[tableIdx];
+        if (!table) {
+            this.spreadsheetService.updateRange(sheetIdx, tableIdx, -1, -1, startCol, endCol, newValue);
+            return;
+        }
+
+        // Capture old column name before update
+        const oldName = table.headers?.[startCol];
+
+        // Perform the header update
+        this.spreadsheetService.updateRange(sheetIdx, tableIdx, -1, -1, startCol, endCol, newValue);
+
+        // Propagate column name change to formula references
+        if (oldName && oldName !== newValue) {
+            this._propagateColumnRename(sheetIdx, tableIdx, oldName, newValue);
+        }
+    }
+
+    /**
+     * Propagate column rename to all formula references.
+     * Updates formulas that reference the old column name.
+     */
+    private _propagateColumnRename(
+        sheetIdx: number,
+        tableIdx: number,
+        oldName: string,
+        newName: string
+    ) {
+        if (!this.workbook) return;
+
+        const table = this.workbook.sheets[sheetIdx]?.tables[tableIdx];
+        if (!table) return;
+
+        const meta = table.metadata as Record<string, unknown> | undefined;
+        const visual = meta?.visual as Record<string, unknown> | undefined;
+        const formulas = visual?.formulas as Record<string, Record<string, unknown>> | undefined;
+        if (!formulas || Object.keys(formulas).length === 0) return;
+
+        let updated = false;
+        const newFormulas = { ...formulas };
+
+        for (const [colKey, formula] of Object.entries(formulas)) {
+            if (!formula || typeof formula !== 'object') continue;
+
+            const formulaCopy = { ...formula };
+
+            if (formula.type === 'arithmetic') {
+                // Update expression references
+                if (typeof formula.expression === 'string' && formula.expression.includes(`[${oldName}]`)) {
+                    formulaCopy.expression = formula.expression.replace(
+                        new RegExp(`\\[${this._escapeRegex(oldName)}\\]`, 'g'),
+                        `[${newName}]`
+                    );
+                    updated = true;
+                }
+
+                // Update columns array
+                if (Array.isArray(formula.columns)) {
+                    const newColumns = formula.columns.map((col: string) =>
+                        col === oldName ? newName : col
+                    );
+                    if (JSON.stringify(newColumns) !== JSON.stringify(formula.columns)) {
+                        formulaCopy.columns = newColumns;
+                        updated = true;
+                    }
+                }
+            } else if (formula.type === 'lookup') {
+                // Update lookup references for local join key
+                if (formula.joinKeyLocal === oldName) {
+                    formulaCopy.joinKeyLocal = newName;
+                    updated = true;
+                }
+            }
+
+            newFormulas[colKey] = formulaCopy;
+        }
+
+        if (updated) {
+            // Update visual metadata with new formulas
+            this.spreadsheetService.updateVisualMetadata(sheetIdx, tableIdx, {
+                ...visual,
+                formulas: newFormulas
+            } as Record<string, unknown>);
+        }
+    }
+
+    /**
+     * Escape special regex characters in a string.
+     */
+    private _escapeRegex(str: string): string {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     /**
