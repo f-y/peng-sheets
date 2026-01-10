@@ -87,6 +87,7 @@ function run(cmd, options = {}) {
  */
 function publishVsce() {
     console.log('\n📦 Publishing to VS Code Marketplace...');
+    run('vsce package');
     run('vsce publish');
 }
 

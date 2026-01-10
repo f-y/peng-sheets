@@ -176,9 +176,7 @@ export function deleteSheet(context: EditorContext, sheetIdx: number): UpdateRes
             let tabOrder: TabOrderItem[] = [...metadata.tab_order];
 
             // Remove deleted sheet entry
-            tabOrder = tabOrder.filter(
-                (item) => !(item.type === 'sheet' && item.index === sheetIdx)
-            );
+            tabOrder = tabOrder.filter((item) => !(item.type === 'sheet' && item.index === sheetIdx));
 
             // Shift remaining sheet indices
             for (const item of tabOrder) {

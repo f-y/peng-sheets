@@ -210,9 +210,7 @@ describe('Sheet Service Tests', () => {
             const state = JSON.parse(getState());
             const tabOrder = state.workbook.metadata?.tab_order;
             if (tabOrder && tabOrder.length > 0) {
-                const sheetEntries = tabOrder.filter(
-                    (item: { type: string }) => item.type === 'sheet'
-                );
+                const sheetEntries = tabOrder.filter((item: { type: string }) => item.type === 'sheet');
                 // The remaining sheet should have index 0
                 expect(sheetEntries[0]?.index).toBe(0);
             }
@@ -236,9 +234,7 @@ describe('Sheet Service Tests', () => {
             // tab_order should be updated: old index 2 should become index 1
             const tabOrder = state2.workbook.metadata?.tab_order;
             if (tabOrder) {
-                const sheetEntries = tabOrder.filter(
-                    (item: { type: string }) => item.type === 'sheet'
-                );
+                const sheetEntries = tabOrder.filter((item: { type: string }) => item.type === 'sheet');
                 // Should have 2 sheet entries with indices 0 and 1
                 const indices = sheetEntries.map((e: { index: number }) => e.index).sort();
                 expect(indices).toEqual([0, 1]);

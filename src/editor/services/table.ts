@@ -43,8 +43,67 @@ export function addTable(
  */
 export function deleteTable(context: EditorContext, sheetIdx: number, tableIdx: number): UpdateResult {
     return applySheetUpdate(context, sheetIdx, (sheet) => {
-        return sheet.deleteTable(tableIdx);
+        // 1. Delete the table
+        let newSheet = sheet.deleteTable(tableIdx);
+
+        // 2. Update layout metadata if present
+        const metadata = newSheet.metadata as Record<string, unknown> | undefined;
+        if (metadata?.layout) {
+            const updatedLayout = updateLayoutAfterTableDelete(metadata.layout as LayoutNode, tableIdx);
+            const newMetadata = { ...metadata, layout: updatedLayout };
+            newSheet = new Sheet({ ...newSheet, metadata: newMetadata });
+        }
+
+        return newSheet;
     });
+}
+
+/**
+ * Layout node types for internal use
+ */
+interface LayoutNode {
+    type: 'split' | 'pane';
+    id: string;
+    children?: LayoutNode[];
+    tables?: number[];
+    direction?: 'horizontal' | 'vertical';
+    sizes?: number[];
+    activeTableIndex?: number;
+}
+
+/**
+ * Update layout metadata after a table is deleted.
+ * - Remove the deleted table index from all panes
+ * - Shift down all indices greater than the deleted index
+ */
+function updateLayoutAfterTableDelete(node: LayoutNode, deletedIdx: number): LayoutNode {
+    if (node.type === 'pane') {
+        // Filter out the deleted index and shift remaining indices
+        const newTables = (node.tables ?? [])
+            .filter((idx) => idx !== deletedIdx)
+            .map((idx) => (idx > deletedIdx ? idx - 1 : idx));
+
+        // Update activeTableIndex if needed
+        let newActiveIndex = node.activeTableIndex ?? 0;
+        if (newActiveIndex >= newTables.length) {
+            newActiveIndex = Math.max(0, newTables.length - 1);
+        }
+
+        return {
+            ...node,
+            tables: newTables,
+            activeTableIndex: newActiveIndex
+        };
+    } else if (node.type === 'split' && node.children) {
+        // Recursively update children
+        const newChildren = node.children.map((child) => updateLayoutAfterTableDelete(child, deletedIdx));
+        return {
+            ...node,
+            children: newChildren
+        };
+    }
+
+    return node;
 }
 
 /**

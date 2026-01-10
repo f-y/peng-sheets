@@ -190,7 +190,7 @@
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src webview-ui --ext ts",
-        "lint:fix": "npm run lint --fix",
+        "lint:fix": "eslint src webview-ui --ext ts --fix",
         "format": "prettier --write \"src/**/*.ts\" \"webview-ui/**/*.ts\"",
         "test": "vscode-test",
         "test:coverage": "npm run compile && node out/test/runTest.js && c8 report --temp-directory coverage/tmp --clean false --reporter=text --reporter=html",
@@ -234,6 +234,6 @@
         "vitest": "^4.0.15"
     },
     "dependencies": {
-        "md-spreadsheet-parser": "^1.1.10"
+        "md-spreadsheet-parser": "^1.2.0"
     }
 }
