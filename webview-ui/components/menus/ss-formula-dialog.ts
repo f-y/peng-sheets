@@ -20,6 +20,12 @@ import type {
     FormulaFunctionType
 } from '../../services/types';
 import type { WorkbookJSON, SheetJSON, TableJSON } from '../../types';
+import {
+    evaluateArithmeticFormula,
+    evaluateLookup,
+    buildRowData,
+    NA_VALUE
+} from '../../utils/formula-evaluator';
 
 type FormulaMode = 'calculation' | 'lookup';
 type ColumnSourceType = 'this' | 'other';
@@ -210,6 +216,44 @@ export class SSFormulaDialog extends LitElement {
                 background: var(--vscode-inputValidation-errorBackground);
                 color: var(--vscode-inputValidation-errorForeground);
             }
+
+            .preview-section {
+                margin-top: 16px;
+                padding: 12px;
+                background: var(--vscode-input-background);
+                border: 1px solid var(--vscode-input-border);
+                border-radius: 4px;
+            }
+
+            .preview-title {
+                font-weight: 600;
+                font-size: 12px;
+                margin-bottom: 8px;
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .preview-values {
+                display: flex;
+                gap: 12px;
+                flex-wrap: wrap;
+            }
+
+            .preview-item {
+                font-size: 12px;
+                color: var(--vscode-foreground);
+            }
+
+            .preview-item .row-label {
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .preview-item .value {
+                font-weight: 500;
+            }
+
+            .preview-item .value.error {
+                color: var(--vscode-inputValidation-errorForeground);
+            }
         `,
         unsafeCSS(sharedStyles)
     ];
@@ -220,6 +264,7 @@ export class SSFormulaDialog extends LitElement {
     @property({ type: Number }) currentSheetIndex = 0;
     @property({ type: Number }) currentTableIndex = 0;
     @property({ type: Array }) headers: string[] = [];
+    @property({ type: Array }) rows: string[][] = [];
 
     @state() private _mode: FormulaMode = 'calculation';
     @state() private _functionType: FormulaFunctionType = 'expression';
@@ -385,6 +430,75 @@ export class SSFormulaDialog extends LitElement {
 
             return formula;
         }
+    }
+
+    /**
+     * Render preview of calculated values for the first 3 rows.
+     */
+    private _renderPreview() {
+        const formula = this._buildFormula();
+        if (!formula) {
+            return html`
+                <div class="preview-section">
+                    <div class="preview-title">${t('preview')}</div>
+                    <div class="preview-values">
+                        <span class="preview-item">
+                            <span class="value" style="color: var(--vscode-descriptionForeground)">—</span>
+                        </span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Take first 3 rows for preview
+        const previewRows = this.rows.slice(0, 3);
+        const results: { rowNum: number; value: string; isError: boolean }[] = [];
+
+        for (let i = 0; i < previewRows.length; i++) {
+            const row = previewRows[i];
+            const rowData = buildRowData(this.headers, row);
+            let value: string;
+            let isError = false;
+
+            if (formula.type === 'arithmetic') {
+                const result = evaluateArithmeticFormula(formula, rowData);
+                value = result.value;
+                isError = !result.success;
+            } else {
+                // Lookup formula
+                const joinKeyColIndex = this.headers.indexOf(formula.joinKeyLocal);
+                const localKeyValue = joinKeyColIndex >= 0 ? row[joinKeyColIndex] : '';
+                if (this.workbook) {
+                    const result = evaluateLookup(formula, localKeyValue, this.workbook);
+                    value = result.value;
+                    isError = !result.success;
+                } else {
+                    value = NA_VALUE;
+                    isError = true;
+                }
+            }
+
+            results.push({ rowNum: i + 1, value, isError });
+        }
+
+        return html`
+            <div class="preview-section">
+                <div class="preview-title">${t('preview')}</div>
+                <div class="preview-values">
+                    ${results.map(
+            (r) => html`
+                            <span class="preview-item">
+                                <span class="row-label">Row ${r.rowNum}: </span>
+                                <span class="value ${r.isError ? 'error' : ''}">${r.value}</span>
+                            </span>
+                        `
+        )}
+                    ${results.length === 0
+                ? html`<span class="preview-item"><span class="value" style="color: var(--vscode-descriptionForeground)">No data</span></span>`
+                : ''}
+                </div>
+            </div>
+        `;
     }
 
     private _handleApply() {
@@ -633,6 +747,8 @@ export class SSFormulaDialog extends LitElement {
                         </div>
 
                         ${this._mode === 'calculation' ? this._renderCalculationMode() : this._renderLookupMode()}
+
+                        ${this._renderPreview()}
                     </div>
 
                     <div class="dialog-footer">

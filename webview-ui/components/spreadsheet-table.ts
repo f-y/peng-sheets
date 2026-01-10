@@ -785,6 +785,7 @@ export class SpreadsheetTable extends LitElement {
                           .colIndex="${this.formulaDialog.colIndex}"
                           .currentFormula="${this.formulaDialog.currentFormula}"
                           .headers="${this.table?.headers ?? []}"
+                          .rows="${this.table?.rows ?? []}"
                           .workbook="${this.workbook}"
                           .currentSheetIndex="${this.sheetIndex}"
                           .currentTableIndex="${this.tableIndex}"
