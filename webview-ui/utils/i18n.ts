@@ -95,7 +95,9 @@ const translations = {
         insertCopiedRowsBelow: 'Insert Copied Row(s) Below',
         insertCopiedColsLeft: 'Insert Copied Column(s) Left',
         insertCopiedColsRight: 'Insert Copied Column(s) Right',
-        selectTable: 'Select Table'
+        selectTable: 'Select Table',
+        deletePane: 'Delete Pane',
+        emptyPaneHint: 'Use + to add a table, or drag one here'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -193,7 +195,9 @@ const translations = {
         cut: '切り取り',
         paste: '貼り付け',
         editTableDescription: 'このテーブルの説明を編集',
-        selectTable: 'テーブルを選択'
+        selectTable: 'テーブルを選択',
+        deletePane: 'ペインを削除',
+        emptyPaneHint: '+でテーブルを追加、またはドラッグで移動'
     }
 };
 

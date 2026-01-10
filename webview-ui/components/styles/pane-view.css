@@ -72,6 +72,23 @@
     background-color: var(--vscode-toolbar-hoverBackground);
 }
 
+.tab-delete-pane {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    cursor: pointer;
+    color: var(--vscode-errorForeground);
+    font-size: 16px;
+    border-right: 1px solid var(--vscode-tab-border);
+    margin-left: auto;
+    /* Push to far right */
+}
+
+.tab-delete-pane:hover {
+    background-color: var(--vscode-toolbar-hoverBackground);
+}
+
 .tab-input {
     background: var(--vscode-input-background);
     color: var(--vscode-input-foreground);
@@ -129,4 +146,30 @@
 .context-menu-item:hover {
     background: var(--vscode-menu-selectionBackground);
     color: var(--vscode-menu-selectionForeground);
+}
+
+/* Empty pane styling */
+.empty-pane {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 8px;
+    color: var(--vscode-descriptionForeground);
+}
+
+.empty-pane-icon {
+    font-size: 32px;
+    opacity: 0.6;
+}
+
+.empty-pane-text {
+    font-size: 14px;
+    opacity: 0.8;
+}
+
+.empty-pane-hint {
+    font-size: 12px;
+    opacity: 0.5;
 }

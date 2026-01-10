@@ -93,6 +93,11 @@ export class PaneView extends LitElement {
                     `;
                 })}
                 <div class="tab-add" @click="${this._handleAddTable}" title="${t('addTable')}">+</div>
+                ${this.node.tables.length === 0
+                    ? html`<div class="tab-delete-pane" @click="${this._handleDeletePane}" title="${t('deletePane')}">
+                          ×
+                      </div>`
+                    : ''}
             </div>
             <div
                 class="content"
@@ -110,7 +115,13 @@ export class PaneView extends LitElement {
                               .dateFormat="${this.dateFormat}"
                           ></spreadsheet-table>
                       `
-                    : html`<div>${t('noTableSelected')}</div>`}
+                    : html`
+                          <div class="empty-pane">
+                              <div class="empty-pane-icon">📋</div>
+                              <div class="empty-pane-text">${t('noTableSelected')}</div>
+                              <div class="empty-pane-hint">${t('emptyPaneHint')}</div>
+                          </div>
+                      `}
                 ${this._renderDropOverlay()}
             </div>
             ${this._renderContextMenu()}
@@ -196,6 +207,20 @@ export class PaneView extends LitElement {
             new CustomEvent('pane-action', {
                 detail: {
                     type: 'add-table',
+                    paneId: this.node.id
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
+    private _handleDeletePane(e: Event) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('pane-action', {
+                detail: {
+                    type: 'delete-pane',
                     paneId: this.node.id
                 },
                 bubbles: true,
