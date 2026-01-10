@@ -1,6 +1,6 @@
 import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { SplitNode, TableJSON } from '../types';
+import { SplitNode, TableJSON, WorkbookJSON } from '../types';
 import splitViewStyles from './styles/split-view.css?inline';
 import './pane-view';
 
@@ -19,6 +19,9 @@ export class SplitView extends LitElement {
 
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
+
+    @property({ type: Object })
+    workbook: WorkbookJSON | null = null;
 
     // Resizing state
     private _isResizing = false;
@@ -44,36 +47,38 @@ export class SplitView extends LitElement {
 
         return html`
             ${this.node.children.map((child, index) => {
-                const size = displaySizes[index];
-                const style = `flex: ${size} 1 0%;`; // simple flex basis
+            const size = displaySizes[index];
+            const style = `flex: ${size} 1 0%;`; // simple flex basis
 
-                // Render Resizer if not first
-                const resizer =
-                    index > 0
-                        ? html`<div
+            // Render Resizer if not first
+            const resizer =
+                index > 0
+                    ? html`<div
                               class="resizer"
                               @mousedown="${(e: MouseEvent) => this._startResize(e, index)}"
                           ></div>`
-                        : html``;
+                    : html``;
 
-                const content =
-                    child.type === 'split'
-                        ? html`<split-view
+            const content =
+                child.type === 'split'
+                    ? html`<split-view
                               .node="${child}"
                               .tables="${this.tables}"
                               .sheetIndex="${this.sheetIndex}"
                               .dateFormat="${this.dateFormat}"
+                              .workbook="${this.workbook}"
                           ></split-view>`
-                        : html`<pane-view
+                    : html`<pane-view
                               .node="${child}"
                               .tables="${this.tables}"
                               .sheetIndex="${this.sheetIndex}"
                               .dateFormat="${this.dateFormat}"
+                              .workbook="${this.workbook}"
                           ></pane-view>`;
 
-                return html`${resizer}
+            return html`${resizer}
                     <div class="child-wrapper" style="${style}">${content}</div>`;
-            })}
+        })}
         `;
     }
 

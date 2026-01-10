@@ -1,6 +1,6 @@
 import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { LayoutNode, SplitNode, LeafNode, TableJSON } from '../types';
+import { LayoutNode, SplitNode, LeafNode, TableJSON, WorkbookJSON } from '../types';
 import './pane-view';
 import './split-view';
 import { nanoid } from 'nanoid';
@@ -27,6 +27,9 @@ export class LayoutContainer extends LitElement {
 
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
+
+    @property({ type: Object })
+    workbook: WorkbookJSON | null = null;
 
     // Internal state to handle optimistic updates during drag/drop
     @state()
@@ -165,6 +168,7 @@ export class LayoutContainer extends LitElement {
                 .tables="${this.tables}"
                 .sheetIndex="${this.sheetIndex}"
                 .dateFormat="${this.dateFormat}"
+                .workbook="${this.workbook}"
             ></split-view>`;
         } else {
             return html`<pane-view
@@ -172,6 +176,7 @@ export class LayoutContainer extends LitElement {
                 .tables="${this.tables}"
                 .sheetIndex="${this.sheetIndex}"
                 .dateFormat="${this.dateFormat}"
+                .workbook="${this.workbook}"
             ></pane-view>`;
         }
     }

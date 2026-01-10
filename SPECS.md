@@ -230,7 +230,7 @@ Unlike Excel, our data model includes metadata specific to the Markdown context.
     - [x] **Drag & Drop rows/columns by grabbing the header**. (High Priority)
 
 ### 11.2. Sorting
-- [ ] Clicking a sort icon in the column header (Toggle: Asc -> Desc -> Off).
+- [x] Clicking a sort icon in the column header (Toggle: Asc -> Desc -> Off).
 
 ## 12. Auto Fill (Fill Handle)
 The "Fill Handle" is the small square at the bottom-right of the active cell or selection. Dragging it allows for rapid data entry and pattern extension.

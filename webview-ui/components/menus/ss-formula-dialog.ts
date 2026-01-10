@@ -359,6 +359,14 @@ export class SSFormulaDialog extends LitElement {
             } else {
                 if (this._selectedColumns.size === 0) return null;
                 formula.columns = Array.from(this._selectedColumns);
+
+                // Include sourceTableId if referencing another table
+                if (this._columnSource === 'other') {
+                    const sourceTableId = this._getSourceTableId();
+                    if (sourceTableId !== undefined) {
+                        formula.sourceTableId = sourceTableId;
+                    }
+                }
             }
 
             return formula;
@@ -409,9 +417,26 @@ export class SSFormulaDialog extends LitElement {
         );
     }
 
+    private _handleColumnSourceChange(source: ColumnSourceType) {
+        this._columnSource = source;
+        // Reset column selection when changing source
+        this._selectedColumns = new Set();
+    }
+
+    private _getAvailableColumnsForCalculation(): string[] {
+        if (this._columnSource === 'this') {
+            return this.headers.filter((_, i) => i !== this.colIndex);
+        } else {
+            return this._getSourceTableHeaders();
+        }
+    }
+
     private _renderCalculationMode() {
         const isExpression = this._functionType === 'expression';
-        const availableColumns = this.headers.filter((_, i) => i !== this.colIndex);
+        const availableColumns = this._getAvailableColumnsForCalculation();
+        const sheets = this.workbook?.sheets ?? [];
+        const currentSheet = sheets[this._sourceSheetIndex];
+        const tables = currentSheet?.tables ?? [];
 
         return html`
             <div class="form-group">
@@ -441,10 +466,58 @@ export class SSFormulaDialog extends LitElement {
                   `
                 : html`
                       <div class="form-group">
+                          <label class="form-label">${t('columnSource')}</label>
+                          <div class="radio-group">
+                              <label class="radio-label">
+                                  <input
+                                      type="radio"
+                                      name="columnSource"
+                                      ?checked="${this._columnSource === 'this'}"
+                                      @change="${() => this._handleColumnSourceChange('this')}"
+                                  />
+                                  ${t('thisTable')}
+                              </label>
+                              <label class="radio-label">
+                                  <input
+                                      type="radio"
+                                      name="columnSource"
+                                      ?checked="${this._columnSource === 'other'}"
+                                      @change="${() => this._handleColumnSourceChange('other')}"
+                                  />
+                                  ${t('otherTable')}
+                              </label>
+                          </div>
+                      </div>
+
+                      ${this._columnSource === 'other'
+                        ? html`
+                                <div class="form-group">
+                                    <label class="form-label">${t('sourceTable')}</label>
+                                    <div class="picker-row">
+                                        <select class="select-control" @change="${this._handleSourceSheetChange}">
+                                            ${sheets.map(
+                            (sheet, i) => html`
+                                                    <option value="${i}" ?selected="${i === this._sourceSheetIndex}">${sheet.name}</option>
+                                                `
+                        )}
+                                        </select>
+                                        <select class="select-control" @change="${this._handleSourceTableChange}">
+                                            ${tables.map(
+                            (table, i) => html`
+                                                    <option value="${i}" ?selected="${i === this._sourceTableIndex}">${table.name}</option>
+                                                `
+                        )}
+                                        </select>
+                                    </div>
+                                </div>
+                            `
+                        : nothing}
+
+                      <div class="form-group">
                           <label class="form-label">${t('selectColumns')}</label>
                           <div class="checkbox-list">
                               ${availableColumns.map(
-                    (col) => html`
+                            (col) => html`
                                       <label class="checkbox-item">
                                           <input
                                               type="checkbox"
@@ -454,7 +527,7 @@ export class SSFormulaDialog extends LitElement {
                                           ${col}
                                       </label>
                                   `
-                )}
+                        )}
                           </div>
                       </div>
                   `}

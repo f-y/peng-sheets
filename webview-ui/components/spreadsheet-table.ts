@@ -34,7 +34,7 @@ import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
-import { TableJSON } from '../types';
+import { TableJSON, WorkbookJSON } from '../types';
 
 @customElement('spreadsheet-table')
 export class SpreadsheetTable extends LitElement {
@@ -51,6 +51,9 @@ export class SpreadsheetTable extends LitElement {
 
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
+
+    @property({ type: Object })
+    workbook: WorkbookJSON | null = null;
 
     selectionCtrl = new SelectionController(this);
     editCtrl = new EditController(this);
@@ -782,6 +785,9 @@ export class SpreadsheetTable extends LitElement {
                           .colIndex="${this.formulaDialog.colIndex}"
                           .currentFormula="${this.formulaDialog.currentFormula}"
                           .headers="${this.table?.headers ?? []}"
+                          .workbook="${this.workbook}"
+                          .currentSheetIndex="${this.sheetIndex}"
+                          .currentTableIndex="${this.tableIndex}"
                           @ss-formula-update="${this._handleFormulaUpdate}"
                           @ss-formula-cancel="${this._handleFormulaDialogClose}"
                       ></ss-formula-dialog>
