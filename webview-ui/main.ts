@@ -470,6 +470,96 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         });
     }
 
+    /**
+     * Calculate all formula column values.
+     * Called on initial workbook load to populate computed column values.
+     */
+    private _calculateAllFormulas() {
+        if (!this.workbook) return;
+
+        // Import and use formula evaluator directly for initial calculation
+        import('./utils/formula-evaluator').then((evaluator) => {
+            const allUpdates: Array<{ sheetIndex: number; tableIndex: number; rowIndex: number; colIndex: number; value: string }> = [];
+
+            for (let sheetIndex = 0; sheetIndex < this.workbook!.sheets.length; sheetIndex++) {
+                const sheet = this.workbook!.sheets[sheetIndex];
+                for (let tableIndex = 0; tableIndex < sheet.tables.length; tableIndex++) {
+                    const table = sheet.tables[tableIndex];
+                    const meta = table.metadata as Record<string, unknown> | undefined;
+                    const visual = meta?.visual as Record<string, unknown> | undefined;
+                    const formulas = visual?.formulas as Record<string, Record<string, unknown>> | undefined;
+
+                    if (!formulas || Object.keys(formulas).length === 0) continue;
+
+                    const headers = table.headers || [];
+
+                    // Calculate each formula column
+                    for (const [colKey, formula] of Object.entries(formulas)) {
+                        const colIndex = parseInt(colKey, 10);
+                        if (isNaN(colIndex)) continue;
+
+                        // Calculate for each row
+                        for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
+                            const rowData = evaluator.buildRowData(headers, table.rows[rowIndex]);
+                            let value = evaluator.NA_VALUE;
+
+                            try {
+                                if (formula.type === 'arithmetic') {
+                                    const result = evaluator.evaluateArithmeticFormula(
+                                        formula as Parameters<typeof evaluator.evaluateArithmeticFormula>[0],
+                                        rowData
+                                    );
+                                    value = result.value;
+                                } else if (formula.type === 'lookup') {
+                                    const lookupFormula = formula as { joinKeyLocal?: string };
+                                    const localKeyValue = rowData[lookupFormula.joinKeyLocal || ''] || '';
+                                    const result = evaluator.evaluateLookup(
+                                        formula as Parameters<typeof evaluator.evaluateLookup>[0],
+                                        localKeyValue,
+                                        this.workbook!
+                                    );
+                                    value = result.value;
+                                }
+                            } catch {
+                                value = evaluator.NA_VALUE;
+                            }
+
+                            allUpdates.push({
+                                sheetIndex,
+                                tableIndex,
+                                rowIndex,
+                                colIndex,
+                                value
+                            });
+                        }
+                    }
+                }
+            }
+
+            // Apply all updates as batch
+            if (allUpdates.length > 0) {
+                this.spreadsheetService.startBatch();
+                try {
+                    for (const update of allUpdates) {
+                        this.spreadsheetService.updateRange(
+                            update.sheetIndex,
+                            update.tableIndex,
+                            update.rowIndex,
+                            update.rowIndex,
+                            update.colIndex,
+                            update.colIndex,
+                            update.value
+                        );
+                    }
+                } finally {
+                    this.spreadsheetService.endBatch();
+                }
+            }
+        }).catch(() => {
+            // Silently ignore if formula evaluator couldn't load
+        });
+    }
+
     _handleDeleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
         this.spreadsheetService.deleteRow(sheetIdx, tableIdx, rowIndex);
     }
@@ -1345,6 +1435,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             }
 
             this.requestUpdate();
+
+            // Calculate all formula column values on initial load
+            this._calculateAllFormulas();
 
             // Update output message if successful
             this.output = 'Parsed successfully!';
