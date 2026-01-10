@@ -409,6 +409,12 @@
     flex-shrink: 0;
 }
 
+/* Formula column cells (read-only) */
+.formula-cell {
+    background-color: rgba(55, 148, 255, 0.04);
+    cursor: not-allowed;
+}
+
 /* Validation error styles */
 .cell.validation-error {
     background-color: rgba(255, 0, 0, 0.08);

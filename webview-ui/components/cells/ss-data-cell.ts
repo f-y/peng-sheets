@@ -85,6 +85,9 @@ export class SSDataCell extends LitElement {
     @property({ type: Boolean }) copyLeft = false;
     @property({ type: Boolean }) copyRight = false;
 
+    // Formula column (read-only)
+    @property({ type: Boolean }) isFormula = false;
+
     private _onMousedown = (e: MouseEvent) => {
         emitCellMousedown(this, this.row, this.col, e);
     };
@@ -195,7 +198,8 @@ export class SSDataCell extends LitElement {
             this.rangeRight ? 'range-right' : '',
             hasError ? 'validation-error' : '',
             this.isCellDropTarget ? 'cell-drop-target' : '',
-            this.isDraggable ? 'move-cursor' : ''
+            this.isDraggable ? 'move-cursor' : '',
+            this.isFormula ? 'formula-cell' : ''
         ]
             .filter(Boolean)
             .join(' ');
@@ -238,7 +242,7 @@ export class SSDataCell extends LitElement {
                 data-col="${this.col}"
                 tabindex="${this.isActive ? 0 : -1}"
                 style="text-align: ${this.align}; ${dropTargetStyle}${copyBorderStyle}"
-                contenteditable="${this.isEditing ? 'true' : 'false'}"
+                contenteditable="${this.isEditing && !this.isFormula ? 'true' : 'false'}"
                 title="${hasError ? validationError || 'Invalid Value' : ''}"
                 .innerHTML="${content}"
                 @mousedown="${this._onMousedown}"

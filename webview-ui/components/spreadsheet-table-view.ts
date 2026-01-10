@@ -496,6 +496,7 @@ export class SpreadsheetTableView extends LitElement {
                         .dateFormat="${this.dateFormat}"
                         .isDraggable="${rangeState.inRange && isRangeSelection}"
                         .isCellDropTarget="${this._isCellInDropRange(r, c)}"
+                        .isFormula="${this._hasFormula(c)}"
                         @ss-cell-click="${(e: CustomEvent) => this._bubbleEvent('view-cell-click', e.detail)}"
                         @ss-cell-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-cell-mousedown', e.detail)}"
                         @ss-cell-dblclick="${(e: CustomEvent) => this._bubbleEvent('view-cell-dblclick', e.detail)}"
