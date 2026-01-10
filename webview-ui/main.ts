@@ -270,6 +270,77 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         newValue: string
     ) {
         this.spreadsheetService.updateRange(sheetIdx, tableIdx, startRow, endRow, startCol, endCol, newValue);
+
+        // Trigger formula recalculation for affected columns
+        this._recalculateFormulas(sheetIdx, tableIdx, startCol, endCol);
+    }
+
+    /**
+     * Recalculate formula columns affected by cell changes.
+     * Applies batch updates for all dependent formula columns.
+     */
+    private _recalculateFormulas(sheetIdx: number, tableIdx: number, startCol: number, endCol: number) {
+        if (!this.workbook) return;
+
+        const sheet = this.workbook.sheets[sheetIdx];
+        if (!sheet) return;
+
+        const table = sheet.tables[tableIdx];
+        if (!table) return;
+
+        // Get table ID for dependency lookup
+        const meta = table.metadata as Record<string, unknown> | undefined;
+        const tableId = meta?.id as number | undefined;
+        if (tableId === undefined) return;
+
+        const headers = table.headers || [];
+
+        // Import and use formula controller utilities
+        import('./controllers/formula-controller').then(({ FormulaController }) => {
+            // Create temporary controller-like context to use recalculate logic
+            const mockHost = {
+                workbook: this.workbook,
+                getSheetIndex: () => sheetIdx,
+                getTableIndex: () => tableIdx,
+                getFormulaMetadata: () => {
+                    const visual = (table.metadata as Record<string, unknown>)?.visual as Record<string, unknown>;
+                    return visual?.formulas ?? null;
+                },
+                addController: () => { },
+                requestUpdate: () => { },
+                removeController: () => { }
+            } as unknown as Parameters<typeof FormulaController.prototype.constructor>[0];
+
+            const controller = new FormulaController(mockHost);
+            controller.rebuildDependencyGraph();
+
+            // Get updates for all changed columns
+            const allUpdates: Array<{ sheetIndex: number; tableIndex: number; rowIndex: number; colIndex: number; value: string }> = [];
+            for (let col = startCol; col <= endCol; col++) {
+                const colName = headers[col];
+                if (!colName) continue;
+
+                const updates = controller.recalculateAffectedColumns(tableId, colName, this.workbook!);
+                allUpdates.push(...updates);
+            }
+
+            // Apply updates as a batch (each update triggers a range edit)
+            if (allUpdates.length > 0) {
+                for (const update of allUpdates) {
+                    this.spreadsheetService.updateRange(
+                        update.sheetIndex,
+                        update.tableIndex,
+                        update.rowIndex,
+                        update.rowIndex,
+                        update.colIndex,
+                        update.colIndex,
+                        update.value
+                    );
+                }
+            }
+        }).catch(() => {
+            // Silently ignore if formula controller couldn't load
+        });
     }
 
     _handleDeleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {

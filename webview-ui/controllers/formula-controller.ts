@@ -9,13 +9,9 @@
  */
 
 import { ReactiveController, ReactiveControllerHost } from 'lit';
-import type {
-    FormulaDefinition,
-    FormulaMetadata,
-    ArithmeticFormula,
-    LookupFormula
-} from '../services/types';
+import type { FormulaDefinition, FormulaMetadata, ArithmeticFormula, LookupFormula } from '../services/types';
 import type { WorkbookJSON, TableJSON } from '../types';
+import * as formulaEvaluator from '../utils/formula-evaluator';
 
 // =============================================================================
 // Types
@@ -208,8 +204,119 @@ export class FormulaController implements ReactiveController {
     }
 
     // =========================================================================
-    // Formula Execution (Placeholder - will be expanded in Phase 2)
+    // Formula Execution
     // =========================================================================
+
+    /**
+     * Recalculate all formula columns affected by a cell change.
+     * Returns an array of CellUpdate objects for batch application.
+     */
+    recalculateAffectedColumns(
+        tableId: number,
+        changedColumn: string,
+        workbook: WorkbookJSON
+    ): CellUpdate[] {
+        const updates: CellUpdate[] = [];
+
+        // Get all dependent formula columns
+        const dependents = this.getDependentColumns(tableId, changedColumn);
+        if (dependents.length === 0) return updates;
+
+        for (const dep of dependents) {
+            const location = this.findTableLocation(dep.tableId);
+            if (!location) continue;
+
+            const sheet = workbook.sheets[location.sheetIndex];
+            const table = sheet.tables[location.tableIndex];
+            const formula = this.getFormulaForTable(table, dep.colIndex);
+            if (!formula) continue;
+
+            // Evaluate formula for each row
+            for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
+                const newValue = this._evaluateFormulaForRow(formula, table, rowIndex, workbook);
+
+                updates.push({
+                    sheetIndex: location.sheetIndex,
+                    tableIndex: location.tableIndex,
+                    rowIndex,
+                    colIndex: dep.colIndex,
+                    value: newValue
+                });
+            }
+        }
+
+        return updates;
+    }
+
+    /**
+     * Recalculate a single formula column for all rows.
+     * Returns an array of CellUpdate objects.
+     */
+    recalculateSingleColumn(
+        sheetIndex: number,
+        tableIndex: number,
+        colIndex: number,
+        workbook: WorkbookJSON
+    ): CellUpdate[] {
+        const updates: CellUpdate[] = [];
+
+        const sheet = workbook.sheets[sheetIndex];
+        if (!sheet) return updates;
+
+        const table = sheet.tables[tableIndex];
+        if (!table) return updates;
+
+        const formula = this.getFormulaForTable(table, colIndex);
+        if (!formula) return updates;
+
+        for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
+            const newValue = this._evaluateFormulaForRow(formula, table, rowIndex, workbook);
+
+            updates.push({
+                sheetIndex,
+                tableIndex,
+                rowIndex,
+                colIndex,
+                value: newValue
+            });
+        }
+
+        return updates;
+    }
+
+    /**
+     * Evaluate a formula for a specific row.
+     */
+    private _evaluateFormulaForRow(
+        formula: FormulaDefinition,
+        table: TableJSON,
+        rowIndex: number,
+        workbook: WorkbookJSON
+    ): string {
+        const headers = table.headers || [];
+        const rowData = formulaEvaluator.buildRowData(headers, table.rows[rowIndex]);
+
+        if (formula.type === 'arithmetic') {
+            const result = formulaEvaluator.evaluateArithmeticFormula(formula, rowData);
+            return result.value;
+        } else if (formula.type === 'lookup') {
+            // Get the local join key value for lookup
+            const localKeyValue = rowData[formula.joinKeyLocal] || '';
+            const result = formulaEvaluator.evaluateLookup(formula, localKeyValue, workbook);
+            return result.value;
+        }
+
+        return formulaEvaluator.NA_VALUE;
+    }
+
+    /**
+     * Get formula for a specific table and column.
+     */
+    getFormulaForTable(table: TableJSON, colIndex: number): FormulaDefinition | null {
+        const formulas = this.getFormulasFromTable(table);
+        if (!formulas) return null;
+        return formulas[colIndex.toString()] ?? null;
+    }
 
     /**
      * Get columns that depend on a source column change.
