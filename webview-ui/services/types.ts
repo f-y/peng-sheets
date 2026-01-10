@@ -16,7 +16,14 @@ export type {
     ColumnFormat,
     NumberFormat,
     ValidationRule,
-    EditorConfig
+    EditorConfig,
+    // Formula types (Computed Columns)
+    FormulaDefinition,
+    FormulaMetadata,
+    FormulaFunctionType,
+    ArithmeticFormula,
+    LookupFormula,
+    TableIdentity
 } from '../../src/editor/types';
 
 // VSCode API interface (specific to webview context)
