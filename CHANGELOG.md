@@ -12,6 +12,9 @@ All notable changes to the "PengSheets" extension will be documented in this fil
 - Add Selection/Range API mock for comprehensive JSDOM testing of contenteditable behavior.
 - Add "Delete Pane" button (×) to empty split-view panes with improved empty state UI.
 
+### Improved
+- Significantly improved startup speed by replacing Pyodide with native WASM integration.
+
 ## [1.0.3] - 2026-01-07
 
 ### Fixed
