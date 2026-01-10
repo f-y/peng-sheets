@@ -59,22 +59,22 @@ models = table.to_models(FeatureComparison)
 
 # Tables
 
-## Test Sheet
+## MyTestSheet
 
 | 列名1 | 列名2 | 列名3 |
 | :---: | --- | --- |
+| a | 1 | 2 |
+| a | 1 | 2 |
+| a | 1 | 2 |
 | Center |  |  |
-| a | 1 | 2 |
-| a | 1 | 2 |
-| a | 1 | 2 |
 
-<!-- md-spreadsheet-table-metadata: {"filters": {"1": []}, "column_widths": {"1": 172, "2": 238}, "columns": {"1": {"format": {"numberFormat": {"type": "percent", "decimals": 0}}}, "2": {"format": {"numberFormat": {"type": "number", "decimals": 2}}}, "0": {"format": null}}} -->
+<!-- md-spreadsheet-table-metadata: {"filters": {"1": []}, "column_widths": {"1": 172, "2": 238}, "columns": {"0": {"format": null}, "1": {"format": {"numberFormat": {"type": "percent", "decimals": 0}}}, "2": {"format": {"numberFormat": {"type": "number", "decimals": 2}, "wordWrap": true}}}} -->
 
 ### New Table 2
 
 | 列名1 | 列名2 | 列名3 |
 | --- | --- | --- |
-|  |  |  |
+|  | aaaaa<br>aaaaa<br>aaaaa |  |
 
 <!-- md-spreadsheet-table-metadata: {"columns": {"1": {"width": 181}}} -->
 
@@ -82,7 +82,8 @@ models = table.to_models(FeatureComparison)
 
 | 列名1 | 列名2 | 新しい列 | 列名3 |
 | --- | --- | --- | --- |
-|  | Yes<br> |  | 2025-12-02 |
+|  | Yes |  | 2025-12-16 |
+|  | a |  | a |
 
 <!-- md-spreadsheet-table-metadata: {"validation": {"1": {"type": "list", "values": ["Yes", "No"]}, "3": {"type": "date"}}} -->
 
@@ -94,7 +95,7 @@ models = table.to_models(FeatureComparison)
 
 <!-- md-spreadsheet-table-metadata: {"columns": {"0": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}}}} -->
 
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [58.908424908424905, 41.09157509157509], "children": [{"type": "pane", "id": "root", "tables": [1, 0], "activeTableIndex": 1}, {"type": "split", "id": "HY2l0BqxRiRDXNbOTBiCc", "direction": "horizontal", "sizes": [68.80570409982175, 31.19429590017825], "children": [{"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2], "activeTableIndex": 0}, {"type": "pane", "id": "mzStJk31RtqOOSBWqobDQ", "tables": [3], "activeTableIndex": 0}]}]}} -->
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "split", "id": "VuoSt3UnGMVrGIVe_E-TL", "direction": "vertical", "sizes": [28.617419617419614, 71.38258038258039], "children": [{"type": "pane", "id": "root", "tables": [0, 1], "activeTableIndex": 1}, {"type": "split", "id": "HY2l0BqxRiRDXNbOTBiCc", "direction": "horizontal", "sizes": [39.764851524333295, 60.235148475666705], "children": [{"type": "pane", "id": "16WWCFS7JS3nD_iBtlzsO", "tables": [2], "activeTableIndex": 0}, {"type": "pane", "id": "mzStJk31RtqOOSBWqobDQ", "tables": [3], "activeTableIndex": 0}]}]}} -->
 
 ## Comparison
 
@@ -112,7 +113,7 @@ Markdown Spreadsheet Suite と一般的なスプレッドシート（Excel）の
 | **Automation** | VBA / Macros | Python Scripting | `uv` エコシステムやPandasを直接活用可能。 |
 | **Version Control** | Difficult (Binary) | Native (Git) | PRレビューが可能。コンフリクト解消も容易。 |
 
-<!-- md-spreadsheet-table-metadata: {"column_widths": {"3": 463, "2": 170}} -->
+<!-- md-spreadsheet-table-metadata: {"column_widths": {"2": 170, "3": 463}} -->
 
 ### Keyboard Shortcuts
 
@@ -169,10 +170,12 @@ Excelユーザーが直感的に操作できるキーボードショートカッ
 | --- | --- | --- | --- | --- | --- |
 | 2024-02-01 | US-North | Enterprise | 1 | $1,500 | $1,500 |
 | 2024-01-16 | JP-West | Pro License | 2 | $300 | $600 |
-| 2024-03-05 | JP-East | Support Add-on | 3 | $50 | $150 |
+| 2026-01-09 | JP-East | Support Add-on | 3 | $50 | $150 |
 | 2024-01-15 | JP-East | Standard License | 5 | $100 | $500 |
 | 2024-03-20 | US-West | Pro License | 5 | $300 | $1,500 |
 | 2024-02-10 | EU-Central | Standard License | 10 | $100 | $1,000 |
+
+<!-- md-spreadsheet-table-metadata: {"validation": {"0": {"type": "date"}}} -->
 
 ### Q2 Forecast
 
