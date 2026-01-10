@@ -324,18 +324,25 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 allUpdates.push(...updates);
             }
 
-            // Apply updates as a batch (each update triggers a range edit)
+            // Apply updates as a batch for atomic undo/redo
             if (allUpdates.length > 0) {
-                for (const update of allUpdates) {
-                    this.spreadsheetService.updateRange(
-                        update.sheetIndex,
-                        update.tableIndex,
-                        update.rowIndex,
-                        update.rowIndex,
-                        update.colIndex,
-                        update.colIndex,
-                        update.value
-                    );
+                // Start batch to collect all formula updates into single undo entry
+                this.spreadsheetService.startBatch();
+                try {
+                    for (const update of allUpdates) {
+                        this.spreadsheetService.updateRange(
+                            update.sheetIndex,
+                            update.tableIndex,
+                            update.rowIndex,
+                            update.rowIndex,
+                            update.colIndex,
+                            update.colIndex,
+                            update.value
+                        );
+                    }
+                } finally {
+                    // End batch - sends single message for all formula updates
+                    this.spreadsheetService.endBatch();
                 }
             }
         }).catch(() => {
