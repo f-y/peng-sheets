@@ -4,6 +4,8 @@ All notable changes to the "PengSheets" extension will be documented in this fil
 
 ## [Unreleased]
 
+### Fixed
+- Fix context menu and add-tab dropdown being clipped when displayed near viewport edges.
 ## [1.0.4] - 2026-01-10
 
 ### Fixed

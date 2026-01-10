@@ -10,8 +10,8 @@
  * - ss-delete-col: { index }
  * - ss-menu-close: {}
  */
-import { LitElement, html, css, unsafeCSS } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { LitElement, html, css, unsafeCSS, PropertyValues } from 'lit';
+import { customElement, property, state } from 'lit/decorators.js';
 import { t } from '../../utils/i18n';
 import sharedStyles from '../../styles/spreadsheet-shared.css?inline';
 
@@ -33,6 +33,14 @@ export class SSContextMenu extends LitElement {
     @property({ type: Boolean }) hasCopiedRows = false;
     @property({ type: Boolean }) hasCopiedColumns = false;
 
+    /** Adjusted X position after overflow check */
+    @state()
+    private _adjustedX: number | null = null;
+
+    /** Adjusted Y position after overflow check */
+    @state()
+    private _adjustedY: number | null = null;
+
     connectedCallback() {
         super.connectedCallback();
         // Close menu on outside click
@@ -42,6 +50,34 @@ export class SSContextMenu extends LitElement {
     disconnectedCallback() {
         super.disconnectedCallback();
         window.removeEventListener('click', this._handleOutsideClick);
+    }
+
+    protected updated(changedProperties: PropertyValues): void {
+        super.updated(changedProperties);
+
+        // Adjust position after render if position changed
+        if (changedProperties.has('x') || changedProperties.has('y') || changedProperties.has('menuType')) {
+            this._adjustedX = null;
+            this._adjustedY = null;
+            setTimeout(() => {
+                const menuEl = this.shadowRoot?.querySelector('.context-menu') as HTMLElement;
+                if (menuEl) {
+                    const rect = menuEl.getBoundingClientRect();
+                    const viewportWidth = window.innerWidth;
+                    const viewportHeight = window.innerHeight;
+
+                    // Adjust X if menu extends beyond right edge
+                    if (rect.right > viewportWidth) {
+                        this._adjustedX = this.x - rect.width;
+                    }
+
+                    // Adjust Y if menu extends below viewport
+                    if (rect.bottom > viewportHeight) {
+                        this._adjustedY = this.y - rect.height;
+                    }
+                }
+            }, 0);
+        }
     }
 
     private _handleOutsideClick = () => {
@@ -209,9 +245,12 @@ export class SSContextMenu extends LitElement {
     }
 
     render() {
+        const displayX = this._adjustedX ?? this.x;
+        const displayY = this._adjustedY ?? this.y;
+
         if (this.menuType === 'cell') {
             return html`
-                <div class="context-menu" style="left: ${this.x}px; top: ${this.y}px" @click="${this._stopPropagation}">
+                <div class="context-menu" style="left: ${displayX}px; top: ${displayY}px" @click="${this._stopPropagation}">
                     <div class="context-menu-item" @click="${this._handleCopy}">${t('copy')}</div>
                     <div class="context-menu-item" @click="${this._handleCut}">${t('cut')}</div>
                     <div class="context-menu-item" @click="${this._handlePaste}">${t('paste')}</div>
@@ -219,12 +258,12 @@ export class SSContextMenu extends LitElement {
             `;
         } else if (this.menuType === 'row') {
             return html`
-                <div class="context-menu" style="left: ${this.x}px; top: ${this.y}px" @click="${this._stopPropagation}">
+                <div class="context-menu" style="left: ${displayX}px; top: ${displayY}px" @click="${this._stopPropagation}">
                     <div class="context-menu-item" @click="${this._handleInsertAbove}">${t('insertRowAbove')}</div>
                     <div class="context-menu-item" @click="${this._handleInsertBelow}">${t('insertRowBelow')}</div>
                     <div class="context-menu-item" @click="${this._handleDeleteRow}">${t('deleteRow')}</div>
                     ${this.hasCopiedRows
-                        ? html`
+                    ? html`
                               <div class="context-menu-separator"></div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedAbove}">
                                   ${t('insertCopiedRowsAbove')}
@@ -233,17 +272,17 @@ export class SSContextMenu extends LitElement {
                                   ${t('insertCopiedRowsBelow')}
                               </div>
                           `
-                        : ''}
+                    : ''}
                 </div>
             `;
         } else {
             return html`
-                <div class="context-menu" style="left: ${this.x}px; top: ${this.y}px" @click="${this._stopPropagation}">
+                <div class="context-menu" style="left: ${displayX}px; top: ${displayY}px" @click="${this._stopPropagation}">
                     <div class="context-menu-item" @click="${this._handleInsertLeft}">${t('insertColLeft')}</div>
                     <div class="context-menu-item" @click="${this._handleInsertRight}">${t('insertColRight')}</div>
                     <div class="context-menu-item" @click="${this._handleDeleteCol}">${t('deleteCol')}</div>
                     ${this.hasCopiedColumns
-                        ? html`
+                    ? html`
                               <div class="context-menu-separator"></div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedLeft}">
                                   ${t('insertCopiedColsLeft')}
@@ -252,7 +291,7 @@ export class SSContextMenu extends LitElement {
                                   ${t('insertCopiedColsRight')}
                               </div>
                           `
-                        : ''}
+                    : ''}
                     <div class="context-menu-separator"></div>
                     <div class="context-menu-item" @click="${this._handleDataValidation}">${t('dataValidation')}</div>
                 </div>

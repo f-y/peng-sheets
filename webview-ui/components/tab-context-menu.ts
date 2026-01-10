@@ -36,20 +36,32 @@ export class TabContextMenu extends LitElement {
     @state()
     private _adjustedY: number | null = null;
 
+    /** Adjusted X position after overflow check */
+    @state()
+    private _adjustedX: number | null = null;
+
     protected updated(changedProperties: PropertyValues): void {
         super.updated(changedProperties);
 
         // Adjust position after render if menu opened or position changed
-        if (this.open && (changedProperties.has('open') || changedProperties.has('y'))) {
+        if (this.open && (changedProperties.has('open') || changedProperties.has('x') || changedProperties.has('y'))) {
             this._adjustedY = null; // Reset on new open/position
+            this._adjustedX = null;
             setTimeout(() => {
                 const menuEl = this.shadowRoot?.querySelector('.context-menu') as HTMLElement;
                 if (menuEl) {
                     const rect = menuEl.getBoundingClientRect();
                     const viewportHeight = window.innerHeight;
+                    const viewportWidth = window.innerWidth;
+
+                    // Adjust Y if menu extends below viewport
                     if (rect.bottom > viewportHeight) {
-                        // Menu extends below viewport, reposition above click point
                         this._adjustedY = this.y - rect.height;
+                    }
+
+                    // Adjust X if menu extends beyond right edge
+                    if (rect.right > viewportWidth) {
+                        this._adjustedX = this.x - rect.width;
                     }
                 }
             }, 0);
@@ -58,6 +70,7 @@ export class TabContextMenu extends LitElement {
         // Reset adjusted position when closed
         if (!this.open && changedProperties.has('open')) {
             this._adjustedY = null;
+            this._adjustedX = null;
         }
     }
 
@@ -78,11 +91,12 @@ export class TabContextMenu extends LitElement {
         if (!this.open) return nothing;
 
         const displayY = this._adjustedY ?? this.y;
+        const displayX = this._adjustedX ?? this.x;
 
         return html`
-            <div class="context-menu" style="top: ${displayY}px; left: ${this.x}px;">
+            <div class="context-menu" style="top: ${displayY}px; left: ${displayX}px;">
                 ${this.tabType === 'sheet'
-                    ? html`
+                ? html`
                           <div class="context-menu-item" @click="${() => this._dispatchAction('rename')}">
                               ${t('renameSheet')}
                           </div>
@@ -90,7 +104,7 @@ export class TabContextMenu extends LitElement {
                               ${t('deleteSheet')}
                           </div>
                       `
-                    : html`
+                : html`
                           <div class="context-menu-item" @click="${() => this._dispatchAction('rename')}">
                               ${t('renameDocument')}
                           </div>
