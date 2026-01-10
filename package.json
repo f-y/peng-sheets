@@ -183,9 +183,7 @@
     "scripts": {
         "vscode:prepublish": "npm run compile",
         "compile": "npm run build:webview && tsc -p ./",
-        "generate:types": "node scripts/generate-ts-types.js",
-        "build:python": "uv run --python 3.12 python python-modules/scripts/build_wheel.py",
-        "build:webview": "npm run generate:types && vite build",
+        "build:webview": "vite build",
         "dev": "vite",
         "watch": "tsc -watch -p ./",
         "pretest": "npm run compile && npm run lint",
@@ -223,7 +221,6 @@
         "eslint-plugin-prettier": "^5.5.4",
         "glob": "^13.0.0",
         "jsdom": "^27.3.0",
-        "json-schema-to-typescript": "^15.0.4",
         "lit": "^3.3.1",
         "marked": "^17.0.1",
         "nanoid": "^5.1.6",
