@@ -441,8 +441,14 @@ export class GlobalEventController implements ReactiveController {
                 this.host.markdownInput = message.content;
                 // Only parse if service is initialized, otherwise content will be parsed in firstUpdated
                 if (this.host.spreadsheetService.isInitialized) {
-                    await this.host._parseWorkbook();
-                    this.host.spreadsheetService.notifyUpdateReceived();
+                    // Skip re-parse if this is a response to our own change (isSyncing)
+                    // The optimistic update already reflects the correct state
+                    if (this.host.spreadsheetService.isSyncing) {
+                        this.host.spreadsheetService.notifyUpdateReceived();
+                    } else {
+                        await this.host._parseWorkbook();
+                        this.host.spreadsheetService.notifyUpdateReceived();
+                    }
                 }
                 break;
             case 'configUpdate':

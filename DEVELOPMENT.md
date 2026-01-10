@@ -84,6 +84,55 @@ vsce package
 
 ---
 
+## 6.5 Optimistic Update and isSyncing Pattern
+
+When the user edits cells (delete, paste, type, etc.), the webview uses **Optimistic Update** to provide immediate feedback:
+
+1. **UI updates immediately** (e.g., `table.rows[r][c] = ''`)
+2. Change event is dispatched (e.g., `range-edit`)
+3. `SpreadsheetService` sends update to VS Code extension
+4. VS Code updates the document and sends new content back
+
+### The Problem
+
+Without proper handling, the VS Code response triggers `_parseWorkbook()`, which:
+- Re-parses the entire workbook from markdown
+- Replaces `this.workbook` with the parsed data
+- This can cause **visual flicker** because the re-parse momentarily shows data that doesn't match the optimistic update
+
+### The Solution: `isSyncing` Flag
+
+The `SpreadsheetService` exposes an `isSyncing` getter:
+
+```typescript
+// spreadsheet-service.ts
+public get isSyncing(): boolean {
+    return this._isSyncing;
+}
+```
+
+When `isSyncing` is `true`, the service is waiting for VS Code's response to our own change.
+
+In `GlobalEventController._handleMessage`, we skip `_parseWorkbook()` during sync:
+
+```typescript
+if (this.host.spreadsheetService.isSyncing) {
+    // Skip re-parse - optimistic update is already correct
+    this.host.spreadsheetService.notifyUpdateReceived();
+} else {
+    await this.host._parseWorkbook();
+    this.host.spreadsheetService.notifyUpdateReceived();
+}
+```
+
+### When to Use This Pattern
+
+Use `isSyncing` check when:
+- Receiving external updates that might conflict with optimistic UI changes
+- Implementing new edit operations that update UI before server confirmation
+
+---
+
 ## 7. For Maintainers
 
 This section describes the release procedure for publishing a new version.

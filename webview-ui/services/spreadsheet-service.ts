@@ -39,6 +39,14 @@ export class SpreadsheetService {
         return this._initialized;
     }
 
+    /**
+     * Returns true if waiting for a response from VS Code extension.
+     * When true, incoming 'update' messages are responses to our own changes.
+     */
+    public get isSyncing(): boolean {
+        return this._isSyncing;
+    }
+
     // Queue management for compatibility with existing async patterns
     private _enqueueRequest(task: () => Promise<void>) {
         this._requestQueue.push(task);
