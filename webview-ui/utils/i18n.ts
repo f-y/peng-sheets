@@ -113,7 +113,8 @@ const translations = {
         joinKey: 'Join Key',
         returnColumn: 'Return Column',
         preview: 'Preview',
-        remove: 'Remove'
+        remove: 'Remove',
+        brokenReference: 'Warning: Some references are broken. The referenced table or column may have been deleted.'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -229,7 +230,8 @@ const translations = {
         joinKey: '結合キー',
         returnColumn: '取得列',
         preview: 'プレビュー',
-        remove: '削除'
+        remove: '削除',
+        brokenReference: '警告：参照が壊れています。参照先のテーブルまたは列が削除された可能性があります。'
     }
 };
 

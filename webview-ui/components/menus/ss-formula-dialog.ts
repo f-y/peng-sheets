@@ -254,6 +254,16 @@ export class SSFormulaDialog extends LitElement {
             .preview-item .value.error {
                 color: var(--vscode-inputValidation-errorForeground);
             }
+
+            .warning-alert {
+                padding: 8px 12px;
+                margin-bottom: 12px;
+                background-color: var(--vscode-inputValidation-warningBackground, rgba(255, 200, 0, 0.1));
+                border: 1px solid var(--vscode-inputValidation-warningBorder, #ccaa00);
+                border-radius: 4px;
+                color: var(--vscode-inputValidation-warningForeground, var(--vscode-foreground));
+                font-size: 12px;
+            }
         `,
         unsafeCSS(sharedStyles)
     ];
@@ -279,12 +289,17 @@ export class SSFormulaDialog extends LitElement {
     @state() private _joinKeyRemote = '';
     @state() private _targetField = '';
 
+    // Broken reference warning
+    @state() private _brokenReferenceMessage: string | null = null;
+
     connectedCallback() {
         super.connectedCallback();
         this._initFromCurrentFormula();
     }
 
     private _initFromCurrentFormula() {
+        this._brokenReferenceMessage = null;
+
         if (!this.currentFormula) {
             this._mode = 'calculation';
             this._functionType = 'expression';
@@ -299,18 +314,52 @@ export class SSFormulaDialog extends LitElement {
             this._expression = this.currentFormula.expression ?? '';
             this._selectedColumns = new Set(this.currentFormula.columns ?? []);
             this._columnSource = this.currentFormula.sourceTableId !== undefined ? 'other' : 'this';
+
+            // Validate source table exists for cross-table aggregates
+            if (this.currentFormula.sourceTableId !== undefined) {
+                const found = this._findSourceTableLocation(this.currentFormula.sourceTableId);
+                if (!found) {
+                    this._brokenReferenceMessage = t('brokenReference');
+                }
+            }
+
+            // Validate selected columns still exist
+            const availableHeaders = this._columnSource === 'this'
+                ? this.headers
+                : this._getSourceTableHeaders();
+            const missingCols = Array.from(this._selectedColumns).filter(
+                (col) => !availableHeaders.includes(col)
+            );
+            if (missingCols.length > 0) {
+                this._brokenReferenceMessage = t('brokenReference');
+            }
         } else if (this.currentFormula.type === 'lookup') {
             this._mode = 'lookup';
             this._joinKeyLocal = this.currentFormula.joinKeyLocal;
             this._joinKeyRemote = this.currentFormula.joinKeyRemote;
             this._targetField = this.currentFormula.targetField;
+
             // Find source table location
-            this._findSourceTableLocation(this.currentFormula.sourceTableId);
+            const found = this._findSourceTableLocation(this.currentFormula.sourceTableId);
+            if (!found) {
+                this._brokenReferenceMessage = t('brokenReference');
+            } else {
+                // Validate remote columns exist
+                const remoteHeaders = this._getSourceTableHeaders();
+                if (!remoteHeaders.includes(this._joinKeyRemote) ||
+                    !remoteHeaders.includes(this._targetField)) {
+                    this._brokenReferenceMessage = t('brokenReference');
+                }
+                // Validate local column exists
+                if (!this.headers.includes(this._joinKeyLocal)) {
+                    this._brokenReferenceMessage = t('brokenReference');
+                }
+            }
         }
     }
 
-    private _findSourceTableLocation(tableId: number) {
-        if (!this.workbook) return;
+    private _findSourceTableLocation(tableId: number): boolean {
+        if (!this.workbook) return false;
         for (let si = 0; si < this.workbook.sheets.length; si++) {
             const sheet = this.workbook.sheets[si];
             for (let ti = 0; ti < sheet.tables.length; ti++) {
@@ -319,10 +368,11 @@ export class SSFormulaDialog extends LitElement {
                 if (meta?.id === tableId) {
                     this._sourceSheetIndex = si;
                     this._sourceTableIndex = ti;
-                    return;
+                    return true;
                 }
             }
         }
+        return false;
     }
 
     private _handleModeChange(mode: FormulaMode) {
@@ -722,6 +772,10 @@ export class SSFormulaDialog extends LitElement {
                     </div>
 
                     <div class="dialog-body">
+                        ${this._brokenReferenceMessage
+                ? html`<div class="warning-alert">${this._brokenReferenceMessage}</div>`
+                : ''}
+
                         <div class="form-group">
                             <label class="form-label">${t('formulaType')}</label>
                             <div class="radio-group">
