@@ -47,8 +47,7 @@ import {
 
 // Register the VS Code Design System components
 import { SpreadsheetService } from './services/spreadsheet-service';
-import { IVisualMetadata } from './services/types';
-import { Validation } from './types/metadata';
+import { IVisualMetadata, ValidationMetadata } from './services/types';
 import { ClipboardStore } from './stores/clipboard-store';
 
 // Register the VS Code Design System components
@@ -63,8 +62,6 @@ declare global {
     }
 }
 
-// declare const loadPyodide: any; // Moved to service usage
-
 // Acquire VS Code API
 const vscode = acquireVsCodeApi();
 
@@ -74,7 +71,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     public readonly spreadsheetService = new SpreadsheetService(vscode);
     private _globalEventController = new GlobalEventController(this);
-    // Promise for Pyodide initialization, started early in connectedCallback
+    // Promise for service initialization, started early in connectedCallback
     private _initPromise: Promise<unknown> | null = null;
 
     @state()
@@ -189,7 +186,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 const currentVisual = ((table.metadata as Record<string, unknown>)?.visual as IVisualMetadata) || {};
 
                 // Ensure validation object exists and matches Type
-                const currentValidation: Validation = currentVisual.validation || {};
+                const currentValidation: ValidationMetadata = currentVisual.validation || {};
 
                 if (rule === null) {
                     // Remove validation for this column
@@ -547,7 +544,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     connectedCallback() {
         super.connectedCallback();
-        // Start Pyodide initialization immediately for faster startup
+        // Start service initialization immediately for faster startup
         // Don't await - let it run in parallel with component mounting
         this._initPromise = this.spreadsheetService.initialize();
 
@@ -574,7 +571,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             console.log('Spreadsheet Service initialized.');
             // Event listeners are now managed by GlobalEventController
 
-            console.log('Pyodide initialized. Parsing initial content...');
+            console.log('Service initialized. Parsing initial content...');
             await this._parseWorkbook();
 
             // Remove the loading indicator now that initialization is complete
@@ -584,14 +581,14 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 loader.remove();
             }
         } catch (e: unknown) {
-            console.error('Error initializing Pyodide:', e);
+            console.error('Error initializing service:', e);
             let errorMessage = String(e);
             if (e instanceof Error) {
                 errorMessage = e.message;
             } else if (typeof e === 'object' && e !== null) {
                 errorMessage = JSON.stringify(e, Object.getOwnPropertyNames(e));
             }
-            this.output = `Error initializing Pyodide: ${errorMessage}`;
+            this.output = `Error initializing service: ${errorMessage}`;
         }
     }
 

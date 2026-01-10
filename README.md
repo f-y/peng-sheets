@@ -9,14 +9,14 @@
 </p>
 
 <p align="center">
-  <a href="https://marketplace.visualstudio.com/items?itemName=f-y.peng-sheets">
-    <img src="https://img.shields.io/visual-studio-marketplace/v/f-y.peng-sheets?style=flat-square&label=version" alt="Version">
+  <a href="https://open-vsx.org/extension/f-y/peng-sheets">
+    <img src="https://img.shields.io/open-vsx/v/f-y/peng-sheets?style=flat-square&label=version" alt="Version">
   </a>
   <a href="https://marketplace.visualstudio.com/items?itemName=f-y.peng-sheets">
-    <img src="https://img.shields.io/visual-studio-marketplace/i/f-y.peng-sheets?style=flat-square&label=installs" alt="Installs">
+    <img src="https://img.shields.io/visual-studio-marketplace/i/f-y.peng-sheets?style=flat-square&label=VS%20Marketplace" alt="VS Marketplace Installs">
   </a>
-  <a href="https://marketplace.visualstudio.com/items?itemName=f-y.peng-sheets">
-    <img src="https://img.shields.io/visual-studio-marketplace/r/f-y.peng-sheets?style=flat-square&label=rating" alt="Rating">
+  <a href="https://open-vsx.org/extension/f-y/peng-sheets">
+    <img src="https://img.shields.io/open-vsx/dt/f-y/peng-sheets?style=flat-square&label=Open%20VSX" alt="Open VSX Downloads">
   </a>
   <a href="https://github.com/f-y/peng-sheets/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="License">

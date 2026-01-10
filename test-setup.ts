@@ -23,11 +23,3 @@ const vscode = {
 };
 (global as any).acquireVsCodeApi = () => vscode;
 (global as any).vscode = vscode; // Expose for assertions
-
-// Mock Pyodide
-(global as any).loadPyodide = vi.fn().mockResolvedValue({
-    loadPackage: vi.fn(),
-    pyimport: vi.fn().mockReturnValue({ install: vi.fn() }),
-    runPythonAsync: vi.fn().mockResolvedValue('{}'),
-    globals: new Map()
-});

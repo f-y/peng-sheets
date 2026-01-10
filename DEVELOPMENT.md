@@ -4,54 +4,30 @@
 > [!NOTE] 
 > Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before starting development.
 
-This document outlines the development practices for the `PengSheets` extension, covering the Extension Host (Node.js), Webview (Lit), and the Python Kernel (Pyodide).
+This document outlines the development practices for the `PengSheets` extension, covering the Extension Host (Node.js) and Webview (Lit).
 
 ## 1. Architecture Overview
 
 ```mermaid
 graph TD
     EXT[Extension Host (Node)] <-->|Messages| WB[Webview (HTML/Lit)]
-    WB <-->|Pyodide Bridge| WASM[Pyodide (WASM)]
-    WASM -->|Loads| WHL[md_spreadsheet_editor.whl (Python)]
+    WB <-->|TypeScript Editor| WASM[md-spreadsheet-parser (WASM)]
 ```
 
 -   **Extension Host**: Handles file I/O, VS Code API, and Undo/Redo stack.
--   **Webview**: Renders the UI and hosts the Pyodide runtime.
--   **Pyodide**: Executes the core business logic provided by the `python-modules` package.
+-   **Webview**: Renders the UI and hosts the TypeScript editor logic.
+-   **md-spreadsheet-parser**: NPM package providing Markdown table parsing via WASM.
 
 ## 2. Directory Structure
 
 -   `src/`: Extension Host (Node.js) code.
+-   `src/editor/`: TypeScript editor services (ported from Python).
 -   `webview-ui/`: Frontend (Lit) code.
--   `python-modules/`: Core Python business logic (Separate project).
--   `resources/pyodide_pkgs/`: Directory where Python wheels are bundled.
+-   `webview-ui/tests/`: Vitest tests for webview and editor.
 
-## 3. Python Integration & Workflow
+## 3. Parser Package
 
-The extension runs Python logic locally via Pyodide.
-
-### Architecture
--   **Bundled Pyodide**: We bundle a local version of Pyodide for offline support and speed.
--   **Wheels**: The core logic is defined in `python-modules/` and built into a `.whl` file.
-
-### Modifying Python Logic
-**CRITICAL**: Pyodide caches packages by version. To update Python logic, you **MUST bump the version**.
-
-1.  **Modify & Test**:
-    ```bash
-    cd python-modules
-    # Edit code...
-    uv run pytest
-    ```
-2.  **Bump Version**:
-    Update `version` in `python-modules/pyproject.toml`.
-3.  **Build Wheel**:
-    ```bash
-    uv build
-    ```
-4.  **Install Wheel** (Copy to Extension):
-    Copy the generated `.whl` file from `python-modules/dist/` to `webview-ui/resources/pyodide_pkgs/`.
-    *(Ensure you delete old versions of the wheel to avoid confusion)*.
+The extension uses the `md-spreadsheet-parser` NPM package for Markdown parsing. This package is installed as a dependency and bundled with the extension.
 
 ## 4. Frontend Development (Webview)
 
@@ -60,7 +36,7 @@ The extension runs Python logic locally via Pyodide.
     ```bash
     npm run test:webview
     ```
-    Test UI components in isolation (`webview-ui/tests/`).
+    Test UI components and editor services in isolation (`webview-ui/tests/`).
 
 ### Internationalization (i18n)
 -   Use `t('key')`.
@@ -87,7 +63,6 @@ To package the full extension (`.vsix`):
 ```bash
 vsce package
 ```
-Ensure all Python wheels are correctly placed in `resources/pyodide_pkgs/` before packaging.
 
 ### Publishing to Marketplace
 
@@ -106,3 +81,105 @@ Ensure all Python wheels are correctly placed in `resources/pyodide_pkgs/` befor
     # Requires 'ovsx' CLI: npm install -g ovsx
     ovsx publish peng-sheets-x.x.x.vsix -p <OPEN_VSX_TOKEN>
     ```
+
+---
+
+## 7. For Maintainers
+
+This section describes the release procedure for publishing a new version.
+
+### 7.1 Pre-Release Checklist
+
+- [ ] All changes are tested and working correctly.
+- [ ] All tests pass (`npm test` and `npm run test:webview`).
+- [ ] Extension packages successfully (`vsce package`).
+
+### 7.2 Update CHANGELOG.md
+
+1.  **Move `[Unreleased]` entries to the new version section**:
+    -   Change `## [Unreleased]` heading to `## [X.Y.Z] - YYYY-MM-DD`.
+    -   Add a new empty `## [Unreleased]` section above it.
+
+2.  **Categorize changes using these headings**:
+    -   `### Added` - New features.
+    -   `### Changed` - Changes in existing functionality.
+    -   `### Fixed` - Bug fixes.
+    -   `### Removed` - Removed features.
+    -   `### Improved` - Performance or UX improvements.
+
+3.  **Example**:
+    ```markdown
+    ## [Unreleased]
+
+    ## [1.0.4] - 2026-01-15
+
+    ### Added
+    - New feature description.
+
+    ### Fixed
+    - Bug fix description.
+    ```
+
+### 7.3 Version Bump & Git Tag
+
+1.  **Bump version in `package.json`**:
+    ```bash
+    npm version patch  # or minor / major
+    ```
+    This automatically:
+    -   Updates `version` in `package.json`.
+    -   Creates a git commit with message `vX.Y.Z`.
+    -   Creates a git tag `vX.Y.Z`.
+
+2.  **Push the commit and tag**:
+    ```bash
+    git push origin main
+    git push origin vX.Y.Z
+    ```
+
+### 7.4 Create GitHub Release
+
+1.  Go to the repository's **Releases** page on GitHub.
+2.  Click **"Draft a new release"**.
+3.  Select the tag `vX.Y.Z` you just pushed.
+4.  Set the release title to `vX.Y.Z` (e.g., `v1.0.4`).
+5.  Copy the relevant section from `CHANGELOG.md` into the release description.
+6.  Attach the `.vsix` file (`peng-sheets-X.Y.Z.vsix`) as a release asset.
+7.  Click **"Publish release"**.
+
+### 7.5 Publish Extension
+
+After creating the GitHub release, publish the extension to marketplaces.
+
+#### Using the Publish Script (Recommended)
+
+1.  **Set up `.env`** (in project root or `peng-sheets/`):
+    ```bash
+    OPEN_VSX_TOKEN=your_open_vsx_token_here
+    ```
+
+2.  **Run the publish script**:
+    ```bash
+    node scripts/publish.mjs
+    ```
+
+**Options**:
+-   `--vsce-only` - Publish to VS Code Marketplace only.
+-   `--ovsx-only` - Publish to Open VSX Registry only.
+-   `--dry-run` - Preview what would be done without publishing.
+
+#### Manual Publishing
+
+```bash
+# VS Code Marketplace
+vsce publish
+
+# Open VSX Registry
+ovsx publish peng-sheets-X.Y.Z.vsix -p <OPEN_VSX_TOKEN>
+```
+
+### 7.6 Post-Release Verification
+
+- [ ] Verify the extension is visible on [VS Code Marketplace](https://marketplace.visualstudio.com/).
+- [ ] Verify the GitHub Release page shows the correct assets and notes.
+- [ ] Install from marketplace in a fresh VS Code instance to confirm it works.

@@ -20,14 +20,6 @@ vi.stubGlobal('acquireVsCodeApi', () => ({
     setState: () => {}
 }));
 
-// Mock Pyodide (minimal, won't be called in this unit test)
-vi.stubGlobal('loadPyodide', async () => ({
-    loadPackage: async () => {},
-    pyimport: () => ({ install: async () => {} }),
-    globals: { set: () => {}, get: () => {} },
-    runPythonAsync: async () => 'null'
-}));
-
 describe('Sheet Add Selection Bug - Regression', () => {
     let el: MdSpreadsheetEditor;
 

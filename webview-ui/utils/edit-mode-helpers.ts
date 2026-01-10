@@ -121,6 +121,38 @@ export function handleBackspaceAtZWS(selection: Selection | null): boolean {
 }
 
 /**
+ * Handles deletion of selected content in contenteditable elements.
+ * This is used for both Delete and Backspace keys when there is a text selection.
+ *
+ * Browser's native contenteditable handling may fail when selection spans
+ * across <br> elements (newlines). This function explicitly calls
+ * Range.deleteContents() to ensure proper deletion.
+ *
+ * @param selection - The current selection object
+ * @returns true if content was deleted (caller should preventDefault)
+ */
+export function handleSelectionDeletion(selection: Selection | null): boolean {
+    if (!selection || selection.rangeCount === 0) {
+        return false;
+    }
+
+    const range = selection.getRangeAt(0);
+
+    // Only handle non-collapsed selections (text is actually selected)
+    if (range.collapsed) {
+        return false;
+    }
+
+    // Delete the selected content explicitly
+    range.deleteContents();
+
+    // Collapse the selection to the start (where cursor should be after deletion)
+    selection.collapseToStart();
+
+    return true;
+}
+
+/**
  * Normalizes cell content by stripping trailing newlines and handling
  * empty content cases.
  *

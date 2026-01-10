@@ -3,7 +3,8 @@ import { SpreadsheetTable } from '../components/spreadsheet-table';
 import {
     getSelection as getEditSelection,
     insertLineBreakAtSelection,
-    handleBackspaceAtZWS
+    handleBackspaceAtZWS,
+    handleSelectionDeletion
 } from '../utils/edit-mode-helpers';
 import { isRealEnterKey } from '../utils/keyboard-utils';
 
@@ -267,14 +268,36 @@ export class KeyboardController implements ReactiveController {
                 this.host.selectionCtrl.selectionAnchorRow = this.host.selectionCtrl.selectedRow;
                 this.host.selectionCtrl.selectionAnchorCol = this.host.selectionCtrl.selectedCol;
             }
-        } else if (e.key === 'Backspace') {
-            // Handle Backspace at ZWS + BR boundary specially
-            const selection = getEditSelection(this.host.shadowRoot);
-            if (handleBackspaceAtZWS(selection)) {
+        } else if (e.key === 'Backspace' || e.key === 'Delete') {
+            // Handle Backspace/Delete with selection spanning newlines
+            // Browser's native contenteditable handling may fail with <br> elements
+            const root = this.host.viewShadowRoot || this.host.shadowRoot;
+            const selection = getEditSelection(root);
+
+            // First, check for selection that spans content (applies to both keys)
+            if (handleSelectionDeletion(selection)) {
+                e.preventDefault();
+
+                // Update trackedValue from the DOM after deletion
+                // Note: We do NOT dispatch an input event here because:
+                // 1. The DOM is already updated via deleteContents()
+                // 2. Dispatching input would trigger re-render from original data, causing flicker
+                // trackedValue update is sufficient for commit to work correctly
+                const editingCell = root?.querySelector('.cell.editing') as HTMLElement | null;
+                if (editingCell) {
+                    const newValue = this.host.getDOMTextFromElement(editingCell);
+                    this.host.editCtrl.trackedValue = newValue;
+                }
+                return;
+            }
+
+            // For Backspace only: handle ZWS + BR boundary specially
+            if (e.key === 'Backspace' && handleBackspaceAtZWS(selection)) {
                 e.preventDefault();
                 return;
             }
-            // Let browser handle normal Backspace
+
+            // Let browser handle normal single-character deletion
         } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
             // In edit mode: allow text selection and cursor movement within cell
 

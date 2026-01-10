@@ -14,7 +14,7 @@ const translations = {
         table: 'Table {0}',
         noTableSelected: 'No Table Selected',
         loading: 'Loading...',
-        initializing: 'Initializing Pyodide...',
+        initializing: 'Initializing...',
         newTable: 'New Table',
         insertRowAbove: 'Insert Row Above',
         insertRowBelow: 'Insert Row Below',
@@ -95,7 +95,9 @@ const translations = {
         insertCopiedRowsBelow: 'Insert Copied Row(s) Below',
         insertCopiedColsLeft: 'Insert Copied Column(s) Left',
         insertCopiedColsRight: 'Insert Copied Column(s) Right',
-        selectTable: 'Select Table'
+        selectTable: 'Select Table',
+        deletePane: 'Delete Pane',
+        emptyPaneHint: 'Use + to add a table, or drag one here'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -112,7 +114,7 @@ const translations = {
         table: 'テーブル {0}',
         noTableSelected: 'テーブルが選択されていません',
         loading: '読み込み中...',
-        initializing: 'Pyodideを初期化中...',
+        initializing: '初期化中...',
         newTable: '新規テーブル',
         insertRowAbove: '上に行を挿入',
         insertRowBelow: '下に行を挿入',
@@ -193,7 +195,9 @@ const translations = {
         cut: '切り取り',
         paste: '貼り付け',
         editTableDescription: 'このテーブルの説明を編集',
-        selectTable: 'テーブルを選択'
+        selectTable: 'テーブルを選択',
+        deletePane: 'ペインを削除',
+        emptyPaneHint: '+でテーブルを追加、またはドラッグで移動'
     }
 };
 

@@ -238,6 +238,9 @@ export class LayoutContainer extends LitElement {
                     composed: true
                 })
             );
+        } else if (type === 'delete-pane') {
+            // Delete an empty pane from the layout
+            newLayout = this._deletePaneFromLayout(this._currentLayout!, paneId);
         }
 
         if (newLayout && newLayout !== this._currentLayout) {
@@ -419,6 +422,41 @@ export class LayoutContainer extends LitElement {
                 layout: { ...root, children: newChildren },
                 removedTable: removedTableVal
             };
+        }
+    }
+
+    /**
+     * Delete a pane by ID from the layout.
+     * Used to remove empty panes (panes with no tables).
+     */
+    private _deletePaneFromLayout(root: LayoutNode, paneId: string): LayoutNode | null {
+        if (root.type === 'pane') {
+            // If this is the pane to delete, return null
+            if (root.id === paneId) {
+                return null;
+            }
+            return root;
+        } else {
+            // SplitNode: process children
+            const newChildren: LayoutNode[] = [];
+            for (const child of root.children) {
+                const result = this._deletePaneFromLayout(child, paneId);
+                if (result !== null) {
+                    newChildren.push(result);
+                }
+            }
+
+            // If no children left, remove this split node
+            if (newChildren.length === 0) {
+                return null;
+            }
+
+            // If only one child remains, collapse (lift up)
+            if (newChildren.length === 1) {
+                return newChildren[0];
+            }
+
+            return { ...root, children: newChildren };
         }
     }
 

@@ -4,6 +4,14 @@ All notable changes to the "PengSheets" extension will be documented in this fil
 
 ## [Unreleased]
 
+### Fixed
+- Fix multiline text deletion in edit mode: Delete/Backspace now correctly removes selected text spanning newlines in contenteditable cells.
+- Fix split-view layout corruption when deleting tables: Table indices in layout metadata are now properly updated after table deletion.
+
+### Added
+- Add Selection/Range API mock for comprehensive JSDOM testing of contenteditable behavior.
+- Add "Delete Pane" button (×) to empty split-view panes with improved empty state UI.
+
 ## [1.0.3] - 2026-01-07
 
 ### Fixed
