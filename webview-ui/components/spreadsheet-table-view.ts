@@ -368,6 +368,7 @@ export class SpreadsheetTableView extends LitElement {
                         .copyTop="${headerInCopyRange}"
                         .copyLeft="${headerCopyLeft}"
                         .copyRight="${headerCopyRight}"
+                        .isFormula="${this._hasFormula(c)}"
                         @ss-col-click="${(e: CustomEvent) => this._bubbleEvent('view-col-click', e.detail)}"
                         @ss-col-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-col-mousedown', e.detail)}"
                         @ss-col-dblclick="${(e: CustomEvent) => this._bubbleEvent('view-col-dblclick', e.detail)}"
@@ -644,5 +645,16 @@ export class SpreadsheetTableView extends LitElement {
         const dropMaxC = this.cellDropCol + srcWidth;
 
         return row >= dropMinR && row <= dropMaxR && col >= dropMinC && col <= dropMaxC;
+    }
+
+    /**
+     * Check if a column has a formula defined.
+     */
+    private _hasFormula(colIndex: number): boolean {
+        if (!this.table?.metadata) return false;
+        const visual = (this.table.metadata as Record<string, unknown>)?.visual as Record<string, unknown> | undefined;
+        if (!visual?.formulas) return false;
+        const formulas = visual.formulas as Record<string, unknown>;
+        return formulas[String(colIndex)] !== undefined;
     }
 }

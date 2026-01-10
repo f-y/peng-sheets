@@ -52,6 +52,7 @@ export class SSColumnHeader extends LitElement {
     @property({ type: Boolean }) isDragging = false;
     @property({ type: Boolean }) isDropTarget = false;
     @property({ type: Boolean }) isDropTargetEnd = false;
+    @property({ type: Boolean }) isFormula = false;
 
     // Copied range edge properties (for dashed border indicator)
     @property({ type: Boolean }) copyTop = false;
@@ -170,6 +171,9 @@ export class SSColumnHeader extends LitElement {
                     @blur="${this._onBlur}"
                     .textContent="${live(this.value)}"
                 ></span>
+                ${this.isFormula
+                ? html`<span class="formula-icon codicon codicon-symbol-operator" title="Formula column"></span>`
+                : ''}
                 <span
                     class="filter-icon codicon codicon-filter ${this.hasActiveFilter ? 'active' : ''}"
                     @click="${this._onFilterClick}"
