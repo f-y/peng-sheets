@@ -2,6 +2,11 @@
 
 All notable changes to the "PengSheets" extension will be documented in this file.
 
+## [1.0.6] - 2026-01-11
+
+### Fixed
+- Fix column names not saving when edited: The `updateCell` function now correctly handles header row edits (`rowIdx = -1`).
+
 ## [1.0.5] - 2026-01-11
 
 ### Fixed

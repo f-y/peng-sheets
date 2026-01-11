@@ -228,6 +228,17 @@ export function updateCell(
         }
         const targetTable = newTables[tableIdx];
 
+        // Handle header row edit (rowIdx = -1)
+        if (rowIdx === -1) {
+            const newHeaders = [...targetTable.headers];
+            if (colIdx < 0 || colIdx >= newHeaders.length) {
+                throw new Error('Invalid column index');
+            }
+            newHeaders[colIdx] = escapedValue;
+            newTables[tableIdx] = new Table({ ...targetTable, headers: newHeaders });
+            return new Sheet({ ...sheet, tables: newTables });
+        }
+
         // Ensure rows array has enough rows
         const newRows = [...targetTable.rows];
         while (newRows.length <= rowIdx) {
