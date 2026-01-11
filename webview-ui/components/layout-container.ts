@@ -36,18 +36,23 @@ export class LayoutContainer extends LitElement {
     private _currentLayout: LayoutNode | null = null;
 
     private _pendingNewTableTargetPaneId: string | null = null;
+    private _previousSheetIndex: number | null = null;
 
     willUpdate(changedProperties: PropertyValues) {
         if (changedProperties.has('layout') || changedProperties.has('tables')) {
-            this._initializeLayout();
+            // Detect if this is a sheet switch (sheetIndex changed)
+            const isSheetSwitch = this._previousSheetIndex !== null && this._previousSheetIndex !== this.sheetIndex;
+            this._initializeLayout(isSheetSwitch);
+            this._previousSheetIndex = this.sheetIndex;
         }
     }
 
-    private _initializeLayout() {
+    private _initializeLayout(isSheetSwitch: boolean = false) {
         if (this.layout) {
-            // Collect current activeTableIndex values before reconciliation
+            // Only collect local activeTableIndex values if NOT switching sheets
+            // When switching sheets, use file's saved values to restore state
             const localActiveIndices = new Map<string, number>();
-            if (this._currentLayout) {
+            if (!isSheetSwitch && this._currentLayout) {
                 this._traverse(this._currentLayout, (node) => {
                     if (node.type === 'pane') {
                         localActiveIndices.set(node.id, node.activeTableIndex);
@@ -58,7 +63,7 @@ export class LayoutContainer extends LitElement {
             // Reconcile layout with new data
             let newLayout = this._reconcileLayout(this.layout, this.tables.length);
 
-            // Restore local activeTableIndex values (they take precedence over file values)
+            // Restore local activeTableIndex values (only when not switching sheets)
             if (localActiveIndices.size > 0) {
                 newLayout = this._restoreActiveIndices(newLayout, localActiveIndices);
             }
