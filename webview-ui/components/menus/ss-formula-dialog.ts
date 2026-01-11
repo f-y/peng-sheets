@@ -22,7 +22,7 @@ import type {
 } from '../../services/types';
 import type { WorkbookJSON, TableJSON } from '../../types';
 import { evaluateArithmeticFormula, evaluateLookup, buildRowData, NA_VALUE } from '../../utils/formula-evaluator';
-
+import './ss-column-picker';
 type FormulaMode = 'calculation' | 'lookup';
 type ColumnSourceType = 'this' | 'other';
 
@@ -522,6 +522,10 @@ export class SSFormulaDialog extends LitElement {
         this._selectedColumns = newSet;
     }
 
+    private _handleColumnSelectionChange(e: CustomEvent<{ columns: string[] }>) {
+        this._selectedColumns = new Set(e.detail.columns);
+    }
+
     private _handleSourceSheetChange(e: Event) {
         const select = e.target as HTMLSelectElement;
         this._sourceSheetIndex = parseInt(select.value, 10);
@@ -664,20 +668,20 @@ export class SSFormulaDialog extends LitElement {
                 <div class="preview-title">${t('preview')}</div>
                 <div class="preview-values">
                     ${results.map(
-            (r) => html`
+                        (r) => html`
                             <span class="preview-item">
-                                <span class="row-label">Row ${r.rowNum}: </span>
+                                <span class="row-label">${t('previewRow', r.rowNum.toString())} </span>
                                 <span class="value ${r.isError ? 'error' : ''}">${r.value}</span>
                             </span>
                         `
-        )}
+                    )}
                     ${results.length === 0
-                ? html`<span class="preview-item"
+                        ? html`<span class="preview-item"
                               ><span class="value" style="color: var(--vscode-descriptionForeground)"
-                                  >No data</span
+                                  >${t('noData')}</span
                               ></span
                           >`
-                : ''}
+                        : ''}
                 </div>
             </div>
         `;
@@ -720,19 +724,13 @@ export class SSFormulaDialog extends LitElement {
     }
 
     private _getAvailableColumnsForCalculation(): string[] {
-        if (this._columnSource === 'this') {
-            return this.headers.filter((_, i) => i !== this.colIndex);
-        } else {
-            return this._getSourceTableHeaders();
-        }
+        // Only same-table columns are available (cross-table aggregation not yet implemented)
+        return this.headers.filter((_, i) => i !== this.colIndex);
     }
 
     private _renderCalculationMode() {
         const isExpression = this._functionType === 'expression';
         const availableColumns = this._getAvailableColumnsForCalculation();
-        const sheets = this.workbook?.sheets ?? [];
-        const currentSheet = sheets[this._sourceSheetIndex];
-        const tables = currentSheet?.tables ?? [];
 
         return html`
             <div class="form-group">
@@ -759,7 +757,7 @@ export class SSFormulaDialog extends LitElement {
                               <input
                                   type="text"
                                   class="input-control"
-                                  placeholder="[Quantity] * [Price]"
+                                  placeholder="${t('expressionPlaceholder')}"
                                   .value="${this._expression}"
                                   @input="${this._handleExpressionChange}"
                               />
@@ -768,96 +766,13 @@ export class SSFormulaDialog extends LitElement {
                   `
                 : html`
                       <div class="form-group">
-                          <label class="form-label">${t('columnSource')}</label>
-                          <div class="form-card">
-                              <div class="radio-group">
-                                  <label class="radio-label">
-                                      <input
-                                          type="radio"
-                                          name="columnSource"
-                                          ?checked="${this._columnSource === 'this'}"
-                                          @change="${() => this._handleColumnSourceChange('this')}"
-                                      />
-                                      ${t('thisTable')}
-                                  </label>
-                                  <label class="radio-label">
-                                      <input
-                                          type="radio"
-                                          name="columnSource"
-                                          ?checked="${this._columnSource === 'other'}"
-                                          @change="${() => this._handleColumnSourceChange('other')}"
-                                      />
-                                      ${t('otherTable')}
-                                  </label>
-                              </div>
-                          </div>
-                      </div>
-
-                      ${this._columnSource === 'other'
-                        ? html`
-                                <div class="form-group">
-                                    <label class="form-label">${t('sourceTable')}</label>
-                                    <div class="form-card">
-                                        <div class="picker-row">
-                                            <div style="flex: 1;">
-                                                <label class="field-label">${t('sheetLabel')}</label>
-                                                <select
-                                                    class="select-control"
-                                                    @change="${this._handleSourceSheetChange}"
-                                                >
-                                                    ${sheets.map(
-                            (sheet, i) => html`
-                                                            <option
-                                                                value="${i}"
-                                                                ?selected="${i === this._sourceSheetIndex}"
-                                                            >
-                                                                ${sheet.name}
-                                                            </option>
-                                                        `
-                        )}
-                                                </select>
-                                            </div>
-                                            <div style="flex: 1;">
-                                                <label class="field-label">${t('tableSelect')}</label>
-                                                <select
-                                                    class="select-control"
-                                                    @change="${this._handleSourceTableChange}"
-                                                >
-                                                    ${tables.map(
-                            (table, i) => html`
-                                                            <option
-                                                                value="${i}"
-                                                                ?selected="${i === this._sourceTableIndex}"
-                                                            >
-                                                                ${table.name}
-                                                            </option>
-                                                        `
-                        )}
-                                                </select>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `
-                        : nothing}
-
-                      <div class="form-group">
                           <label class="form-label">${t('selectColumns')}</label>
                           <div class="form-card">
-                              <div class="checkbox-list">
-                                  ${availableColumns.map(
-                            (col) => html`
-                                          <label class="checkbox-item">
-                                              <input
-                                                  type="checkbox"
-                                                  ?checked="${this._selectedColumns.has(col)}"
-                                                  @change="${() => this._handleColumnToggle(col)}"
-                                              />
-                                              ${col}
-                                          </label>
-                                      `
-                        )}
-                              </div>
+                              <ss-column-picker
+                                  .columns="${availableColumns}"
+                                  .selected="${[...this._selectedColumns]}"
+                                  @ss-column-selection-change="${this._handleColumnSelectionChange}"
+                              ></ss-column-picker>
                           </div>
                       </div>
                   `}
@@ -879,24 +794,24 @@ export class SSFormulaDialog extends LitElement {
                             <label class="field-label">${t('sheetLabel')}</label>
                             <select class="select-control" @change="${this._handleSourceSheetChange}">
                                 ${sheets.map(
-            (sheet, i) => html`
+                                    (sheet, i) => html`
                                         <option value="${i}" ?selected="${i === this._sourceSheetIndex}">
                                             ${sheet.name}
                                         </option>
                                     `
-        )}
+                                )}
                             </select>
                         </div>
                         <div style="flex: 1;">
                             <label class="field-label">${t('tableSelect')}</label>
                             <select class="select-control" @change="${this._handleSourceTableChange}">
                                 ${tables.map(
-            (table, i) => html`
+                                    (table, i) => html`
                                         <option value="${i}" ?selected="${i === this._sourceTableIndex}">
                                             ${table.name}
                                         </option>
                                     `
-        )}
+                                )}
                             </select>
                         </div>
                     </div>
@@ -911,10 +826,10 @@ export class SSFormulaDialog extends LitElement {
                             <label class="field-label">${t('searchKeyThisTable')}</label>
                             <select class="select-control" @change="${this._handleJoinKeyLocalChange}">
                                 ${this.headers.map(
-            (col) => html`
+                                    (col) => html`
                                         <option value="${col}" ?selected="${col === this._joinKeyLocal}">${col}</option>
                                     `
-        )}
+                                )}
                             </select>
                         </div>
                         <span
@@ -925,12 +840,12 @@ export class SSFormulaDialog extends LitElement {
                             <label class="field-label">${t('searchKeySourceTable')}</label>
                             <select class="select-control" @change="${this._handleJoinKeyRemoteChange}">
                                 ${sourceHeaders.map(
-            (col) => html`
+                                    (col) => html`
                                         <option value="${col}" ?selected="${col === this._joinKeyRemote}">
                                             ${col}
                                         </option>
                                     `
-        )}
+                                )}
                             </select>
                         </div>
                     </div>
@@ -942,10 +857,10 @@ export class SSFormulaDialog extends LitElement {
                 <div class="form-card">
                     <select class="select-control" @change="${this._handleTargetFieldChange}">
                         ${sourceHeaders.map(
-            (col) => html`
+                            (col) => html`
                                 <option value="${col}" ?selected="${col === this._targetField}">${col}</option>
                             `
-        )}
+                        )}
                     </select>
                 </div>
             </div>
@@ -963,8 +878,8 @@ export class SSFormulaDialog extends LitElement {
 
                     <div class="dialog-body">
                         ${this._brokenReferenceMessage
-                ? html`<div class="warning-alert">${this._brokenReferenceMessage}</div>`
-                : ''}
+                            ? html`<div class="warning-alert">${this._brokenReferenceMessage}</div>`
+                            : ''}
 
                         <div class="form-group">
                             <label class="form-label">${t('formulaType')}</label>
@@ -996,10 +911,10 @@ export class SSFormulaDialog extends LitElement {
 
                     <div class="dialog-footer">
                         ${this.currentFormula
-                ? html`<button class="btn btn-danger" @click="${this._handleRemove}">
+                            ? html`<button class="btn btn-danger" @click="${this._handleRemove}">
                                   ${t('remove')}
                               </button>`
-                : nothing}
+                            : nothing}
                         <button class="btn btn-secondary" @click="${this._handleCancel}">${t('cancel')}</button>
                         <button class="btn btn-primary" @click="${this._handleApply}">${t('apply')}</button>
                     </div>
