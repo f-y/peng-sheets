@@ -217,6 +217,13 @@ export interface IValidationUpdateDetail {
     rule: unknown; // ValidationRule | null
 }
 
+export interface IFormulaUpdateDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    colIndex: number;
+    formula: unknown; // FormulaDefinition | null
+}
+
 export interface IMoveRowsDetail {
     sheetIndex: number;
     tableIndex: number;

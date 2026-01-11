@@ -17,6 +17,7 @@ import {
     ISheetMetadataUpdateDetail,
     IPasteCellsDetail,
     IValidationUpdateDetail,
+    IFormulaUpdateDetail,
     IMoveRowsDetail,
     IMoveColumnsDetail,
     IMoveCellsDetail,
@@ -63,6 +64,7 @@ export interface GlobalEventHost extends ReactiveControllerHost {
     _handleDocumentChange(detail: { sectionIndex: number; content: string; title?: string; save?: boolean }): void;
     _handleSave(): void;
     _handleValidationUpdate(detail: IValidationUpdateDetail): void;
+    _handleFormulaUpdate(detail: IFormulaUpdateDetail): void;
     _handleMoveRows(detail: IMoveRowsDetail): void;
     _handleMoveColumns(detail: IMoveColumnsDetail): void;
     _handleMoveCells(detail: IMoveCellsDetail): void;
@@ -117,6 +119,7 @@ export class GlobalEventController implements ReactiveController {
     private _boundMoveCells: (e: Event) => void;
     private _boundInsertRowsAt: (e: Event) => void;
     private _boundInsertColumnsAt: (e: Event) => void;
+    private _boundFormulaUpdate: (e: Event) => void;
     private _boundMessage: (e: MessageEvent) => void;
     private _boundRequestSkipParse: () => void;
 
@@ -151,6 +154,7 @@ export class GlobalEventController implements ReactiveController {
         this._boundMoveCells = this._handleMoveCells.bind(this);
         this._boundInsertRowsAt = this._handleInsertRowsAt.bind(this);
         this._boundInsertColumnsAt = this._handleInsertColumnsAt.bind(this);
+        this._boundFormulaUpdate = this._handleFormulaUpdate.bind(this);
         this._boundMessage = this._handleMessage.bind(this);
         this._boundRequestSkipParse = this._handleRequestSkipParse.bind(this);
     }
@@ -192,6 +196,7 @@ export class GlobalEventController implements ReactiveController {
         window.addEventListener('post-message', this._boundPostMessage);
         window.addEventListener('document-change', this._boundDocumentChange);
         window.addEventListener('validation-update', this._boundValidationUpdate);
+        window.addEventListener('formula-update', this._boundFormulaUpdate);
 
         // Move operations (drag-and-drop)
         window.addEventListener('move-rows', this._boundMoveRows);
@@ -233,6 +238,7 @@ export class GlobalEventController implements ReactiveController {
         window.removeEventListener('post-message', this._boundPostMessage);
         window.removeEventListener('document-change', this._boundDocumentChange);
         window.removeEventListener('validation-update', this._boundValidationUpdate);
+        window.removeEventListener('formula-update', this._boundFormulaUpdate);
         window.removeEventListener('move-rows', this._boundMoveRows);
         window.removeEventListener('move-columns', this._boundMoveColumns);
         window.removeEventListener('move-cells', this._boundMoveCells);
@@ -399,6 +405,10 @@ export class GlobalEventController implements ReactiveController {
 
     private _handleValidationUpdate(e: Event): void {
         this.host._handleValidationUpdate((e as CustomEvent<IValidationUpdateDetail>).detail);
+    }
+
+    private _handleFormulaUpdate(e: Event): void {
+        this.host._handleFormulaUpdate((e as CustomEvent<IFormulaUpdateDetail>).detail);
     }
 
     private _handleMoveRows(e: Event): void {

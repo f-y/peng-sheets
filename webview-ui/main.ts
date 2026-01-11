@@ -40,6 +40,7 @@ import {
     IColumnResizeDetail,
     IColumnFilterDetail,
     IValidationUpdateDetail,
+    IFormulaUpdateDetail,
     IMoveRowsDetail,
     IMoveColumnsDetail,
     IMoveCellsDetail
@@ -218,6 +219,41 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 // Clean up undefined validation key if spread created one (though explicit undefined above handles it)
                 if (newVisual.validation === undefined) {
                     delete newVisual.validation;
+                }
+
+                this.spreadsheetService.updateVisualMetadata(sheetIndex, tableIndex, newVisual);
+            }
+        }
+    }
+
+    _handleFormulaUpdate(detail: IFormulaUpdateDetail) {
+        const { sheetIndex, tableIndex, colIndex, formula } = detail;
+        // Get current visual metadata and merge formula
+        const tab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
+        if (tab && isSheetJSON(tab.data)) {
+            const table = tab.data.tables[tableIndex];
+            if (table) {
+                const currentVisual = ((table.metadata as Record<string, unknown>)?.visual as IVisualMetadata) || {};
+
+                // Ensure formulas object exists
+                const currentFormulas: FormulaMetadata = currentVisual.formulas || {};
+
+                if (formula === null) {
+                    // Remove formula for this column
+                    delete currentFormulas[colIndex.toString()];
+                } else {
+                    // Set formula for this column
+                    currentFormulas[colIndex.toString()] = formula as FormulaDefinition;
+                }
+
+                const newVisual: IVisualMetadata = {
+                    ...currentVisual,
+                    formulas: Object.keys(currentFormulas).length > 0 ? currentFormulas : undefined
+                };
+
+                // Clean up undefined formulas key
+                if (newVisual.formulas === undefined) {
+                    delete newVisual.formulas;
                 }
 
                 this.spreadsheetService.updateVisualMetadata(sheetIndex, tableIndex, newVisual);
