@@ -172,8 +172,8 @@ export class SSColumnHeader extends LitElement {
                     .textContent="${live(this.value)}"
                 ></span>
                 ${this.isFormula
-                ? html`<span class="formula-icon codicon codicon-symbol-operator" title="Formula column"></span>`
-                : ''}
+                    ? html`<span class="formula-icon codicon codicon-symbol-operator" title="Formula column"></span>`
+                    : ''}
                 <span
                     class="filter-icon codicon codicon-filter ${this.hasActiveFilter ? 'active' : ''}"
                     @click="${this._onFilterClick}"

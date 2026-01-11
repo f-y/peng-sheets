@@ -1,6 +1,6 @@
 /**
  * Unit tests for FormulaController
- * 
+ *
  * Tests:
  * - Dependency graph building and querying
  * - Formula recalculation logic
@@ -36,27 +36,33 @@ function createMockHost(overrides: Partial<FormulaControllerHost> = {}): Formula
 /**
  * Create a mock workbook with tables containing formulas
  */
-function createMockWorkbook(options: {
-    tableId?: number;
-    formulas?: FormulaMetadata;
-    headers?: string[];
-    rows?: string[][];
-} = {}): WorkbookJSON {
+function createMockWorkbook(
+    options: {
+        tableId?: number;
+        formulas?: FormulaMetadata;
+        headers?: string[];
+        rows?: string[][];
+    } = {}
+): WorkbookJSON {
     const { tableId = 0, formulas, headers = ['A', 'B', 'C'], rows = [['1', '2', '3']] } = options;
 
     return {
-        sheets: [{
-            name: 'Sheet1',
-            tables: [{
-                name: 'Table1',
-                headers,
-                rows,
-                metadata: {
-                    id: tableId,
-                    visual: formulas ? { formulas } : undefined
-                }
-            }]
-        }]
+        sheets: [
+            {
+                name: 'Sheet1',
+                tables: [
+                    {
+                        name: 'Table1',
+                        headers,
+                        rows,
+                        metadata: {
+                            id: tableId,
+                            visual: formulas ? { formulas } : undefined
+                        }
+                    }
+                ]
+            }
+        ]
     } as unknown as WorkbookJSON;
 }
 
@@ -520,8 +526,8 @@ describe('FormulaController', () => {
             const updates = controller.recalculateSingleColumn(0, 0, 2, workbook);
 
             expect(updates.length).toBe(3);
-            expect(updates[0].value).toBe('3');  // 1 + 2
-            expect(updates[1].value).toBe('7');  // 3 + 4
+            expect(updates[0].value).toBe('3'); // 1 + 2
+            expect(updates[1].value).toBe('7'); // 3 + 4
             expect(updates[2].value).toBe('11'); // 5 + 6
         });
 

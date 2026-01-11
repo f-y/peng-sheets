@@ -8,11 +8,7 @@
  * - Error handling with 'N/A' for invalid calculations
  */
 
-import type {
-    ArithmeticFormula,
-    LookupFormula,
-    FormulaFunctionType
-} from '../services/types';
+import type { ArithmeticFormula, LookupFormula, FormulaFunctionType, TableMetadata } from '../services/types';
 import type { WorkbookJSON, TableJSON } from '../types';
 
 // =============================================================================
@@ -164,8 +160,7 @@ class ExpressionParser {
     parseExpression(): number {
         let result = this.parseTerm();
 
-        while (this.peek()?.type === 'operator' &&
-            (this.peek()?.value === '+' || this.peek()?.value === '-')) {
+        while (this.peek()?.type === 'operator' && (this.peek()?.value === '+' || this.peek()?.value === '-')) {
             const op = this.consume().value as '+' | '-';
             const right = this.parseTerm();
             result = op === '+' ? result + right : result - right;
@@ -177,8 +172,7 @@ class ExpressionParser {
     private parseTerm(): number {
         let result = this.parseFactor();
 
-        while (this.peek()?.type === 'operator' &&
-            (this.peek()?.value === '*' || this.peek()?.value === '/')) {
+        while (this.peek()?.type === 'operator' && (this.peek()?.value === '*' || this.peek()?.value === '/')) {
             const op = this.consume().value as '*' | '/';
             const right = this.parseFactor();
             if (op === '/') {
@@ -339,9 +333,9 @@ export function evaluateAggregate(
 function findTableById(workbook: WorkbookJSON, tableId: number): TableJSON | null {
     for (const sheet of workbook.sheets) {
         for (const table of sheet.tables) {
-            const metadata = table.metadata as Record<string, unknown> | undefined;
+            const metadata = table.metadata as TableMetadata | undefined;
             // Check metadata.visual.id (where parser puts custom metadata from markdown)
-            const visual = metadata?.visual as Record<string, unknown> | undefined;
+            const visual = metadata?.visual;
             if (visual?.id === tableId) {
                 return table;
             }
@@ -426,10 +420,7 @@ export function buildRowData(headers: string[], row: string[]): RowData {
 /**
  * Evaluate an arithmetic formula for a row.
  */
-export function evaluateArithmeticFormula(
-    formula: ArithmeticFormula,
-    rowData: RowData
-): EvaluationResult {
+export function evaluateArithmeticFormula(formula: ArithmeticFormula, rowData: RowData): EvaluationResult {
     if (formula.functionType === 'expression') {
         if (!formula.expression) {
             return { success: false, value: NA_VALUE, error: 'Expression is empty' };

@@ -282,7 +282,7 @@ export class SSContextMenu extends LitElement {
                     <div class="context-menu-item" @click="${this._handleInsertBelow}">${t('insertRowBelow')}</div>
                     <div class="context-menu-item" @click="${this._handleDeleteRow}">${t('deleteRow')}</div>
                     ${this.hasCopiedRows
-                    ? html`
+                        ? html`
                               <div class="context-menu-separator"></div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedAbove}">
                                   ${t('insertCopiedRowsAbove')}
@@ -291,7 +291,7 @@ export class SSContextMenu extends LitElement {
                                   ${t('insertCopiedRowsBelow')}
                               </div>
                           `
-                    : ''}
+                        : ''}
                 </div>
             `;
         } else {
@@ -305,7 +305,7 @@ export class SSContextMenu extends LitElement {
                     <div class="context-menu-item" @click="${this._handleInsertRight}">${t('insertColRight')}</div>
                     <div class="context-menu-item" @click="${this._handleDeleteCol}">${t('deleteCol')}</div>
                     ${this.hasCopiedColumns
-                    ? html`
+                        ? html`
                               <div class="context-menu-separator"></div>
                               <div class="context-menu-item" @click="${this._handleInsertCopiedLeft}">
                                   ${t('insertCopiedColsLeft')}
@@ -314,7 +314,7 @@ export class SSContextMenu extends LitElement {
                                   ${t('insertCopiedColsRight')}
                               </div>
                           `
-                    : ''}
+                        : ''}
                     <div class="context-menu-separator"></div>
                     <div class="context-menu-item" @click="${this._handleDataValidation}">${t('dataValidation')}</div>
                     <div class="context-menu-item" @click="${this._handleFormulaColumn}">${t('formulaColumn')}</div>

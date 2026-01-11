@@ -17,15 +17,11 @@ import type {
     FormulaDefinition,
     ArithmeticFormula,
     LookupFormula,
-    FormulaFunctionType
+    FormulaFunctionType,
+    TableMetadata
 } from '../../services/types';
 import type { WorkbookJSON, SheetJSON, TableJSON } from '../../types';
-import {
-    evaluateArithmeticFormula,
-    evaluateLookup,
-    buildRowData,
-    NA_VALUE
-} from '../../utils/formula-evaluator';
+import { evaluateArithmeticFormula, evaluateLookup, buildRowData, NA_VALUE } from '../../utils/formula-evaluator';
 
 type FormulaMode = 'calculation' | 'lookup';
 type ColumnSourceType = 'this' | 'other';
@@ -324,12 +320,8 @@ export class SSFormulaDialog extends LitElement {
             }
 
             // Validate selected columns still exist
-            const availableHeaders = this._columnSource === 'this'
-                ? this.headers
-                : this._getSourceTableHeaders();
-            const missingCols = Array.from(this._selectedColumns).filter(
-                (col) => !availableHeaders.includes(col)
-            );
+            const availableHeaders = this._columnSource === 'this' ? this.headers : this._getSourceTableHeaders();
+            const missingCols = Array.from(this._selectedColumns).filter((col) => !availableHeaders.includes(col));
             if (missingCols.length > 0) {
                 this._brokenReferenceMessage = t('brokenReference');
             }
@@ -346,8 +338,7 @@ export class SSFormulaDialog extends LitElement {
             } else {
                 // Validate remote columns exist
                 const remoteHeaders = this._getSourceTableHeaders();
-                if (!remoteHeaders.includes(this._joinKeyRemote) ||
-                    !remoteHeaders.includes(this._targetField)) {
+                if (!remoteHeaders.includes(this._joinKeyRemote) || !remoteHeaders.includes(this._targetField)) {
                     this._brokenReferenceMessage = t('brokenReference');
                 }
                 // Validate local column exists
@@ -364,9 +355,9 @@ export class SSFormulaDialog extends LitElement {
             const sheet = this.workbook.sheets[si];
             for (let ti = 0; ti < sheet.tables.length; ti++) {
                 const table = sheet.tables[ti];
-                const meta = table.metadata as Record<string, unknown> | undefined;
+                const meta = table.metadata as TableMetadata | undefined;
                 // Check metadata.visual.id (where parser puts custom metadata)
-                const visual = meta?.visual as Record<string, unknown> | undefined;
+                const visual = meta?.visual;
                 if (visual?.id === tableId || meta?.id === tableId) {
                     this._sourceSheetIndex = si;
                     this._sourceTableIndex = ti;
@@ -439,9 +430,9 @@ export class SSFormulaDialog extends LitElement {
     private _getSourceTableId(): number | undefined {
         const table = this._getSourceTable();
         if (!table) return undefined;
-        const meta = table.metadata as Record<string, unknown> | undefined;
+        const meta = table.metadata as TableMetadata | undefined;
         // Check metadata.visual.id first (where parser puts custom metadata)
-        const visual = meta?.visual as Record<string, unknown> | undefined;
+        const visual = meta?.visual;
         if (typeof visual?.id === 'number') return visual.id;
         return typeof meta?.id === 'number' ? meta.id : undefined;
     }
@@ -541,16 +532,20 @@ export class SSFormulaDialog extends LitElement {
                 <div class="preview-title">${t('preview')}</div>
                 <div class="preview-values">
                     ${results.map(
-            (r) => html`
+                        (r) => html`
                             <span class="preview-item">
                                 <span class="row-label">Row ${r.rowNum}: </span>
                                 <span class="value ${r.isError ? 'error' : ''}">${r.value}</span>
                             </span>
                         `
-        )}
+                    )}
                     ${results.length === 0
-                ? html`<span class="preview-item"><span class="value" style="color: var(--vscode-descriptionForeground)">No data</span></span>`
-                : ''}
+                        ? html`<span class="preview-item"
+                              ><span class="value" style="color: var(--vscode-descriptionForeground)"
+                                  >No data</span
+                              ></span
+                          >`
+                        : ''}
                 </div>
             </div>
         `;
@@ -611,7 +606,9 @@ export class SSFormulaDialog extends LitElement {
             <div class="form-group">
                 <label class="form-label">${t('functionType')}</label>
                 <select class="select-control" @change="${this._handleFunctionChange}">
-                    <option value="expression" ?selected="${this._functionType === 'expression'}">${t('expression')}</option>
+                    <option value="expression" ?selected="${this._functionType === 'expression'}">
+                        ${t('expression')}
+                    </option>
                     <option value="sum" ?selected="${this._functionType === 'sum'}">SUM</option>
                     <option value="avg" ?selected="${this._functionType === 'avg'}">AVG</option>
                     <option value="count" ?selected="${this._functionType === 'count'}">COUNT</option>
@@ -659,34 +656,38 @@ export class SSFormulaDialog extends LitElement {
                       </div>
 
                       ${this._columnSource === 'other'
-                        ? html`
+                          ? html`
                                 <div class="form-group">
                                     <label class="form-label">${t('sourceTable')}</label>
                                     <div class="picker-row">
                                         <select class="select-control" @change="${this._handleSourceSheetChange}">
                                             ${sheets.map(
-                            (sheet, i) => html`
-                                                    <option value="${i}" ?selected="${i === this._sourceSheetIndex}">${sheet.name}</option>
+                                                (sheet, i) => html`
+                                                    <option value="${i}" ?selected="${i === this._sourceSheetIndex}">
+                                                        ${sheet.name}
+                                                    </option>
                                                 `
-                        )}
+                                            )}
                                         </select>
                                         <select class="select-control" @change="${this._handleSourceTableChange}">
                                             ${tables.map(
-                            (table, i) => html`
-                                                    <option value="${i}" ?selected="${i === this._sourceTableIndex}">${table.name}</option>
+                                                (table, i) => html`
+                                                    <option value="${i}" ?selected="${i === this._sourceTableIndex}">
+                                                        ${table.name}
+                                                    </option>
                                                 `
-                        )}
+                                            )}
                                         </select>
                                     </div>
                                 </div>
                             `
-                        : nothing}
+                          : nothing}
 
                       <div class="form-group">
                           <label class="form-label">${t('selectColumns')}</label>
                           <div class="checkbox-list">
                               ${availableColumns.map(
-                            (col) => html`
+                                  (col) => html`
                                       <label class="checkbox-item">
                                           <input
                                               type="checkbox"
@@ -696,7 +697,7 @@ export class SSFormulaDialog extends LitElement {
                                           ${col}
                                       </label>
                                   `
-                        )}
+                              )}
                           </div>
                       </div>
                   `}
@@ -715,17 +716,17 @@ export class SSFormulaDialog extends LitElement {
                 <div class="picker-row">
                     <select class="select-control" @change="${this._handleSourceSheetChange}">
                         ${sheets.map(
-            (sheet, i) => html`
+                            (sheet, i) => html`
                                 <option value="${i}" ?selected="${i === this._sourceSheetIndex}">${sheet.name}</option>
                             `
-        )}
+                        )}
                     </select>
                     <select class="select-control" @change="${this._handleSourceTableChange}">
                         ${tables.map(
-            (table, i) => html`
+                            (table, i) => html`
                                 <option value="${i}" ?selected="${i === this._sourceTableIndex}">${table.name}</option>
                             `
-        )}
+                        )}
                     </select>
                 </div>
             </div>
@@ -736,19 +737,19 @@ export class SSFormulaDialog extends LitElement {
                     <select class="select-control" @change="${this._handleJoinKeyLocalChange}">
                         <option value="">${t('thisTable')}</option>
                         ${this.headers.map(
-            (col) => html`
+                            (col) => html`
                                 <option value="${col}" ?selected="${col === this._joinKeyLocal}">${col}</option>
                             `
-        )}
+                        )}
                     </select>
                     <span>→</span>
                     <select class="select-control" @change="${this._handleJoinKeyRemoteChange}">
                         <option value="">${t('sourceTable')}</option>
                         ${sourceHeaders.map(
-            (col) => html`
+                            (col) => html`
                                 <option value="${col}" ?selected="${col === this._joinKeyRemote}">${col}</option>
                             `
-        )}
+                        )}
                     </select>
                 </div>
             </div>
@@ -758,10 +759,8 @@ export class SSFormulaDialog extends LitElement {
                 <select class="select-control" @change="${this._handleTargetFieldChange}">
                     <option value="">--</option>
                     ${sourceHeaders.map(
-            (col) => html`
-                            <option value="${col}" ?selected="${col === this._targetField}">${col}</option>
-                        `
-        )}
+                        (col) => html` <option value="${col}" ?selected="${col === this._targetField}">${col}</option> `
+                    )}
                 </select>
             </div>
         `;
@@ -778,8 +777,8 @@ export class SSFormulaDialog extends LitElement {
 
                     <div class="dialog-body">
                         ${this._brokenReferenceMessage
-                ? html`<div class="warning-alert">${this._brokenReferenceMessage}</div>`
-                : ''}
+                            ? html`<div class="warning-alert">${this._brokenReferenceMessage}</div>`
+                            : ''}
 
                         <div class="form-group">
                             <label class="form-label">${t('formulaType')}</label>
@@ -806,14 +805,15 @@ export class SSFormulaDialog extends LitElement {
                         </div>
 
                         ${this._mode === 'calculation' ? this._renderCalculationMode() : this._renderLookupMode()}
-
                         ${this._renderPreview()}
                     </div>
 
                     <div class="dialog-footer">
                         ${this.currentFormula
-                ? html`<button class="btn btn-danger" @click="${this._handleRemove}">${t('remove')}</button>`
-                : nothing}
+                            ? html`<button class="btn btn-danger" @click="${this._handleRemove}">
+                                  ${t('remove')}
+                              </button>`
+                            : nothing}
                         <button class="btn btn-secondary" @click="${this._handleCancel}">${t('cancel')}</button>
                         <button class="btn btn-primary" @click="${this._handleApply}">${t('apply')}</button>
                     </div>

@@ -70,8 +70,8 @@ describe('FormulaEvaluator', () => {
 
     describe('evaluateExpression', () => {
         const rowData: RowData = {
-            'Price': '100',
-            'Quantity': '5',
+            Price: '100',
+            Quantity: '5',
             'Tax Rate': '0.1'
         };
 
@@ -114,7 +114,7 @@ describe('FormulaEvaluator', () => {
         });
 
         it('should return N/A for non-numeric value', () => {
-            const dataWithText: RowData = { ...rowData, 'Price': 'abc' };
+            const dataWithText: RowData = { ...rowData, Price: 'abc' };
             const result = evaluateExpression('[Price] * [Quantity]', dataWithText);
             expect(result.success).toBe(false);
             expect(result.value).toBe(NA_VALUE);
@@ -140,11 +140,11 @@ describe('FormulaEvaluator', () => {
 
     describe('evaluateAggregate', () => {
         const rowData: RowData = {
-            'Col1': '10',
-            'Col2': '20',
-            'Col3': '30',
-            'Empty': '',
-            'Text': 'abc'
+            Col1: '10',
+            Col2: '20',
+            Col3: '30',
+            Empty: '',
+            Text: 'abc'
         };
 
         describe('SUM', () => {
@@ -304,9 +304,9 @@ describe('FormulaEvaluator', () => {
             const row = ['Widget', '100', '5'];
             const result = buildRowData(headers, row);
             expect(result).toEqual({
-                'Name': 'Widget',
-                'Price': '100',
-                'Quantity': '5'
+                Name: 'Widget',
+                Price: '100',
+                Quantity: '5'
             });
         });
 
@@ -314,12 +314,12 @@ describe('FormulaEvaluator', () => {
             const headers = ['A', 'B', 'C'];
             const row = ['1'];
             const result = buildRowData(headers, row);
-            expect(result).toEqual({ 'A': '1', 'B': '', 'C': '' });
+            expect(result).toEqual({ A: '1', B: '', C: '' });
         });
     });
 
     describe('evaluateArithmeticFormula', () => {
-        const rowData: RowData = { 'A': '10', 'B': '20', 'C': '30' };
+        const rowData: RowData = { A: '10', B: '20', C: '30' };
 
         it('should evaluate expression formula', () => {
             const formula: ArithmeticFormula = {

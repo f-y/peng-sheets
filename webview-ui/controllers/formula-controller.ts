@@ -9,7 +9,13 @@
  */
 
 import { ReactiveController, ReactiveControllerHost } from 'lit';
-import type { FormulaDefinition, FormulaMetadata, ArithmeticFormula, LookupFormula } from '../services/types';
+import type {
+    FormulaDefinition,
+    FormulaMetadata,
+    ArithmeticFormula,
+    LookupFormula,
+    TableMetadata
+} from '../services/types';
 import type { WorkbookJSON, TableJSON } from '../types';
 import * as formulaEvaluator from '../utils/formula-evaluator';
 
@@ -153,11 +159,7 @@ export class FormulaController implements ReactiveController {
     /**
      * Register dependencies for lookup formula.
      */
-    private registerLookupDependencies(
-        tableId: number,
-        colIndex: number,
-        formula: LookupFormula
-    ): void {
+    private registerLookupDependencies(tableId: number, colIndex: number, formula: LookupFormula): void {
         // Lookup depends on local join key and remote target field
         this.addDependency(tableId, formula.joinKeyLocal, tableId, colIndex);
         this.addDependency(formula.sourceTableId, formula.targetField, tableId, colIndex);
@@ -211,11 +213,7 @@ export class FormulaController implements ReactiveController {
      * Recalculate all formula columns affected by a cell change.
      * Returns an array of CellUpdate objects for batch application.
      */
-    recalculateAffectedColumns(
-        tableId: number,
-        changedColumn: string,
-        workbook: WorkbookJSON
-    ): CellUpdate[] {
+    recalculateAffectedColumns(tableId: number, changedColumn: string, workbook: WorkbookJSON): CellUpdate[] {
         const updates: CellUpdate[] = [];
 
         // Get all dependent formula columns
@@ -409,9 +407,9 @@ export class FormulaController implements ReactiveController {
      * Get table ID from table metadata.
      */
     private getTableId(table: TableJSON): number | undefined {
-        const metadata = table.metadata as Record<string, unknown> | undefined;
+        const metadata = table.metadata as TableMetadata | undefined;
         // Check metadata.visual.id first (where parser stores custom metadata)
-        const visual = metadata?.visual as Record<string, unknown> | undefined;
+        const visual = metadata?.visual;
         if (visual && typeof visual.id === 'number') {
             return visual.id;
         }
@@ -426,14 +424,13 @@ export class FormulaController implements ReactiveController {
      * Get formulas from table visual metadata.
      */
     private getFormulasFromTable(table: TableJSON): FormulaMetadata | null {
-        const metadata = table.metadata as Record<string, unknown> | undefined;
+        const metadata = table.metadata as TableMetadata | undefined;
         if (!metadata) return null;
 
-        const visual = metadata.visual as Record<string, unknown> | undefined;
+        const visual = metadata.visual;
         if (!visual) return null;
 
-        const formulas = visual.formulas as FormulaMetadata | undefined;
-        return formulas ?? null;
+        return visual.formulas ?? null;
     }
 
     /**

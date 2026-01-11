@@ -145,6 +145,17 @@ export interface VisualMetadata {
     column_widths?: Record<string, number> | number[];
 }
 
+/**
+ * Table metadata as stored in the parsed markdown.
+ * The parser wraps custom metadata (including VisualMetadata) under the 'visual' key.
+ */
+export interface TableMetadata {
+    /** Visual metadata containing columns, validation, formulas, etc. */
+    visual?: VisualMetadata;
+    /** Other metadata properties may exist */
+    [key: string]: unknown;
+}
+
 // =============================================================================
 // Tab Order
 // =============================================================================

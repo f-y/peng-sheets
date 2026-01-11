@@ -47,7 +47,15 @@ import {
 
 // Register the VS Code Design System components
 import { SpreadsheetService } from './services/spreadsheet-service';
-import { IVisualMetadata, ValidationMetadata } from './services/types';
+import {
+    IVisualMetadata,
+    ValidationMetadata,
+    FormulaMetadata,
+    FormulaDefinition,
+    TableMetadata,
+    ArithmeticFormula,
+    LookupFormula
+} from './services/types';
 import { ClipboardStore } from './stores/clipboard-store';
 
 // Register the VS Code Design System components
@@ -327,59 +335,61 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
      * Propagate column rename to all formula references.
      * Updates formulas that reference the old column name.
      */
-    private _propagateColumnRename(
-        sheetIdx: number,
-        tableIdx: number,
-        oldName: string,
-        newName: string
-    ) {
+    private _propagateColumnRename(sheetIdx: number, tableIdx: number, oldName: string, newName: string) {
         if (!this.workbook) return;
 
         const table = this.workbook.sheets[sheetIdx]?.tables[tableIdx];
         if (!table) return;
 
-        const meta = table.metadata as Record<string, unknown> | undefined;
-        const visual = meta?.visual as Record<string, unknown> | undefined;
-        const formulas = visual?.formulas as Record<string, Record<string, unknown>> | undefined;
+        const meta = table.metadata as TableMetadata | undefined;
+        const visual = meta?.visual;
+        const formulas = visual?.formulas;
         if (!formulas || Object.keys(formulas).length === 0) return;
 
         let updated = false;
-        const newFormulas = { ...formulas };
+        const newFormulas: FormulaMetadata = { ...formulas };
 
         for (const [colKey, formula] of Object.entries(formulas)) {
             if (!formula || typeof formula !== 'object') continue;
 
-            const formulaCopy = { ...formula };
-
             if (formula.type === 'arithmetic') {
+                // Work with ArithmeticFormula type
+                let arithmeticCopy = { ...formula };
+
                 // Update expression references
-                if (typeof formula.expression === 'string' && formula.expression.includes(`[${oldName}]`)) {
-                    formulaCopy.expression = formula.expression.replace(
-                        new RegExp(`\\[${this._escapeRegex(oldName)}\\]`, 'g'),
-                        `[${newName}]`
-                    );
+                if (formula.expression && formula.expression.includes(`[${oldName}]`)) {
+                    arithmeticCopy = {
+                        ...arithmeticCopy,
+                        expression: formula.expression.replace(
+                            new RegExp(`\\[${this._escapeRegex(oldName)}\\]`, 'g'),
+                            `[${newName}]`
+                        )
+                    };
                     updated = true;
                 }
 
                 // Update columns array
-                if (Array.isArray(formula.columns)) {
-                    const newColumns = formula.columns.map((col: string) =>
-                        col === oldName ? newName : col
-                    );
+                if (formula.columns) {
+                    const newColumns = formula.columns.map((col: string) => (col === oldName ? newName : col));
                     if (JSON.stringify(newColumns) !== JSON.stringify(formula.columns)) {
-                        formulaCopy.columns = newColumns;
+                        arithmeticCopy = { ...arithmeticCopy, columns: newColumns };
                         updated = true;
                     }
                 }
+
+                newFormulas[colKey] = arithmeticCopy;
             } else if (formula.type === 'lookup') {
+                // Work with LookupFormula type
+                let lookupCopy = { ...formula };
+
                 // Update lookup references for local join key
                 if (formula.joinKeyLocal === oldName) {
-                    formulaCopy.joinKeyLocal = newName;
+                    lookupCopy = { ...lookupCopy, joinKeyLocal: newName };
                     updated = true;
                 }
-            }
 
-            newFormulas[colKey] = formulaCopy;
+                newFormulas[colKey] = lookupCopy;
+            }
         }
 
         if (updated) {
@@ -387,7 +397,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             this.spreadsheetService.updateVisualMetadata(sheetIdx, tableIdx, {
                 ...visual,
                 formulas: newFormulas
-            } as Record<string, unknown>);
+            });
         }
     }
 
@@ -420,172 +430,45 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         const headers = table.headers || [];
 
         // Import and use formula controller utilities
-        import('./controllers/formula-controller').then(({ FormulaController }) => {
-            // Create temporary controller-like context to use recalculate logic
-            const mockHost = {
-                workbook: this.workbook,
-                getSheetIndex: () => sheetIdx,
-                getTableIndex: () => tableIdx,
-                getFormulaMetadata: () => {
-                    const meta = table.metadata as Record<string, unknown> | undefined;
-                    const visual = meta?.visual as Record<string, unknown> | undefined;
-                    return visual?.formulas ?? null;
-                },
-                addController: () => { },
-                requestUpdate: () => { },
-                removeController: () => { }
-            } as unknown as Parameters<typeof FormulaController.prototype.constructor>[0];
+        import('./controllers/formula-controller')
+            .then(({ FormulaController }) => {
+                // Create temporary controller-like context to use recalculate logic
+                const mockHost = {
+                    workbook: this.workbook,
+                    getSheetIndex: () => sheetIdx,
+                    getTableIndex: () => tableIdx,
+                    getFormulaMetadata: () => {
+                        const meta = table.metadata as Record<string, unknown> | undefined;
+                        const visual = meta?.visual as Record<string, unknown> | undefined;
+                        return visual?.formulas ?? null;
+                    },
+                    addController: () => {},
+                    requestUpdate: () => {},
+                    removeController: () => {}
+                } as unknown as Parameters<typeof FormulaController.prototype.constructor>[0];
 
-            const controller = new FormulaController(mockHost);
-            controller.rebuildDependencyGraph();
+                const controller = new FormulaController(mockHost);
+                controller.rebuildDependencyGraph();
 
-            // Get updates for all changed columns
-            const allUpdates: Array<{ sheetIndex: number; tableIndex: number; rowIndex: number; colIndex: number; value: string }> = [];
-            for (let col = startCol; col <= endCol; col++) {
-                const colName = headers[col];
-                if (!colName) continue;
+                // Get updates for all changed columns
+                const allUpdates: Array<{
+                    sheetIndex: number;
+                    tableIndex: number;
+                    rowIndex: number;
+                    colIndex: number;
+                    value: string;
+                }> = [];
+                for (let col = startCol; col <= endCol; col++) {
+                    const colName = headers[col];
+                    if (!colName) continue;
 
-                const updates = controller.recalculateAffectedColumns(tableId, colName, this.workbook!);
-                allUpdates.push(...updates);
-            }
-
-            // Apply updates as a batch for atomic undo/redo
-            if (allUpdates.length > 0) {
-                // Start batch to collect all formula updates into single undo entry
-                this.spreadsheetService.startBatch();
-                try {
-                    for (const update of allUpdates) {
-                        this.spreadsheetService.updateRange(
-                            update.sheetIndex,
-                            update.tableIndex,
-                            update.rowIndex,
-                            update.rowIndex,
-                            update.colIndex,
-                            update.colIndex,
-                            update.value
-                        );
-                    }
-                } finally {
-                    // End batch - sends single message for all formula updates
-                    this.spreadsheetService.endBatch();
-                }
-            }
-        }).catch(() => {
-            // Silently ignore if formula controller couldn't load
-        });
-    }
-
-    /**
-     * Calculate all formula column values.
-     * Called on initial workbook load to populate computed column values.
-     * Uses 2-pass approach: Lookup formulas first, then Arithmetic (which may reference Lookup results).
-     */
-    private _calculateAllFormulas() {
-        if (!this.workbook) return;
-
-        // Import and use formula evaluator directly for initial calculation
-        import('./utils/formula-evaluator').then((evaluator) => {
-
-            // Collect all formulas by type for 2-pass processing
-            type FormulaTask = {
-                sheetIndex: number;
-                tableIndex: number;
-                colIndex: number;
-                formula: Record<string, unknown>;
-            };
-            const lookupTasks: FormulaTask[] = [];
-            const arithmeticTasks: FormulaTask[] = [];
-
-            // Collect formula tasks
-            for (let sheetIndex = 0; sheetIndex < this.workbook!.sheets.length; sheetIndex++) {
-                const sheet = this.workbook!.sheets[sheetIndex];
-                for (let tableIndex = 0; tableIndex < sheet.tables.length; tableIndex++) {
-                    const table = sheet.tables[tableIndex];
-                    const meta = table.metadata as Record<string, unknown> | undefined;
-                    const visual = meta?.visual as Record<string, unknown> | undefined;
-                    const formulas = visual?.formulas as Record<string, Record<string, unknown>> | undefined;
-
-                    if (!formulas || Object.keys(formulas).length === 0) continue;
-
-                    for (const [colKey, formula] of Object.entries(formulas)) {
-                        const colIndex = parseInt(colKey, 10);
-                        if (isNaN(colIndex)) continue;
-
-                        const task = { sheetIndex, tableIndex, colIndex, formula };
-                        if (formula.type === 'lookup') {
-                            lookupTasks.push(task);
-                        } else if (formula.type === 'arithmetic') {
-                            arithmeticTasks.push(task);
-                        }
-                    }
-                }
-            }
-
-            // Helper function to calculate and apply formulas
-            const calculateAndApply = (tasks: FormulaTask[]) => {
-                const updates: Array<{ sheetIndex: number; tableIndex: number; rowIndex: number; colIndex: number; value: string }> = [];
-
-                for (const task of tasks) {
-                    const table = this.workbook!.sheets[task.sheetIndex].tables[task.tableIndex];
-                    const headers = table.headers || [];
-
-                    for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
-                        // Rebuild rowData from current table state (includes any previous updates)
-                        const rowData = evaluator.buildRowData(headers, table.rows[rowIndex]);
-                        let value = evaluator.NA_VALUE;
-
-                        try {
-                            if (task.formula.type === 'arithmetic') {
-                                const result = evaluator.evaluateArithmeticFormula(
-                                    task.formula as Parameters<typeof evaluator.evaluateArithmeticFormula>[0],
-                                    rowData
-                                );
-                                value = result.value;
-                            } else if (task.formula.type === 'lookup') {
-                                const lookupFormula = task.formula as { joinKeyLocal?: string };
-                                const localKeyValue = rowData[lookupFormula.joinKeyLocal || ''] || '';
-                                const result = evaluator.evaluateLookup(
-                                    task.formula as Parameters<typeof evaluator.evaluateLookup>[0],
-                                    localKeyValue,
-                                    this.workbook!
-                                );
-                                value = result.value;
-                            }
-                        } catch {
-                            value = evaluator.NA_VALUE;
-                        }
-
-                        updates.push({ sheetIndex: task.sheetIndex, tableIndex: task.tableIndex, rowIndex, colIndex: task.colIndex, value });
-                    }
+                    const updates = controller.recalculateAffectedColumns(tableId, colName, this.workbook!);
+                    allUpdates.push(...updates);
                 }
 
-                // Apply updates immediately so next pass sees the values
-                if (updates.length > 0) {
-                    for (const update of updates) {
-                        // Directly update table data (not via service, to avoid undo tracking on initial load)
-                        const table = this.workbook!.sheets[update.sheetIndex].tables[update.tableIndex];
-                        if (table.rows[update.rowIndex]) {
-                            table.rows[update.rowIndex][update.colIndex] = update.value;
-                        }
-                    }
-                }
-
-                return updates;
-            };
-
-            // Pass 1: Calculate and apply Lookup formulas
-            const lookupUpdates = calculateAndApply(lookupTasks);
-
-            // Pass 2: Calculate and apply Arithmetic formulas (now can reference Lookup results)
-            const arithmeticUpdates = calculateAndApply(arithmeticTasks);
-
-            // Trigger UI update to render calculated values immediately
-            this.requestUpdate();
-
-            // Sync to VSCode document with a delay to ensure editor is ready
-            const allUpdates = [...lookupUpdates, ...arithmeticUpdates];
-            if (allUpdates.length > 0) {
-                setTimeout(() => {
+                // Apply updates as a batch for atomic undo/redo
+                if (allUpdates.length > 0) {
+                    // Start batch to collect all formula updates into single undo entry
                     this.spreadsheetService.startBatch();
                     try {
                         for (const update of allUpdates) {
@@ -600,13 +483,159 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                             );
                         }
                     } finally {
+                        // End batch - sends single message for all formula updates
                         this.spreadsheetService.endBatch();
                     }
-                }, 100); // Small delay to allow editor initialization
-            }
-        }).catch(() => {
-            // Silently ignore if formula evaluator couldn't load
-        });
+                }
+            })
+            .catch(() => {
+                // Silently ignore if formula controller couldn't load
+            });
+    }
+
+    /**
+     * Calculate all formula column values.
+     * Called on initial workbook load to populate computed column values.
+     * Uses 2-pass approach: Lookup formulas first, then Arithmetic (which may reference Lookup results).
+     */
+    private _calculateAllFormulas() {
+        if (!this.workbook) return;
+
+        // Import and use formula evaluator directly for initial calculation
+        import('./utils/formula-evaluator')
+            .then((evaluator) => {
+                // Collect all formulas by type for 2-pass processing
+                type FormulaTask = {
+                    sheetIndex: number;
+                    tableIndex: number;
+                    colIndex: number;
+                    formula: FormulaDefinition;
+                };
+                const lookupTasks: FormulaTask[] = [];
+                const arithmeticTasks: FormulaTask[] = [];
+
+                // Collect formula tasks
+                for (let sheetIndex = 0; sheetIndex < this.workbook!.sheets.length; sheetIndex++) {
+                    const sheet = this.workbook!.sheets[sheetIndex];
+                    for (let tableIndex = 0; tableIndex < sheet.tables.length; tableIndex++) {
+                        const table = sheet.tables[tableIndex];
+                        const meta = table.metadata as TableMetadata | undefined;
+                        const visual = meta?.visual;
+                        const formulas = visual?.formulas;
+
+                        if (!formulas || Object.keys(formulas).length === 0) continue;
+
+                        for (const [colKey, formula] of Object.entries(formulas)) {
+                            const colIndex = parseInt(colKey, 10);
+                            if (isNaN(colIndex)) continue;
+
+                            const task = { sheetIndex, tableIndex, colIndex, formula };
+                            if (formula.type === 'lookup') {
+                                lookupTasks.push(task);
+                            } else if (formula.type === 'arithmetic') {
+                                arithmeticTasks.push(task);
+                            }
+                        }
+                    }
+                }
+
+                // Helper function to calculate and apply formulas
+                const calculateAndApply = (tasks: FormulaTask[]) => {
+                    const updates: Array<{
+                        sheetIndex: number;
+                        tableIndex: number;
+                        rowIndex: number;
+                        colIndex: number;
+                        value: string;
+                    }> = [];
+
+                    for (const task of tasks) {
+                        const table = this.workbook!.sheets[task.sheetIndex].tables[task.tableIndex];
+                        const headers = table.headers || [];
+
+                        for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
+                            // Rebuild rowData from current table state (includes any previous updates)
+                            const rowData = evaluator.buildRowData(headers, table.rows[rowIndex]);
+                            let value = evaluator.NA_VALUE;
+
+                            try {
+                                if (task.formula.type === 'arithmetic') {
+                                    const arithmeticFormula = task.formula as ArithmeticFormula;
+                                    const result = evaluator.evaluateArithmeticFormula(arithmeticFormula, rowData);
+                                    value = result.value;
+                                } else if (task.formula.type === 'lookup') {
+                                    const lookupFormula = task.formula as LookupFormula;
+                                    const localKeyValue = rowData[lookupFormula.joinKeyLocal] || '';
+                                    const result = evaluator.evaluateLookup(
+                                        lookupFormula,
+                                        localKeyValue,
+                                        this.workbook!
+                                    );
+                                    value = result.value;
+                                }
+                            } catch {
+                                value = evaluator.NA_VALUE;
+                            }
+
+                            updates.push({
+                                sheetIndex: task.sheetIndex,
+                                tableIndex: task.tableIndex,
+                                rowIndex,
+                                colIndex: task.colIndex,
+                                value
+                            });
+                        }
+                    }
+
+                    // Apply updates immediately so next pass sees the values
+                    if (updates.length > 0) {
+                        for (const update of updates) {
+                            // Directly update table data (not via service, to avoid undo tracking on initial load)
+                            const table = this.workbook!.sheets[update.sheetIndex].tables[update.tableIndex];
+                            if (table.rows[update.rowIndex]) {
+                                table.rows[update.rowIndex][update.colIndex] = update.value;
+                            }
+                        }
+                    }
+
+                    return updates;
+                };
+
+                // Pass 1: Calculate and apply Lookup formulas
+                const lookupUpdates = calculateAndApply(lookupTasks);
+
+                // Pass 2: Calculate and apply Arithmetic formulas (now can reference Lookup results)
+                const arithmeticUpdates = calculateAndApply(arithmeticTasks);
+
+                // Trigger UI update to render calculated values immediately
+                this.requestUpdate();
+
+                // Sync to VSCode document with a delay to ensure editor is ready
+                const allUpdates = [...lookupUpdates, ...arithmeticUpdates];
+                if (allUpdates.length > 0) {
+                    setTimeout(() => {
+                        this.spreadsheetService.startBatch();
+                        try {
+                            for (const update of allUpdates) {
+                                this.spreadsheetService.updateRange(
+                                    update.sheetIndex,
+                                    update.tableIndex,
+                                    update.rowIndex,
+                                    update.rowIndex,
+                                    update.colIndex,
+                                    update.colIndex,
+                                    update.value
+                                );
+                            }
+                        } finally {
+                            this.spreadsheetService.endBatch();
+                        }
+                    }, 100); // Small delay to allow editor initialization
+                }
+            })
+            .catch(() => {
+                // Silently ignore if formula evaluator couldn't load
+            });
     }
 
     _handleDeleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
@@ -1032,7 +1061,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet' && isSheetJSON(activeTab.data)
-                ? html`
+                    ? html`
                           <div class="sheet-container" style="height: 100%">
                               <layout-container
                                   .layout="${(activeTab.data as SheetJSON).metadata?.layout}"
@@ -1040,28 +1069,28 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                                   .sheetIndex="${activeTab.sheetIndex}"
                                   .workbook="${this.workbook}"
                                   .dateFormat="${((this.config?.validation as Record<string, unknown>)
-                        ?.dateFormat as string) || 'YYYY-MM-DD'}"
+                                      ?.dateFormat as string) || 'YYYY-MM-DD'}"
                                   @save-requested="${this._handleSave}"
                                   @selection-change="${this._handleSelectionChange}"
                               ></layout-container>
                           </div>
                       `
-                : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
-                    ? html`
+                    : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
+                      ? html`
                             <spreadsheet-document-view
                                 .title="${activeTab.title}"
                                 .content="${(activeTab.data as DocumentJSON).content}"
                                 @toolbar-action="${this._handleToolbarAction}"
                             ></spreadsheet-document-view>
                         `
-                    : html``}
+                      : html``}
                 ${activeTab.type === 'onboarding'
-                ? html`
+                    ? html`
                           <spreadsheet-onboarding
                               @create-spreadsheet="${this._onCreateSpreadsheet}"
                           ></spreadsheet-onboarding>
                       `
-                : html``}
+                    : html``}
             </div>
 
             <bottom-tabs
@@ -1070,17 +1099,17 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 .editingIndex="${this.editingTabIndex}"
                 @tab-select="${(e: CustomEvent) => (this.activeTabIndex = e.detail.index)}"
                 @tab-edit-start="${(e: CustomEvent) =>
-                this._handleTabDoubleClick(e.detail.index, this.tabs[e.detail.index])}"
+                    this._handleTabDoubleClick(e.detail.index, this.tabs[e.detail.index])}"
                 @tab-rename="${(e: CustomEvent) =>
-                this._handleTabRename(e.detail.index, e.detail.tab, e.detail.newName)}"
+                    this._handleTabRename(e.detail.index, e.detail.tab, e.detail.newName)}"
                 @tab-context-menu="${(e: CustomEvent) => {
-                this.tabContextMenu = {
-                    x: e.detail.x,
-                    y: e.detail.y,
-                    index: e.detail.index,
-                    tabType: e.detail.tabType
-                };
-            }}"
+                    this.tabContextMenu = {
+                        x: e.detail.x,
+                        y: e.detail.y,
+                        index: e.detail.index,
+                        tabType: e.detail.tabType
+                    };
+                }}"
                 @tab-reorder="${(e: CustomEvent) => this._handleTabReorder(e.detail.fromIndex, e.detail.toIndex)}"
                 @add-sheet-click="${this._handleAddSheet}"
             ></bottom-tabs>
@@ -1092,12 +1121,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 .tabType="${this.tabContextMenu?.tabType ?? 'sheet'}"
                 @rename="${() => this._renameTab(this.tabContextMenu!.index)}"
                 @delete="${() => {
-                if (this.tabContextMenu?.tabType === 'sheet') {
-                    this._deleteSheet(this.tabContextMenu.index);
-                } else {
-                    this._deleteDocument(this.tabContextMenu!.index);
-                }
-            }}"
+                    if (this.tabContextMenu?.tabType === 'sheet') {
+                        this._deleteSheet(this.tabContextMenu.index);
+                    } else {
+                        this._deleteDocument(this.tabContextMenu!.index);
+                    }
+                }}"
                 @add-document="${this._addDocumentFromMenu}"
                 @add-sheet="${this._addSheetFromMenu}"
                 @close="${() => (this.tabContextMenu = null)}"
@@ -1107,8 +1136,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             <confirmation-modal
                 .open="${this.confirmDeleteIndex !== null}"
                 title="${this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
-                ? t('deleteDocument')
-                : t('deleteSheet')}"
+                    ? t('deleteDocument')
+                    : t('deleteSheet')}"
                 confirmLabel="${t('delete')}"
                 cancelLabel="${t('cancel')}"
                 @confirm="${this._performDelete}"
@@ -1119,9 +1148,10 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                         this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
                             ? 'deleteDocumentConfirm'
                             : 'deleteSheetConfirm',
-                        `<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null
-                            ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
-                            : ''
+                        `<span style="color: var(--vscode-textPreformat-foreground);">${
+                            this.confirmDeleteIndex !== null
+                                ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
+                                : ''
                         }</span>`
                     )
                 )}

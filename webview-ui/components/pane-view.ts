@@ -59,18 +59,18 @@ export class PaneView extends LitElement {
                 @dragleave="${this._handleTabBarDragLeave}"
             >
                 ${this.node.tables.map((globalIdx, i) => {
-            const table = this.tables[globalIdx];
-            const isActive = i === activeLocalIndex;
-            const isEditing = this._editingTabGlobalIndex === globalIdx;
+                    const table = this.tables[globalIdx];
+                    const isActive = i === activeLocalIndex;
+                    const isEditing = this._editingTabGlobalIndex === globalIdx;
 
-            return html`
+                    return html`
                         <div
                             class="tab ${isActive ? 'active' : ''} ${this._dragOverIndex === i &&
-                    this._dragOverSide === 'left'
-                    ? 'drag-over-left'
-                    : ''} ${this._dragOverIndex === i && this._dragOverSide === 'right'
-                        ? 'drag-over-right'
-                        : ''}"
+                            this._dragOverSide === 'left'
+                                ? 'drag-over-left'
+                                : ''} ${this._dragOverIndex === i && this._dragOverSide === 'right'
+                                ? 'drag-over-right'
+                                : ''}"
                             draggable="${!isEditing}"
                             @dragstart="${(e: DragEvent) => this._handleDragStart(e, i, globalIdx)}"
                             @dragover="${(e: DragEvent) => this._handleTabDragOver(e, i)}"
@@ -80,7 +80,7 @@ export class PaneView extends LitElement {
                             @dblclick="${() => this._startRenaming(globalIdx, table?.name || undefined)}"
                         >
                             ${isEditing
-                    ? html`
+                                ? html`
                                       <input
                                           class="tab-input"
                                           .value="${this._editingName}"
@@ -91,16 +91,16 @@ export class PaneView extends LitElement {
                                           @dblclick="${(e: Event) => e.stopPropagation()}"
                                       />
                                   `
-                    : table?.name || t('table', (globalIdx + 1).toString())}
+                                : table?.name || t('table', (globalIdx + 1).toString())}
                         </div>
                     `;
-        })}
+                })}
                 <div class="tab-add" @click="${this._handleAddTable}" title="${t('addTable')}">+</div>
                 ${this.node.tables.length === 0
-                ? html`<div class="tab-delete-pane" @click="${this._handleDeletePane}" title="${t('deletePane')}">
+                    ? html`<div class="tab-delete-pane" @click="${this._handleDeletePane}" title="${t('deletePane')}">
                           ×
                       </div>`
-                : ''}
+                    : ''}
             </div>
             <div
                 class="content"
@@ -109,7 +109,7 @@ export class PaneView extends LitElement {
                 @drop="${this._handleContentDrop}"
             >
                 ${activeTable
-                ? html`
+                    ? html`
                           <spreadsheet-table
                               style="flex: 1; min-height: 0;"
                               .table="${activeTable}"
@@ -119,7 +119,7 @@ export class PaneView extends LitElement {
                               .workbook="${this.workbook}"
                           ></spreadsheet-table>
                       `
-                : html`
+                    : html`
                           <div class="empty-pane">
                               <div class="empty-pane-icon">📋</div>
                               <div class="empty-pane-text">${t('noTableSelected')}</div>
@@ -256,7 +256,7 @@ export class PaneView extends LitElement {
         return html`<div class="drop-overlay active" style="${style}"></div>`;
     }
 
-    private _handleDragEnter = (_e: DragEvent) => { }; // Added this method as per instruction, assuming an empty body for now.
+    private _handleDragEnter = (_e: DragEvent) => {}; // Added this method as per instruction, assuming an empty body for now.
 
     private _handleDragStart(_e: DragEvent, localIndex: number, globalIndex: number) {
         if (!_e.dataTransfer) return;

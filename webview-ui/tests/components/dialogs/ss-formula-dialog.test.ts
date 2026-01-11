@@ -1,6 +1,6 @@
 /**
  * UI tests for SSFormulaDialog component
- * 
+ *
  * Tests:
  * - Mode switching (Calculation vs Lookup)
  * - Function type selection
@@ -12,29 +12,35 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { WorkbookJSON } from '../../../types';
 
 describe('SSFormulaDialog', () => {
-
     // =========================================================================
     // Mock Data
     // =========================================================================
 
     const mockWorkbook: WorkbookJSON = {
-        sheets: [{
-            name: 'Products',
-            tables: [{
-                name: 'ProductMaster',
-                headers: ['id', 'name', 'price', 'qty'],
-                rows: [['P001', 'Widget', '100', '10']],
-                metadata: { id: 0 }
-            }]
-        }, {
-            name: 'Sales',
-            tables: [{
-                name: 'Orders',
-                headers: ['order_id', 'product_id', 'amount'],
-                rows: [['O001', 'P001', '5']],
-                metadata: { id: 1 }
-            }]
-        }]
+        sheets: [
+            {
+                name: 'Products',
+                tables: [
+                    {
+                        name: 'ProductMaster',
+                        headers: ['id', 'name', 'price', 'qty'],
+                        rows: [['P001', 'Widget', '100', '10']],
+                        metadata: { id: 0 }
+                    }
+                ]
+            },
+            {
+                name: 'Sales',
+                tables: [
+                    {
+                        name: 'Orders',
+                        headers: ['order_id', 'product_id', 'amount'],
+                        rows: [['O001', 'P001', '5']],
+                        metadata: { id: 1 }
+                    }
+                ]
+            }
+        ]
     } as unknown as WorkbookJSON;
 
     // =========================================================================
@@ -86,7 +92,7 @@ describe('SSFormulaDialog', () => {
         it('should support aggregate function types', () => {
             const aggregateTypes = ['sum', 'avg', 'count', 'min', 'max'];
 
-            aggregateTypes.forEach(type => {
+            aggregateTypes.forEach((type) => {
                 const state = {
                     mode: 'arithmetic' as const,
                     functionType: type,
@@ -99,7 +105,7 @@ describe('SSFormulaDialog', () => {
 
         it('should support expression with column references', () => {
             const expression = '[Price] * [Qty]';
-            const columnRefs = expression.match(/\[([^\]]+)\]/g)?.map(ref => ref.slice(1, -1)) || [];
+            const columnRefs = expression.match(/\[([^\]]+)\]/g)?.map((ref) => ref.slice(1, -1)) || [];
 
             expect(columnRefs).toEqual(['Price', 'Qty']);
         });
@@ -168,26 +174,32 @@ describe('SSFormulaDialog', () => {
                 );
             };
 
-            expect(validateLookup({
-                sourceTableId: -1,
-                joinKeyLocal: 'id',
-                joinKeyRemote: 'id',
-                targetField: 'price'
-            })).toBe(false);
+            expect(
+                validateLookup({
+                    sourceTableId: -1,
+                    joinKeyLocal: 'id',
+                    joinKeyRemote: 'id',
+                    targetField: 'price'
+                })
+            ).toBe(false);
 
-            expect(validateLookup({
-                sourceTableId: 0,
-                joinKeyLocal: '',
-                joinKeyRemote: 'id',
-                targetField: 'price'
-            })).toBe(false);
+            expect(
+                validateLookup({
+                    sourceTableId: 0,
+                    joinKeyLocal: '',
+                    joinKeyRemote: 'id',
+                    targetField: 'price'
+                })
+            ).toBe(false);
 
-            expect(validateLookup({
-                sourceTableId: 0,
-                joinKeyLocal: 'product_id',
-                joinKeyRemote: 'id',
-                targetField: 'price'
-            })).toBe(true);
+            expect(
+                validateLookup({
+                    sourceTableId: 0,
+                    joinKeyLocal: 'product_id',
+                    joinKeyRemote: 'id',
+                    targetField: 'price'
+                })
+            ).toBe(true);
         });
     });
 
@@ -238,7 +250,7 @@ describe('SSFormulaDialog', () => {
             }
 
             const currentTableId = 1;
-            const availableTables = allTables.filter(t => t.tableId !== currentTableId);
+            const availableTables = allTables.filter((t) => t.tableId !== currentTableId);
 
             expect(availableTables.length).toBe(1);
             expect(availableTables[0].tableName).toBe('ProductMaster');

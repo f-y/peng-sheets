@@ -9,6 +9,7 @@
 export type {
     UpdateResult as IUpdateSpec,
     VisualMetadata as IVisualMetadata,
+    TableMetadata,
     ValidationMetadata,
     TabOrderItem,
     CellRange,
