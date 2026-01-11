@@ -173,7 +173,48 @@ When adding new data-modifying operations:
 
 ---
 
-## 6.7 Computed Column Recalculation
+## 6.7 Deferred Save for Non-Undo Operations
+
+Some UI state changes (like tab switching) should be persisted to the file but should **not** create undo entries. These use the **deferred save** architecture.
+
+### Problem
+
+When switching table tabs in split-pane layouts, the `activeTableIndex` is updated in sheet metadata. If saved immediately, each tab switch creates an undo entry, polluting the undo stack.
+
+### Solution: Deferred Save Queue
+
+Instead of saving immediately, tab switches queue their updates to be applied with the next actual file edit:
+
+```
+Tab Switch → 'sheet-metadata-deferred' event
+    ↓
+GlobalEventController → queueDeferredMetadataUpdate()
+    ↓
+SpreadsheetService._deferredMetadataUpdates (Map)
+    ↓
+Next actual edit → startBatch() → _applyDeferredUpdates()
+    ↓
+Deferred update included in same batch as actual edit
+```
+
+### Key Files
+
+- `webview-ui/components/layout-container.ts` - Dispatches `sheet-metadata-deferred` for switch-tab
+- `webview-ui/controllers/global-event-controller.ts` - Routes event to service
+- `webview-ui/services/spreadsheet-service.ts` - Manages deferred queue
+
+### When to Use This Pattern
+
+Use deferred save when:
+- The change should be saved to file eventually
+- The change should NOT create an undo entry
+- The change can wait until the next actual edit
+
+Examples: tab selection, scroll position, expanded/collapsed states
+
+---
+
+## 6.8 Computed Column Recalculation
 
 Computed columns (formula columns defined in table metadata) are automatically recalculated after any data-modifying operation.
 
