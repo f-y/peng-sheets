@@ -6,9 +6,9 @@
  * - Batch updates for atomic undo/redo
  * - Column rename propagation
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { FormulaController, type FormulaControllerHost, type CellUpdate } from '../../controllers/formula-controller';
-import type { FormulaMetadata, ArithmeticFormula, LookupFormula } from '../../services/types';
+import { describe, it, expect, vi } from 'vitest';
+import { FormulaController, type FormulaControllerHost } from '../../controllers/formula-controller';
+import type { FormulaMetadata, LookupFormula } from '../../services/types';
 import type { WorkbookJSON } from '../../types';
 
 describe('Computed Columns Integration', () => {

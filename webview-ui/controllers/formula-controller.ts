@@ -138,7 +138,7 @@ export class FormulaController implements ReactiveController {
         tableId: number,
         colIndex: number,
         formula: ArithmeticFormula,
-        table: TableJSON
+        _table: TableJSON
     ): void {
         const sourceTableId = formula.sourceTableId ?? tableId;
 

@@ -8,7 +8,7 @@
  * - Event dispatching
  * - Rendering states
  */
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import type { WorkbookJSON } from '../../../types';
 
 describe('SSFormulaDialog', () => {

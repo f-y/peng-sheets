@@ -20,7 +20,7 @@ import type {
     FormulaFunctionType,
     TableMetadata
 } from '../../services/types';
-import type { WorkbookJSON, SheetJSON, TableJSON } from '../../types';
+import type { WorkbookJSON, TableJSON } from '../../types';
 import { evaluateArithmeticFormula, evaluateLookup, buildRowData, NA_VALUE } from '../../utils/formula-evaluator';
 
 type FormulaMode = 'calculation' | 'lookup';

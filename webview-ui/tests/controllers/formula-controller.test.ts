@@ -8,9 +8,9 @@
  * - Column reference parsing
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { FormulaController, type FormulaControllerHost, type CellUpdate } from '../../controllers/formula-controller';
+import { FormulaController, type FormulaControllerHost } from '../../controllers/formula-controller';
 import type { FormulaMetadata, ArithmeticFormula, LookupFormula } from '../../services/types';
-import type { WorkbookJSON, TableJSON } from '../../types';
+import type { WorkbookJSON } from '../../types';
 
 // =============================================================================
 // Mock Helper
