@@ -286,10 +286,14 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             return;
         }
 
+        // Start batch to group original update with formula recalculations into single undo
+        this.spreadsheetService.startBatch();
+
         this.spreadsheetService.updateRange(sheetIdx, tableIdx, startRow, endRow, startCol, endCol, newValue);
 
         // Trigger formula recalculation for affected columns
-        this._recalculateFormulas(sheetIdx, tableIdx, startCol, endCol);
+        // _recalculateFormulas will call endBatch after processing
+        this._recalculateFormulas(sheetIdx, tableIdx, startCol, endCol, true);
     }
 
     /**
@@ -411,21 +415,40 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     /**
      * Recalculate formula columns affected by cell changes.
      * Applies batch updates for all dependent formula columns.
+     * @param shouldEndBatch If true, ends the batch that was started by the caller
      */
-    private _recalculateFormulas(sheetIdx: number, tableIdx: number, startCol: number, endCol: number) {
-        if (!this.workbook) return;
+    private _recalculateFormulas(
+        sheetIdx: number,
+        tableIdx: number,
+        startCol: number,
+        endCol: number,
+        shouldEndBatch: boolean = false
+    ) {
+        if (!this.workbook) {
+            if (shouldEndBatch) this.spreadsheetService.endBatch();
+            return;
+        }
 
         const sheet = this.workbook.sheets[sheetIdx];
-        if (!sheet) return;
+        if (!sheet) {
+            if (shouldEndBatch) this.spreadsheetService.endBatch();
+            return;
+        }
 
         const table = sheet.tables[tableIdx];
-        if (!table) return;
+        if (!table) {
+            if (shouldEndBatch) this.spreadsheetService.endBatch();
+            return;
+        }
 
         // Get table ID for dependency lookup
         const meta = table.metadata as Record<string, unknown> | undefined;
         const visual = meta?.visual as Record<string, unknown> | undefined;
         const tableId = visual?.id as number | undefined;
-        if (tableId === undefined) return;
+        if (tableId === undefined) {
+            if (shouldEndBatch) this.spreadsheetService.endBatch();
+            return;
+        }
 
         const headers = table.headers || [];
 
@@ -466,30 +489,27 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                     allUpdates.push(...updates);
                 }
 
-                // Apply updates as a batch for atomic undo/redo
-                if (allUpdates.length > 0) {
-                    // Start batch to collect all formula updates into single undo entry
-                    this.spreadsheetService.startBatch();
-                    try {
-                        for (const update of allUpdates) {
-                            this.spreadsheetService.updateRange(
-                                update.sheetIndex,
-                                update.tableIndex,
-                                update.rowIndex,
-                                update.rowIndex,
-                                update.colIndex,
-                                update.colIndex,
-                                update.value
-                            );
-                        }
-                    } finally {
-                        // End batch - sends single message for all formula updates
-                        this.spreadsheetService.endBatch();
-                    }
+                // Apply updates (batch is already started by caller if shouldEndBatch is true)
+                for (const update of allUpdates) {
+                    this.spreadsheetService.updateRange(
+                        update.sheetIndex,
+                        update.tableIndex,
+                        update.rowIndex,
+                        update.rowIndex,
+                        update.colIndex,
+                        update.colIndex,
+                        update.value
+                    );
+                }
+
+                // End batch if we're responsible for it
+                if (shouldEndBatch) {
+                    this.spreadsheetService.endBatch();
                 }
             })
             .catch(() => {
-                // Silently ignore if formula controller couldn't load
+                // End batch even on error
+                if (shouldEndBatch) this.spreadsheetService.endBatch();
             });
     }
 

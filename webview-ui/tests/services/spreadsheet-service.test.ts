@@ -123,7 +123,7 @@ describe('SpreadsheetService (TypeScript)', () => {
             expect(mockVscode.postMessage).not.toHaveBeenCalled();
         });
 
-        it('should post single message when batch ends', async () => {
+        it('should post messages with undo batching when batch ends', async () => {
             service.startBatch();
 
             service.updateRange(0, 0, 0, 0, 0, 0, 'Value1');
@@ -133,7 +133,17 @@ describe('SpreadsheetService (TypeScript)', () => {
 
             service.endBatch();
 
-            expect(mockVscode.postMessage).toHaveBeenCalledTimes(1);
+            // Each update is sent as a message, but with undo stop control
+            const calls = (mockVscode.postMessage as ReturnType<typeof vi.fn>).mock.calls;
+            expect(calls.length).toBe(2);
+
+            // First message should have undoStopBefore: true
+            expect(calls[0][0].undoStopBefore).toBe(true);
+            expect(calls[0][0].undoStopAfter).toBe(false);
+
+            // Last message should have undoStopAfter: true
+            expect(calls[1][0].undoStopBefore).toBe(false);
+            expect(calls[1][0].undoStopAfter).toBe(true);
         });
     });
 

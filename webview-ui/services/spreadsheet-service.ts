@@ -15,6 +15,8 @@ import * as editor from '../../src/editor';
 export class SpreadsheetService {
     private _initialized: boolean = false;
     private _isBatching: boolean = false;
+    private _batchFirstUpdate: boolean = true;
+    private _batchUpdates: IUpdateSpec[] = [];
     private _pendingUpdateSpec: IUpdateSpec | null = null;
     private vscode: IVSCodeApi;
     private _isSyncing: boolean = false;
@@ -98,25 +100,22 @@ export class SpreadsheetService {
 
     /**
      * Sends the result of an operation back to the VS Code extension.
+     * When batching, accumulates updates to send together at endBatch.
      */
     private _postUpdateMessage(
         updateSpec: IUpdateSpec,
         options: { undoStopBefore?: boolean; undoStopAfter?: boolean } = {}
     ) {
-        if (this._isBatching) {
-            if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
-                this._pendingUpdateSpec = {
-                    type: 'updateRange',
-                    startLine: updateSpec.startLine,
-                    endLine: updateSpec.endLine,
-                    content: updateSpec.content,
-                    endCol: updateSpec.endCol
-                };
-            }
-            return;
-        }
-
         if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
+            if (this._isBatching) {
+                // During batch: accumulate updates to send together at endBatch
+                this._batchUpdates.push({
+                    ...updateSpec,
+                    type: 'updateRange'
+                });
+                return;
+            }
+
             this.vscode.postMessage({
                 type: 'updateRange',
                 startLine: updateSpec.startLine,
@@ -140,14 +139,31 @@ export class SpreadsheetService {
 
     public startBatch() {
         this._isBatching = true;
+        this._batchFirstUpdate = true;
+        this._batchUpdates = [];
         this._pendingUpdateSpec = null;
     }
 
     public endBatch() {
         this._isBatching = false;
-        if (this._pendingUpdateSpec) {
-            this._postUpdateMessage(this._pendingUpdateSpec);
-            this._pendingUpdateSpec = null;
+        const updates = this._batchUpdates;
+        this._batchUpdates = [];
+        this._batchFirstUpdate = true;
+        this._pendingUpdateSpec = null;
+
+        // Send all accumulated updates with proper undo stop control
+        for (let i = 0; i < updates.length; i++) {
+            const isFirst = i === 0;
+            const isLast = i === updates.length - 1;
+            this.vscode.postMessage({
+                type: 'updateRange',
+                startLine: updates[i].startLine,
+                endLine: updates[i].endLine,
+                endCol: updates[i].endCol,
+                content: updates[i].content,
+                undoStopBefore: isFirst,
+                undoStopAfter: isLast
+            });
         }
     }
 
