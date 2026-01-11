@@ -67,6 +67,20 @@ export class SpreadsheetService {
         this._skipNextParse = value;
     }
 
+    /**
+     * Get the current workbook JSON from the editor's state.
+     * Used for formula recalculation to ensure we have the latest data after mutations.
+     */
+    public getCurrentWorkbook(): import('../types').WorkbookJSON | null {
+        try {
+            const stateJson = editor.getState();
+            const state = JSON.parse(stateJson);
+            return state.workbook || null;
+        } catch {
+            return null;
+        }
+    }
+
     // Queue management for compatibility with existing async patterns
     private _enqueueRequest(task: () => Promise<void>) {
         this._requestQueue.push(task);
@@ -172,15 +186,20 @@ export class SpreadsheetService {
     /**
      * Execute a TypeScript editor function and post the result.
      * Operations are synchronous since we use the pure TypeScript editor.
+     * Uses batch to consolidate action + formula recalculation into single undo.
      */
     private _performAction<T extends IUpdateSpec>(fn: () => T) {
+        // Start batch to group action + formula recalculations into single undo
+        this.startBatch();
         try {
             const result = fn();
             if (result) this._postUpdateMessage(result);
-            // Trigger data change callback for formula recalculation synchronously
+            // Trigger data change callback for formula recalculation (within same batch)
             this._onDataChanged?.();
         } catch (err) {
             console.error('Operation failed:', err);
+        } finally {
+            this.endBatch();
         }
     }
 

@@ -719,9 +719,22 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         this._initPromise = this.spreadsheetService.initialize();
 
         // Register callback for automatic formula recalculation after any data change
-        // withinBatch: true because updateRange already manages the batch for single undo
+        // Use getCurrentWorkbook() to get fresh state from editor after mutations
+        // withinBatch: true because caller manages the batch for single undo
         this.spreadsheetService.setOnDataChangedCallback(() => {
-            recalculateAllFormulas(this.workbook, this.spreadsheetService, () => this.requestUpdate(), true);
+            const currentWorkbook = this.spreadsheetService.getCurrentWorkbook();
+            recalculateAllFormulas(
+                currentWorkbook,
+                this.spreadsheetService,
+                () => {
+                    // Also update this.workbook with fresh state for UI sync
+                    if (currentWorkbook) {
+                        this.workbook = currentWorkbook;
+                    }
+                    this.requestUpdate();
+                },
+                true
+            );
         });
 
         try {
