@@ -28,7 +28,7 @@ This table tracks monthly sales quantities by product and month.
 
 | product_id | product_name | unit_price | quantity | subtotal |
 | --- | --- | --- | --- | --- |
-| P001 | Wireless<br> Mouse | 2500 | 150 | 375000 |
+| P001 | Wireless<br> Mouse | 2500 | 100 | 250000 |
 | P002 | Mechanical Keyboard | 12000 | 45 | 540000 |
 | P003 | USB-C Hub | 4500 | 80 | 360000 |
 | P001 | Wireless<br> Mouse | 2500 | 120 | 300000 |
@@ -54,8 +54,10 @@ This table provides yearly aggregated sales data per product.
 | P002 | Mechanical Keyboard | 12000 | 83 | 996000 |
 | P003 | USB-C Hub | 4500 | 175 | 787500 |
 | P004 | 27" Monitor | 45000 | 20 | 900000 |
-| P005 | Laptop Stand | 3500 | 65 |  |
+| P005 | Laptop Stand | 3500 | 65 | 227500 |
 
 <!-- md-spreadsheet-table-metadata: {"id": 2, "formulas": {"1": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "product_name"}, "4": {"type": "arithmetic", "functionType": "expression", "expression": "[total_quantity] * [unit_price]"}}} -->
+
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "pane", "id": "root", "tables": [0, 1], "activeTableIndex": 1}} -->
 
 <!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "sheet", "index": 0}, {"type": "sheet", "index": 1}]} -->

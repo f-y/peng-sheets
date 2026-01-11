@@ -212,15 +212,37 @@ export class FormulaController implements ReactiveController {
     /**
      * Recalculate all formula columns affected by a cell change.
      * Returns an array of CellUpdate objects for batch application.
+     * Handles cascading dependencies (e.g., Lookup → arithmetic that uses Lookup result).
      */
     recalculateAffectedColumns(tableId: number, changedColumn: string, workbook: WorkbookJSON): CellUpdate[] {
         const updates: CellUpdate[] = [];
+        // Track visited (tableId, colIndex) to prevent infinite loops
+        const visited = new Set<string>();
 
+        this._recalculateAffectedColumnsRecursive(tableId, changedColumn, workbook, updates, visited);
+
+        return updates;
+    }
+
+    /**
+     * Internal recursive helper for cascading dependency resolution.
+     */
+    private _recalculateAffectedColumnsRecursive(
+        tableId: number,
+        changedColumn: string,
+        workbook: WorkbookJSON,
+        updates: CellUpdate[],
+        visited: Set<string>
+    ): void {
         // Get all dependent formula columns
         const dependents = this.getDependentColumns(tableId, changedColumn);
-        if (dependents.length === 0) return updates;
+        if (dependents.length === 0) return;
 
         for (const dep of dependents) {
+            const visitKey = `${dep.tableId}:${dep.colIndex}`;
+            if (visited.has(visitKey)) continue;
+            visited.add(visitKey);
+
             const location = this.findTableLocation(dep.tableId);
             if (!location) continue;
 
@@ -229,9 +251,14 @@ export class FormulaController implements ReactiveController {
             const formula = this.getFormulaForTable(table, dep.colIndex);
             if (!formula) continue;
 
-            // Evaluate formula for each row
+            // Evaluate formula for each row and update workbook in memory
             for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
                 const newValue = this._evaluateFormulaForRow(formula, table, rowIndex, workbook);
+
+                // Update workbook in memory so cascading formulas see new values
+                if (table.rows[rowIndex]) {
+                    table.rows[rowIndex][dep.colIndex] = newValue;
+                }
 
                 updates.push({
                     sheetIndex: location.sheetIndex,
@@ -241,9 +268,15 @@ export class FormulaController implements ReactiveController {
                     value: newValue
                 });
             }
-        }
 
-        return updates;
+            // Get the column name for the updated computed column
+            const headers = table.headers || [];
+            const updatedColName = headers[dep.colIndex];
+            if (updatedColName) {
+                // Recursively recalculate columns that depend on this computed column
+                this._recalculateAffectedColumnsRecursive(dep.tableId, updatedColName, workbook, updates, visited);
+            }
+        }
     }
 
     /**
