@@ -2,12 +2,12 @@
 
 All notable changes to the "PengSheets" extension will be documented in this file.
 
-## [Unreleased]
+## [1.0.5] - 2026-01-11
 
 ### Fixed
 - Fix context menu and add-tab dropdown being clipped when displayed near viewport edges.
 - Fix + button "Add New Document" inserting document at wrong position in hybrid notebooks.
-- Fix toolbar formatting changes (comma separator, alignment, etc.) not updating UI immediately when document is unsaved. Applied optimistic UI updates with proper Lit reactivity.
+- Fix certain UI operations (e.g., toolbar formatting, column drag-and-drop) not updating immediately when document is unsaved.
 
 ## [1.0.4] - 2026-01-10
 

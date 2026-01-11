@@ -352,87 +352,11 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     private async _handleUpdateColumnAlign(detail: IColumnUpdateDetail) {
         const { sheetIndex, tableIndex, colIndex, alignment } = detail;
-
-        // Optimistic Update: Lit requires top-level property change to detect updates
-        const targetTabIndex = this.tabs.findIndex((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
-        if (targetTabIndex >= 0) {
-            const targetTab = this.tabs[targetTabIndex];
-            if (isSheetJSON(targetTab.data)) {
-                const table = targetTab.data.tables[tableIndex];
-                if (table) {
-                    const currentMetadata = (table.metadata || {}) as Record<string, unknown>;
-                    const currentVisual = (currentMetadata.visual || {}) as Record<string, unknown>;
-                    const currentColumns = (currentVisual.columns || {}) as Record<string, Record<string, unknown>>;
-                    const colKey = String(colIndex);
-                    const currentColMeta = currentColumns[colKey] || {};
-
-                    const newTable = {
-                        ...table,
-                        metadata: {
-                            ...currentMetadata,
-                            visual: {
-                                ...currentVisual,
-                                columns: {
-                                    ...currentColumns,
-                                    [colKey]: { ...currentColMeta, alignment: alignment ?? undefined }
-                                }
-                            }
-                        }
-                    };
-
-                    const newTables = [...targetTab.data.tables];
-                    newTables[tableIndex] = newTable;
-                    const newData = { ...targetTab.data, tables: newTables };
-                    const newTabs = [...this.tabs];
-                    newTabs[targetTabIndex] = { ...targetTab, data: newData };
-                    this.tabs = newTabs;
-                }
-            }
-        }
-
         this.spreadsheetService.updateColumnAlign(sheetIndex, tableIndex, colIndex, alignment ?? null);
     }
 
     private async _handleUpdateColumnFormat(detail: IColumnUpdateDetail) {
         const { sheetIndex, tableIndex, colIndex, format } = detail;
-
-        // Optimistic Update: Lit requires top-level property change to detect updates
-        const targetTabIndex = this.tabs.findIndex((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
-        if (targetTabIndex >= 0) {
-            const targetTab = this.tabs[targetTabIndex];
-            if (isSheetJSON(targetTab.data)) {
-                const table = targetTab.data.tables[tableIndex];
-                if (table) {
-                    const currentMetadata = (table.metadata || {}) as Record<string, unknown>;
-                    const currentVisual = (currentMetadata.visual || {}) as Record<string, unknown>;
-                    const currentColumns = (currentVisual.columns || {}) as Record<string, Record<string, unknown>>;
-                    const colKey = String(colIndex);
-                    const currentColMeta = currentColumns[colKey] || {};
-
-                    const newTable = {
-                        ...table,
-                        metadata: {
-                            ...currentMetadata,
-                            visual: {
-                                ...currentVisual,
-                                columns: {
-                                    ...currentColumns,
-                                    [colKey]: { ...currentColMeta, format: format ?? undefined }
-                                }
-                            }
-                        }
-                    };
-
-                    const newTables = [...targetTab.data.tables];
-                    newTables[tableIndex] = newTable;
-                    const newData = { ...targetTab.data, tables: newTables };
-                    const newTabs = [...this.tabs];
-                    newTabs[targetTabIndex] = { ...targetTab, data: newData };
-                    this.tabs = newTabs;
-                }
-            }
-        }
-
         this.spreadsheetService.updateColumnFormat(sheetIndex, tableIndex, colIndex, format ?? null);
     }
 
