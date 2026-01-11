@@ -201,9 +201,10 @@ export class MessageDispatcher {
             if (activeDocument) {
                 if (activeDocument.isDirty) {
                     const saved = await activeDocument.save();
-                    console.log(`Document saved: ${saved}`);
+                    // save() can return false if document was already saved by VS Code's
+                    // native Ctrl+S handler or auto-save - this is normal, not an error
                     if (!saved) {
-                        console.warn('Save returned false, but document may have been saved by another process');
+                        console.log('Document already saved by another process');
                     }
                 } else {
                     console.log('Document is not dirty, nothing to save');

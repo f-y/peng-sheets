@@ -58,6 +58,6 @@ This table provides yearly aggregated sales data per product.
 
 <!-- md-spreadsheet-table-metadata: {"id": 2, "formulas": {"1": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "product_name"}, "2": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "unit_price"}, "4": {"type": "arithmetic", "functionType": "expression", "expression": "[total_quantity] * [unit_price]"}}, "columns": {"1": {"width": 156}, "2": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}}, "4": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}, "width": 124}}} -->
 
-<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "pane", "id": "root", "tables": [0, 1], "activeTableIndex": 0}} -->
+<!-- md-spreadsheet-sheet-metadata: {"layout": {"type": "pane", "id": "root", "tables": [0, 1], "activeTableIndex": 1}} -->
 
 <!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "sheet", "index": 0}, {"type": "sheet", "index": 1}]} -->

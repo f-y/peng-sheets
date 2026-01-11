@@ -89,11 +89,8 @@ export class KeyboardController implements ReactiveController {
             return;
         }
 
-        if (isControl && (e.key === 's' || e.key === 'S')) {
-            e.preventDefault();
-            this.host.dispatchEvent(new CustomEvent('save-requested', { bubbles: true, composed: true }));
-            return;
-        }
+        // Note: Ctrl+S is handled by GlobalEventController at window level
+        // Do NOT add duplicate handling here!
 
         // Excel-compatible date/time shortcuts
         // Ctrl + ; inserts current date, Ctrl + Shift + ; inserts current time
