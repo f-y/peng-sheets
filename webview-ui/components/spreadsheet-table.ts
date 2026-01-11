@@ -768,6 +768,10 @@ export class SpreadsheetTable extends LitElement {
                 @view-clear-filter="${this.filterCtrl.handleClearFilter}"
                 @view-data-validation="${this._handleOpenValidationDialog}"
                 @view-formula-column="${this._handleOpenFormulaDialog}"
+                @view-formula-click="${(e: CustomEvent<{ col: number }>) =>
+                    this._handleOpenFormulaDialog(
+                        new CustomEvent('ss-formula-click', { detail: { index: e.detail.col } })
+                    )}"
                 @view-cell-contextmenu="${this.eventCtrl.handleCellContextMenu}"
                 @view-copy="${() => {
                     this.clipboardCtrl.copyToClipboard();

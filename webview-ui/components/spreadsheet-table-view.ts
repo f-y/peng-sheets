@@ -378,6 +378,7 @@ export class SpreadsheetTableView extends LitElement {
                         @ss-col-blur="${(e: CustomEvent) => this._bubbleEvent('view-col-blur', e.detail)}"
                         @ss-col-keydown="${(e: CustomEvent) => this._bubbleEvent('view-col-keydown', e.detail)}"
                         @ss-filter-click="${(e: CustomEvent) => this._bubbleEvent('view-filter-click', e.detail)}"
+                        @ss-formula-click="${(e: CustomEvent) => this._bubbleEvent('view-formula-click', e.detail)}"
                         @ss-resize-start="${(e: CustomEvent) => this._bubbleEvent('view-resize-start', e.detail)}"
                     ></ss-column-header>
                 `;
