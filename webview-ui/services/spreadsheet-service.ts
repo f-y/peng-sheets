@@ -24,8 +24,37 @@ export class SpreadsheetService {
     private _requestQueue: Array<() => Promise<void>> = [];
     private _onDataChanged?: () => void;
 
+    // Deferred metadata updates (e.g., tab switches) - applied with next actual edit
+    private _deferredMetadataUpdates: Map<number, Record<string, unknown>> = new Map();
+
     constructor(vscode: IVSCodeApi) {
         this.vscode = vscode;
+    }
+
+    /**
+     * Queue a deferred metadata update (e.g., tab switch).
+     * The update will be applied when the next actual file edit occurs.
+     */
+    public queueDeferredMetadataUpdate(sheetIndex: number, metadata: Record<string, unknown>) {
+        const existing = this._deferredMetadataUpdates.get(sheetIndex) || {};
+        this._deferredMetadataUpdates.set(sheetIndex, { ...existing, ...metadata });
+    }
+
+    /**
+     * Apply any pending deferred metadata updates within current batch.
+     * Called at the start of startBatch() to include deferred updates.
+     */
+    private _applyDeferredUpdates() {
+        if (this._deferredMetadataUpdates.size === 0) return;
+
+        for (const [sheetIndex, metadata] of this._deferredMetadataUpdates.entries()) {
+            // Apply deferred update using updateRangeBatch pattern
+            const result = editor.updateSheetMetadata(sheetIndex, metadata);
+            if (result) {
+                this._postUpdateMessage(result);
+            }
+        }
+        this._deferredMetadataUpdates.clear();
     }
 
     /**
@@ -157,6 +186,8 @@ export class SpreadsheetService {
         this._batchFirstUpdate = true;
         this._batchUpdates = [];
         this._pendingUpdateSpec = null;
+        // Apply any deferred metadata updates (e.g., tab switches) at batch start
+        this._applyDeferredUpdates();
     }
 
     public endBatch() {

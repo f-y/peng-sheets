@@ -28,7 +28,7 @@ This table tracks monthly sales quantities by product and month.
 
 | product_id | product_name | unit_price | quantity | subtotal |
 | --- | --- | --- | --- | --- |
-| P001 | Wireless Mouse | 2500 | 100 | 250000 |
+| P001 | Wireless Mouse | 2500 | 200 | 500000 |
 | P002 | Mechanical Keyboard | 12000 | 45 | 540000 |
 | P003 | USB-C Hub | 4500 | 80 | 360000 |
 | P001 | Wireless Mouse | 2500 | 120 | 300000 |
@@ -50,7 +50,7 @@ This table provides yearly aggregated sales data per product.
 
 | product_id | product_name | unit_price | total_quantity | total_revenue |
 | --- | --- | --- | --- | --- |
-| P001 | Wireless Mouse | 2500 | 200 | 500000 |
+| P001 | Wireless Mouse | 2500 | 100 | 250000 |
 | P002 | Mechanical Keyboard | 12000 | 83 | 996000 |
 | P003 | USB-C Hub | 4500 | 175 | 787500 |
 | P004 | 27" Monitor | 45000 | 20 | 900000 |

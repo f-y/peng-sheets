@@ -45,7 +45,25 @@ export class LayoutContainer extends LitElement {
 
     private _initializeLayout() {
         if (this.layout) {
-            this._currentLayout = this._reconcileLayout(this.layout, this.tables.length);
+            // Collect current activeTableIndex values before reconciliation
+            const localActiveIndices = new Map<string, number>();
+            if (this._currentLayout) {
+                this._traverse(this._currentLayout, (node) => {
+                    if (node.type === 'pane') {
+                        localActiveIndices.set(node.id, node.activeTableIndex);
+                    }
+                });
+            }
+
+            // Reconcile layout with new data
+            let newLayout = this._reconcileLayout(this.layout, this.tables.length);
+
+            // Restore local activeTableIndex values (they take precedence over file values)
+            if (localActiveIndices.size > 0) {
+                newLayout = this._restoreActiveIndices(newLayout, localActiveIndices);
+            }
+
+            this._currentLayout = newLayout;
         } else {
             // Default: All tables in one pane
             this._currentLayout = {
@@ -54,6 +72,27 @@ export class LayoutContainer extends LitElement {
                 tables: this.tables.map((_, i) => i),
                 activeTableIndex: 0
             };
+        }
+    }
+
+    /**
+     * Restore local activeTableIndex values after reconciliation.
+     * This ensures tab selection is preserved across parent updates.
+     */
+    private _restoreActiveIndices(node: LayoutNode, localIndices: Map<string, number>): LayoutNode {
+        if (node.type === 'pane') {
+            const localIndex = localIndices.get(node.id);
+            if (localIndex !== undefined && localIndex !== node.activeTableIndex) {
+                // Ensure index is still valid
+                const validIndex = Math.min(localIndex, Math.max(0, node.tables.length - 1));
+                return { ...node, activeTableIndex: validIndex };
+            }
+            return node;
+        } else {
+            const newChildren = node.children.map((c) => this._restoreActiveIndices(c, localIndices));
+            // Check if any child actually changed
+            const changed = newChildren.some((c, i) => c !== node.children[i]);
+            return changed ? { ...node, children: newChildren as LayoutNode[] } : node;
         }
     }
 
@@ -250,8 +289,30 @@ export class LayoutContainer extends LitElement {
 
         if (newLayout && newLayout !== this._currentLayout) {
             this._currentLayout = newLayout;
-            this._dispatchPersistence();
+            if (type === 'switch-tab') {
+                // Dispatch deferred persistence - will be saved with next actual file edit
+                this._dispatchDeferredPersistence();
+            } else {
+                this._dispatchPersistence();
+            }
         }
+    }
+
+    /**
+     * Dispatch deferred persistence event for non-undo operations like tab switching.
+     * The update will be saved to file when the next actual edit occurs.
+     */
+    private _dispatchDeferredPersistence() {
+        this.dispatchEvent(
+            new CustomEvent('sheet-metadata-deferred', {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    metadata: { layout: this._currentLayout }
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
     }
 
     private _addTableToLayout(

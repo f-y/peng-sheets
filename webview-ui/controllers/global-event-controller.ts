@@ -110,6 +110,7 @@ export class GlobalEventController implements ReactiveController {
     private _boundRequestDeleteTable: (e: Event) => void;
     private _boundMetadataChange: (e: Event) => void;
     private _boundSheetMetadataUpdate: (e: Event) => void;
+    private _boundSheetMetadataDeferred: (e: Event) => void;
     private _boundPasteCells: (e: Event) => void;
     private _boundPostMessage: (e: Event) => void;
     private _boundDocumentChange: (e: Event) => void;
@@ -145,6 +146,7 @@ export class GlobalEventController implements ReactiveController {
         this._boundRequestDeleteTable = this._handleRequestDeleteTable.bind(this);
         this._boundMetadataChange = this._handleMetadataChange.bind(this);
         this._boundSheetMetadataUpdate = this._handleSheetMetadataUpdate.bind(this);
+        this._boundSheetMetadataDeferred = this._handleSheetMetadataDeferred.bind(this);
         this._boundPasteCells = this._handlePasteCells.bind(this);
         this._boundPostMessage = this._handlePostMessage.bind(this);
         this._boundDocumentChange = this._handleDocumentChange.bind(this);
@@ -185,6 +187,7 @@ export class GlobalEventController implements ReactiveController {
         window.addEventListener('metadata-update', this._boundMetadataUpdate);
         window.addEventListener('metadata-change', this._boundMetadataChange);
         window.addEventListener('sheet-metadata-update', this._boundSheetMetadataUpdate);
+        window.addEventListener('sheet-metadata-deferred', this._boundSheetMetadataDeferred);
 
         // Table operations
         window.addEventListener('request-add-table', this._boundRequestAddTable);
@@ -231,6 +234,7 @@ export class GlobalEventController implements ReactiveController {
         window.removeEventListener('metadata-update', this._boundMetadataUpdate);
         window.removeEventListener('metadata-change', this._boundMetadataChange);
         window.removeEventListener('sheet-metadata-update', this._boundSheetMetadataUpdate);
+        window.removeEventListener('sheet-metadata-deferred', this._boundSheetMetadataDeferred);
         window.removeEventListener('request-add-table', this._boundRequestAddTable);
         window.removeEventListener('request-rename-table', this._boundRequestRenameTable);
         window.removeEventListener('request-delete-table', this._boundRequestDeleteTable);
@@ -380,6 +384,12 @@ export class GlobalEventController implements ReactiveController {
 
     private _handleSheetMetadataUpdate(e: Event): void {
         this.host._handleSheetMetadataUpdate((e as CustomEvent<ISheetMetadataUpdateDetail>).detail);
+    }
+
+    private _handleSheetMetadataDeferred(e: Event): void {
+        // Queue deferred update to be applied with next actual file edit
+        const detail = (e as CustomEvent<ISheetMetadataUpdateDetail>).detail;
+        this.host.spreadsheetService.queueDeferredMetadataUpdate(detail.sheetIndex, detail.metadata);
     }
 
     private _handlePasteCells(e: Event): void {

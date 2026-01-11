@@ -727,10 +727,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 currentWorkbook,
                 this.spreadsheetService,
                 () => {
-                    // Also update this.workbook with fresh state for UI sync
-                    if (currentWorkbook) {
-                        this.workbook = currentWorkbook;
-                    }
+                    // Note: Don't replace this.workbook here - it would overwrite local UI state
+                    // (like activeTableIndex) with stale values from editor.
+                    // recalculateAllFormulas already updates cell values in-place.
                     this.requestUpdate();
                 },
                 true
