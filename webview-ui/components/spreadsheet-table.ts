@@ -119,6 +119,19 @@ export class SpreadsheetTable extends LitElement {
     }
 
     /**
+     * Check if a column is a formula column (computed column).
+     * Used to prevent editing of computed cells.
+     */
+    public isFormulaColumn(colIndex: number): boolean {
+        if (!this.table?.metadata) return false;
+        const meta = this.table.metadata as Record<string, unknown>;
+        const visual = meta?.visual as Record<string, unknown> | undefined;
+        const formulas = visual?.formulas as Record<string, unknown> | undefined;
+        if (!formulas) return false;
+        return colIndex.toString() in formulas;
+    }
+
+    /**
      * Open the description editor for this table.
      * Called from pane-view when user selects "Edit Table Description" from context menu.
      */

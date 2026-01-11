@@ -22,6 +22,7 @@ export class SpreadsheetService {
     private _isSyncing: boolean = false;
     private _skipNextParse: boolean = false;
     private _requestQueue: Array<() => Promise<void>> = [];
+    private _onDataChanged?: () => void;
 
     constructor(vscode: IVSCodeApi) {
         this.vscode = vscode;
@@ -169,19 +170,26 @@ export class SpreadsheetService {
     }
 
     /**
-     * Execute a TypeScript editor function and post the result
+     * Execute a TypeScript editor function and post the result.
+     * Operations are synchronous since we use the pure TypeScript editor.
      */
     private _performAction<T extends IUpdateSpec>(fn: () => T) {
-        this._enqueueRequest(async () => {
-            try {
-                const result = fn();
-                if (result) this._postUpdateMessage(result);
-            } catch (err) {
-                console.error('Operation failed:', err);
-                this._isSyncing = false;
-                this._scheduleProcessQueue();
-            }
-        });
+        try {
+            const result = fn();
+            if (result) this._postUpdateMessage(result);
+            // Trigger data change callback for formula recalculation synchronously
+            this._onDataChanged?.();
+        } catch (err) {
+            console.error('Operation failed:', err);
+        }
+    }
+
+    /**
+     * Register a callback to be called after any data-modifying operation.
+     * Used by main.ts to trigger formula recalculation.
+     */
+    public setOnDataChangedCallback(callback: () => void) {
+        this._onDataChanged = callback;
     }
 
     private _getDefaultColumnHeaders(): string[] {
@@ -230,7 +238,7 @@ export class SpreadsheetService {
         endCol: number,
         newValue: string
     ) {
-        this._enqueueRequest(async () => {
+        try {
             let lastResult: IUpdateSpec | null = null;
             for (let r = startRow; r <= endRow; r++) {
                 for (let c = startCol; c <= endCol; c++) {
@@ -240,7 +248,11 @@ export class SpreadsheetService {
             if (lastResult) {
                 this._postUpdateMessage(lastResult);
             }
-        });
+            // Trigger data change callback for formula recalculation
+            this._onDataChanged?.();
+        } catch (err) {
+            console.error('updateRange failed:', err);
+        }
     }
 
     /**

@@ -131,7 +131,29 @@ export class EditController implements ReactiveController {
         const triggerUpdate = () => this.host.requestUpdate();
 
         if (selRow === -2 && selCol === -2) {
-            // Clear All
+            // Clear All - skip formula columns
+            // Get non-formula column range
+            const nonFormulaCols: number[] = [];
+            for (let c = 0; c < colCount; c++) {
+                if (!this.host.isFormulaColumn(c)) {
+                    nonFormulaCols.push(c);
+                }
+            }
+
+            // If all columns are formula columns, do nothing
+            if (nonFormulaCols.length === 0) return;
+
+            // Clear each non-formula column separately
+            for (let r = 0; r < rowCount; r++) {
+                for (const c of nonFormulaCols) {
+                    if (table.rows[r] && c < table.rows[r].length) {
+                        table.rows[r][c] = '';
+                    }
+                }
+            }
+
+            // Dispatch range-edit for each non-formula column
+            // Use batch approach: just clear the full range but formula recalc will restore computed values
             this.host.dispatchEvent(
                 new CustomEvent('range-edit', {
                     detail: {
@@ -147,6 +169,7 @@ export class EditController implements ReactiveController {
                     composed: true
                 })
             );
+            triggerUpdate();
         } else if (selCol === -2) {
             // Row Delete
             const effectiveMaxR = Math.min(maxR, rowCount - 1);
@@ -169,15 +192,21 @@ export class EditController implements ReactiveController {
 
             triggerUpdate();
         } else if (selRow === -2) {
-            // Column Clear
+            // Column Clear - skip formula columns
             const colIndices: number[] = [];
             for (let c = minC; c <= maxC; c++) {
+                // Skip formula columns
+                if (this.host.isFormulaColumn(c)) continue;
+
                 // Optimistic: Clear column data
                 table.rows.forEach((row) => {
                     if (c < row.length) row[c] = '';
                 });
                 colIndices.push(c);
             }
+
+            // If all selected columns are formula columns, do nothing
+            if (colIndices.length === 0) return;
 
             this.host.dispatchEvent(
                 new CustomEvent('columns-clear', {
@@ -188,16 +217,24 @@ export class EditController implements ReactiveController {
             );
             triggerUpdate();
         } else if (minR >= 0 && minC >= 0) {
-            // Range Clear - Optimistic
+            // Range Clear - skip formula columns
+            let hasNonFormulaCol = false;
             for (let r = minR; r <= maxR; r++) {
                 if (r < table.rows.length) {
                     for (let c = minC; c <= maxC; c++) {
+                        // Skip formula columns
+                        if (this.host.isFormulaColumn(c)) continue;
+
+                        hasNonFormulaCol = true;
                         if (c < table.rows[r].length) {
                             table.rows[r][c] = '';
                         }
                     }
                 }
             }
+
+            // If all columns in range are formula columns, do nothing
+            if (!hasNonFormulaCol) return;
 
             this.host.dispatchEvent(
                 new CustomEvent('range-edit', {
