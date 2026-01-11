@@ -719,8 +719,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         this._initPromise = this.spreadsheetService.initialize();
 
         // Register callback for automatic formula recalculation after any data change
+        // withinBatch: true because updateRange already manages the batch for single undo
         this.spreadsheetService.setOnDataChangedCallback(() => {
-            recalculateAllFormulas(this.workbook, this.spreadsheetService, () => this.requestUpdate());
+            recalculateAllFormulas(this.workbook, this.spreadsheetService, () => this.requestUpdate(), true);
         });
 
         try {

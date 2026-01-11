@@ -149,11 +149,13 @@ function processTasks(
  * @param workbook The workbook JSON to recalculate
  * @param spreadsheetService The service to sync updates
  * @param requestUpdate Callback to trigger UI update
+ * @param withinBatch If true, caller manages batch - skip startBatch/endBatch calls
  */
 export function recalculateAllFormulas(
     workbook: WorkbookJSON | null,
     spreadsheetService: SpreadsheetService,
-    requestUpdate: () => void
+    requestUpdate: () => void,
+    withinBatch: boolean = false
 ): void {
     if (!workbook) return;
 
@@ -167,7 +169,10 @@ export function recalculateAllFormulas(
 
     // If any values changed, sync to VSCode
     if (updates.length > 0) {
-        spreadsheetService.startBatch();
+        // Only manage batch if not already within one
+        if (!withinBatch) {
+            spreadsheetService.startBatch();
+        }
         try {
             for (const update of updates) {
                 spreadsheetService.updateRangeBatch(
@@ -179,7 +184,9 @@ export function recalculateAllFormulas(
                 );
             }
         } finally {
-            spreadsheetService.endBatch();
+            if (!withinBatch) {
+                spreadsheetService.endBatch();
+            }
         }
 
         // Trigger UI update

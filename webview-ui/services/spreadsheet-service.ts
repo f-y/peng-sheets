@@ -238,20 +238,23 @@ export class SpreadsheetService {
         endCol: number,
         newValue: string
     ) {
+        // Start batch to group cell update + formula recalculations into single undo
+        this.startBatch();
         try {
-            let lastResult: IUpdateSpec | null = null;
             for (let r = startRow; r <= endRow; r++) {
                 for (let c = startCol; c <= endCol; c++) {
-                    lastResult = editor.updateCell(sheetIdx, tableIdx, r, c, newValue);
+                    const result = editor.updateCell(sheetIdx, tableIdx, r, c, newValue);
+                    if (result) {
+                        this._postUpdateMessage(result);
+                    }
                 }
             }
-            if (lastResult) {
-                this._postUpdateMessage(lastResult);
-            }
-            // Trigger data change callback for formula recalculation
+            // Trigger data change callback for formula recalculation (within same batch)
             this._onDataChanged?.();
         } catch (err) {
             console.error('updateRange failed:', err);
+        } finally {
+            this.endBatch();
         }
     }
 

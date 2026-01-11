@@ -114,8 +114,9 @@ describe('SpreadsheetService (TypeScript)', () => {
         it('should not post messages during batch', async () => {
             service.startBatch();
 
-            service.updateRange(0, 0, 0, 0, 0, 0, 'Value1');
-            service.updateRange(0, 0, 1, 1, 0, 0, 'Value2');
+            // Use updateRangeBatch for explicit batch control (updateRange manages its own batch)
+            service.updateRangeBatch(0, 0, 0, 0, 'Value1');
+            service.updateRangeBatch(0, 0, 1, 0, 'Value2');
 
             await new Promise((r) => setTimeout(r, 50));
 
@@ -126,8 +127,9 @@ describe('SpreadsheetService (TypeScript)', () => {
         it('should post single message with final update when batch ends', async () => {
             service.startBatch();
 
-            service.updateRange(0, 0, 0, 0, 0, 0, 'Value1');
-            service.updateRange(0, 0, 1, 1, 0, 0, 'Value2');
+            // Use updateRangeBatch for explicit batch control (updateRange manages its own batch)
+            service.updateRangeBatch(0, 0, 0, 0, 'Value1');
+            service.updateRangeBatch(0, 0, 1, 0, 'Value2');
 
             await new Promise((r) => setTimeout(r, 50));
 
