@@ -133,6 +133,119 @@ Use `isSyncing` check when:
 
 ---
 
+## 6.6 Undo Batching for Multi-Step Operations
+
+When an operation involves multiple steps (e.g., cell edit + formula recalculation), they should be consolidated into a single Undo stack so that `Ctrl+Z` reverts everything at once.
+
+### Implementation Pattern
+
+```typescript
+// In SpreadsheetService
+private _performAction<T extends IUpdateSpec>(fn: () => T) {
+    // Start batch BEFORE the action
+    this.startBatch();
+    try {
+        const result = fn();
+        if (result) this._postUpdateMessage(result);
+        // Callback runs WITHIN the same batch
+        this._onDataChanged?.();
+    } catch (err) {
+        console.error('Operation failed:', err);
+    } finally {
+        // End batch AFTER everything completes
+        this.endBatch();
+    }
+}
+```
+
+### Key Points
+
+1. **Caller manages the batch**: Operations like `updateRange` and `_performAction` call `startBatch()` before executing
+2. **Callbacks use `withinBatch: true`**: The `recalculateAllFormulas` function accepts a `withinBatch` parameter to skip its own batch management
+3. **Single `endBatch()` at the end**: All updates are collected and sent as one message to VS Code
+
+### For New Operations
+
+When adding new data-modifying operations:
+1. Wrap the operation in `startBatch()`/`endBatch()`
+2. Call `_onDataChanged?.()` inside the batch
+3. Use `_performAction` helper when possible - it handles batching automatically
+
+---
+
+## 6.7 Computed Column Recalculation
+
+Computed columns (formula columns defined in table metadata) are automatically recalculated after any data-modifying operation.
+
+### Architecture
+
+```
+Data Operation → onDataChanged callback → recalculateAllFormulas()
+                                                    ↓
+                                          getCurrentWorkbook() from editor
+                                                    ↓
+                                          Evaluate all formulas (Lookup → Arithmetic)
+                                                    ↓
+                                          Compare with current values
+                                                    ↓
+                                          Sync changed cells via updateRangeBatch()
+```
+
+### Key Files
+
+- `webview-ui/services/formula-recalculator.ts` - Core recalculation logic
+- `webview-ui/services/spreadsheet-service.ts` - `getCurrentWorkbook()` and callback registration
+- `webview-ui/main.ts` - Callback registration in `connectedCallback()`
+
+### Troubleshooting: Recalculation Not Working
+
+If formula columns are not updating after data changes, check these common causes:
+
+#### 1. Stale Workbook Data
+**Symptom**: Values don't change after column/row deletion or structural changes
+**Cause**: Using `this.workbook` instead of fresh editor state
+**Solution**: Use `getCurrentWorkbook()` to get fresh state from editor:
+```typescript
+this.spreadsheetService.setOnDataChangedCallback(() => {
+    const currentWorkbook = this.spreadsheetService.getCurrentWorkbook();
+    recalculateAllFormulas(currentWorkbook, ...);
+});
+```
+
+#### 2. Callback Not Registered
+**Symptom**: No recalculation after any operation
+**Check**: Verify callback is registered in `connectedCallback()`:
+```typescript
+this.spreadsheetService.setOnDataChangedCallback(() => { ... });
+```
+
+#### 3. Operation Not Calling Callback
+**Symptom**: Some operations don't trigger recalculation
+**Cause**: Operation doesn't call `_onDataChanged?.()` or uses `_enqueueRequest` instead of `_performAction`
+**Solution**: Ensure all data-modifying operations call `_onDataChanged?.()` after completing
+
+#### 4. `withinBatch` Mismatch
+**Symptom**: Batch errors or missing updates
+**Cause**: Caller uses batch but passes `withinBatch: false`, or vice versa
+**Solution**: Match `withinBatch` parameter to whether caller manages batch
+
+#### 5. Change Detection Not Finding Updates
+**Symptom**: Recalculation runs but `updates found: 0`
+**Check**: Possible causes:
+- Formula evaluates to same value as before
+- Referenced column name changed but formula uses old name
+- Workbook data is stale (see #1)
+
+### Debug Tips
+
+Add temporary logs to trace the flow:
+```typescript
+console.log('[DEBUG] recalculateAllFormulas: updates found:', updates.length);
+console.log('[DEBUG] evaluateTask row 0: currentValue:', currentValue, 'newValue:', newValue);
+```
+
+---
+
 ## 7. For Maintainers
 
 This section describes the release procedure for publishing a new version.
