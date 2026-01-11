@@ -489,14 +489,13 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                     allUpdates.push(...updates);
                 }
 
-                // Apply updates (batch is already started by caller if shouldEndBatch is true)
+                // Apply updates synchronously using updateRangeBatch
+                // (batch is already started by caller if shouldEndBatch is true)
                 for (const update of allUpdates) {
-                    this.spreadsheetService.updateRange(
+                    this.spreadsheetService.updateRangeBatch(
                         update.sheetIndex,
                         update.tableIndex,
                         update.rowIndex,
-                        update.rowIndex,
-                        update.colIndex,
                         update.colIndex,
                         update.value
                     );

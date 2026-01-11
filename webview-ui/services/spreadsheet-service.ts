@@ -151,20 +151,21 @@ export class SpreadsheetService {
         this._batchFirstUpdate = true;
         this._pendingUpdateSpec = null;
 
-        // Send all accumulated updates with proper undo stop control
-        for (let i = 0; i < updates.length; i++) {
-            const isFirst = i === 0;
-            const isLast = i === updates.length - 1;
-            this.vscode.postMessage({
-                type: 'updateRange',
-                startLine: updates[i].startLine,
-                endLine: updates[i].endLine,
-                endCol: updates[i].endCol,
-                content: updates[i].content,
-                undoStopBefore: isFirst,
-                undoStopAfter: isLast
-            });
-        }
+        if (updates.length === 0) return;
+
+        // Since each update contains the complete updated table content (cumulative),
+        // we only need to send the final update - it contains all changes
+        const lastUpdate = updates[updates.length - 1];
+        this.vscode.postMessage({
+            type: 'updateRange',
+            startLine: lastUpdate.startLine,
+            endLine: lastUpdate.endLine,
+            endCol: lastUpdate.endCol,
+            content: lastUpdate.content,
+            // Single update = true for both undo stops
+            undoStopBefore: true,
+            undoStopAfter: true
+        });
     }
 
     /**
@@ -240,6 +241,18 @@ export class SpreadsheetService {
                 this._postUpdateMessage(lastResult);
             }
         });
+    }
+
+    /**
+     * Synchronous version of updateRange for use within batches.
+     * This bypasses the async queue and directly accumulates in the batch.
+     * Must be called between startBatch() and endBatch().
+     */
+    public updateRangeBatch(sheetIdx: number, tableIdx: number, rowIndex: number, colIndex: number, newValue: string) {
+        const result = editor.updateCell(sheetIdx, tableIdx, rowIndex, colIndex, newValue);
+        if (result) {
+            this._postUpdateMessage(result);
+        }
     }
 
     public deleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
