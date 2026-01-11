@@ -410,6 +410,12 @@ export class FormulaController implements ReactiveController {
      */
     private getTableId(table: TableJSON): number | undefined {
         const metadata = table.metadata as Record<string, unknown> | undefined;
+        // Check metadata.visual.id first (where parser stores custom metadata)
+        const visual = metadata?.visual as Record<string, unknown> | undefined;
+        if (visual && typeof visual.id === 'number') {
+            return visual.id;
+        }
+        // Fallback to metadata.id
         if (metadata && typeof metadata.id === 'number') {
             return metadata.id;
         }

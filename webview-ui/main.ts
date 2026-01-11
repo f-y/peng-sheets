@@ -116,6 +116,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     // Track pending new tab index for selection after add (original tab index + 1)
     private _pendingNewTabIndex: number | null = null;
 
+    // Track whether initial formula calculation has been done
+    private _formulasInitialized: boolean = false;
+
     @state()
     private _activeToolbarFormat: ToolbarFormatState = {};
 
@@ -410,7 +413,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
         // Get table ID for dependency lookup
         const meta = table.metadata as Record<string, unknown> | undefined;
-        const tableId = meta?.id as number | undefined;
+        const visual = meta?.visual as Record<string, unknown> | undefined;
+        const tableId = visual?.id as number | undefined;
         if (tableId === undefined) return;
 
         const headers = table.headers || [];
@@ -575,25 +579,30 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             // Pass 2: Calculate and apply Arithmetic formulas (now can reference Lookup results)
             const arithmeticUpdates = calculateAndApply(arithmeticTasks);
 
-            // Apply all updates via service for rendering (batch for undo atomicity)
+            // Trigger UI update to render calculated values immediately
+            this.requestUpdate();
+
+            // Sync to VSCode document with a delay to ensure editor is ready
             const allUpdates = [...lookupUpdates, ...arithmeticUpdates];
             if (allUpdates.length > 0) {
-                this.spreadsheetService.startBatch();
-                try {
-                    for (const update of allUpdates) {
-                        this.spreadsheetService.updateRange(
-                            update.sheetIndex,
-                            update.tableIndex,
-                            update.rowIndex,
-                            update.rowIndex,
-                            update.colIndex,
-                            update.colIndex,
-                            update.value
-                        );
+                setTimeout(() => {
+                    this.spreadsheetService.startBatch();
+                    try {
+                        for (const update of allUpdates) {
+                            this.spreadsheetService.updateRange(
+                                update.sheetIndex,
+                                update.tableIndex,
+                                update.rowIndex,
+                                update.rowIndex,
+                                update.colIndex,
+                                update.colIndex,
+                                update.value
+                            );
+                        }
+                    } finally {
+                        this.spreadsheetService.endBatch();
                     }
-                } finally {
-                    this.spreadsheetService.endBatch();
-                }
+                }, 100); // Small delay to allow editor initialization
             }
         }).catch(() => {
             // Silently ignore if formula evaluator couldn't load
@@ -1476,8 +1485,11 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
             this.requestUpdate();
 
-            // Calculate all formula column values on initial load
-            this._calculateAllFormulas();
+            // Calculate all formula column values on initial load only
+            if (!this._formulasInitialized) {
+                this._formulasInitialized = true;
+                this._calculateAllFormulas();
+            }
 
             // Update output message if successful
             this.output = 'Parsed successfully!';
