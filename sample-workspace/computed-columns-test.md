@@ -6,15 +6,15 @@
 
 This table contains the product master data. All other tables reference this table by `product_id`.
 
-| product_id | product_name | category | unit_price |
-| --- | --- | --- | --- |
-| P001 | Wireless Mouse | Accessories | 2000 |
-| P002 | Mechanical Keyboard | Accessories | 12000 |
-| P003 | USB-C Hub | Accessories | 4500 |
-| P004 | 27" Monitor | Display | 45000 |
-| P005 | Laptop Stand | Accessories | 3500 |
+| product_id | product_name | category | unit_price | Double |
+| --- | --- | --- | --- | --- |
+| P001 | Wireless Mouse | Accessories | 1000 | 2000 | 10 |
+| P002 | Mechanical Keyboard | Accessories | 12000 | 24000 | 120 |
+| P003 | USB-C Hub | Accessories | 4500 | 9000 | 45 |
+| P004 | 27" Monitor | Display | 45000 | 90000 | 450 |
+| P005 | Laptop Stand | Accessories | 3500 | 7000 | 35 |
 
-<!-- md-spreadsheet-table-metadata: {"id": 0, "columns": {"1": {"width": 171}}} -->
+<!-- md-spreadsheet-table-metadata: {"id": 0, "columns": {"1": {"width": 171}, "4": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}}}, "formulas": {"4": {"type": "arithmetic", "functionType": "expression", "expression": "[unit_price] * 2"}, "5": {"type": "arithmetic", "functionType": "expression", "expression": "[unit_price]/100"}}} -->
 
 ## Sales
 
@@ -28,16 +28,16 @@ This table tracks monthly sales quantities by product and month.
 
 | product_id | product_name | unit_price | quantity | subtotal |
 | --- | --- | --- | --- | --- |
-| P001 | Wireless Mouse | 2000 | 200 | 400000 |
+| P001 | Wireless Mouse | 1000 | 200 | 200000 |
 | P002 | Mechanical Keyboard | 12000 | 45 | 540000 |
 | P003 | USB-C Hub | 4500 | 80 | 360000 |
-| P001 | Wireless Mouse | 2000 | 120 | 240000 |
+| P001 | Wireless Mouse | 1000 | 120 | 120000 |
 | P004 | 27" Monitor | 45000 | 12 | 540000 |
 | P002 | Mechanical Keyboard | 12000 | 38 | 456000 |
 | P005 | Laptop Stand | 3500 | 65 | 227500 |
 | P003 | USB-C Hub | 4500 | 95 | 427500 |
 | P004 | 27" Monitor | 45000 | 8 | 360000 |
-| P001 | Wireless Mouse | 2000 | 200 | 400000 |
+| P001 | Wireless Mouse | 1000 | 200 | 200000 |
 
 <!-- md-spreadsheet-table-metadata: {"id": 1, "formulas": {"1": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "product_name"}, "2": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "unit_price"}, "4": {"type": "arithmetic", "functionType": "expression", "expression": "[quantity] * [unit_price]"}}, "columns": {"1": {"width": 158}, "2": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}}, "4": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}}}} -->
 
@@ -50,7 +50,7 @@ This table provides yearly aggregated sales data per product.
 
 | product_id | product_name | unit_price | total_quantity | total_revenue |
 | --- | --- | --- | --- | --- |
-| P001 | Wireless Mouse | 2000 | 200 | 400000 |
+| P001 | Wireless Mouse | 1000 | 200 | 200000 |
 | P002 | Mechanical Keyboard | 12000 | 83 | 996000 |
 | P003 | USB-C Hub | 4500 | 175 | 787500 |
 | P004 | 27" Monitor | 45000 | 20 | 900000 |

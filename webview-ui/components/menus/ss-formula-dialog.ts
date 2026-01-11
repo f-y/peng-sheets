@@ -23,6 +23,7 @@ import type {
 import type { WorkbookJSON, TableJSON } from '../../types';
 import { evaluateArithmeticFormula, evaluateLookup, buildRowData, NA_VALUE } from '../../utils/formula-evaluator';
 import './ss-column-picker';
+import './ss-expression-builder';
 type FormulaMode = 'calculation' | 'lookup';
 type ColumnSourceType = 'this' | 'other';
 
@@ -512,6 +513,10 @@ export class SSFormulaDialog extends LitElement {
         this._expression = input.value;
     }
 
+    private _handleExpressionBuilderChange(e: CustomEvent<{ expression: string }>) {
+        this._expression = e.detail.expression;
+    }
+
     private _handleColumnToggle(colName: string) {
         const newSet = new Set(this._selectedColumns);
         if (newSet.has(colName)) {
@@ -754,13 +759,12 @@ export class SSFormulaDialog extends LitElement {
                       <div class="form-group">
                           <label class="form-label">${t('expression')}</label>
                           <div class="form-card">
-                              <input
-                                  type="text"
-                                  class="input-control"
-                                  placeholder="${t('expressionPlaceholder')}"
-                                  .value="${this._expression}"
-                                  @input="${this._handleExpressionChange}"
-                              />
+                              <ss-expression-builder
+                                  .columns="${availableColumns}"
+                                  .expression="${this._expression}"
+                                  .placeholder="${t('expressionPlaceholder')}"
+                                  @ss-expression-change="${this._handleExpressionBuilderChange}"
+                              ></ss-expression-builder>
                           </div>
                       </div>
                   `

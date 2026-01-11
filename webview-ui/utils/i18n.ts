@@ -118,6 +118,9 @@ const translations = {
         previewRow: 'Row {0}:',
         noData: 'No data',
         expressionPlaceholder: '[Quantity] * [Price]',
+        columns: 'Columns',
+        operators: 'Operators',
+        clear: 'Clear',
         preview: 'Preview',
         remove: 'Remove',
         brokenReference: 'Warning: Some references are broken. The referenced table or column may have been deleted.'
@@ -241,6 +244,9 @@ const translations = {
         previewRow: '行 {0}:',
         noData: 'データなし',
         expressionPlaceholder: '[数量] * [単価]',
+        columns: '列',
+        operators: '演算子',
+        clear: 'クリア',
         preview: 'プレビュー',
         remove: '削除',
         brokenReference: '警告：参照が壊れています。参照先のテーブルまたは列が削除された可能性があります。'
