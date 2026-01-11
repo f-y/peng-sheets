@@ -44,8 +44,8 @@ export class ToolbarController implements ReactiveController {
         host.addController(this);
     }
 
-    hostConnected() {}
-    hostDisconnected() {}
+    hostConnected() { }
+    hostDisconnected() { }
 
     /**
      * Handle toolbar action
