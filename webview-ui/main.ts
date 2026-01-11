@@ -423,7 +423,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 getSheetIndex: () => sheetIdx,
                 getTableIndex: () => tableIdx,
                 getFormulaMetadata: () => {
-                    const visual = (table.metadata as Record<string, unknown>)?.visual as Record<string, unknown>;
+                    const meta = table.metadata as Record<string, unknown> | undefined;
+                    const visual = meta?.visual as Record<string, unknown> | undefined;
                     return visual?.formulas ?? null;
                 },
                 addController: () => { },
@@ -473,14 +474,25 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     /**
      * Calculate all formula column values.
      * Called on initial workbook load to populate computed column values.
+     * Uses 2-pass approach: Lookup formulas first, then Arithmetic (which may reference Lookup results).
      */
     private _calculateAllFormulas() {
         if (!this.workbook) return;
 
         // Import and use formula evaluator directly for initial calculation
         import('./utils/formula-evaluator').then((evaluator) => {
-            const allUpdates: Array<{ sheetIndex: number; tableIndex: number; rowIndex: number; colIndex: number; value: string }> = [];
 
+            // Collect all formulas by type for 2-pass processing
+            type FormulaTask = {
+                sheetIndex: number;
+                tableIndex: number;
+                colIndex: number;
+                formula: Record<string, unknown>;
+            };
+            const lookupTasks: FormulaTask[] = [];
+            const arithmeticTasks: FormulaTask[] = [];
+
+            // Collect formula tasks
             for (let sheetIndex = 0; sheetIndex < this.workbook!.sheets.length; sheetIndex++) {
                 const sheet = this.workbook!.sheets[sheetIndex];
                 for (let tableIndex = 0; tableIndex < sheet.tables.length; tableIndex++) {
@@ -491,52 +503,80 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
                     if (!formulas || Object.keys(formulas).length === 0) continue;
 
-                    const headers = table.headers || [];
-
-                    // Calculate each formula column
                     for (const [colKey, formula] of Object.entries(formulas)) {
                         const colIndex = parseInt(colKey, 10);
                         if (isNaN(colIndex)) continue;
 
-                        // Calculate for each row
-                        for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
-                            const rowData = evaluator.buildRowData(headers, table.rows[rowIndex]);
-                            let value = evaluator.NA_VALUE;
-
-                            try {
-                                if (formula.type === 'arithmetic') {
-                                    const result = evaluator.evaluateArithmeticFormula(
-                                        formula as Parameters<typeof evaluator.evaluateArithmeticFormula>[0],
-                                        rowData
-                                    );
-                                    value = result.value;
-                                } else if (formula.type === 'lookup') {
-                                    const lookupFormula = formula as { joinKeyLocal?: string };
-                                    const localKeyValue = rowData[lookupFormula.joinKeyLocal || ''] || '';
-                                    const result = evaluator.evaluateLookup(
-                                        formula as Parameters<typeof evaluator.evaluateLookup>[0],
-                                        localKeyValue,
-                                        this.workbook!
-                                    );
-                                    value = result.value;
-                                }
-                            } catch {
-                                value = evaluator.NA_VALUE;
-                            }
-
-                            allUpdates.push({
-                                sheetIndex,
-                                tableIndex,
-                                rowIndex,
-                                colIndex,
-                                value
-                            });
+                        const task = { sheetIndex, tableIndex, colIndex, formula };
+                        if (formula.type === 'lookup') {
+                            lookupTasks.push(task);
+                        } else if (formula.type === 'arithmetic') {
+                            arithmeticTasks.push(task);
                         }
                     }
                 }
             }
 
-            // Apply all updates as batch
+            // Helper function to calculate and apply formulas
+            const calculateAndApply = (tasks: FormulaTask[]) => {
+                const updates: Array<{ sheetIndex: number; tableIndex: number; rowIndex: number; colIndex: number; value: string }> = [];
+
+                for (const task of tasks) {
+                    const table = this.workbook!.sheets[task.sheetIndex].tables[task.tableIndex];
+                    const headers = table.headers || [];
+
+                    for (let rowIndex = 0; rowIndex < table.rows.length; rowIndex++) {
+                        // Rebuild rowData from current table state (includes any previous updates)
+                        const rowData = evaluator.buildRowData(headers, table.rows[rowIndex]);
+                        let value = evaluator.NA_VALUE;
+
+                        try {
+                            if (task.formula.type === 'arithmetic') {
+                                const result = evaluator.evaluateArithmeticFormula(
+                                    task.formula as Parameters<typeof evaluator.evaluateArithmeticFormula>[0],
+                                    rowData
+                                );
+                                value = result.value;
+                            } else if (task.formula.type === 'lookup') {
+                                const lookupFormula = task.formula as { joinKeyLocal?: string };
+                                const localKeyValue = rowData[lookupFormula.joinKeyLocal || ''] || '';
+                                const result = evaluator.evaluateLookup(
+                                    task.formula as Parameters<typeof evaluator.evaluateLookup>[0],
+                                    localKeyValue,
+                                    this.workbook!
+                                );
+                                value = result.value;
+                            }
+                        } catch {
+                            value = evaluator.NA_VALUE;
+                        }
+
+                        updates.push({ sheetIndex: task.sheetIndex, tableIndex: task.tableIndex, rowIndex, colIndex: task.colIndex, value });
+                    }
+                }
+
+                // Apply updates immediately so next pass sees the values
+                if (updates.length > 0) {
+                    for (const update of updates) {
+                        // Directly update table data (not via service, to avoid undo tracking on initial load)
+                        const table = this.workbook!.sheets[update.sheetIndex].tables[update.tableIndex];
+                        if (table.rows[update.rowIndex]) {
+                            table.rows[update.rowIndex][update.colIndex] = update.value;
+                        }
+                    }
+                }
+
+                return updates;
+            };
+
+            // Pass 1: Calculate and apply Lookup formulas
+            const lookupUpdates = calculateAndApply(lookupTasks);
+
+            // Pass 2: Calculate and apply Arithmetic formulas (now can reference Lookup results)
+            const arithmeticUpdates = calculateAndApply(arithmeticTasks);
+
+            // Apply all updates via service for rendering (batch for undo atomicity)
+            const allUpdates = [...lookupUpdates, ...arithmeticUpdates];
             if (allUpdates.length > 0) {
                 this.spreadsheetService.startBatch();
                 try {

@@ -365,7 +365,9 @@ export class SSFormulaDialog extends LitElement {
             for (let ti = 0; ti < sheet.tables.length; ti++) {
                 const table = sheet.tables[ti];
                 const meta = table.metadata as Record<string, unknown> | undefined;
-                if (meta?.id === tableId) {
+                // Check metadata.visual.id (where parser puts custom metadata)
+                const visual = meta?.visual as Record<string, unknown> | undefined;
+                if (visual?.id === tableId || meta?.id === tableId) {
                     this._sourceSheetIndex = si;
                     this._sourceTableIndex = ti;
                     return true;
@@ -438,6 +440,9 @@ export class SSFormulaDialog extends LitElement {
         const table = this._getSourceTable();
         if (!table) return undefined;
         const meta = table.metadata as Record<string, unknown> | undefined;
+        // Check metadata.visual.id first (where parser puts custom metadata)
+        const visual = meta?.visual as Record<string, unknown> | undefined;
+        if (typeof visual?.id === 'number') return visual.id;
         return typeof meta?.id === 'number' ? meta.id : undefined;
     }
 

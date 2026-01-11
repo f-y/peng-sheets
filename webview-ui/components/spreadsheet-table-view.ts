@@ -653,9 +653,10 @@ export class SpreadsheetTableView extends LitElement {
      */
     private _hasFormula(colIndex: number): boolean {
         if (!this.table?.metadata) return false;
-        const visual = (this.table.metadata as Record<string, unknown>)?.visual as Record<string, unknown> | undefined;
-        if (!visual?.formulas) return false;
-        const formulas = visual.formulas as Record<string, unknown>;
+        const meta = this.table.metadata as Record<string, unknown> | undefined;
+        const visual = meta?.visual as Record<string, unknown> | undefined;
+        const formulas = visual?.formulas as Record<string, unknown> | undefined;
+        if (!formulas) return false;
         return formulas[String(colIndex)] !== undefined;
     }
 }

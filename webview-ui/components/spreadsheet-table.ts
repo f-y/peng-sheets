@@ -585,7 +585,8 @@ export class SpreadsheetTable extends LitElement {
     private _handleOpenFormulaDialog = (e: CustomEvent<{ index: number }>) => {
         const colIndex = e.detail.index;
         // Get current formula from visual metadata
-        const visual = (this.table?.metadata as Record<string, unknown>)?.visual as Record<string, unknown> | undefined;
+        const meta = this.table?.metadata as Record<string, unknown> | undefined;
+        const visual = meta?.visual as Record<string, unknown> | undefined;
         const formulas = visual?.formulas as Record<string, FormulaDefinition> | undefined;
         const currentFormula = formulas?.[colIndex.toString()] || null;
         this.formulaDialog = { colIndex, currentFormula };

@@ -135,6 +135,8 @@ export type FormulaMetadata = Record<string, FormulaDefinition>;
 
 export interface VisualMetadata {
     [key: string]: unknown;
+    /** Table identity for cross-table references */
+    id?: number;
     columns?: ColumnsMetadata;
     validation?: ValidationMetadata;
     filters?: FiltersMetadata;

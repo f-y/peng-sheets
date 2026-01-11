@@ -334,12 +334,19 @@ export function evaluateAggregate(
 
 /**
  * Find a table by its ID in the workbook.
+ * Note: Parser stores custom metadata inside metadata.visual, so we check both locations.
  */
 function findTableById(workbook: WorkbookJSON, tableId: number): TableJSON | null {
     for (const sheet of workbook.sheets) {
         for (const table of sheet.tables) {
             const metadata = table.metadata as Record<string, unknown> | undefined;
-            if (metadata && metadata.id === tableId) {
+            // Check metadata.visual.id (where parser puts custom metadata from markdown)
+            const visual = metadata?.visual as Record<string, unknown> | undefined;
+            if (visual?.id === tableId) {
+                return table;
+            }
+            // Also check metadata.id as fallback
+            if (metadata?.id === tableId) {
                 return table;
             }
         }

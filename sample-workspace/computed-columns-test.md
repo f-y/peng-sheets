@@ -14,7 +14,7 @@ This table contains the product master data. All other tables reference this tab
 | P004       | 27" Monitor         | Display     | 45000      |
 | P005       | Laptop Stand        | Accessories | 3500       |
 
-<!-- metadata: {"id": 0} -->
+<!-- md-spreadsheet-table-metadata: {"id": 0} -->
 
 ---
 
@@ -42,7 +42,7 @@ This table tracks monthly sales quantities by product and month.
 | P004       |              |            | 8        |          |
 | P001       |              |            | 200      |          |
 
-<!-- metadata: {"id": 1, "visual": {"formulas": {"1": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "product_name"}, "2": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "unit_price"}, "4": {"type": "arithmetic", "functionType": "expression", "expression": "[quantity] * [unit_price]"}}}} -->
+<!-- md-spreadsheet-table-metadata: {"id": 1, "formulas": {"1": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "product_name"}, "2": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "unit_price"}, "4": {"type": "arithmetic", "functionType": "expression", "expression": "[quantity] * [unit_price]"}}} -->
 
 ### Annual Summary
 
@@ -60,4 +60,4 @@ This table provides yearly aggregated sales data per product.
 | P004       |              | 45000      | 20             |               |
 | P005       |              | 3500       | 65             |               |
 
-<!-- metadata: {"id": 2, "visual": {"formulas": {"1": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "product_name"}, "4": {"type": "arithmetic", "functionType": "expression", "expression": "[total_quantity] * [unit_price]"}}}} -->
+<!-- md-spreadsheet-table-metadata: {"id": 2, "formulas": {"1": {"type": "lookup", "sourceTableId": 0, "joinKeyLocal": "product_id", "joinKeyRemote": "product_id", "targetField": "product_name"}, "4": {"type": "arithmetic", "functionType": "expression", "expression": "[total_quantity] * [unit_price]"}}} -->
