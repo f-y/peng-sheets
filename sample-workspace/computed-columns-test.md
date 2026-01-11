@@ -8,13 +8,13 @@ This table contains the product master data. All other tables reference this tab
 
 | product_id | product_name | category | unit_price | Double |
 | --- | --- | --- | --- | --- |
-| P001 | Wireless Mouse | Accessories | 1000 | 2000 | 10 |
-| P002 | Mechanical Keyboard | Accessories | 12000 | 24000 | 120 |
-| P003 | USB-C Hub | Accessories | 4500 | 9000 | 45 |
-| P004 | 27" Monitor | Display | 45000 | 90000 | 450 |
-| P005 | Laptop Stand | Accessories | 3500 | 7000 | 35 |
+| P001 | Wireless Mouse | Accessories | 1000 | 2000 |
+| P002 | Mechanical Keyboard | Accessories | 12000 | 24000 |
+| P003 | USB-C Hub | Accessories | 4500 | 9000 |
+| P004 | 27" Monitor | Display | 45000 | 90000 |
+| P005 | Laptop Stand | Accessories | 3500 | 7000 |
 
-<!-- md-spreadsheet-table-metadata: {"id": 0, "columns": {"1": {"width": 171}, "4": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}}}, "formulas": {"4": {"type": "arithmetic", "functionType": "expression", "expression": "[unit_price] * 2"}, "5": {"type": "arithmetic", "functionType": "expression", "expression": "[unit_price]/100"}}} -->
+<!-- md-spreadsheet-table-metadata: {"id": 0, "columns": {"1": {"width": 171}, "4": {"format": {"numberFormat": {"type": "number", "useThousandsSeparator": true}}}}, "formulas": {"4": {"type": "arithmetic", "functionType": "expression", "expression": "[unit_price] * 2"}}} -->
 
 ## Sales
 

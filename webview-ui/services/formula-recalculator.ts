@@ -196,8 +196,8 @@ export function recalculateAllFormulas(
 
 /**
  * Calculate all formula column values on initial workbook load.
- * Does not check for changes - always calculates and syncs all values.
  * Uses 2-pass approach: Lookup formulas first, then Arithmetic.
+ * Only syncs to VSCode if calculated values differ from existing values.
  *
  * @param workbook The workbook JSON to calculate
  * @param spreadsheetService The service to sync updates
@@ -215,13 +215,13 @@ export function calculateAllFormulas(
     // Skip if no formulas
     if (lookupTasks.length === 0 && arithmeticTasks.length === 0) return;
 
-    // Process without change detection (always calculate all)
-    const updates = processTasks(lookupTasks, arithmeticTasks, workbook, false);
+    // Process WITH change detection - only collect updates where value differs
+    const updates = processTasks(lookupTasks, arithmeticTasks, workbook, true);
 
-    // Trigger UI update immediately
+    // Trigger UI update immediately (in-memory values were already updated)
     requestUpdate();
 
-    // Sync to VSCode document with a delay to ensure editor is ready
+    // Only sync to VSCode document if there are actual changes
     if (updates.length > 0) {
         setTimeout(() => {
             spreadsheetService.startBatch();
