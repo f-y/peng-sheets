@@ -172,6 +172,28 @@ describe('Table Service Tests', () => {
             const state = JSON.parse(getState());
             expect(state.workbook.sheets[0].tables[0].rows.length).toBeGreaterThanOrEqual(6);
         });
+
+        it('should update header cell when rowIdx is -1', () => {
+            // This is the column rename functionality
+            const result = updateCell(0, 0, -1, 0, 'Renamed Column');
+            expect(result.error).toBeUndefined();
+
+            const state = JSON.parse(getState());
+            expect(state.workbook.sheets[0].tables[0].headers[0]).toBe('Renamed Column');
+        });
+
+        it('should escape pipe characters in header cell values', () => {
+            const result = updateCell(0, 0, -1, 1, 'Header|With|Pipes');
+            expect(result.error).toBeUndefined();
+
+            const state = JSON.parse(getState());
+            expect(state.workbook.sheets[0].tables[0].headers[1]).toBe('Header\\|With\\|Pipes');
+        });
+
+        it('should return error for invalid column index on header edit', () => {
+            const result = updateCell(0, 0, -1, 99, 'Invalid');
+            expect(result.error).toBeDefined();
+        });
     });
 
     // =========================================================================
