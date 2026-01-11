@@ -130,6 +130,8 @@ export class KeyboardController implements ReactiveController {
 
         if (e.key === 'Delete' || e.key === 'Backspace') {
             e.preventDefault();
+            // Request skip parse for flicker prevention (optimistic UI for delete)
+            window.dispatchEvent(new CustomEvent('request-skip-parse'));
             this.host.editCtrl.deleteSelection();
             return;
         }

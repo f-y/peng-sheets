@@ -118,6 +118,7 @@ export class GlobalEventController implements ReactiveController {
     private _boundInsertRowsAt: (e: Event) => void;
     private _boundInsertColumnsAt: (e: Event) => void;
     private _boundMessage: (e: MessageEvent) => void;
+    private _boundRequestSkipParse: () => void;
 
     constructor(host: GlobalEventHost) {
         this.host = host;
@@ -151,6 +152,7 @@ export class GlobalEventController implements ReactiveController {
         this._boundInsertRowsAt = this._handleInsertRowsAt.bind(this);
         this._boundInsertColumnsAt = this._handleInsertColumnsAt.bind(this);
         this._boundMessage = this._handleMessage.bind(this);
+        this._boundRequestSkipParse = this._handleRequestSkipParse.bind(this);
     }
 
     hostConnected(): void {
@@ -202,6 +204,9 @@ export class GlobalEventController implements ReactiveController {
 
         // VS Code extension messages
         window.addEventListener('message', this._boundMessage);
+
+        // Skip parse request (for flicker prevention in specific operations)
+        window.addEventListener('request-skip-parse', this._boundRequestSkipParse);
     }
 
     hostDisconnected(): void {
@@ -234,6 +239,7 @@ export class GlobalEventController implements ReactiveController {
         window.removeEventListener('rows-insert-at', this._boundInsertRowsAt);
         window.removeEventListener('columns-insert-at', this._boundInsertColumnsAt);
         window.removeEventListener('message', this._boundMessage);
+        window.removeEventListener('request-skip-parse', this._boundRequestSkipParse);
     }
 
     // Event handlers delegate to host methods
@@ -475,5 +481,13 @@ export class GlobalEventController implements ReactiveController {
                 window.dispatchEvent(new CustomEvent('insert-copied-cells-at-selection'));
                 break;
         }
+    }
+
+    /**
+     * Handle request to skip next parse (for flicker prevention).
+     * This is triggered by specific operations like Delete key in selection mode.
+     */
+    private _handleRequestSkipParse(): void {
+        this.host.spreadsheetService.setSkipNextParse(true);
     }
 }

@@ -18,6 +18,7 @@ export class SpreadsheetService {
     private _pendingUpdateSpec: IUpdateSpec | null = null;
     private vscode: IVSCodeApi;
     private _isSyncing: boolean = false;
+    private _skipNextParse: boolean = false;
     private _requestQueue: Array<() => Promise<void>> = [];
 
     constructor(vscode: IVSCodeApi) {
@@ -47,6 +48,22 @@ export class SpreadsheetService {
         return this._isSyncing;
     }
 
+    /**
+     * Returns true if the next parse should be skipped (for flicker prevention).
+     * This is used for specific operations like Delete key in selection mode.
+     */
+    public get skipNextParse(): boolean {
+        return this._skipNextParse;
+    }
+
+    /**
+     * Set whether to skip the next parse operation.
+     * Call this before operations that benefit from optimistic UI (e.g., Delete key).
+     */
+    public setSkipNextParse(value: boolean) {
+        this._skipNextParse = value;
+    }
+
     // Queue management for compatibility with existing async patterns
     private _enqueueRequest(task: () => Promise<void>) {
         this._requestQueue.push(task);
@@ -62,7 +79,10 @@ export class SpreadsheetService {
     private async _processQueue() {
         if (this._isSyncing || this._requestQueue.length === 0) return;
 
-        this._isSyncing = true;
+        // Only set isSyncing if skipNextParse is requested (for Delete key flicker prevention)
+        this._isSyncing = this._skipNextParse;
+        this._skipNextParse = false; // Reset for next operation
+
         const task = this._requestQueue.shift();
 
         if (task) {
