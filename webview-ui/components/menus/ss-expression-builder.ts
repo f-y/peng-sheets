@@ -27,6 +27,7 @@ export class SSExpressionBuilder extends LitElement {
             font-family: var(--vscode-editor-font-family, monospace);
             box-sizing: border-box;
             transition: border-color 0.2s ease;
+            margin-bottom: 12px;
         }
 
         .expression-input:focus {
@@ -35,12 +36,31 @@ export class SSExpressionBuilder extends LitElement {
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.5);
         }
 
+        .builder-wrapper {
+            padding: 12px 16px;
+            border-left: 3px solid var(--vscode-textLink-foreground);
+            border-radius: 0 8px 8px 0;
+        }
+
+        .builder-header {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: var(--vscode-textLink-foreground);
+            margin-bottom: 10px;
+        }
+
         .builder-section {
             margin-top: 10px;
         }
 
+        .builder-section:first-of-type {
+            margin-top: 0;
+        }
+
         .section-label {
-            font-size: 11px;
+            font-size: 10px;
             color: var(--vscode-descriptionForeground);
             margin-bottom: 6px;
             text-transform: uppercase;
@@ -180,32 +200,35 @@ export class SSExpressionBuilder extends LitElement {
                 @input="${this._handleInput}"
             />
 
-            <div class="builder-section">
-                <div class="section-label">${t('columns')}</div>
-                <div class="button-row">
-                    ${this.columns.map(
-                        (col) => html`
-                            <button type="button" class="column-btn" @click="${() => this._insertColumn(col)}">
-                                ${col}
-                            </button>
-                        `
-                    )}
+            <div class="builder-wrapper">
+                <div class="builder-header">${t('expressionBuilder')}</div>
+                <div class="builder-section">
+                    <div class="section-label">${t('columns')}</div>
+                    <div class="button-row">
+                        ${this.columns.map(
+            (col) => html`
+                                <button type="button" class="column-btn" @click="${() => this._insertColumn(col)}">
+                                    ${col}
+                                </button>
+                            `
+        )}
+                    </div>
                 </div>
-            </div>
 
-            <div class="builder-section">
-                <div class="section-label">${t('operators')}</div>
-                <div class="button-row">
-                    ${this._operators.map(
-                        (op) => html`
-                            <button type="button" class="operator-btn" @click="${() => this._insertOperator(op)}">
-                                ${op}
-                            </button>
-                        `
-                    )}
-                    <button type="button" class="operator-btn clear" @click="${this._clearExpression}">
-                        ${t('clear')}
-                    </button>
+                <div class="builder-section">
+                    <div class="section-label">${t('operators')}</div>
+                    <div class="button-row">
+                        ${this._operators.map(
+            (op) => html`
+                                <button type="button" class="operator-btn" @click="${() => this._insertOperator(op)}">
+                                    ${op}
+                                </button>
+                            `
+        )}
+                        <button type="button" class="operator-btn clear" @click="${this._clearExpression}">
+                            ${t('clear')}
+                        </button>
+                    </div>
                 </div>
             </div>
         `;

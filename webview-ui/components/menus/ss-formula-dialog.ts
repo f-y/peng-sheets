@@ -24,6 +24,7 @@ import type { WorkbookJSON, TableJSON } from '../../types';
 import { evaluateArithmeticFormula, evaluateLookup, buildRowData, NA_VALUE } from '../../utils/formula-evaluator';
 import './ss-column-picker';
 import './ss-expression-builder';
+import './ss-list-selector';
 type FormulaMode = 'calculation' | 'lookup';
 type ColumnSourceType = 'this' | 'other';
 
@@ -52,7 +53,7 @@ export class SSFormulaDialog extends LitElement {
                 background: var(--vscode-editor-background);
                 border: 1px solid var(--vscode-panel-border);
                 border-radius: 6px;
-                width: 480px;
+                width: 650px;
                 max-height: 80vh;
                 overflow-y: auto;
             }
@@ -336,6 +337,303 @@ export class SSFormulaDialog extends LitElement {
                 color: var(--vscode-inputValidation-warningForeground, var(--vscode-foreground));
                 font-size: 12px;
             }
+
+            /* Data Flow Diagram for Lookup Mode - Infographic Style */
+            .data-flow {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                padding: 8px 16px;
+                margin-bottom: 16px;
+                background: transparent;
+                border-bottom: 1px solid var(--vscode-panel-border);
+            }
+
+            .flow-step {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 8px;
+                flex: 1;
+                padding: 0;
+                background: transparent;
+                border: none;
+            }
+
+            .flow-icon-wrapper {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 44px;
+                height: 44px;
+                background: var(--vscode-input-background);
+                border: 2px solid var(--vscode-panel-border);
+                border-radius: 10px;
+                transition: all 0.2s ease;
+            }
+
+            .flow-step.active .flow-icon-wrapper {
+                border-color: var(--vscode-textLink-foreground);
+            }
+
+            .flow-icon-wrapper svg {
+                width: 20px;
+                height: 20px;
+                fill: none;
+                stroke: var(--vscode-textLink-foreground);
+                stroke-width: 1.5;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            .flow-label {
+                font-size: 8px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.6px;
+                color: var(--vscode-descriptionForeground);
+                text-align: center;
+            }
+
+            .flow-arrow {
+                display: flex;
+                align-items: center;
+                margin-bottom: 20px;
+            }
+
+            .flow-arrow svg {
+                width: 32px;
+                height: 16px;
+                fill: none;
+                stroke: var(--vscode-textLink-foreground);
+                stroke-width: 2;
+                stroke-linecap: round;
+                stroke-linejoin: round;
+            }
+
+            /* Key Matching Visual */
+            .key-match-visual {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                padding: 12px;
+                background: linear-gradient(
+                    90deg,
+                    rgba(59, 130, 246, 0.08) 0%,
+                    rgba(59, 130, 246, 0.15) 50%,
+                    rgba(59, 130, 246, 0.08) 100%
+                );
+                border-radius: 8px;
+                margin-top: 8px;
+            }
+
+            .key-match-equals {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 28px;
+                height: 28px;
+                flex-shrink: 0;
+                margin: 0 8px;
+                background: var(--vscode-textLink-foreground);
+                color: white;
+                border-radius: 50%;
+                font-weight: 700;
+                font-size: 14px;
+                box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+            }
+
+            .key-column-box {
+                flex: 1;
+                padding: 8px 12px;
+                background: var(--vscode-input-background);
+                border: 1px solid var(--vscode-panel-border);
+                border-radius: 6px;
+            }
+
+            .key-column-box .field-label {
+                margin-bottom: 6px;
+            }
+
+            /* VS-style Key Matching Display */
+            .key-match-visual.vs-style {
+                justify-content: center;
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .vs-display-box {
+                width: 80px;
+                min-width: 0;
+                flex-shrink: 0;
+                padding: 8px 10px;
+                background: var(--vscode-input-background);
+                border: 2px solid var(--vscode-textLink-foreground);
+                border-radius: 6px;
+                text-align: center;
+                min-height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+            }
+
+            .vs-column-name {
+                font-size: 11px;
+                font-weight: 600;
+                color: var(--vscode-foreground);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                max-width: 100%;
+                display: block;
+            }
+
+            .vs-hint {
+                font-size: 10px;
+                color: var(--vscode-descriptionForeground);
+                text-align: center;
+                margin-top: 4px;
+                margin-bottom: 12px;
+            }
+
+            /* Section label (no card) */
+            .section-label {
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                color: var(--vscode-descriptionForeground);
+                margin-bottom: 0;
+                text-align: center;
+            }
+
+            /* Match success highlight */
+            .key-match-visual.match-success .key-match-equals {
+                background: #22c55e;
+            }
+
+            .key-match-visual.match-success .vs-display-box {
+                border-color: #22c55e;
+            }
+
+            /* Live Preview Chips */
+            .preview-chips {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 8px;
+            }
+
+            .preview-chip {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 10px;
+                background: var(--vscode-badge-background);
+                border-radius: 16px;
+                font-size: 11px;
+            }
+
+            .preview-chip .chip-key {
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .preview-chip .chip-arrow {
+                color: var(--vscode-textLink-foreground);
+                font-weight: 600;
+            }
+
+            .preview-chip .chip-value {
+                color: var(--vscode-badge-foreground);
+                font-weight: 500;
+            }
+
+            .preview-chip.error {
+                background: var(--vscode-inputValidation-errorBackground);
+            }
+
+            .preview-chip.error .chip-value {
+                color: var(--vscode-inputValidation-errorForeground);
+            }
+
+            /* 3-Column Lookup Layout - Fixed widths */
+            .lookup-grid {
+                display: grid;
+                grid-template-columns: 140px 1fr 140px;
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+
+            .lookup-grid .form-group {
+                margin-bottom: 0;
+                min-width: 0;
+                overflow: hidden;
+            }
+
+            .lookup-column-header {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                font-size: 12px;
+                font-weight: 600;
+                color: var(--vscode-foreground);
+                margin-bottom: 8px;
+            }
+
+            .lookup-column-header .icon {
+                font-size: 14px;
+            }
+
+            /* Center stack layout for KEY MATCHING + VALUE TO RETURN */
+            .center-stack {
+                display: flex;
+                flex-direction: column;
+                gap: 12px;
+                align-items: center;
+            }
+
+            /* Source table header with sheet selector */
+            .source-table-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 4px;
+                padding: 0 4px;
+            }
+
+            .source-table-header .header-label {
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                color: var(--vscode-descriptionForeground);
+            }
+
+            .sheet-select {
+                padding: 2px 6px;
+                font-size: 11px;
+                height: auto;
+                min-width: 60px;
+            }
+
+            .section-box {
+                background: var(--vscode-input-background);
+                border: 1px solid var(--vscode-panel-border);
+                border-radius: 6px;
+                padding: 12px;
+            }
+
+            .section-title {
+                font-size: 10px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.8px;
+                color: var(--vscode-descriptionForeground);
+                margin-bottom: 10px;
+                text-align: center;
+            }
         `,
         unsafeCSS(sharedStyles)
     ];
@@ -450,6 +748,17 @@ export class SSFormulaDialog extends LitElement {
      * Priority: 1) Matching column names 2) Priority words (id, key, etc.) 3) First column
      */
     private _initLookupDefaults() {
+        // Auto-select first available sheet and table (not current table)
+        const availableSheets = this._getAvailableSheets();
+        if (availableSheets.length > 0 && !availableSheets.find((s) => s.index === this._sourceSheetIndex)) {
+            this._sourceSheetIndex = availableSheets[0].index;
+        }
+        // Auto-select first available table in selected sheet
+        const availableTables = this._getSourceTableItems();
+        if (availableTables.length > 0 && !availableTables.find((t) => t.value === String(this._sourceTableIndex))) {
+            this._sourceTableIndex = parseInt(availableTables[0].value, 10);
+        }
+
         const sourceHeaders = this._getSourceTableHeaders();
         const localHeaders = this.headers;
 
@@ -554,6 +863,69 @@ export class SSFormulaDialog extends LitElement {
 
     private _handleTargetFieldChange(e: Event) {
         this._targetField = (e.target as HTMLSelectElement).value;
+    }
+
+    // List selector methods for new layout
+    private _getSourceTableItems(): { value: string; label: string; group: string }[] {
+        const sheets = this.workbook?.sheets ?? [];
+        const items: { value: string; label: string; group: string }[] = [];
+
+        sheets.forEach((sheet, sheetIdx) => {
+            (sheet.tables ?? []).forEach((table, tableIdx) => {
+                // Exclude current table from source selection
+                const isCurrentTable = sheetIdx === this.currentSheetIndex && tableIdx === this.currentTableIndex;
+                if (sheetIdx === this._sourceSheetIndex && !isCurrentTable) {
+                    items.push({
+                        value: String(tableIdx),
+                        label: table.name ?? `Table ${tableIdx + 1}`,
+                        group: sheet.name ?? `Sheet ${sheetIdx + 1}`
+                    });
+                }
+            });
+        });
+
+        return items;
+    }
+
+    // Get sheets that have tables other than current table
+    private _getAvailableSheets(): { index: number; name: string }[] {
+        const sheets = this.workbook?.sheets ?? [];
+        const result: { index: number; name: string }[] = [];
+
+        sheets.forEach((sheet, sheetIdx) => {
+            const tables = sheet.tables ?? [];
+            // Check if sheet has any table other than current table
+            const hasOtherTables = tables.some((_, tableIdx) => {
+                return !(sheetIdx === this.currentSheetIndex && tableIdx === this.currentTableIndex);
+            });
+            if (hasOtherTables) {
+                result.push({
+                    index: sheetIdx,
+                    name: sheet.name ?? `Sheet ${sheetIdx + 1}`
+                });
+            }
+        });
+
+        return result;
+    }
+
+    private _handleSourceListChange(e: CustomEvent<{ value: string }>) {
+        this._sourceTableIndex = parseInt(e.detail.value, 10);
+        this._initLookupDefaults();
+    }
+
+    private _handleJoinKeyRemoteListChange(e: CustomEvent<{ value: string }>) {
+        this._joinKeyRemote = e.detail.value;
+    }
+
+    private _handleThisTableListChange(e: CustomEvent<{ value: string }>) {
+        this._joinKeyLocal = e.detail.value;
+    }
+
+    private _isKeyMatchValid(): boolean {
+        // Show match success only when both columns are selected AND have the same name
+        if (!this._joinKeyLocal || !this._joinKeyRemote) return false;
+        return this._joinKeyLocal === this._joinKeyRemote;
     }
 
     private _getSourceTable(): TableJSON | null {
@@ -740,44 +1112,38 @@ export class SSFormulaDialog extends LitElement {
         return html`
             <div class="form-group">
                 <label class="form-label">${t('functionType')}</label>
-                <div class="form-card">
-                    <select class="select-control" @change="${this._handleFunctionChange}">
-                        <option value="expression" ?selected="${this._functionType === 'expression'}">
-                            ${t('expression')}
-                        </option>
-                        <option value="sum" ?selected="${this._functionType === 'sum'}">SUM</option>
-                        <option value="avg" ?selected="${this._functionType === 'avg'}">AVG</option>
-                        <option value="count" ?selected="${this._functionType === 'count'}">COUNT</option>
-                        <option value="min" ?selected="${this._functionType === 'min'}">MIN</option>
-                        <option value="max" ?selected="${this._functionType === 'max'}">MAX</option>
-                    </select>
-                </div>
+                <select class="select-control" @change="${this._handleFunctionChange}">
+                    <option value="expression" ?selected="${this._functionType === 'expression'}">
+                        ${t('expression')}
+                    </option>
+                    <option value="sum" ?selected="${this._functionType === 'sum'}">SUM</option>
+                    <option value="avg" ?selected="${this._functionType === 'avg'}">AVG</option>
+                    <option value="count" ?selected="${this._functionType === 'count'}">COUNT</option>
+                    <option value="min" ?selected="${this._functionType === 'min'}">MIN</option>
+                    <option value="max" ?selected="${this._functionType === 'max'}">MAX</option>
+                </select>
             </div>
 
             ${isExpression
                 ? html`
                       <div class="form-group">
                           <label class="form-label">${t('expression')}</label>
-                          <div class="form-card">
-                              <ss-expression-builder
-                                  .columns="${availableColumns}"
-                                  .expression="${this._expression}"
-                                  .placeholder="${t('expressionPlaceholder')}"
-                                  @ss-expression-change="${this._handleExpressionBuilderChange}"
-                              ></ss-expression-builder>
-                          </div>
+                          <ss-expression-builder
+                              .columns="${availableColumns}"
+                              .expression="${this._expression}"
+                              .placeholder="${t('expressionPlaceholder')}"
+                              @ss-expression-change="${this._handleExpressionBuilderChange}"
+                          ></ss-expression-builder>
                       </div>
                   `
                 : html`
                       <div class="form-group">
                           <label class="form-label">${t('selectColumns')}</label>
-                          <div class="form-card">
-                              <ss-column-picker
-                                  .columns="${availableColumns}"
-                                  .selected="${[...this._selectedColumns]}"
-                                  @ss-column-selection-change="${this._handleColumnSelectionChange}"
-                              ></ss-column-picker>
-                          </div>
+                          <ss-column-picker
+                              .columns="${availableColumns}"
+                              .selected="${[...this._selectedColumns]}"
+                              @ss-column-selection-change="${this._handleColumnSelectionChange}"
+                          ></ss-column-picker>
                       </div>
                   `}
         `;
@@ -788,84 +1154,124 @@ export class SSFormulaDialog extends LitElement {
         const currentSheet = sheets[this._sourceSheetIndex];
         const tables = currentSheet?.tables ?? [];
         const sourceHeaders = this._getSourceTableHeaders();
+        const _sourceTableName = tables[this._sourceTableIndex]?.name ?? '';
 
         return html`
-            <div class="form-group">
-                <label class="form-label">${t('sourceTable')}</label>
-                <div class="form-card">
-                    <div class="picker-row">
-                        <div style="flex: 1;">
-                            <label class="field-label">${t('sheetLabel')}</label>
-                            <select class="select-control" @change="${this._handleSourceSheetChange}">
-                                ${sheets.map(
-                                    (sheet, i) => html`
-                                        <option value="${i}" ?selected="${i === this._sourceSheetIndex}">
-                                            ${sheet.name}
-                                        </option>
-                                    `
-                                )}
-                            </select>
-                        </div>
-                        <div style="flex: 1;">
-                            <label class="field-label">${t('tableSelect')}</label>
-                            <select class="select-control" @change="${this._handleSourceTableChange}">
-                                ${tables.map(
-                                    (table, i) => html`
-                                        <option value="${i}" ?selected="${i === this._sourceTableIndex}">
-                                            ${table.name}
-                                        </option>
-                                    `
-                                )}
-                            </select>
-                        </div>
+            <!-- Data Flow Diagram -->
+            <div class="data-flow">
+                <div class="flow-step">
+                    <div class="flow-icon-wrapper">
+                        <!-- Database/Table icon -->
+                        <svg viewBox="0 0 24 24">
+                            <ellipse cx="12" cy="6" rx="8" ry="3" />
+                            <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6" />
+                            <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
+                        </svg>
                     </div>
+                    <span class="flow-label">${t('sourceTable')}</span>
+                </div>
+                <div class="flow-arrow">
+                    <svg viewBox="0 0 32 16">
+                        <path d="M2 8h24M20 3l6 5-6 5" />
+                    </svg>
+                </div>
+                <div class="flow-step active">
+                    <div class="flow-icon-wrapper">
+                        <!-- Link/Key icon -->
+                        <svg viewBox="0 0 24 24">
+                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                        </svg>
+                    </div>
+                    <span class="flow-label">${t('keyMatching')}</span>
+                </div>
+                <div class="flow-arrow">
+                    <svg viewBox="0 0 32 16">
+                        <path d="M2 8h24M20 3l6 5-6 5" />
+                    </svg>
+                </div>
+                <div class="flow-step">
+                    <div class="flow-icon-wrapper">
+                        <!-- Document/Return icon -->
+                        <svg viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <path d="M12 18v-6" />
+                            <path d="M9 15l3 3 3-3" />
+                        </svg>
+                    </div>
+                    <span class="flow-label">${t('valueColumn')}</span>
                 </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">${t('searchKey')}</label>
-                <div class="form-card">
-                    <div class="picker-row">
-                        <div style="flex: 1;">
-                            <label class="field-label">${t('searchKeyThisTable')}</label>
-                            <select class="select-control" @change="${this._handleJoinKeyLocalChange}">
-                                ${this.headers.map(
-                                    (col) => html`
-                                        <option value="${col}" ?selected="${col === this._joinKeyLocal}">${col}</option>
-                                    `
-                                )}
-                            </select>
+            <!-- 3-Column Grid Layout (matching mockup) -->
+            <div class="lookup-grid">
+                <!-- LEFT: Source Table List -->
+                <div class="form-group">
+                    <!-- Header with Sheet selector -->
+                    <div class="source-table-header">
+                        <span class="header-label">${t('sourceTable')}</span>
+                        <select class="select-control sheet-select" @change="${this._handleSourceSheetChange}">
+                            ${this._getAvailableSheets().map(
+                                (sheet) => html`
+                                    <option
+                                        value="${sheet.index}"
+                                        ?selected="${sheet.index === this._sourceSheetIndex}"
+                                    >
+                                        ${sheet.name}
+                                    </option>
+                                `
+                            )}
+                        </select>
+                    </div>
+                    <ss-list-selector
+                        .items="${this._getSourceTableItems()}"
+                        .selectedValue="${String(this._sourceTableIndex)}"
+                        .showGroups="${false}"
+                        @change="${this._handleSourceListChange}"
+                    ></ss-list-selector>
+                    <ss-list-selector
+                        style="margin-top: 8px;"
+                        .items="${sourceHeaders.map((h) => ({ value: h, label: h }))}"
+                        .selectedValue="${this._joinKeyRemote}"
+                        @change="${this._handleJoinKeyRemoteListChange}"
+                    ></ss-list-selector>
+                </div>
+
+                <!-- CENTER: KEY MATCHING + VALUE TO RETURN (stacked) -->
+                <div class="form-group center-stack">
+                    <!-- KEY MATCHING Section (VS-style display) -->
+                    <div class="section-label">${t('keyMatching').toUpperCase()}</div>
+                    <div class="key-match-visual vs-style ${this._isKeyMatchValid() ? 'match-success' : ''}">
+                        <div class="vs-display-box">
+                            <span class="vs-column-name">${this._joinKeyRemote || '—'}</span>
                         </div>
-                        <span
-                            style="align-self: flex-end; padding-bottom: 8px; font-size: 18px; font-weight: 600; color: var(--vscode-textLink-foreground);"
-                            >=</span
-                        >
-                        <div style="flex: 1;">
-                            <label class="field-label">${t('searchKeySourceTable')}</label>
-                            <select class="select-control" @change="${this._handleJoinKeyRemoteChange}">
-                                ${sourceHeaders.map(
-                                    (col) => html`
-                                        <option value="${col}" ?selected="${col === this._joinKeyRemote}">
-                                            ${col}
-                                        </option>
-                                    `
-                                )}
-                            </select>
+                        <div class="key-match-equals">=</div>
+                        <div class="vs-display-box">
+                            <span class="vs-column-name">${this._joinKeyLocal || '—'}</span>
                         </div>
                     </div>
-                </div>
-            </div>
+                    <div class="vs-hint">${t('keyMatchingHint')}</div>
 
-            <div class="form-group">
-                <label class="form-label">${t('valueColumn')}</label>
-                <div class="form-card">
-                    <select class="select-control" @change="${this._handleTargetFieldChange}">
+                    <!-- VALUE TO RETURN Section -->
+                    <div class="section-label" style="margin-top: 4px;">${t('valueColumn').toUpperCase()}</div>
+                    <select class="select-control" style="width: 50%;" @change="${this._handleTargetFieldChange}">
                         ${sourceHeaders.map(
                             (col) => html`
                                 <option value="${col}" ?selected="${col === this._targetField}">${col}</option>
                             `
                         )}
                     </select>
+                </div>
+
+                <!-- RIGHT: This Table Column List -->
+                <div class="form-group">
+                    <ss-list-selector
+                        header="${t('thisTable')}"
+                        .items="${this.headers.map((h) => ({ value: h, label: h }))}"
+                        .selectedValue="${this._joinKeyLocal}"
+                        @change="${this._handleThisTableListChange}"
+                    ></ss-list-selector>
                 </div>
             </div>
         `;
