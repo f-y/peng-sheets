@@ -681,6 +681,11 @@ export class SSFormulaDialog extends LitElement {
         const isModifier = e.ctrlKey || e.metaKey;
         const key = e.key.toLowerCase();
         if (isModifier && (key === 'z' || key === 'y')) {
+            // Allow expression builder to handle its own undo/redo
+            if (this._mode === 'calculation' && this._functionType === 'expression') {
+                // Don't block - let ss-expression-builder handle it
+                return;
+            }
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();

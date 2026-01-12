@@ -140,8 +140,68 @@ export class SSExpressionBuilder extends LitElement {
 
     private _operators = ['+', '-', '*', '/', '(', ')'];
 
+    // Undo/Redo history
+    private _undoStack: string[] = [];
+    private _redoStack: string[] = [];
+    private _lastExpression = '';
+    private _boundKeyDown = this._handleKeyDown.bind(this);
+
+    connectedCallback() {
+        super.connectedCallback();
+        // Initialize history with current expression
+        this._lastExpression = this.expression;
+        window.addEventListener('keydown', this._boundKeyDown, true);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('keydown', this._boundKeyDown, true);
+    }
+
+    private _handleKeyDown(e: KeyboardEvent) {
+        const isModifier = e.ctrlKey || e.metaKey;
+        const key = e.key.toLowerCase();
+
+        if (isModifier && key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            this._undo();
+        } else if (isModifier && (key === 'y' || (key === 'z' && e.shiftKey))) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            this._redo();
+        }
+    }
+
+    private _undo() {
+        if (this._undoStack.length === 0) return;
+        this._redoStack.push(this._lastExpression);
+        const previous = this._undoStack.pop()!;
+        this._lastExpression = previous;
+        this._emitChange(previous);
+    }
+
+    private _redo() {
+        if (this._redoStack.length === 0) return;
+        this._undoStack.push(this._lastExpression);
+        const next = this._redoStack.pop()!;
+        this._lastExpression = next;
+        this._emitChange(next);
+    }
+
+    private _pushHistory(newExpression: string) {
+        if (newExpression !== this._lastExpression) {
+            this._undoStack.push(this._lastExpression);
+            this._redoStack = [];
+            this._lastExpression = newExpression;
+        }
+    }
+
     private _handleInput(e: Event) {
         const input = e.target as HTMLInputElement;
+        this._pushHistory(input.value);
         this._emitChange(input.value);
     }
 
@@ -155,6 +215,7 @@ export class SSExpressionBuilder extends LitElement {
         const after = this.expression.slice(end);
 
         const newExpression = before + text + after;
+        this._pushHistory(newExpression);
         this._emitChange(newExpression);
 
         // Set cursor position after inserted text
@@ -176,6 +237,7 @@ export class SSExpressionBuilder extends LitElement {
     }
 
     private _clearExpression() {
+        this._pushHistory('');
         this._emitChange('');
         this._inputEl?.focus();
     }
