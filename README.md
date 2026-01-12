@@ -38,6 +38,12 @@
   <img src="./images/demo.gif" alt="PengSheets Demo" width="800">
 </p>
 
+With **Formula Columns**, you can reference values from other tables by key, just like VLOOKUP. Computed results are written directly to Markdown, so they're readable in any editor.
+
+<p align="center">
+  <img src="./images/demo_computed-columns.gif" alt="Computed Columns Demo" width="800">
+</p>
+
 **PengSheets** transforms your Markdown tables into a rich, interactive spreadsheet view. Powered by [md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser), it runs a robust Python parser directly in your editor via WebAssembly, offering superior parsing accuracy and seamless multi-sheet support.
 
 > Read in Japanese: 日本語版はこちら（ <a href="https://github.com/f-y/peng-sheets/blob/main/README.ja.md">README</a> ）
@@ -48,6 +54,7 @@
 |:--------|:------------|
 | 🎯 **Excel-like Editing** | Navigate and edit Markdown tables with familiar spreadsheet controls |
 | 📑 **Multi-Sheet Workbooks** | Organize data across multiple sheets using Markdown headers |
+| 🔢 **Formula Columns** | Auto-calculated columns with formulas and VLOOKUP-style cross-table references |
 | ⚡ **Real-time Sync** | Changes in the spreadsheet instantly reflect in your Markdown source |
 | 🐍 **Python-Powered Parsing** | Robust WebAssembly-based Python parser for reliable table handling |
 | 🌍 **Multilingual UI** | English and Japanese interface support |
@@ -153,7 +160,6 @@ npm install md-spreadsheet-parser
 
 We're actively developing PengSheets! Planned features include:
 
-- **Computed Columns**: Support for simple formulas and VLOOKUP-style cross-table references
 - **Performance Improvements**: Optimization for handling large tables smoothly
 - **Advanced Document Editing**: Image insertion, list completion, and richer Markdown support for document tabs
 - **Search & Replace**: Functionality to find and replace text within the grid
