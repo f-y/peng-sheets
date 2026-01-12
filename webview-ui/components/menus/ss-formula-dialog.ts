@@ -810,6 +810,9 @@ export class SSFormulaDialog extends LitElement {
 
     private _handleModeChange(mode: FormulaMode) {
         this._mode = mode;
+        if (mode === 'lookup') {
+            this._initLookupDefaults();
+        }
     }
 
     private _handleFunctionChange(e: Event) {
@@ -1021,7 +1024,9 @@ export class SSFormulaDialog extends LitElement {
 
             if (formula.type === 'arithmetic') {
                 const result = evaluateArithmeticFormula(formula, rowData);
-                value = result.value;
+                // Format number with commas if it's a valid number
+                const num = parseFloat(result.value);
+                value = isNaN(num) ? result.value : num.toLocaleString();
                 isError = !result.success;
             } else {
                 // Lookup formula

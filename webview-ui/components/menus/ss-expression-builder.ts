@@ -48,7 +48,7 @@ export class SSExpressionBuilder extends LitElement {
             text-transform: uppercase;
             letter-spacing: 0.8px;
             color: var(--vscode-textLink-foreground);
-            margin-bottom: 10px;
+            margin-bottom: 16px;
         }
 
         .builder-section {
@@ -206,12 +206,12 @@ export class SSExpressionBuilder extends LitElement {
                     <div class="section-label">${t('columns')}</div>
                     <div class="button-row">
                         ${this.columns.map(
-            (col) => html`
+                            (col) => html`
                                 <button type="button" class="column-btn" @click="${() => this._insertColumn(col)}">
                                     ${col}
                                 </button>
                             `
-        )}
+                        )}
                     </div>
                 </div>
 
@@ -219,12 +219,12 @@ export class SSExpressionBuilder extends LitElement {
                     <div class="section-label">${t('operators')}</div>
                     <div class="button-row">
                         ${this._operators.map(
-            (op) => html`
+                            (op) => html`
                                 <button type="button" class="operator-btn" @click="${() => this._insertOperator(op)}">
                                     ${op}
                                 </button>
                             `
-        )}
+                        )}
                         <button type="button" class="operator-btn clear" @click="${this._clearExpression}">
                             ${t('clear')}
                         </button>
