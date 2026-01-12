@@ -257,13 +257,11 @@ export function evaluateAggregate(
     }
 
     const values: number[] = [];
-    const errors: string[] = [];
 
     for (const colName of columns) {
         const cellValue = rowData[colName];
         if (cellValue === undefined) {
-            errors.push(`Column not found: ${colName}`);
-            continue;
+            return { success: false, value: NA_VALUE, error: `Column not found: ${colName}` };
         }
 
         if (functionType === 'count') {
@@ -273,18 +271,17 @@ export function evaluateAggregate(
             }
         } else {
             // SUM, AVG, MIN, MAX require numeric values
+            // Return N/A immediately if any non-numeric value is found (for detecting broken references)
             const num = parseFloat(cellValue);
             if (isNaN(num)) {
-                errors.push(`Non-numeric value in [${colName}]: "${cellValue}"`);
-            } else {
-                values.push(num);
+                return {
+                    success: false,
+                    value: NA_VALUE,
+                    error: `Non-numeric value in [${colName}]: "${cellValue}"`
+                };
             }
+            values.push(num);
         }
-    }
-
-    // If all columns had errors, return N/A
-    if (values.length === 0 && errors.length > 0) {
-        return { success: false, value: NA_VALUE, error: errors.join('; ') };
     }
 
     // Calculate aggregate
