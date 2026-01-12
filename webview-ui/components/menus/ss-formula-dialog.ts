@@ -662,9 +662,29 @@ export class SSFormulaDialog extends LitElement {
     // Broken reference warning
     @state() private _brokenReferenceMessage: string | null = null;
 
+    // Bound handler for cleanup
+    private _boundBlockUndoRedo = this._blockUndoRedo.bind(this);
+
     connectedCallback() {
         super.connectedCallback();
         this._initFromCurrentFormula();
+        // Block Undo/Redo while dialog is open (capture phase to intercept early)
+        window.addEventListener('keydown', this._boundBlockUndoRedo, true);
+    }
+
+    disconnectedCallback() {
+        super.disconnectedCallback();
+        window.removeEventListener('keydown', this._boundBlockUndoRedo, true);
+    }
+
+    private _blockUndoRedo(e: KeyboardEvent) {
+        const isModifier = e.ctrlKey || e.metaKey;
+        const key = e.key.toLowerCase();
+        if (isModifier && (key === 'z' || key === 'y')) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+        }
     }
 
     private _initFromCurrentFormula() {
