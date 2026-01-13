@@ -222,4 +222,186 @@ More content.
             expect(embeddedMetadata.tab_order).toEqual(workbookTabOrder);
         });
     });
+
+    describe('Between-sheets Document move (SPECS.md 8.5)', () => {
+        /**
+         * BUG REPRODUCTION: When moving a Document to a sheet position (between sheets),
+         * the Document should physically move to AFTER Workbook, not stay before it.
+         *
+         * Initial state:
+         * - Physical: [Doc1, Doc3, # Tables (sheets), Doc2]
+         * - Tab order: [Doc1, Sheet1, Doc3, Sheet2, Doc2] (Doc3 is between sheets)
+         *
+         * Move Doc3 (which is before Workbook) to between Sheet1 and Sheet2:
+         * - Expected: Doc3 physically moves to after Workbook
+         * - Bug: Doc3 stays before Workbook
+         */
+        it('should move doc before workbook to after workbook when targeting sheet position', () => {
+            const HYBRID_MD = `# Doc 1
+
+First content.
+
+# Doc 3
+
+Content that should move.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+## Sheet 2
+
+| B |
+|---|
+| 2 |
+
+<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "sheet", "index": 1}, {"type": "document", "index": 2}]} -->
+
+# Doc 2
+
+Content after workbook.
+`;
+            initializeWorkbook(HYBRID_MD, SAMPLE_CONFIG);
+
+            // Verify initial state
+            const state = JSON.parse(getState());
+            const initialDocs = state.structure.filter((s: { type: string }) => s.type === 'document');
+            expect(initialDocs.length).toBe(3);
+            expect(initialDocs[0].title).toBe('Doc 1');
+            expect(initialDocs[1].title).toBe('Doc 3'); // Before Workbook
+            expect(initialDocs[2].title).toBe('Doc 2'); // After Workbook
+
+            // Move Doc 3 (index 1) to between Sheet1 and Sheet2 (targetTabOrderIndex=2)
+            // This is a "cross-type" move, so toAfterWorkbook should be true
+            const result = moveDocumentSection(1, null, true, false, 2);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Doc 3 should now be AFTER workbook section, not before
+            const tablesPos = content.indexOf('# Tables');
+            const doc3Pos = content.indexOf('# Doc 3');
+            const doc2Pos = content.indexOf('# Doc 2');
+
+            expect(doc3Pos).toBeGreaterThan(tablesPos); // KEY: Doc 3 is after Tables
+            expect(doc3Pos).toBeLessThan(doc2Pos); // Doc 3 is before Doc 2
+        });
+
+        /**
+         * BUG REPRODUCTION: Metadata comment disappears after moving Doc
+         * User scenario: [Doc1, Doc3, Workbook, Doc2], move Doc3 to between sheets
+         */
+        it('should preserve metadata comment after moving doc', () => {
+            const HYBRID_MD = `# Doc 1
+
+First content.
+
+# Doc 3
+
+Content.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+## Sheet 2
+
+| B |
+|---|
+| 2 |
+
+<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "document", "index": 1}, {"type": "sheet", "index": 1}, {"type": "document", "index": 2}]} -->
+
+# Doc 2
+
+Content.
+`;
+            initializeWorkbook(HYBRID_MD, SAMPLE_CONFIG);
+
+            // Move Doc 3 (index 1) from before Workbook to after Workbook (targeting between sheets)
+            const result = moveDocumentSection(1, null, true, false, 2);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Metadata comment should still exist
+            const metadataMatch = content.match(/<!-- md-spreadsheet-workbook-metadata: ({.*?}) -->/);
+            expect(metadataMatch).not.toBeNull();
+
+            // Tab order should be updated
+            if (metadataMatch) {
+                const metadata = JSON.parse(metadataMatch[1]);
+                expect(metadata.tab_order).toBeDefined();
+            }
+        });
+
+        /**
+         * BUG REPRODUCTION: No initial metadata comment
+         * User scenario: Start with no metadata, move doc to between sheets
+         */
+        it('should add metadata comment when none exists initially', () => {
+            const NO_META_MD = `# Doc 1
+
+First content.
+
+# Doc 3
+
+Content.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+## Sheet 2
+
+| B |
+|---|
+| 2 |
+
+# Doc 2
+
+Content.
+`;
+            initializeWorkbook(NO_META_MD, SAMPLE_CONFIG);
+
+            // Move Doc 3 (index 1) from before Workbook to after Workbook
+            const result = moveDocumentSection(1, null, true, false, 2);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Metadata comment should be ADDED
+            const metadataMatch = content.match(/<!-- md-spreadsheet-workbook-metadata: ({.*?}) -->/);
+            expect(metadataMatch).not.toBeNull();
+
+            // Verify correct spacing: 1 blank line before metadata, 1 blank line after
+            // Expected: ...\n\n<!-- metadata -->\n\n# Doc 3...
+            const metadataIdx = content.indexOf('<!-- md-spreadsheet-workbook-metadata');
+            const beforeMeta = content.slice(0, metadataIdx);
+            const afterMeta = content.slice(content.indexOf('-->', metadataIdx) + 3);
+
+            // Should have exactly 1 blank line before (2 newlines at end)
+            expect(beforeMeta.endsWith('\n\n')).toBe(true);
+            expect(beforeMeta.endsWith('\n\n\n')).toBe(false);
+
+            // Should have exactly 1 blank line after (start with 2 newlines)
+            expect(afterMeta.startsWith('\n\n')).toBe(true);
+            expect(afterMeta.startsWith('\n\n\n')).toBe(false);
+        });
+    });
 });

@@ -501,10 +501,34 @@ export function moveDocumentSection(
             const newMetadata = JSON.stringify(updatedWb.metadata);
             const metadataComment = `<!-- md-spreadsheet-workbook-metadata: ${newMetadata} -->`;
 
-            // Replace existing metadata comment or append
+            // Replace existing metadata comment or add after workbook
             const metadataPattern = /<!-- md-spreadsheet-workbook-metadata: \{.*?\} -->/;
             if (metadataPattern.test(newMdText)) {
                 newMdText = newMdText.replace(metadataPattern, metadataComment);
+                context.mdText = newMdText;
+            } else {
+                // No existing metadata comment - add after workbook section
+                // Format: \n\n<!-- metadata -->\n\n (1 blank before, 1 blank after)
+                const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
+                const rootMarker = configDict.rootMarker ?? '# Tables';
+                const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
+                const [, wbEnd] = getWorkbookRange(newMdText, rootMarker, sheetHeaderLevel);
+                const lines = newMdText.split('\n');
+
+                // Trim trailing empty lines from workbook section
+                let insertPos = wbEnd;
+                while (insertPos > 0 && lines[insertPos - 1].trim() === '') {
+                    insertPos--;
+                }
+                // Remove extra empty lines between workbook and next content
+                let linesToRemove = wbEnd - insertPos;
+                if (linesToRemove > 0) {
+                    lines.splice(insertPos, linesToRemove);
+                }
+
+                // Insert: blank line, metadata, blank line
+                lines.splice(insertPos, 0, '', metadataComment, '');
+                newMdText = lines.join('\n');
                 context.mdText = newMdText;
             }
         }

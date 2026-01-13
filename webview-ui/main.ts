@@ -1549,9 +1549,18 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 this.spreadsheetService.moveDocumentSection(fromDocIndex, null, true, false, toIndex);
                 // Note: Do NOT call _updateTabOrder here - Python handles metadata correctly
             } else {
-                // Document → Between sheets (inside Workbook UI): Metadata-only
-                this._reorderTabsArray(fromIndex, toIndex);
-                this._updateTabOrder();
+                // Document → Between sheets (inside Workbook UI)
+                // Check if the document is currently BEFORE workbook in file
+                // If so, it needs to physically move to AFTER workbook
+                if (fromIndex < firstSheetIdx) {
+                    // Doc is before Workbook in tab order, meaning it's physically before Workbook
+                    // Per SPECS.md 8.5: When moving to sheet position, move to after Workbook
+                    this.spreadsheetService.moveDocumentSection(fromDocIndex, null, true, false, toIndex);
+                } else {
+                    // Doc is already after Workbook: Metadata-only update
+                    this._reorderTabsArray(fromIndex, toIndex);
+                    this._updateTabOrder();
+                }
             }
         }
 
