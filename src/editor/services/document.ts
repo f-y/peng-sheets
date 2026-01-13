@@ -151,12 +151,25 @@ export function addDocument(
             tabOrder = initializeTabOrderFromStructure(mdText, context.config, (workbook.sheets ?? []).length);
         }
 
-        // Calculate new document index (matching Python logic)
+        // Calculate new document index
+        // The index should reflect the physical position among documents
         let newDocIndex: number;
         if (afterDocIndex >= 0) {
+            // Inserting after a specific document
             newDocIndex = afterDocIndex + 1;
+        } else if (insertAfterTabOrderIndex >= 0 && insertAfterTabOrderIndex < tabOrder.length) {
+            // Inserting at a specific tab order position
+            // Count documents that appear BEFORE this position in tab_order
+            // These are the documents that will have lower indices than the new doc
+            let docsBeforePosition = 0;
+            for (let i = 0; i <= insertAfterTabOrderIndex; i++) {
+                if (tabOrder[i].type === 'document') {
+                    docsBeforePosition++;
+                }
+            }
+            newDocIndex = docsBeforePosition;
         } else {
-            // Count existing documents in tab_order
+            // Default: append at end
             newDocIndex = tabOrder.filter((item) => item.type === 'document').length;
         }
 

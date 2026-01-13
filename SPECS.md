@@ -188,6 +188,21 @@ Documents and Sheets are different types of tabs that can be mixed in the UI tab
     - Moving between same-level entities = **Physical Markdown edit**.
     - Moving Sheet ↔ Document (cross-type within UI) = **Metadata-only update** (Workbook position unchanged).
 
+### 8.5. Document/Sheet Insertion Rules
+When adding new Documents or Sheets via context menu or "+" button, the physical file placement follows these rules:
+
+*   **Adding Document between Sheets (cross-type position)**:
+    - [x] **Physical Placement**: Always inserted **after the Workbook section** in the Markdown file.
+    - [x] **Relative Order**: If other Documents exist after Workbook AND appear before the target position in `tab_order`, the new Document is inserted **after the last such Document**.
+    - [x] **Example**: `tab_order = [Doc0, Sheet0, Sheet1, Doc1]`, adding Doc at index 2 (between Sheet0 and Sheet1):
+        - No Docs after Workbook that are before index 2 → Insert at first position after Workbook.
+    - [x] **Example**: `tab_order = [Doc0, Sheet0, Doc1, Sheet1, Doc2]`, adding Doc at index 3 (between Doc1 and Sheet1):
+        - Doc1 is after Workbook and before index 3 → Insert after Doc1 in file.
+
+*   **Adding Sheet**:
+    - [x] Sheets are always inserted within the Workbook section.
+    - [x] Position determined by the Sheet index within the Workbook.
+
 
 ## 9. Markdown Specific Features
 These features are specific to the Markdown context but should be integrated into the UI.

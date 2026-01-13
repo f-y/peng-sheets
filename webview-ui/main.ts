@@ -1042,34 +1042,59 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     /**
      * Add a new Document at a specific tab order position.
-     * Calculates the physical afterDocIndex based on Documents before targetTabOrderIndex.
+     * See SPECS.md 8.5 for physical insertion rules.
+     *
+     * Physical insertion rules:
+     * - If no sheets before target: insert after the last doc before target (or at file start)
+     * - If sheets before target (cross-type position):
+     *   - Always insert AFTER Workbook section
+     *   - If other Docs exist after Workbook AND before target in tab_order, insert after the last such Doc
      */
     private _addDocumentAtPosition(targetTabOrderIndex: number) {
-        // Count Document items in tabs before the target position (excluding add-sheet)
-        let docsBeforeTarget = 0;
-        for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
-            if (this.tabs[i].type === 'document') {
-                docsBeforeTarget++;
-            }
-        }
+        // Check if there are any sheets before target position
+        const sheetsBeforeTarget =
+            this.tabs
+                .slice(0, Math.min(targetTabOrderIndex, this.tabs.length))
+                .filter((t) => t.type === 'sheet' || t.type === 'add-sheet').length > 0;
+
+        // Find the first sheet index to determine Workbook boundary
+        const firstSheetIdx = this.tabs.findIndex((t) => t.type === 'sheet');
 
         // Determine physical insertion position
-        let afterDocIndex = docsBeforeTarget - 1; // Insert after this document index
+        let afterDocIndex = -1;
         let afterWorkbook = false;
 
-        // If no documents before target, check if there are sheets before
-        // (meaning we're inserting after/within the workbook area)
-        if (docsBeforeTarget === 0) {
-            // Check if there are any sheets before target position
-            const sheetsBeforeTarget =
-                this.tabs
-                    .slice(0, Math.min(targetTabOrderIndex, this.tabs.length))
-                    .filter((t) => t.type === 'sheet' || t.type === 'add-sheet').length > 0;
-            if (sheetsBeforeTarget) {
-                afterWorkbook = true;
-            } else {
-                afterDocIndex = -1; // Insert at beginning
+        if (!sheetsBeforeTarget) {
+            // No sheets before target = inserting among docs before Workbook
+            // Count docs before target position
+            let docsBeforeTarget = 0;
+            for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
+                if (this.tabs[i].type === 'document') {
+                    docsBeforeTarget++;
+                }
             }
+            afterDocIndex = docsBeforeTarget - 1;
+        } else {
+            // Sheets before target = cross-type position
+            // Per SPECS.md 8.5: Always insert after Workbook
+            afterWorkbook = true;
+
+            // Find the last Doc that is:
+            // 1. After Workbook in tab_order (appears after first sheet)
+            // 2. Before target position in tab_order
+            let lastDocAfterWorkbookBeforeTarget: number | null = null;
+            for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
+                // Only consider docs that appear after first sheet in tab_order
+                if (this.tabs[i].type === 'document' && i > firstSheetIdx) {
+                    lastDocAfterWorkbookBeforeTarget = this.tabs[i].docIndex!;
+                }
+            }
+
+            if (lastDocAfterWorkbookBeforeTarget !== null) {
+                // Insert after that doc
+                afterDocIndex = lastDocAfterWorkbookBeforeTarget;
+            }
+            // else: afterDocIndex = -1, meaning insert at first position after Workbook
         }
 
         // Generate default document name
