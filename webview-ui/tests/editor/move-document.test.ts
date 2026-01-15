@@ -2,7 +2,7 @@
  * Move Document Section Tests
  *
  * Created as part of Phase 1 migration verification.
- * Tests for moveDocumentSection parity between Python and TypeScript.
+ * Tests for moveDocumentSection (pure physical move function).
  *
  * KNOWN ISSUES (marked as skip for test-first fixing):
  * 1. effective_to_index calculation missing when toDocIndex is null
@@ -51,7 +51,7 @@ Second document content.
          */
         it('should move document to after workbook', () => {
             // Move Doc Zero (index 0) to after workbook
-            const result = moveDocumentSection(0, null, true, false, 1);
+            const result = moveDocumentSection(0, null, true, false);
 
             expect(result.error).toBeUndefined();
             expect(result.file_changed).toBe(true);
@@ -68,7 +68,7 @@ Second document content.
 
         it('should move document to before workbook', () => {
             // Move Doc One (index 1) to before workbook
-            const result = moveDocumentSection(1, null, false, true, 0);
+            const result = moveDocumentSection(1, null, false, true);
 
             expect(result.error).toBeUndefined();
             expect(result.file_changed).toBe(true);
@@ -116,7 +116,7 @@ More content.
         it('should update tab_order when moving document', () => {
             // Initial: [doc 0, sheet 1, sheet 0, doc 1]
             // Move doc 0 to after workbook (targetTabOrderIndex=2)
-            const result = moveDocumentSection(0, null, true, false, 2);
+            const result = moveDocumentSection(0, null, true, false);
 
             expect(result.error).toBeUndefined();
 
@@ -157,7 +157,7 @@ More content.
          * Testing effective_to_index calculation
          */
         it('should correctly calculate effective_to_index when toDocIndex is null', () => {
-            const result = moveDocumentSection(0, null, true, false, 1);
+            const result = moveDocumentSection(0, null, true, false);
             expect(result.error).toBeUndefined();
 
             const state = JSON.parse(getState());
@@ -202,7 +202,7 @@ More content.
          */
         it('should update metadata comment in markdown after move', () => {
             // Move Doc Zero to after workbook
-            const result = moveDocumentSection(0, null, true, false, 1);
+            const result = moveDocumentSection(0, null, true, false);
 
             expect(result.error).toBeUndefined();
 
@@ -277,7 +277,7 @@ Content after workbook.
 
             // Move Doc 3 (index 1) to between Sheet1 and Sheet2 (targetTabOrderIndex=2)
             // This is a "cross-type" move, so toAfterWorkbook should be true
-            const result = moveDocumentSection(1, null, true, false, 2);
+            const result = moveDocumentSection(1, null, true, false);
 
             expect(result.error).toBeUndefined();
 
@@ -293,10 +293,71 @@ Content after workbook.
         });
 
         /**
-         * BUG REPRODUCTION: Metadata comment disappears after moving Doc
-         * User scenario: [Doc1, Doc3, Workbook, Doc2], move Doc3 to between sheets
+         * EXACT USER SCENARIO: Doc3 (before Workbook) to after Sheet2
+         * Initial: [Doc1, Doc3, Workbook(Sheet1, Sheet2), Doc2]
+         * Move Doc3 to between sheets (after Sheet2)
+         * Expected: Doc3 physically goes after Workbook, BEFORE Doc2
+         * Bug: Doc3 ends up at file end (AFTER Doc2)
          */
-        it('should preserve metadata comment after moving doc', () => {
+        it('should insert doc before existing doc after workbook', () => {
+            // Exact markdown from user scenario (no initial metadata)
+            const EXACT_USER_MD = `# Doc 1
+
+Integrates with Pydantic and Dataclasses to validate table data as structured data.
+
+# Doc 3
+
+# Tables
+
+## Sheet 1
+
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+|  |  |  |
+
+## Sheet 2
+
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+|  |  |  |
+
+# Doc 2
+
+`;
+            initializeWorkbook(EXACT_USER_MD, SAMPLE_CONFIG);
+
+            // Verify initial state
+            const state = JSON.parse(getState());
+            const docs = state.structure.filter((s: { type: string }) => s.type === 'document');
+            expect(docs[0].title).toBe('Doc 1');
+            expect(docs[1].title).toBe('Doc 3');  // Before Workbook
+            expect(docs[2].title).toBe('Doc 2');  // After Workbook
+
+            // Move Doc 3 (docIndex=1) to after Workbook with toAfterWorkbook=true
+            // In UI: toIndex=4 (position after Sheet2, which is at lastSheetIdx=3, so toIndex=lastSheetIdx+1=4)
+            // Tab order: [Doc1=0, Doc3=1, Sheet1=2, Sheet2=3, Doc2=4]
+            // Dropping after Sheet2 means toIndex=4 (where Doc2 currently is)
+            const result = moveDocumentSection(1, null, true, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Doc 3 should be AFTER Workbook but BEFORE Doc 2
+            const tablesPos = content.indexOf('# Tables');
+            const doc3Pos = content.indexOf('# Doc 3');
+            const doc2Pos = content.indexOf('# Doc 2');
+
+            expect(doc3Pos).toBeGreaterThan(tablesPos);
+            expect(doc3Pos).toBeLessThan(doc2Pos);  // KEY: Doc 3 BEFORE Doc 2
+        });
+
+        /**
+         * moveDocumentSection is now a pure physical move.
+         * Metadata handling should be done by the caller.
+         * This test verifies existing metadata is preserved (not modified).
+         */
+        it('should preserve existing metadata comment (not modify it)', () => {
             const HYBRID_MD = `# Doc 1
 
 First content.
@@ -327,29 +388,28 @@ Content.
 `;
             initializeWorkbook(HYBRID_MD, SAMPLE_CONFIG);
 
-            // Move Doc 3 (index 1) from before Workbook to after Workbook (targeting between sheets)
-            const result = moveDocumentSection(1, null, true, false, 2);
+            // Move Doc 3 (index 1) from before Workbook to after Workbook
+            const result = moveDocumentSection(1, null, true, false);
 
             expect(result.error).toBeUndefined();
 
             const content = result.content!;
 
-            // Metadata comment should still exist
+            // Metadata comment should still exist (moveDocumentSection doesn't remove it)
             const metadataMatch = content.match(/<!-- md-spreadsheet-workbook-metadata: ({.*?}) -->/);
             expect(metadataMatch).not.toBeNull();
 
-            // Tab order should be updated
-            if (metadataMatch) {
-                const metadata = JSON.parse(metadataMatch[1]);
-                expect(metadata.tab_order).toBeDefined();
-            }
+            // Physical move verified: Doc 3 is now after Tables
+            const tablesPos = content.indexOf('# Tables');
+            const doc3Pos = content.indexOf('# Doc 3');
+            expect(doc3Pos).toBeGreaterThan(tablesPos);
         });
 
         /**
-         * BUG REPRODUCTION: No initial metadata comment
-         * User scenario: Start with no metadata, move doc to between sheets
+         * Pure physical move - does NOT add metadata.
+         * Metadata addition is now the caller's responsibility (SPECS.md 8.6).
          */
-        it('should add metadata comment when none exists initially', () => {
+        it('should not add metadata comment - pure physical move only', () => {
             const NO_META_MD = `# Doc 1
 
 First content.
@@ -379,29 +439,20 @@ Content.
             initializeWorkbook(NO_META_MD, SAMPLE_CONFIG);
 
             // Move Doc 3 (index 1) from before Workbook to after Workbook
-            const result = moveDocumentSection(1, null, true, false, 2);
+            const result = moveDocumentSection(1, null, true, false);
 
             expect(result.error).toBeUndefined();
 
             const content = result.content!;
 
-            // Metadata comment should be ADDED
+            // moveDocumentSection is pure - should NOT add metadata
             const metadataMatch = content.match(/<!-- md-spreadsheet-workbook-metadata: ({.*?}) -->/);
-            expect(metadataMatch).not.toBeNull();
+            expect(metadataMatch).toBeNull();
 
-            // Verify correct spacing: 1 blank line before metadata, 1 blank line after
-            // Expected: ...\n\n<!-- metadata -->\n\n# Doc 3...
-            const metadataIdx = content.indexOf('<!-- md-spreadsheet-workbook-metadata');
-            const beforeMeta = content.slice(0, metadataIdx);
-            const afterMeta = content.slice(content.indexOf('-->', metadataIdx) + 3);
-
-            // Should have exactly 1 blank line before (2 newlines at end)
-            expect(beforeMeta.endsWith('\n\n')).toBe(true);
-            expect(beforeMeta.endsWith('\n\n\n')).toBe(false);
-
-            // Should have exactly 1 blank line after (start with 2 newlines)
-            expect(afterMeta.startsWith('\n\n')).toBe(true);
-            expect(afterMeta.startsWith('\n\n\n')).toBe(false);
+            // Physical move verified: Doc 3 is now after Tables
+            const tablesPos = content.indexOf('# Tables');
+            const doc3Pos = content.indexOf('# Doc 3');
+            expect(doc3Pos).toBeGreaterThan(tablesPos);
         });
     });
 });

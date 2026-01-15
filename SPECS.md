@@ -203,6 +203,91 @@ When adding new Documents or Sheets via context menu or "+" button, the physical
     - [x] Sheets are always inserted within the Workbook section.
     - [x] Position determined by the Sheet index within the Workbook.
 
+### 8.6. Tab Reorder Test Matrix (Quality Assurance)
+
+This matrix defines the expected behavior for all tab drag-and-drop scenarios. Each row represents a distinct test case.
+
+**Legend:**
+- **Physical**: Markdown content is moved in file
+- **Metadata**: Only `tab_order` is updated (no file content change)
+- **WB**: Workbook section (contains Sheets)
+
+**Fundamental Principles:**
+
+1. **Sheets are inseparable from Workbook**: Sheets (`## SheetName`) can only exist within the Workbook section (`# Tables`). Moving a Sheet outside the Workbook means moving the entire Workbook.
+
+2. **Cross-type tab order placement**: When the UI tab order shows a Document between Sheets (e.g., `[S1, D1, S2]`), that Document is **always physically placed after the Workbook** in the Markdown file. The file structure would be `[WB(S1,S2), D1]`.
+
+3. **Tab order ≠ Physical order**: The `tab_order` metadata can represent any display order, but the physical Markdown structure follows these constraints:
+   - All Sheets are contiguous within Workbook
+   - Documents before first Sheet in tab_order → physically before WB
+   - Documents after last Sheet in tab_order → physically after WB
+   - Documents between Sheets in tab_order → physically after WB
+
+#### 8.6.1. Sheet → Sheet (Within Workbook)
+
+| # | Scenario | Initial File | Action | Expected Behavior | Physical/Metadata |
+|---|----------|--------------|--------|-------------------|-------------------|
+| S1 | Sheet to adjacent Sheet | `[WB(S1,S2)]` | Drag S1 after S2 | S2, S1 in WB | Physical |
+| S2 | Sheet over Sheet (with Docs) | `[D1, WB(S1,S2), D2]` | Drag S1 after S2 | S2, S1 in WB | Physical |
+
+#### 8.6.2. Sheet → Document Position
+
+| # | Scenario | Initial File | Action | Expected Behavior | Physical/Metadata |
+|---|----------|--------------|--------|-------------------|-------------------|
+| S3 | Single Sheet to before Doc | `[D1, WB(S1)]` | Drag S1 before D1 | `[WB(S1), D1]` | Physical (move WB) |
+| S4 | Single Sheet to after Doc | `[WB(S1), D1]` | Drag S1 after D1 | `[D1, WB(S1)]` | Physical (move WB) |
+| S5 | Multi-Sheet: Sheet to before Doc | `[D1, WB(S1,S2), D2]` | Drag S1 before D1 | File: `[WB(S1,S2), D1, D2]`, tab: [S1,D1,S2,D2] | Physical + Metadata |
+| S6 | Multi-Sheet: Sheet to after Doc | `[D1, WB(S1,S2), D2]` | Drag S2 after D2 | File: `[D1, D2, WB(S1,S2)]`, tab: [D1,D2,S1,S2] | Physical + Metadata |
+
+#### 8.6.3. Document → Document
+
+| # | Scenario | Initial File | Action | Expected Behavior | Physical/Metadata |
+|---|----------|--------------|--------|-------------------|-------------------|
+| D1 | Doc to Doc (both before WB) | `[D1, D2, WB]` | Drag D1 after D2 | `[D2, D1, WB]` | Physical |
+| D2 | Doc to Doc (both after WB) | `[WB, D1, D2]` | Drag D1 after D2 | `[WB, D2, D1]` | Physical |
+| D3 | Doc to Doc (cross WB) | `[D1, WB, D2]` | Drag D1 after D2 | `[WB, D2, D1]` | Physical |
+
+#### 8.6.4. Document → Workbook Boundary
+
+| # | Scenario | Initial File | Action | Expected Behavior | Physical/Metadata |
+|---|----------|--------------|--------|-------------------|-------------------|
+| D4 | Doc before WB to after WB | `[D1, WB, D2]` | Drag D1 after last Sheet | `[WB, D1, D2]` | Physical |
+| D5 | Doc after WB to before WB | `[D1, WB, D2]` | Drag D2 before first Sheet | `[D1, D2, WB]` | Physical |
+
+#### 8.6.5. Document → Between Sheets (Cross-Type)
+
+| # | Scenario | Initial File | Action | Expected Behavior | Physical/Metadata |
+|---|----------|--------------|--------|-------------------|-------------------|
+| D6 | Doc before WB to between Sheets | `[D1, WB(S1,S2), D2]` | Drag D1 between S1 & S2 | File: `[WB(S1,S2), D1, D2]`, tab: [S1,D1,S2,D2] | Physical + Metadata |
+| D7 | Doc after WB to between Sheets | `[D1, WB(S1,S2), D2]` | Drag D2 between S1 & S2 | File unchanged, tab: [D1,S1,D2,S2] | Metadata only |
+
+**Key Rules:**
+1. Sheet→Sheet: Physical reorder within Workbook section only
+2. Sheet→Doc position: **Workbook moves** to place Sheet at target position + tab_order updates
+3. Doc→Sheet position: Physical move if Doc changes sides of WB; Metadata-only if stays same side
+4. Doc→Doc: Always physical move
+
+**Metadata Necessity:**
+
+The `tab_order` metadata is **only required** when the display order differs from the natural physical order. In most cases, tab order can be derived from file structure.
+
+| Condition | Metadata Required? |
+|-----------|-------------------|
+| Tab order = Physical order | **No** - derivable from file |
+| Doc displayed between Sheets | **Yes** - not expressible in physical order |
+| Sheet display order ≠ physical order | **Yes** - override needed |
+
+**Default tab order** (derivable from file):
+```
+[Docs physically before WB] → [Sheets in physical order] → [Docs physically after WB]
+```
+
+**Implementation guideline:**
+1. After physical move, recalculate expected tab_order from new file structure
+2. If expected tab_order matches desired display order → **remove metadata** (keep file clean)
+3. If expected tab_order differs from desired display order → **save metadata**
+
 
 ## 9. Markdown Specific Features
 These features are specific to the Markdown context but should be integrated into the UI.

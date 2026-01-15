@@ -1,9 +1,3 @@
-# Doc 1
-
-Integrates with Pydantic and Dataclasses to validate table data as structured data.
-
-# Doc 3
-
 # Tables
 
 ## Sheet 1
@@ -17,6 +11,10 @@ Integrates with Pydantic and Dataclasses to validate table data as structured da
 | Column 1 | Column 2 | Column 3 |
 | --- | --- | --- |
 |  |  |  |
+
+# Doc 1
+
+# Doc 3
 
 # Doc 2
 

@@ -1,6 +1,5 @@
 /**
  * Document service - Document section operations.
- * Converted from python-modules/src/md_spreadsheet_editor/services/document.py
  *
  * Handles hybrid notebooks with mixed documents and workbook sections.
  */
@@ -8,7 +7,7 @@
 import { Workbook } from 'md-spreadsheet-parser';
 import type { EditorContext } from '../context';
 import type { UpdateResult, EditorConfig, TabOrderItem } from '../types';
-import { generateAndGetRange, getWorkbookRange, initializeTabOrderFromStructure, reorderTabMetadata } from './workbook';
+import { generateAndGetRange, getWorkbookRange, initializeTabOrderFromStructure } from './workbook';
 
 // =============================================================================
 // Document Section Range
@@ -399,15 +398,15 @@ export function addDocumentAndGetFullUpdate(
 
 /**
  * Move a document section to a new position.
- * This is one of the most complex operations.
+ * This is a pure physical move - metadata is NOT updated here.
+ * The caller is responsible for updating tab_order metadata if needed (SPECS.md 8.6).
  */
 export function moveDocumentSection(
     context: EditorContext,
     fromDocIndex: number,
     toDocIndex: number | null = null,
     toAfterWorkbook = false,
-    toBeforeWorkbook = false,
-    targetTabOrderIndex: number | null = null
+    toBeforeWorkbook = false
 ): UpdateResult {
     // Get the document section to move
     const rangeResult = getDocumentSectionRange(context, fromDocIndex);
@@ -470,69 +469,8 @@ export function moveDocumentSection(
 
     // Insert at new position
     linesWithoutDoc.splice(insertLine, 0, ...docContent);
-    let newMdText = linesWithoutDoc.join('\n');
+    const newMdText = linesWithoutDoc.join('\n');
     context.mdText = newMdText;
-
-    // Update tab_order (matching Python's effective_to_index calculation)
-    const workbook = context.workbook;
-    if (workbook && targetTabOrderIndex !== null) {
-        let effectiveToIndex: number;
-
-        if (toDocIndex !== null) {
-            effectiveToIndex = toDocIndex;
-        } else {
-            // Count documents before target position (excluding the moved doc)
-            const tabOrder = workbook.metadata?.tab_order || [];
-            let docsBeforeTarget = 0;
-            for (let i = 0; i < Math.min(targetTabOrderIndex, tabOrder.length); i++) {
-                const item = tabOrder[i];
-                if (item.type === 'document' && item.index !== fromDocIndex) {
-                    docsBeforeTarget++;
-                }
-            }
-            effectiveToIndex = docsBeforeTarget;
-        }
-
-        const updatedWb = reorderTabMetadata(workbook, 'document', fromDocIndex, effectiveToIndex, targetTabOrderIndex);
-        if (updatedWb) {
-            context.updateWorkbook(updatedWb);
-
-            // Update metadata comment in markdown (matching Python behavior)
-            const newMetadata = JSON.stringify(updatedWb.metadata);
-            const metadataComment = `<!-- md-spreadsheet-workbook-metadata: ${newMetadata} -->`;
-
-            // Replace existing metadata comment or add after workbook
-            const metadataPattern = /<!-- md-spreadsheet-workbook-metadata: \{.*?\} -->/;
-            if (metadataPattern.test(newMdText)) {
-                newMdText = newMdText.replace(metadataPattern, metadataComment);
-                context.mdText = newMdText;
-            } else {
-                // No existing metadata comment - add after workbook section
-                // Format: \n\n<!-- metadata -->\n\n (1 blank before, 1 blank after)
-                const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-                const rootMarker = configDict.rootMarker ?? '# Tables';
-                const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
-                const [, wbEnd] = getWorkbookRange(newMdText, rootMarker, sheetHeaderLevel);
-                const lines = newMdText.split('\n');
-
-                // Trim trailing empty lines from workbook section
-                let insertPos = wbEnd;
-                while (insertPos > 0 && lines[insertPos - 1].trim() === '') {
-                    insertPos--;
-                }
-                // Remove extra empty lines between workbook and next content
-                let linesToRemove = wbEnd - insertPos;
-                if (linesToRemove > 0) {
-                    lines.splice(insertPos, linesToRemove);
-                }
-
-                // Insert: blank line, metadata, blank line
-                lines.splice(insertPos, 0, '', metadataComment, '');
-                newMdText = lines.join('\n');
-                context.mdText = newMdText;
-            }
-        }
-    }
 
     return {
         content: context.mdText,

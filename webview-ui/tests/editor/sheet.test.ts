@@ -311,5 +311,50 @@ describe('Sheet Service Tests', () => {
             const state = JSON.parse(getState());
             expect(state.workbook.sheets[0].name).toBe('Sheet 1');
         });
+
+        /**
+         * BUG REPRODUCTION: Sheet reorder when documents exist
+         * When moving Sheet1 after Sheet2 with docs in file:
+         * - Should physically reorder sheets in markdown
+         * - NOT just update metadata
+         */
+        it('should physically reorder sheets when documents exist in file', () => {
+            const HYBRID_MD = `# Doc 1
+
+Content.
+
+# Doc 3
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+## Sheet 2
+
+| B |
+|---|
+| 2 |
+
+# Doc 2
+`;
+            initializeWorkbook(HYBRID_MD, SAMPLE_CONFIG);
+
+            // Move Sheet 1 (index 0) after Sheet 2 (index 1)
+            const result = moveSheet(0, 1, 1);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Sheet 2 should now be BEFORE Sheet 1 in file (physical reorder)
+            const sheet1Pos = content.indexOf('## Sheet 1');
+            const sheet2Pos = content.indexOf('## Sheet 2');
+
+            expect(sheet2Pos).toBeLessThan(sheet1Pos); // KEY: Physical order changed
+        });
     });
 });
