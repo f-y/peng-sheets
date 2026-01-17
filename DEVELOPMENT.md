@@ -65,12 +65,12 @@ The extension uses the `md-spreadsheet-parser` NPM package for Markdown parsing.
 
 -   **Auto-fix lint issues**:
     ```bash
-    npm run lint -- --fix
+    npm run lint:fix
     ```
     Automatically fixes formatting and simple lint errors.
 
 > [!IMPORTANT]
-> Always run `npm run lint -- --fix` before committing changes.
+> Always run `npm run lint:fix` before committing changes.
 
 ### Internationalization (i18n)
 -   Use `t('key')`.
