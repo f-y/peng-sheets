@@ -273,8 +273,11 @@ export function determineReorderAction(
         const fromDocIndex = fromTab.docIndex!;
 
         // D1-D3: Document → Document (Physical move)
-        if (toTab?.type === 'document') {
-            const toDocIndex = toTab.docIndex!;
+        // When dragging D1 "after D2", toIndex points to D3's position
+        // So we need tabs[toIndex-1] to get D2 (the doc we're inserting after)
+        const prevTab = toIndex > 0 ? tabs[toIndex - 1] : null;
+        if (prevTab?.type === 'document' && prevTab !== fromTab) {
+            const toDocIndex = prevTab.docIndex!;
             return {
                 actionType: 'physical',
                 physicalMove: {

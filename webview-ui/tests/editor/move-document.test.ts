@@ -455,4 +455,209 @@ Content.
             expect(doc3Pos).toBeGreaterThan(tablesPos);
         });
     });
+
+    /**
+     * RCA: Doc→Doc Off-by-One Index Bug
+     * Condition: WB exists before Docs OR WB doesn't exist, Doc moved backward
+     */
+    describe('Doc→Doc Off-by-One Index Bug (RCA)', () => {
+        /**
+         * BUG CASE 1: WB exists before Docs
+         * Initial: [WB, D1, D2]
+         * Action: Move D1 after D2
+         * Expected: [WB, D2, D1]
+         */
+        it('should move D1 after D2 when WB is before - [WB, D1, D2] → [WB, D2, D1]', () => {
+            const MD = `# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+# Doc 1
+
+First doc.
+
+# Doc 2
+
+Second doc.
+`;
+            initializeWorkbook(MD, SAMPLE_CONFIG);
+
+            // Move D1 (index 0) after D2 (index 1)
+            // toDocIndex = 1 means "move to where D2 is"
+            const result = moveDocumentSection(0, 1, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Expected order: Tables, Doc 2, Doc 1
+            const tablesPos = content.indexOf('# Tables');
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+
+            expect(tablesPos).toBeLessThan(doc2Pos);
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 comes before D1
+        });
+
+        /**
+         * BUG CASE 2: WB doesn't exist (Documents only)
+         * Initial: [D1, D2, D3]
+         * Action: Move D1 after D2
+         * Expected: [D2, D1, D3]
+         */
+        it('should move D1 after D2 when no WB - [D1, D2, D3] → [D2, D1, D3]', () => {
+            const MD = `# Doc 1
+
+First doc.
+
+# Doc 2
+
+Second doc.
+
+# Doc 3
+
+Third doc.
+`;
+            initializeWorkbook(MD, SAMPLE_CONFIG);
+
+            // Move D1 (index 0) after D2 (index 1)
+            const result = moveDocumentSection(0, 1, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Expected order: Doc 2, Doc 1, Doc 3
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+            const doc3Pos = content.indexOf('# Doc 3');
+
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 comes before D1
+            expect(doc1Pos).toBeLessThan(doc3Pos); // D1 comes before D3
+        });
+
+        /**
+         * BUG CASE 3: Docs before WB
+         * Initial: [D1, D2, WB]
+         * Action: Move D1 after D2
+         * Expected: [D2, D1, WB]
+         */
+        it('should move D1 after D2 when Docs before WB - [D1, D2, WB] → [D2, D1, WB]', () => {
+            const MD = `# Doc 1
+
+First doc.
+
+# Doc 2
+
+Second doc.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+`;
+            initializeWorkbook(MD, SAMPLE_CONFIG);
+
+            // Move D1 (index 0) after D2 (index 1)
+            const result = moveDocumentSection(0, 1, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Expected order: Doc 2, Doc 1, Tables
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+            const tablesPos = content.indexOf('# Tables');
+
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 comes before D1
+            expect(doc1Pos).toBeLessThan(tablesPos); // D1 comes before Tables
+        });
+    });
+
+    /**
+     * EXACT REPRODUCTION: sample-workspace/workbook.md
+     * Structure: [WB(S1, S2), Doc1, Doc2, Doc3]
+     */
+    describe('Exact Reproduction: workbook.md [WB, D1, D2, D3]', () => {
+        const WORKBOOK_MD = `# Tables
+
+## Sheet 1
+
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+|  |  |  |
+
+## Sheet 2
+
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+|  |  |  |
+
+# Doc 1
+
+# Doc 2
+
+# Doc 3
+`;
+
+        beforeEach(() => {
+            initializeWorkbook(WORKBOOK_MD, SAMPLE_CONFIG);
+        });
+
+        /**
+         * USER BUG REPORT 1: Doc1 → after Doc2
+         * Initial: [WB, D1, D2, D3]
+         * Action: Move D1 after D2
+         * Expected: [WB, D2, D1, D3]
+         */
+        it('should move Doc1 after Doc2 - [WB, D1, D2, D3] → [WB, D2, D1, D3]', () => {
+            // Doc1 is index 0, Doc2 is index 1
+            const result = moveDocumentSection(0, 1, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+            const tablesPos = content.indexOf('# Tables');
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+            const doc3Pos = content.indexOf('# Doc 3');
+
+            // Expected order: Tables < Doc2 < Doc1 < Doc3
+            expect(tablesPos).toBeLessThan(doc2Pos);
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 before D1
+            expect(doc1Pos).toBeLessThan(doc3Pos); // D1 before D3
+        });
+
+        /**
+         * USER BUG REPORT 2: Doc2 → after Doc3
+         * Initial: [WB, D1, D2, D3]
+         * Action: Move D2 after D3
+         * Expected: [WB, D1, D3, D2]
+         */
+        it('should move Doc2 after Doc3 - [WB, D1, D2, D3] → [WB, D1, D3, D2]', () => {
+            // Doc2 is index 1, Doc3 is index 2
+            const result = moveDocumentSection(1, 2, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+            const tablesPos = content.indexOf('# Tables');
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+            const doc3Pos = content.indexOf('# Doc 3');
+
+            // Expected order: Tables < Doc1 < Doc3 < Doc2
+            expect(tablesPos).toBeLessThan(doc1Pos);
+            expect(doc1Pos).toBeLessThan(doc3Pos); // D1 before D3
+            expect(doc3Pos).toBeLessThan(doc2Pos); // KEY: D3 before D2
+        });
+    });
 });

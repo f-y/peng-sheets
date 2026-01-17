@@ -502,12 +502,11 @@ export class SpreadsheetService {
         fromDocIndex: number,
         toDocIndex: number | null = null,
         toAfterWorkbook: boolean = false,
-        toBeforeWorkbook: boolean = false,
-        targetTabOrderIndex: number = -1
+        toBeforeWorkbook: boolean = false
     ) {
-        const targetIdx = targetTabOrderIndex === -1 ? null : targetTabOrderIndex;
+        // Pure physical move - metadata is handled by caller via tab-reorder-service
         this._performAction(() =>
-            editor.moveDocumentSection(fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook, targetIdx)
+            editor.moveDocumentSection(fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook)
         );
     }
 

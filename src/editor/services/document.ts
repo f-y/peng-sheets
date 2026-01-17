@@ -440,10 +440,15 @@ export function moveDocumentSection(
         const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
         insertLine = wbStart;
     } else if (toDocIndex !== null) {
+        // Adjust toDocIndex for the case where source doc was before target
+        // Since we removed fromDocIndex first, indices shift down
+        const adjustedToDocIndex = fromDocIndex < toDocIndex ? toDocIndex - 1 : toDocIndex;
+
         // Find the target document position
         let docIdx = 0;
         let targetLine = linesWithoutDoc.length;
         let inCodeBlock = false;
+        let foundTarget = false;
 
         for (let i = 0; i < linesWithoutDoc.length; i++) {
             const line = linesWithoutDoc[i];
@@ -454,13 +459,29 @@ export function moveDocumentSection(
             if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
                 const stripped = line.trim();
                 if (stripped !== rootMarker) {
-                    if (docIdx === toDocIndex) {
-                        targetLine = i;
+                    if (docIdx === adjustedToDocIndex) {
+                        // Insert AFTER this document, so find its end
+                        // Look for next heading or EOF
+                        let endLine = linesWithoutDoc.length;
+                        for (let j = i + 1; j < linesWithoutDoc.length; j++) {
+                            const nextLine = linesWithoutDoc[j];
+                            if (nextLine.startsWith('# ') && !nextLine.startsWith('## ')) {
+                                endLine = j;
+                                break;
+                            }
+                        }
+                        targetLine = endLine;
+                        foundTarget = true;
                         break;
                     }
                     docIdx++;
                 }
             }
+        }
+
+        // If target not found, insert at EOF
+        if (!foundTarget) {
+            targetLine = linesWithoutDoc.length;
         }
         insertLine = targetLine;
     } else {

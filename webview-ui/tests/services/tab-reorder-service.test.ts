@@ -213,7 +213,7 @@ describe('SPECS.md 8.6.2 Sheet → Document Position', () => {
 describe('SPECS.md 8.6.3 Document → Document', () => {
     it('D1: Doc to Doc (both before WB) - [D1, D2, WB] drag D1 after D2', () => {
         // Initial: [D1, D2, WB]
-        // Action: Drag D1 to D2's position (Doc→Doc)
+        // Action: Drag D1 to after D2 (insert at WB's position)
         // Expected: [D2, D1, WB] - Physical
         const tabs: TestTab[] = [
             { type: 'document', docIndex: 0 },
@@ -222,14 +222,14 @@ describe('SPECS.md 8.6.3 Document → Document', () => {
             { type: 'add-sheet' }
         ];
 
-        // Move D1 (index 0) to D2's position (index 1) - this is Doc→Doc
-        const action = determineReorderAction(tabs, 0, 1);
+        // Drag D1 (index 0) to after D2 → toIndex = 2 (WB's current position)
+        const action = determineReorderAction(tabs, 0, 2);
 
         expect(action.actionType).toBe('physical');
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
             expect(action.physicalMove.fromDocIndex).toBe(0);
-            expect(action.physicalMove.toDocIndex).toBe(1);
+            expect(action.physicalMove.toDocIndex).toBe(1); // Insert after D2
         }
         expect(action.metadataRequired).toBe(false);
     });
@@ -255,7 +255,7 @@ describe('SPECS.md 8.6.3 Document → Document', () => {
 
     it('D3: Doc to Doc (cross WB) - [D1, WB, D2] drag D1 after D2', () => {
         // Initial: [D1, WB, D2]
-        // Action: Drag D1 after D2 (Doc→Doc = physical)
+        // Action: Drag D1 to after D2 (insert at add-sheet position)
         // Expected: [WB, D2, D1] - Physical
         const tabs: TestTab[] = [
             { type: 'document', docIndex: 0 },
@@ -264,14 +264,15 @@ describe('SPECS.md 8.6.3 Document → Document', () => {
             { type: 'add-sheet' }
         ];
 
-        // Move D1 (index 0) to D2's position (index 2) - this is Doc→Doc
-        const action = determineReorderAction(tabs, 0, 2);
+        // Drag D1 (index 0) to after D2 → toIndex = 3 (add-sheet position)
+        const action = determineReorderAction(tabs, 0, 3);
 
         expect(action.actionType).toBe('physical');
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
-            expect(action.physicalMove.toDocIndex).toBe(1); // Moving to D2's position
+            expect(action.physicalMove.toDocIndex).toBe(1); // Insert after D2
         }
+        expect(action.metadataRequired).toBe(false);
     });
 });
 
@@ -432,5 +433,61 @@ describe('Metadata Necessity (SPECS.md 8.6)', () => {
             { type: 'sheet', index: 2 },
             { type: 'document', index: 2 }
         ]);
+    });
+});
+
+// =============================================================================
+// EXACT REPRODUCTION: sample-workspace/workbook.md [WB(S1, S2), D1, D2, D3]
+// =============================================================================
+
+describe('Exact Reproduction: workbook.md [WB, D1, D2, D3]', () => {
+    // Tab structure: [S1=0, S2=1, D1=2, D2=3, D3=4, add-sheet=5]
+    const tabs: TestTab[] = [
+        { type: 'sheet', sheetIndex: 0 },
+        { type: 'sheet', sheetIndex: 1 },
+        { type: 'document', docIndex: 0 },
+        { type: 'document', docIndex: 1 },
+        { type: 'document', docIndex: 2 },
+        { type: 'add-sheet' }
+    ];
+
+    /**
+     * USER BUG REPORT 1: Drag D1 after D2
+     * Initial: [S1, S2, D1, D2, D3] tab indices
+     * Action: Drag D1 (idx=2) to after D2 → toIndex = 4 (D3's position)
+     * Expected: move-document(fromDocIndex=0, toDocIndex=1)
+     */
+    it('should move D1 after D2 - [WB, D1, D2, D3] → [WB, D2, D1, D3]', () => {
+        // D1 is at tabIndex 2, D2 is at tabIndex 3
+        // Dragging D1 "after D2" lands at tabIndex 4 (D3's position)
+        const action = determineReorderAction(tabs, 2, 4);
+
+        expect(action.actionType).toBe('physical');
+        expect(action.physicalMove?.type).toBe('move-document');
+        if (action.physicalMove?.type === 'move-document') {
+            expect(action.physicalMove.fromDocIndex).toBe(0); // D1
+            expect(action.physicalMove.toDocIndex).toBe(1); // Insert after D2
+        }
+        expect(action.metadataRequired).toBe(false);
+    });
+
+    /**
+     * USER BUG REPORT 2: Drag D2 after D3
+     * Initial: [S1, S2, D1, D2, D3] tab indices
+     * Action: Drag D2 (idx=3) to after D3 → toIndex = 5 (add-sheet position)
+     * Expected: move-document(fromDocIndex=1, toDocIndex=2)
+     */
+    it('should move D2 after D3 - [WB, D1, D2, D3] → [WB, D1, D3, D2]', () => {
+        // D2 is at tabIndex 3, D3 is at tabIndex 4
+        // Dragging D2 "after D3" lands at tabIndex 5 (add-sheet position)
+        const action = determineReorderAction(tabs, 3, 5);
+
+        expect(action.actionType).toBe('physical');
+        expect(action.physicalMove?.type).toBe('move-document');
+        if (action.physicalMove?.type === 'move-document') {
+            expect(action.physicalMove.fromDocIndex).toBe(1); // D2
+            expect(action.physicalMove.toDocIndex).toBe(2); // Insert after D3
+        }
+        expect(action.metadataRequired).toBe(false);
     });
 });
