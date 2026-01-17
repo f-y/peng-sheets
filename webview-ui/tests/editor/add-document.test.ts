@@ -421,16 +421,11 @@ Content.
             const content = result.content!;
             expect(content.trim().endsWith('# New Doc')).toBe(true);
 
-            // Verify tab_order
+            // Verify tab_order: [D0, S0, S1, D1] is natural order, so tab_order should be removed
             const state = JSON.parse(getState());
-            const newTabOrder = state.workbook.metadata.tab_order;
-
-            expect(newTabOrder).toEqual([
-                { type: 'document', index: 0 },
-                { type: 'sheet', index: 0 },
-                { type: 'sheet', index: 1 },
-                { type: 'document', index: 1 } // New doc
-            ]);
+            // Natural order = docs before WB + sheets + docs after WB
+            // This matches [D0, S0, S1, D1], so no metadata needed
+            expect(state.workbook.metadata?.tab_order).toBeUndefined();
         });
 
         /**

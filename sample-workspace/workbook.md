@@ -1,5 +1,3 @@
-# Doc 1
-
 # Tables
 
 ## Sheet 1
@@ -14,9 +12,8 @@
 | --- | --- | --- |
 |  |  |  |
 
-<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "document", "index": 1}, {"type": "sheet", "index": 1}, {"type": "document", "index": 2}]} -->
+<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "sheet", "index": 0}, {"type": "document", "index": 0}, {"type": "sheet", "index": 1}, {"type": "document", "index": 1}, {"type": "document", "index": 2}]} -->
 
-# Doc 3
-
+# Doc 1
 
 # Doc 2

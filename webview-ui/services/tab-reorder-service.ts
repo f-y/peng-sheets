@@ -37,12 +37,12 @@ export type PhysicalMove =
     | { type: 'move-sheet'; fromSheetIndex: number; toSheetIndex: number }
     | { type: 'move-workbook'; direction: 'before-doc' | 'after-doc'; targetDocIndex: number }
     | {
-          type: 'move-document';
-          fromDocIndex: number;
-          toDocIndex: number | null;
-          toAfterWorkbook: boolean;
-          toBeforeWorkbook: boolean;
-      };
+        type: 'move-document';
+        fromDocIndex: number;
+        toDocIndex: number | null;
+        toAfterWorkbook: boolean;
+        toBeforeWorkbook: boolean;
+    };
 
 /**
  * Result of determining what action to take for a tab reorder.
@@ -328,6 +328,7 @@ export function determineReorderAction(
                             direction: 'before-doc',
                             targetDocIndex: docBeforeWb.docIndex!
                         },
+                        newTabOrder: needsMeta ? wbNewTabOrder : undefined,
                         metadataRequired: needsMeta
                     };
                 }
@@ -431,14 +432,10 @@ export function determineReorderAction(
                 };
             }
             // Sub-case 1b: Moving within/after sheets - metadata-only
-            // Compare with actual physical file structure, not display tabs
-            const physicalStructure: FileStructure = {
-                docsBeforeWb: [],
-                sheets: tabs.filter((t) => t.type === 'sheet').map((t) => t.sheetIndex!),
-                docsAfterWb: tabs.filter((t) => t.type === 'document').map((t) => t.docIndex!),
-                hasWorkbook: true
-            };
-            const needsMetadata = isMetadataRequired(newTabOrder, physicalStructure);
+            // The doc is already physically after WB (it was displayed between sheets via metadata)
+            // We compare new tab order with the CURRENT physical file structure
+            // Note: currentStructure (computed above) correctly represents the file's physical layout
+            const needsMetadata = isMetadataRequired(newTabOrder, currentStructure);
             return {
                 actionType: 'metadata',
                 newTabOrder,
@@ -461,7 +458,7 @@ export function determineReorderAction(
         if (prevTab?.type === 'document' && prevTab !== fromTab && !isToBetweenSheets) {
             const toDocIndex = prevTab.docIndex!;
             return {
-                actionType: 'physical',
+                actionType: needsMetadata ? 'physical+metadata' : 'physical',
                 physicalMove: {
                     type: 'move-document',
                     fromDocIndex,
@@ -469,6 +466,7 @@ export function determineReorderAction(
                     toAfterWorkbook: false,
                     toBeforeWorkbook: false
                 },
+                newTabOrder: needsMetadata ? newTabOrder : undefined,
                 metadataRequired: needsMetadata
             };
         }
@@ -489,6 +487,7 @@ export function determineReorderAction(
                     toAfterWorkbook: true,
                     toBeforeWorkbook: false
                 },
+                newTabOrder: needsMetadata ? newTabOrder : undefined,
                 metadataRequired: needsMetadata
             };
         }
@@ -504,6 +503,7 @@ export function determineReorderAction(
                     toAfterWorkbook: false,
                     toBeforeWorkbook: true
                 },
+                newTabOrder: needsMetadata ? newTabOrder : undefined,
                 metadataRequired: needsMetadata
             };
         }
@@ -580,12 +580,12 @@ export function determineReorderAction(
                 actionType: isFromBeforeWb ? 'physical+metadata' : 'metadata',
                 physicalMove: isFromBeforeWb
                     ? {
-                          type: 'move-document' as const,
-                          fromDocIndex,
-                          toDocIndex: null,
-                          toAfterWorkbook: true,
-                          toBeforeWorkbook: false
-                      }
+                        type: 'move-document' as const,
+                        fromDocIndex,
+                        toDocIndex: null,
+                        toAfterWorkbook: true,
+                        toBeforeWorkbook: false
+                    }
                     : undefined,
                 newTabOrder,
                 metadataRequired: needsMetadata

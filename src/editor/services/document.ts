@@ -617,18 +617,24 @@ export function moveWorkbookSection(
     context.mdText = newMdText;
 
     // Update workbook reference
+    // IMPORTANT: Preserve existing tab_order if it was pre-set by updateWorkbookTabOrder
+    // Only initialize from structure if tab_order is missing
     if (context.workbook && targetTabOrderIndex !== null) {
-        // Tab order update for workbook movement is complex
-        // For now, we just regenerate the state
-        const metadata = { ...(context.workbook.metadata || {}) };
-        const tabOrder = initializeTabOrderFromStructure(
-            newMdText,
-            context.config,
-            (context.workbook.sheets ?? []).length
-        );
-        metadata.tab_order = tabOrder;
-        const newWorkbook = new Workbook({ ...context.workbook, metadata });
-        context.updateWorkbook(newWorkbook);
+        const existingTabOrder = context.workbook.metadata?.tab_order;
+
+        if (!existingTabOrder || (Array.isArray(existingTabOrder) && existingTabOrder.length === 0)) {
+            // No existing tab_order, initialize from structure
+            const metadata = { ...(context.workbook.metadata || {}) };
+            const tabOrder = initializeTabOrderFromStructure(
+                newMdText,
+                context.config,
+                (context.workbook.sheets ?? []).length
+            );
+            metadata.tab_order = tabOrder;
+            const newWorkbook = new Workbook({ ...context.workbook, metadata });
+            context.updateWorkbook(newWorkbook);
+        }
+        // If tab_order already exists (pre-set by caller), keep it as-is
     }
 
     return {

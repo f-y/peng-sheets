@@ -321,6 +321,105 @@ console.log('[DEBUG] evaluateTask row 0: currentValue:', currentValue, 'newValue
 
 ---
 
+## 6.9 Quality Guidelines
+
+This section documents patterns and practices critical to application quality.
+
+### 6.9.1 Bug Fix Policy: Reproduction Test First
+
+> [!CAUTION]
+> **Reproduction test MUST be implemented BEFORE fixing the bug.**
+> A bug that exists is less critical than a bug that tests cannot detect.
+
+#### Why Test-First is Mandatory
+
+1. **Tests can pass while UI fails**: Tests may call functions differently than production code
+2. **False confidence is dangerous**: Passing tests without proper reproduction hide real bugs
+3. **RCA reveals gaps**: Root cause analysis often shows test/production flow mismatches
+
+#### The Correct Flow
+
+```
+1. Report bug
+   ↓
+2. Write FAILING reproduction test that simulates production flow
+   ↓
+3. Verify test FAILS (if passes, test is wrong)
+   ↓
+4. Implement fix
+   ↓
+5. Verify test PASSES
+   ↓
+6. Run full test suite
+   ↓
+7. UI verification by user
+   ↓
+8. Commit
+```
+
+#### Reproduction Test Requirements
+
+A proper reproduction test must:
+
+1. **Simulate exact production flow**: Match the actual code path (reference specific line numbers)
+2. **Fail before fix**: If test passes immediately, it's not reproducing the bug
+3. **Document the bug mechanism**: Include comments explaining why the bug occurs
+
+Example (from Hazard 61 fix):
+
+```typescript
+it('Scenario 2: D1 → before S1 should REMOVE tab_order', () => {
+    /**
+     * BUG: main.ts line 1491 - skipped generateAndGetRange() when metadataRequired=false
+     * FIX: Always call generateAndGetRange() to include metadata cleanup
+     */
+    
+    // Step 1: Remove tab_order (main.ts line 1417-1418)
+    if (!action.metadataRequired && action.physicalMove) {
+        editor.updateWorkbookTabOrder(null);
+    }
+    
+    // Step 2: Physical move (main.ts line 1476-1481)
+    const moveResult = editor.moveDocumentSection(...);
+    
+    // Step 3: ALWAYS regenerate (the FIX - main.ts line 1491)
+    // Before fix: only if metadataRequired=true
+    const wbUpdate = editor.generateAndGetRange();
+    
+    // Verify fix works
+    expect(mergedContent).not.toContain('tab_order');
+});
+```
+
+#### Anti-Pattern: Test That Embeds the Fix
+
+```typescript
+// ❌ BAD: Test includes the fix logic directly
+it('should remove tab_order', () => {
+    editor.updateWorkbookTabOrder(null); // Fix applied in test
+    const result = editor.generateAndGetRange();
+    expect(result).not.toContain('tab_order'); // Always passes
+});
+
+// ✅ GOOD: Test simulates production flow, fails if bug exists
+it('should remove tab_order', () => {
+    // Simulate EXACTLY what main.ts does (with line number references)
+    // This test would FAIL if main.ts has the bug
+});
+```
+
+### 6.9.2 Commit Policy
+
+> [!CAUTION]
+> **Do NOT commit bug fixes until UI verification is complete.**
+
+1. ✅ All tests pass (`npm run test:webview`)
+2. ✅ Extension packages successfully (`vsce package`)
+3. ✅ User confirms fix works in actual VS Code extension
+4. Then commit with descriptive message
+
+---
+
 ## 7. For Maintainers
 
 This section describes the release procedure for publishing a new version.
@@ -330,22 +429,6 @@ This section describes the release procedure for publishing a new version.
 - [ ] All changes are tested and working correctly.
 - [ ] All tests pass (`npm test` and `npm run test:webview`).
 - [ ] Extension packages successfully (`vsce package`).
-
-### 7.1.1 Commit Policy for Bug Fixes
-
-> [!CAUTION]
-> **Do NOT commit bug fixes until UI verification is complete.**
-
-For bug fixes that affect user-visible behavior:
-
-1. **Write failing test** that reproduces the bug
-2. **Implement the fix** to make the test pass
-3. **Run full test suite** (`npm run test:webview`)
-4. **Notify user for UI verification** - DO NOT COMMIT YET
-5. **User confirms fix works** in actual extension
-6. **Then commit** with descriptive message
-
-This prevents committing fixes that pass tests but fail in real UI.
 
 ### 7.2 Update CHANGELOG.md
 

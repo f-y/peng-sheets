@@ -190,15 +190,10 @@ describe('Sheet Service Tests', () => {
             const result = deleteSheet(0);
             expect(result.error).toBeUndefined();
 
-            // After: tab_order should have 1 entry (the remaining sheet, now shifted to index 0)
+            // After: only 1 sheet remains - this is natural order, so tab_order should be removed
             const state2 = JSON.parse(getState());
-            const tabOrder = state2.workbook.metadata?.tab_order;
-
-            // Should have exactly 1 entry after deleting 1 of 2 sheets
-            expect(tabOrder?.length).toBe(1);
-
-            // The remaining entry should be index 0 (shifted from original index 1)
-            expect(tabOrder?.[0]).toEqual({ type: 'sheet', index: 0 });
+            // Single sheet with no docs = natural order, so no metadata needed
+            expect(state2.workbook.metadata?.tab_order).toBeUndefined();
         });
 
         it('should shift remaining sheet indices in tab_order after deletion', () => {
@@ -206,14 +201,10 @@ describe('Sheet Service Tests', () => {
             const result = deleteSheet(0);
             expect(result.error).toBeUndefined();
 
-            // After: remaining sheet (was index 1) should now be index 0
+            // After: only 1 sheet remains - this is natural order, so tab_order should be removed
             const state = JSON.parse(getState());
-            const tabOrder = state.workbook.metadata?.tab_order;
-            if (tabOrder && tabOrder.length > 0) {
-                const sheetEntries = tabOrder.filter((item: { type: string }) => item.type === 'sheet');
-                // The remaining sheet should have index 0
-                expect(sheetEntries[0]?.index).toBe(0);
-            }
+            // Single sheet with no docs = natural order, so no metadata needed
+            expect(state.workbook.metadata?.tab_order).toBeUndefined();
         });
 
         it('should handle deleting middle sheet with tab_order', () => {
