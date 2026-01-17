@@ -198,12 +198,21 @@ export function determineReorderAction(
         const needsMetadata = isMetadataRequired(newTabOrder, currentStructure);
 
         // S1, S2: Sheet → Sheet (Physical reorder within Workbook)
-        if (toTab?.type === 'sheet') {
-            const toSheetIndex = toTab.sheetIndex!;
+        // This includes:
+        // - Moving to a sheet position (toTab?.type === 'sheet')
+        // - Moving to just after last sheet (toIndex between firstSheetIdx and lastSheetIdx+1)
+        //   but only if there's no doc at that position OR doc isn't between sheets
+        const targetIsWithinSheetRange = toIndex >= firstSheetIdx && toIndex <= lastSheetIdx + 1;
+        const isSheetToSheetMove = toTab?.type === 'sheet' ||
+            (targetIsWithinSheetRange && toIndex === lastSheetIdx + 1 && firstSheetIdx === 0);
+
+        if (isSheetToSheetMove) {
+            // Compute the target sheet index for the swap
+            const toSheetIndex = toTab?.type === 'sheet' ? toTab.sheetIndex! : sheetCount - 1;
 
             // Check if new order has docs before sheets (requires WB move)
             // Only if docs weren't already before WB in current order
-            const oldFirstSheetIdx = firstSheetIdx; // Already computed above
+            const oldFirstSheetIdx = firstSheetIdx;
             const newFirstSheetIdx = newTabs.findIndex((t) => t.type === 'sheet');
 
             // WB move needed only if: (1) there are now docs before sheets, AND
@@ -231,12 +240,28 @@ export function determineReorderAction(
                 }
             }
 
-            // Normal case: just reorder sheets within WB
+            // For sheet-to-sheet swaps, only need metadata if doc positions relative to sheets change
+            // In a simple sheet swap (all sheets still contiguous and before docs), no metadata needed
+            const oldDocPositions = tabs.filter((t) => t.type === 'document').map((t) => t.docIndex);
+            const newDocPositions = newTabs.filter((t) => t.type === 'document').map((t) => t.docIndex);
+            const docOrderChanged = JSON.stringify(oldDocPositions) !== JSON.stringify(newDocPositions);
+
+            // Check if any doc is between sheets (not just before first sheet)
+            // Doc is "between" if: firstSheet < doc < lastSheet in tab order
+            const newFirstSheetTabIdx = newTabs.findIndex((t) => t.type === 'sheet');
+            const newLastSheetTabIdx = newTabs.reduce((acc, t, i) => (t.type === 'sheet' ? i : acc), -1);
+            const docMovedBetweenSheets = newTabs.some((t, i) =>
+                t.type === 'document' && i > newFirstSheetTabIdx && i < newLastSheetTabIdx
+            );
+
+            const sheetSwapNeedsMetadata = docOrderChanged || docMovedBetweenSheets ||
+                (needsMetadata && newFirstSheetIdx !== oldFirstSheetIdx);
+
             return {
-                actionType: needsMetadata ? 'metadata' : 'physical',
-                physicalMove: needsMetadata ? undefined : { type: 'move-sheet', fromSheetIndex, toSheetIndex },
-                newTabOrder: needsMetadata ? newTabOrder : undefined,
-                metadataRequired: needsMetadata
+                actionType: sheetSwapNeedsMetadata ? 'metadata' : 'physical',
+                physicalMove: sheetSwapNeedsMetadata ? undefined : { type: 'move-sheet', fromSheetIndex, toSheetIndex },
+                newTabOrder: sheetSwapNeedsMetadata ? newTabOrder : undefined,
+                metadataRequired: sheetSwapNeedsMetadata
             };
         }
 
@@ -256,20 +281,52 @@ export function determineReorderAction(
             const wbNewStructure = parseFileStructure(sheetDocTabs);
             const wbNeedsMetadata = isMetadataRequired(wbNewTabOrder, wbNewStructure);
 
+            // C8 Case: Sheet moves to inside doc range (between docs or after a doc that's before other sheets)
+            // Example: [S1, S2, D1, D2] → S1 to after D1 → [S2, D1, S1, D2]
+            // In this case, S1 needs to be physically last in the workbook so display can show it after D1
+            const movedSheetPosInNew = sheetDocTabs.findIndex(
+                (t) => t.type === 'sheet' && t.sheetIndex === fromSheetIndex
+            );
+            const isMovedSheetInsideDocRange = movedSheetPosInNew > newFirstSheetIdx && movedSheetPosInNew < sheetDocTabs.length;
+
+            // Check if there are docs between the moved sheet and the first sheet
+            const hasDocsBetweenFirstAndMoved = sheetDocTabs
+                .slice(newFirstSheetIdx, movedSheetPosInNew)
+                .some((t) => t.type === 'document');
+
+            // Only need physical move if the sheet is NOT already last in the workbook
+            const isSheetAlreadyLast = fromSheetIndex === sheetCount - 1;
+
+            if (isMovedSheetInsideDocRange && hasDocsBetweenFirstAndMoved && !isSheetAlreadyLast) {
+                // This sheet is now displayed after some docs - need to physically move it last in WB
+                return {
+                    actionType: 'physical+metadata',
+                    physicalMove: {
+                        type: 'move-sheet',
+                        fromSheetIndex,
+                        toSheetIndex: sheetCount - 1 // Move to last position in workbook
+                    },
+                    newTabOrder: wbNewTabOrder,
+                    metadataRequired: true
+                };
+            }
+
             // Check if Workbook needs to move
             if (newFirstSheetIdx === 0 && firstSheetIdx > 0) {
                 // Sheet is now first in tab order, but there's a Doc before WB in file
                 // → Move Workbook before that Doc
                 const docBeforeWb = tabs.find((t, i) => t.type === 'document' && i < firstSheetIdx);
                 if (docBeforeWb) {
+                    // Single sheet WB doesn't need metadata (SPECS.md S3/S4)
+                    const needsMeta = sheetCount > 1 && wbNeedsMetadata;
                     return {
-                        actionType: 'physical+metadata',
+                        actionType: needsMeta ? 'physical+metadata' : 'physical',
                         physicalMove: {
                             type: 'move-workbook',
                             direction: 'before-doc',
                             targetDocIndex: docBeforeWb.docIndex!
                         },
-                        metadataRequired: wbNeedsMetadata
+                        metadataRequired: needsMeta
                     };
                 }
             }
@@ -281,25 +338,40 @@ export function determineReorderAction(
                 const docsBeforeSheet = sheetDocTabs.slice(0, newFirstSheetIdx).filter((t) => t.type === 'document');
                 if (docsBeforeSheet.length > 0) {
                     const lastDocBeforeSheet = docsBeforeSheet[docsBeforeSheet.length - 1];
+                    // Single sheet WB doesn't need metadata (SPECS.md S3/S4)
+                    const needsMeta = sheetCount > 1 && wbNeedsMetadata;
                     return {
-                        actionType: 'physical+metadata',
+                        actionType: needsMeta ? 'physical+metadata' : 'physical',
                         physicalMove: {
                             type: 'move-workbook',
                             direction: 'after-doc',
                             targetDocIndex: lastDocBeforeSheet.docIndex!
                         },
-                        metadataRequired: wbNeedsMetadata
+                        metadataRequired: needsMeta
                     };
                 }
             }
 
             // Sheet → end (add-sheet position)
+            // But only if it changes physical position (sheet not already last)
             if (toTab?.type === 'add-sheet' || !toTab) {
-                return {
-                    actionType: 'physical',
-                    physicalMove: { type: 'move-sheet', fromSheetIndex, toSheetIndex: sheetCount },
-                    metadataRequired: false
-                };
+                const isAlreadyLastSheet = fromSheetIndex === sheetCount - 1;
+                if (!isAlreadyLastSheet) {
+                    return {
+                        actionType: 'physical',
+                        physicalMove: { type: 'move-sheet', fromSheetIndex, toSheetIndex: sheetCount },
+                        metadataRequired: false
+                    };
+                }
+                // If already last sheet moving to end, check if metadata is needed
+                // (e.g., if there are docs and sheet is moving to after them in display)
+                if (wbNeedsMetadata) {
+                    return {
+                        actionType: 'metadata',
+                        newTabOrder: wbNewTabOrder,
+                        metadataRequired: true
+                    };
+                }
             }
         }
 

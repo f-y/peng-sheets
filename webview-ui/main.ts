@@ -1436,7 +1436,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 switch (action.physicalMove.type) {
                     case 'move-sheet': {
                         const { fromSheetIndex, toSheetIndex } = action.physicalMove;
-                        const result = editor.moveSheet(fromSheetIndex, toSheetIndex, toIndex);
+                        // Only pass toIndex if metadata is required, otherwise null (no metadata)
+                        const targetTabOrderIndex = action.metadataRequired ? toIndex : null;
+                        const result = editor.moveSheet(fromSheetIndex, toSheetIndex, targetTabOrderIndex);
                         if (result) this._postBatchUpdate(result);
                         break;
                     }
