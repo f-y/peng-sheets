@@ -222,26 +222,31 @@ export class SpreadsheetService {
             return;
         }
 
-        // Multiple updates: check if they have different line ranges
-        // If so, we need to find the update that covers the largest range
-        // (which should contain all changes from all operations)
-        let maxRangeUpdate = updates[0];
-        let maxRange = (updates[0].endLine ?? 0) - (updates[0].startLine ?? 0);
+        // Multiple updates: Use the LAST update's content (has all cumulative changes)
+        // with a range that spans from earliest startLine to latest endLine.
+        // This ensures formula recalculations (which happen after the initial edit)
+        // are included in the final document content sent to VS Code.
+        const lastUpdate = updates[updates.length - 1];
+        let minStartLine = updates[0].startLine ?? 0;
+        let maxEndLine = updates[0].endLine ?? 0;
+        let maxEndCol = updates[0].endCol ?? 0;
 
-        for (let i = 1; i < updates.length; i++) {
-            const range = (updates[i].endLine ?? 0) - (updates[i].startLine ?? 0);
-            if (range > maxRange) {
-                maxRange = range;
-                maxRangeUpdate = updates[i];
+        for (const update of updates) {
+            minStartLine = Math.min(minStartLine, update.startLine ?? 0);
+            if ((update.endLine ?? 0) > maxEndLine) {
+                maxEndLine = update.endLine ?? 0;
+                maxEndCol = update.endCol ?? 0;
+            } else if ((update.endLine ?? 0) === maxEndLine) {
+                maxEndCol = Math.max(maxEndCol, update.endCol ?? 0);
             }
         }
 
         this.vscode.postMessage({
             type: 'updateRange',
-            startLine: maxRangeUpdate.startLine,
-            endLine: maxRangeUpdate.endLine,
-            endCol: maxRangeUpdate.endCol,
-            content: maxRangeUpdate.content,
+            startLine: minStartLine,
+            endLine: maxEndLine,
+            endCol: maxEndCol,
+            content: lastUpdate.content,
             undoStopBefore: true,
             undoStopAfter: true
         });
