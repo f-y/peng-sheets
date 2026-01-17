@@ -239,6 +239,10 @@ This matrix defines the expected behavior for all tab drag-and-drop scenarios. E
 | S4 | Single Sheet to after Doc | `[WB(S1), D1]` | Drag S1 after D1 | `[D1, WB(S1)]` | Physical (move WB) |
 | S5 | Multi-Sheet: Sheet to before Doc | `[D1, WB(S1,S2), D2]` | Drag S1 before D1 | File: `[WB(S1,S2), D1, D2]`, tab: [S1,D1,S2,D2] | Physical + Metadata |
 | S6 | Multi-Sheet: Sheet to after Doc | `[D1, WB(S1,S2), D2]` | Drag S2 after D2 | File: `[D1, D2, WB(S1,S2)]`, tab: [D1,D2,S1,S2] | Physical + Metadata |
+| C8 | Sheet to inside doc range | `[WB(S1,S2), D1, D2]` | Drag S1 after D1 | File: `[WB(S2,S1), D1, D2]`, tab: [S2,D1,S1,D2] | Physical (sheet reorder) + Metadata |
+| C8v | Last sheet to inside doc range | `[WB(S1,S2), D1]` | Drag S2 after D1 | File unchanged, tab: [S1,D1,S2] | Metadata only |
+
+**Key principle for C8**: When a sheet moves to a position after documents (inside doc range), the sheet must be physically reordered to be last in the workbook so that metadata can correctly display it after the documents. If the sheet is already last in the workbook, only metadata update is needed.
 
 #### 8.6.3. Document → Document
 
