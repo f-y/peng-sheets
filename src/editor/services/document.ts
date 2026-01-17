@@ -460,17 +460,8 @@ export function moveDocumentSection(
                 const stripped = line.trim();
                 if (stripped !== rootMarker) {
                     if (docIdx === adjustedToDocIndex) {
-                        // Insert AFTER this document, so find its end
-                        // Look for next heading or EOF
-                        let endLine = linesWithoutDoc.length;
-                        for (let j = i + 1; j < linesWithoutDoc.length; j++) {
-                            const nextLine = linesWithoutDoc[j];
-                            if (nextLine.startsWith('# ') && !nextLine.startsWith('## ')) {
-                                endLine = j;
-                                break;
-                            }
-                        }
-                        targetLine = endLine;
+                        // Insert BEFORE this document (at its start line)
+                        targetLine = i;
                         foundTarget = true;
                         break;
                     }
@@ -479,9 +470,24 @@ export function moveDocumentSection(
             }
         }
 
-        // If target not found, insert at EOF
+        // If target not found, insert at an appropriate boundary
         if (!foundTarget) {
-            targetLine = linesWithoutDoc.length;
+            // Check if WB exists and determine where from-doc was originally
+            const tempText = linesWithoutDoc.join('\n');
+            const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
+
+            // Check if from-doc was before or after WB in original text
+            const originalText = context.mdText;
+            const [originalWbStart] = getWorkbookRange(originalText, rootMarker, sheetHeaderLevel);
+            const fromDocWasBeforeWb = startLine < originalWbStart;
+
+            if (wbStart < linesWithoutDoc.length && fromDocWasBeforeWb) {
+                // WB exists and from-doc was before WB - insert just before WB
+                targetLine = wbStart;
+            } else {
+                // No WB or from-doc was after WB - insert at EOF
+                targetLine = linesWithoutDoc.length;
+            }
         }
         insertLine = targetLine;
     } else {

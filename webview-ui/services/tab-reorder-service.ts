@@ -515,37 +515,42 @@ export function determineReorderAction(
             // before other docs (in tab order) that were physically before it,
             // we need to physically reorder the docs.
             if (!isFromBeforeWb) {
-                // Check if this doc's display position among docs-after-WB changed
-                // Find docs after WB in original order
+                // Find docs that are physically after WB (not before WB in tab order)
+                // These are docs whose tab position is AFTER lastSheetIdx (the last sheet)
                 const docsAfterWbOriginal = tabs
                     .filter((t) => t.type === 'document')
-                    .filter((_, i, arr) => {
-                        // Check if this doc was after WB by comparing with firstSheetIdx
-                        const docTab = tabs.find((t) => t.type === 'document' && t.docIndex === arr[i].docIndex);
-                        if (!docTab) return false;
-                        return tabs.indexOf(docTab) > firstSheetIdx;
+                    .filter((t) => {
+                        const tabPos = tabs.indexOf(t);
+                        // Doc is after WB if it's after the last sheet in tab order
+                        return tabPos > lastSheetIdx;
                     })
                     .map((t) => t.docIndex!);
 
-                // In new tab order, get the order of docs that will be after WB
-                const newDocsOrder = newTabOrder.filter((t) => t.type === 'document').map((t) => t.index);
+                // In new tab order, get ONLY the docs that are physically after WB
+                // (i.e., exclude docs that were before WB like D1)
+                const docsAfterWbSet = new Set(docsAfterWbOriginal);
+                const newDocsAfterWbOrder = newTabOrder
+                    .filter((t) => t.type === 'document' && docsAfterWbSet.has(t.index))
+                    .map((t) => t.index);
 
-                // Find the first doc in new display order that's between sheets or after last sheet
-                // This is the doc that should be first physically
-                const firstDocInNewOrder = newDocsOrder[0];
+                // Find the first doc-after-WB in new display order
+                // This is the doc that should be first physically after WB
+                const firstDocInNewOrder = newDocsAfterWbOrder[0];
                 const firstDocInPhysicalOrder = docsAfterWbOriginal[0];
 
                 if (firstDocInNewOrder !== firstDocInPhysicalOrder && firstDocInNewOrder === fromDocIndex) {
-                    // This doc is now first in display, but wasn't first physically
+                    // This doc is now first in display (among docs-after-WB), but wasn't first physically
                     // Need to physically move it to the start of docs-after-WB
                     // Use toAfterWorkbook=true to insert right after WB (= before all other docs)
 
                     // Remap docIndex values in newTabOrder:
-                    // - fromDocIndex becomes 0 (first in file)
-                    // - docs that were at index < fromDocIndex stay the same
+                    // - fromDocIndex becomes firstDocInPhysicalOrder (first in file after WB)
                     // - docs that were at index >= firstDocInPhysicalOrder and < fromDocIndex get +1
                     const remappedTabOrder = newTabOrder.map((item) => {
                         if (item.type !== 'document') return item;
+                        // Only remap docs that are after WB
+                        if (!docsAfterWbSet.has(item.index)) return item;
+
                         if (item.index === fromDocIndex) {
                             // Moving doc becomes first
                             return { ...item, index: firstDocInPhysicalOrder };

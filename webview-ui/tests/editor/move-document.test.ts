@@ -464,7 +464,7 @@ Content.
         /**
          * BUG CASE 1: WB exists before Docs
          * Initial: [WB, D1, D2]
-         * Action: Move D1 after D2
+         * Action: Move D1 after D2 (to position 2, insert before EOF)
          * Expected: [WB, D2, D1]
          */
         it('should move D1 after D2 when WB is before - [WB, D1, D2] → [WB, D2, D1]', () => {
@@ -487,8 +487,8 @@ Second doc.
             initializeWorkbook(MD, SAMPLE_CONFIG);
 
             // Move D1 (index 0) after D2 (index 1)
-            // toDocIndex = 1 means "move to where D2 is"
-            const result = moveDocumentSection(0, 1, false, false);
+            // New API: toDocIndex=2 means "insert at position 2" (= after D2, at EOF)
+            const result = moveDocumentSection(0, 2, false, false);
 
             expect(result.error).toBeUndefined();
 
@@ -506,7 +506,7 @@ Second doc.
         /**
          * BUG CASE 2: WB doesn't exist (Documents only)
          * Initial: [D1, D2, D3]
-         * Action: Move D1 after D2
+         * Action: Move D1 after D2 (to position 2, insert before D3)
          * Expected: [D2, D1, D3]
          */
         it('should move D1 after D2 when no WB - [D1, D2, D3] → [D2, D1, D3]', () => {
@@ -524,8 +524,9 @@ Third doc.
 `;
             initializeWorkbook(MD, SAMPLE_CONFIG);
 
-            // Move D1 (index 0) after D2 (index 1)
-            const result = moveDocumentSection(0, 1, false, false);
+            // Move D1 (index 0) after D2
+            // New API: toDocIndex=2 means "insert at position 2" (= before D3, after D2)
+            const result = moveDocumentSection(0, 2, false, false);
 
             expect(result.error).toBeUndefined();
 
@@ -543,7 +544,7 @@ Third doc.
         /**
          * BUG CASE 3: Docs before WB
          * Initial: [D1, D2, WB]
-         * Action: Move D1 after D2
+         * Action: Move D1 after D2 (to position 2, insert before WB)
          * Expected: [D2, D1, WB]
          */
         it('should move D1 after D2 when Docs before WB - [D1, D2, WB] → [D2, D1, WB]', () => {
@@ -565,8 +566,9 @@ Second doc.
 `;
             initializeWorkbook(MD, SAMPLE_CONFIG);
 
-            // Move D1 (index 0) after D2 (index 1)
-            const result = moveDocumentSection(0, 1, false, false);
+            // Move D1 (index 0) after D2
+            // New API: toDocIndex=2 means "insert at position 2" (but only 2 docs exist, so at end of docs)
+            const result = moveDocumentSection(0, 2, false, false);
 
             expect(result.error).toBeUndefined();
 
@@ -615,12 +617,13 @@ Second doc.
         /**
          * USER BUG REPORT 1: Doc1 → after Doc2
          * Initial: [WB, D1, D2, D3]
-         * Action: Move D1 after D2
+         * Action: Move D1 after D2 (to position 2, insert before D3)
          * Expected: [WB, D2, D1, D3]
          */
         it('should move Doc1 after Doc2 - [WB, D1, D2, D3] → [WB, D2, D1, D3]', () => {
             // Doc1 is index 0, Doc2 is index 1
-            const result = moveDocumentSection(0, 1, false, false);
+            // New API: toDocIndex=2 means "insert at position 2" (before D3)
+            const result = moveDocumentSection(0, 2, false, false);
 
             expect(result.error).toBeUndefined();
 
@@ -639,12 +642,13 @@ Second doc.
         /**
          * USER BUG REPORT 2: Doc2 → after Doc3
          * Initial: [WB, D1, D2, D3]
-         * Action: Move D2 after D3
+         * Action: Move D2 after D3 (to position 3, insert at end)
          * Expected: [WB, D1, D3, D2]
          */
         it('should move Doc2 after Doc3 - [WB, D1, D2, D3] → [WB, D1, D3, D2]', () => {
             // Doc2 is index 1, Doc3 is index 2
-            const result = moveDocumentSection(1, 2, false, false);
+            // New API: toDocIndex=3 means "insert at position 3" (at end, after D3)
+            const result = moveDocumentSection(1, 3, false, false);
 
             expect(result.error).toBeUndefined();
 
