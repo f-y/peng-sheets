@@ -220,7 +220,14 @@ export function moveSheet(
         });
 
         if (targetTabOrderIndex !== null) {
+            // Metadata is required - update tab_order
             updatedWb = reorderTabMetadata(updatedWb, 'sheet', fromIndex, insertIdx, targetTabOrderIndex)!;
+        } else {
+            // Metadata is NOT required - delete tab_order to prevent unwanted metadata in output
+            // This is critical for SPECS.md 8.6 S1/S2 sheet swap cases
+            const metadata = { ...(updatedWb.metadata || {}) };
+            delete metadata.tab_order;
+            updatedWb = new Workbook({ ...updatedWb, metadata });
         }
 
         return updatedWb;

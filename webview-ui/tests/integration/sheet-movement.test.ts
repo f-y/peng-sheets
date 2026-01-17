@@ -94,4 +94,29 @@ Content of Doc 3
 
         expect(s2Pos).toBeLessThan(s1Pos);
     });
+
+    /**
+     * BUG REPRODUCTION: S1→S2 swap (toIndex=2) should NOT generate tab_order
+     *
+     * When moveSheet is called with targetTabOrderIndex=null,
+     * the resulting markdown should NOT contain any tab_order metadata.
+     *
+     * This is the user's reported bug: S1 after S2 generates unwanted tab_order.
+     */
+    it('USER BUG: moveSheet with null targetTabOrderIndex must NOT generate tab_order', () => {
+        // Move S1 to after S2 (simple sheet swap)
+        // This is the exact call made by main.ts when action.metadataRequired=false
+        const result = editor.moveSheet(0, 1, null);
+
+        expect(result.error).toBeUndefined();
+        expect(result.content).toBeDefined();
+
+        // CRITICAL ASSERTION: No tab_order should be present
+        expect(result.content!).not.toContain('tab_order');
+
+        // Verify sheets are swapped in physical order
+        const s1Pos = result.content!.indexOf('## Sheet 1');
+        const s2Pos = result.content!.indexOf('## Sheet 2');
+        expect(s2Pos).toBeLessThan(s1Pos);
+    });
 });
