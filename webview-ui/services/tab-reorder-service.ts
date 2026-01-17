@@ -431,7 +431,14 @@ export function determineReorderAction(
                 };
             }
             // Sub-case 1b: Moving within/after sheets - metadata-only
-            const needsMetadata = isMetadataRequired(newTabOrder, currentStructure);
+            // Compare with actual physical file structure, not display tabs
+            const physicalStructure: FileStructure = {
+                docsBeforeWb: [],
+                sheets: tabs.filter((t) => t.type === 'sheet').map((t) => t.sheetIndex!),
+                docsAfterWb: tabs.filter((t) => t.type === 'document').map((t) => t.docIndex!),
+                hasWorkbook: true
+            };
+            const needsMetadata = isMetadataRequired(newTabOrder, physicalStructure);
             return {
                 actionType: 'metadata',
                 newTabOrder,
@@ -443,9 +450,15 @@ export function determineReorderAction(
         const newStructure = parseFileStructure(newTabs);
         const needsMetadata = isMetadataRequired(newTabOrder, newStructure);
 
+        // Check if target position is between sheets (Case 4 should take priority)
+        // Include lastSheetIdx+1 because moving to "after last sheet" in tab display
+        // may still be metadata-only if doc is already after WB
+        const isToBetweenSheets = toIndex > firstSheetIdx && toIndex <= lastSheetIdx + 1;
+
         // Case 2: Doc → Doc (both on same side of WB, not between sheets)
+        // Skip this case if target is between sheets - that's Case 4 (metadata-only)
         const prevTab = toIndex > 0 ? tabs[toIndex - 1] : null;
-        if (prevTab?.type === 'document' && prevTab !== fromTab) {
+        if (prevTab?.type === 'document' && prevTab !== fromTab && !isToBetweenSheets) {
             const toDocIndex = prevTab.docIndex!;
             return {
                 actionType: 'physical',
@@ -495,8 +508,9 @@ export function determineReorderAction(
             };
         }
 
-        // Case 4: Doc → between sheets
-        if (!isToBeforeWb && !isToAfterWb) {
+        // Case 4: Doc → between sheets (or immediately after last sheet)
+        // Use isToBetweenSheets which includes positions from firstSheetIdx+1 to lastSheetIdx+1
+        if (isToBetweenSheets) {
             // D8 case: If moving doc that is after WB and it will now appear
             // before other docs (in tab order) that were physically before it,
             // we need to physically reorder the docs.

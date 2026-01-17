@@ -214,3 +214,72 @@ describe('Edge Cases: Multiple docs reorder', () => {
         }
     });
 });
+
+// =============================================================================
+// USER BUG: Doc to before Sheet in existing metadata state
+// =============================================================================
+
+describe('USER BUG: Doc to before Sheet (metadata-only)', () => {
+    /**
+     * USER REPORTED BUG:
+     * Current state: [S1, D1, S2, D2, D3] (via tab_order metadata)
+     * Physical file: [WB(S1,S2), D1, D2, D3]
+     * Action: Drag D2 to before S2 (toIndex=2)
+     * Expected: [S1, D1, D2, S2, D3] (metadata update only)
+     * Actual: Nothing happens
+     */
+    it('D2 to before S2 in [S1, D1, S2, D2, D3] - should update metadata', () => {
+        // Current tab order: [S1, D1, S2, D2, D3]
+        // D2 is at index 3, S2 is at index 2
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 }, // S1 at 0
+            { type: 'document', docIndex: 0 }, // D1 at 1
+            { type: 'sheet', sheetIndex: 1 }, // S2 at 2
+            { type: 'document', docIndex: 1 }, // D2 at 3
+            { type: 'document', docIndex: 2 }, // D3 at 4
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D2 (index 3) to before S2 (toIndex = 2)
+        const action = determineReorderAction(tabs, 3, 2);
+
+        // Should be metadata-only since D2 stays after WB in physical file
+        expect(action.actionType).toBe('metadata');
+        expect(action.physicalMove).toBeUndefined();
+        expect(action.metadataRequired).toBe(true);
+
+        // Verify the new tab order
+        expect(action.newTabOrder).toBeDefined();
+        if (action.newTabOrder) {
+            // Expected order: S1, D1, D2, S2, D3
+            expect(action.newTabOrder[0]).toEqual({ type: 'sheet', index: 0 });
+            expect(action.newTabOrder[1]).toEqual({ type: 'document', index: 0 });
+            expect(action.newTabOrder[2]).toEqual({ type: 'document', index: 1 });
+            expect(action.newTabOrder[3]).toEqual({ type: 'sheet', index: 1 });
+            expect(action.newTabOrder[4]).toEqual({ type: 'document', index: 2 });
+        }
+    });
+
+    /**
+     * Variant: Doc to after Sheet (within existing metadata)
+     * Moving D1 from between S1/S2 to after S2 results in [S1, S2, D1, D2, D3]
+     * This matches physical order [WB(S1,S2), D1, D2, D3], so metadata is NOT needed!
+     */
+    it('D1 to after S2 in [S1, D1, S2, D2, D3] - should remove metadata (result matches physical order)', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },
+            { type: 'document', docIndex: 0 },
+            { type: 'sheet', sheetIndex: 1 },
+            { type: 'document', docIndex: 1 },
+            { type: 'document', docIndex: 2 },
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D1 (index 1) to after S2 (toIndex = 3)
+        const action = determineReorderAction(tabs, 1, 3);
+
+        // Result: [S1, S2, D1, D2, D3] matches physical order, so metadata NOT required
+        expect(action.actionType).toBe('metadata');
+        expect(action.metadataRequired).toBe(false);
+    });
+});
