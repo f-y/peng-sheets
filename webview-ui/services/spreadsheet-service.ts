@@ -176,6 +176,14 @@ export class SpreadsheetService {
         }
     }
 
+    /**
+     * Post an update to the current batch.
+     * Must be called between startBatch() and endBatch().
+     */
+    public postBatchUpdate(updateSpec: IUpdateSpec) {
+        this._postUpdateMessage(updateSpec);
+    }
+
     public notifyUpdateReceived() {
         this._isSyncing = false;
         this._scheduleProcessQueue();
@@ -199,16 +207,41 @@ export class SpreadsheetService {
 
         if (updates.length === 0) return;
 
-        // Since each update contains the complete updated table content (cumulative),
-        // we only need to send the final update - it contains all changes
-        const lastUpdate = updates[updates.length - 1];
+        if (updates.length === 1) {
+            // Single update: just send it
+            const update = updates[0];
+            this.vscode.postMessage({
+                type: 'updateRange',
+                startLine: update.startLine,
+                endLine: update.endLine,
+                endCol: update.endCol,
+                content: update.content,
+                undoStopBefore: true,
+                undoStopAfter: true
+            });
+            return;
+        }
+
+        // Multiple updates: check if they have different line ranges
+        // If so, we need to find the update that covers the largest range
+        // (which should contain all changes from all operations)
+        let maxRangeUpdate = updates[0];
+        let maxRange = (updates[0].endLine ?? 0) - (updates[0].startLine ?? 0);
+
+        for (let i = 1; i < updates.length; i++) {
+            const range = (updates[i].endLine ?? 0) - (updates[i].startLine ?? 0);
+            if (range > maxRange) {
+                maxRange = range;
+                maxRangeUpdate = updates[i];
+            }
+        }
+
         this.vscode.postMessage({
             type: 'updateRange',
-            startLine: lastUpdate.startLine,
-            endLine: lastUpdate.endLine,
-            endCol: lastUpdate.endCol,
-            content: lastUpdate.content,
-            // Single update = true for both undo stops
+            startLine: maxRangeUpdate.startLine,
+            endLine: maxRangeUpdate.endLine,
+            endCol: maxRangeUpdate.endCol,
+            content: maxRangeUpdate.content,
             undoStopBefore: true,
             undoStopAfter: true
         });
@@ -473,8 +506,8 @@ export class SpreadsheetService {
         this._performAction(() => editor.moveSheet(fromIdx, toIdx, targetIdx));
     }
 
-    public updateWorkbookTabOrder(tabOrder: Array<{ type: string; index: number }>) {
-        this._performAction(() => editor.updateWorkbookTabOrder(tabOrder as editor.TabOrderItem[]));
+    public updateWorkbookTabOrder(tabOrder: Array<{ type: string; index: number }> | null) {
+        this._performAction(() => editor.updateWorkbookTabOrder(tabOrder as editor.TabOrderItem[] | null));
     }
 
     // --- Document Operations ---

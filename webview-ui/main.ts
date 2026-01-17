@@ -58,6 +58,7 @@ import {
 } from './services/types';
 import { recalculateAllFormulas, calculateAllFormulas } from './services/formula-recalculator';
 import { ClipboardStore } from './stores/clipboard-store';
+import * as editor from '../src/editor';
 
 // Register the VS Code Design System components
 provideVSCodeDesignSystem().register();
@@ -1392,46 +1393,171 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
         const action = determineReorderAction(tabs, fromIndex, toIndex);
 
+        // DEBUG: Trace reorder action with actual document names
+        const tabsDebug = tabs.map((t, idx) => {
+            if (t.type === 'document' && this.structure) {
+                const docSections = this.structure.filter(s => s.type === 'document');
+                const doc = docSections[t.docIndex!];
+                return `${idx}:${t.type}:${t.docIndex}(${doc?.title || 'unknown'})`;
+            }
+            return `${idx}:${t.type}:${t.sheetIndex ?? t.docIndex}`;
+        });
+        console.log('[TabReorder] tabs with names:', tabsDebug.join(', '));
+        console.log('[TabReorder] fromIndex:', fromIndex, 'toIndex:', toIndex);
+        console.log('[TabReorder] action:', JSON.stringify(action, null, 2));
+
         if (action.actionType === 'no-op') {
             return;
         }
 
-        // Execute physical move if needed
-        if (action.physicalMove) {
-            switch (action.physicalMove.type) {
-                case 'move-sheet': {
-                    const { fromSheetIndex, toSheetIndex } = action.physicalMove;
-                    this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
-                    break;
-                }
-                case 'move-workbook': {
-                    const { direction, targetDocIndex } = action.physicalMove;
-                    const toAfterDoc = direction === 'after-doc';
-                    this.spreadsheetService.moveWorkbookSection(targetDocIndex, toAfterDoc, toIndex);
-                    break;
-                }
-                case 'move-document': {
-                    const { fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook } = action.physicalMove;
-                    this.spreadsheetService.moveDocumentSection(
-                        fromDocIndex,
-                        toDocIndex,
-                        toAfterWorkbook,
-                        toBeforeWorkbook
-                    );
-                    break;
+        // Use batch to combine physical move + metadata into single undo operation
+        this.spreadsheetService.startBatch();
+
+        try {
+            // BUG FIX: For D8 (physical+metadata), we need to update metadata FIRST,
+            // then do the physical move LAST. This ensures the final update (physical move)
+            // contains the full file including the updated metadata.
+
+            // Update metadata FIRST (if needed) so it's included in the physical move result
+            if (action.metadataRequired && action.physicalMove) {
+                console.log('[TabReorder] Updating metadata BEFORE physical move');
+                if (action.newTabOrder) {
+                    const result = editor.updateWorkbookTabOrder(action.newTabOrder);
+                    // Don't send this - it will be included in the physical move result
+                    if (result && result.error) {
+                        console.error('[TabReorder] Metadata update failed:', result.error);
+                    }
                 }
             }
-        }
 
-        // Update metadata if needed (SPECS.md 8.6 Metadata Necessity)
-        if (action.metadataRequired) {
-            this._reorderTabsArray(fromIndex, toIndex);
-            this._updateTabOrder();
+            // Execute physical move AFTER metadata (so it includes the metadata changes)
+            if (action.physicalMove) {
+                console.log('[TabReorder] Executing physical move:', action.physicalMove.type);
+                switch (action.physicalMove.type) {
+                    case 'move-sheet': {
+                        const { fromSheetIndex, toSheetIndex } = action.physicalMove;
+                        const result = editor.moveSheet(fromSheetIndex, toSheetIndex, toIndex);
+                        if (result) this._postBatchUpdate(result);
+                        break;
+                    }
+                    case 'move-workbook': {
+                        const { direction, targetDocIndex } = action.physicalMove;
+                        const toAfterDoc = direction === 'after-doc';
+                        const result = editor.moveWorkbookSection(targetDocIndex, toAfterDoc, false, toIndex);
+                        if (result) this._postBatchUpdate(result);
+                        break;
+                    }
+                    case 'move-document': {
+                        const { fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook } = action.physicalMove;
+                        console.log('[TabReorder] move-document: fromDocIndex=', fromDocIndex, 'toDocIndex=', toDocIndex,
+                            'toAfterWorkbook=', toAfterWorkbook, 'toBeforeWorkbook=', toBeforeWorkbook);
+
+                        // Step 1: Physical move (updates mdText but not workbook section)
+                        const moveResult = editor.moveDocumentSection(fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook);
+
+                        if (moveResult.error) {
+                            console.error('[TabReorder] Move failed:', moveResult.error);
+                            break;
+                        }
+
+                        // Step 2: Only regenerate workbook section if metadata is required
+                        // This is necessary for D8 case where both physical move and metadata are needed.
+                        // For physical-only moves, we should NOT regenerate (it would add unwanted metadata).
+                        if (action.metadataRequired && moveResult.content) {
+                            const wbUpdate = editor.generateAndGetRange();
+
+                            if (wbUpdate && !wbUpdate.error && wbUpdate.content) {
+                                const lines = moveResult.content.split('\n');
+                                const wbStart = wbUpdate.startLine ?? 0;
+                                const wbEnd = wbUpdate.endLine ?? 0;
+                                const wbContentLines = wbUpdate.content.trimEnd().split('\n');
+                                if (wbUpdate.content) {
+                                    wbContentLines.push('');
+                                }
+
+                                const mergedLines = [
+                                    ...lines.slice(0, wbStart),
+                                    ...wbContentLines,
+                                    ...lines.slice(wbEnd + 1)
+                                ];
+                                const mergedContent = mergedLines.join('\n');
+
+                                // DEBUG: Show what content will be written to file
+                                const docHeaders = mergedContent.match(/^# Doc \d+/gm);
+                                const hasTabOrder = mergedContent.includes('tab_order');
+                                console.log('[TabReorder] RESULT doc order:', docHeaders?.join(', ') || 'none found');
+                                console.log('[TabReorder] RESULT has tab_order:', hasTabOrder);
+
+                                this._postBatchUpdate({
+                                    content: mergedContent,
+                                    startLine: 0,
+                                    endLine: lines.length
+                                });
+                            } else {
+                                this._postBatchUpdate(moveResult);
+                            }
+                        } else {
+                            // Physical-only case: just send the move result (no metadata)
+                            console.log('[TabReorder] Physical-only move, no metadata regeneration');
+                            this._postBatchUpdate(moveResult);
+                        }
+                        break;
+                    }
+                }
+            } else {
+                // Metadata-only case (no physical move)
+                console.log('[TabReorder] No physical move, metadata only');
+                if (action.metadataRequired) {
+                    console.log('[TabReorder] Updating metadata (metadataRequired=true)');
+                    if (action.newTabOrder) {
+                        const result = editor.updateWorkbookTabOrder(action.newTabOrder);
+                        if (result) this._postBatchUpdate(result);
+                    } else {
+                        this._reorderTabsArray(fromIndex, toIndex);
+                        const tabOrder = this._getCurrentTabOrder();
+                        const result = editor.updateWorkbookTabOrder(tabOrder as editor.TabOrderItem[]);
+                        if (result) this._postBatchUpdate(result);
+                    }
+                } else if (action.actionType === 'metadata') {
+                    console.log('[TabReorder] Deleting metadata (no longer needed)');
+                    const result = editor.updateWorkbookTabOrder(null);
+                    if (result) this._postBatchUpdate(result);
+                    this._reorderTabsArray(fromIndex, toIndex);
+                }
+            }
+        } finally {
+            this.spreadsheetService.endBatch();
         }
 
         // Calculate final position and select the moved tab
         const newIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
         this.activeTabIndex = newIndex;
+    }
+
+    /**
+     * Post an update to the batch (internal helper for _handleTabReorder).
+     */
+    private _postBatchUpdate(result: import('../src/editor/types').UpdateResult) {
+        if (result && !result.error && result.content !== undefined) {
+            this.spreadsheetService.postBatchUpdate({
+                startLine: result.startLine,
+                endLine: result.endLine,
+                endCol: result.endCol,
+                content: result.content
+            });
+        }
+    }
+
+    /**
+     * Get current tab order from local tabs array.
+     */
+    private _getCurrentTabOrder(): Array<{ type: string; index: number }> {
+        return this.tabs
+            .filter((t) => t.type === 'sheet' || t.type === 'document')
+            .map((t) => ({
+                type: t.type,
+                index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
+            }));
     }
 
 

@@ -491,3 +491,376 @@ describe('Exact Reproduction: workbook.md [WB, D1, D2, D3]', () => {
         expect(action.metadataRequired).toBe(false);
     });
 });
+
+// =============================================================================
+// BUG REPRODUCTION: Metadata cleanup when D between sheets → after WB
+// =============================================================================
+
+describe('Metadata Cleanup: D between sheets to after WB', () => {
+    /**
+     * BUG SCENARIO from workbook.md:
+     * Physical: [WB(S1, S2), D1, D2, D3]
+     * tab_order: [S1, D1, S2, D2, D3] (D1 displayed between sheets)
+     * Action: Drag D1 from between sheets to after S2 (its actual physical position)
+     * Expected: Metadata becomes unnecessary → should be removed (no-op or metadata-only)
+     * Actual: Nothing happens
+     */
+    it('should remove metadata when D1 moves from between sheets to after WB', () => {
+        // Tab display: [S1, D1, S2, D2, D3] (from tab_order metadata)
+        // But physical file is: [WB(S1, S2), D1, D2, D3]
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
+            { type: 'document', docIndex: 0 },   // D1 at tab 1 (between sheets via metadata)
+            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 2
+            { type: 'document', docIndex: 1 },   // D2 at tab 3
+            { type: 'document', docIndex: 2 },   // D3 at tab 4
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D1 (tabIndex 1) to after S2 (tabIndex 3)
+        // This means D1 goes to its natural physical position
+        const action = determineReorderAction(tabs, 1, 3);
+
+        // After this move, display order becomes [S1, S2, D1, D2, D3]
+        // which matches physical order [WB(S1,S2), D1, D2, D3]
+        // So metadata is NO LONGER NEEDED
+        expect(action.actionType).toBe('metadata'); // metadata-only to remove/update tab_order
+        expect(action.metadataRequired).toBe(false); // actually should clear metadata
+    });
+
+    /**
+     * Additional case: D1 between sheets, drag to after last doc
+     * D1 is displayed between sheets via metadata, but physically is after WB
+     * Moving D1 to after D3 is metadata-only (no physical move needed)
+     */
+    it('should handle D1 between sheets → after D3 (metadata still needed)', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },
+            { type: 'document', docIndex: 0 }, // D1 between sheets (via metadata)
+            { type: 'sheet', sheetIndex: 1 },
+            { type: 'document', docIndex: 1 },
+            { type: 'document', docIndex: 2 },
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D1 (tabIndex 1) to after D3 (tabIndex 5)
+        const action = determineReorderAction(tabs, 1, 5);
+
+        // D1 is physically already after WB, so no physical move needed
+        // Result display: [S1, S2, D2, D3, D1]
+        // Physical unchanged: [WB(S1,S2), D1, D2, D3]
+        // This is NOT the same, so metadata is STILL needed
+        expect(action.actionType).toBe('metadata');
+        expect(action.metadataRequired).toBe(true); // need to update tab_order
+    });
+
+    /**
+     * BUG: D1 between sheets → before S1 (should remove metadata)
+     * Physical: [WB(S1, S2), D1, D2, D3]
+     * tab_order: [S1, D1, S2, D2, D3] (D1 displayed between sheets)
+     * Action: Drag D1 to before S1
+     * Expected: Physical move + metadata delete (result matches natural order)
+     */
+    it('should remove metadata when D1 moves from between sheets to before S1', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
+            { type: 'document', docIndex: 0 },   // D1 at tab 1 (between sheets via metadata)
+            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 2
+            { type: 'document', docIndex: 1 },   // D2 at tab 3
+            { type: 'document', docIndex: 2 },   // D3 at tab 4
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D1 (tabIndex 1) to before S1 (tabIndex 0)
+        const action = determineReorderAction(tabs, 1, 0);
+
+        // After this move:
+        // - Physical: D1 moves before WB → [D1, WB(S1,S2), D2, D3]
+        // - Display: [D1, S1, S2, D2, D3]
+        // - Natural from physical: [D1, S1, S2, D2, D3]
+        // They match! Metadata is NOT needed
+        expect(action.actionType).toBe('physical+metadata');
+        expect(action.physicalMove?.type).toBe('move-document');
+        if (action.physicalMove?.type === 'move-document') {
+            expect(action.physicalMove.toBeforeWorkbook).toBe(true);
+        }
+        expect(action.metadataRequired).toBe(false); // should delete metadata
+    });
+});
+
+// =============================================================================
+// COMPREHENSIVE: Sheet Movement with Metadata Cleanup
+// =============================================================================
+
+describe('Sheet Movement with Metadata Cleanup', () => {
+    /**
+     * BUG REPRODUCTION: [S1, D1, S2] → S1 after D1 → [D1, S1, S2]
+     * Physical: [WB(S1, S2), D1]
+     * Action: Drag S1 after D1
+     * Result display: [D1, S1, S2]
+     * This means D1 should be before WB, so WB needs to move
+     * New physical: [D1, WB(S1, S2)]
+     * Natural from new physical: [D1, S1, S2]
+     * [D1, S1, S2] == [D1, S1, S2] → metadata NOT needed
+     */
+    it('S1 after D1 in [S1, D1, S2] - should move WB and delete metadata', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
+            { type: 'document', docIndex: 0 },   // D1 at tab 1 (between sheets via metadata)
+            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 2
+            { type: 'add-sheet' }
+        ];
+
+        // Drag S1 (tabIndex 0) to after D1 (tabIndex 2)
+        const action = determineReorderAction(tabs, 0, 2);
+
+        // Result: [D1, S1, S2] requires physical structure [D1, WB]
+        // WB moves after D1, natural order matches display
+        expect(action.actionType).toBe('physical+metadata');
+        expect(action.physicalMove?.type).toBe('move-workbook');
+        if (action.physicalMove?.type === 'move-workbook') {
+            expect(action.physicalMove.direction).toBe('after-doc');
+            expect(action.physicalMove.targetDocIndex).toBe(0);
+        }
+        expect(action.metadataRequired).toBe(false); // natural order matches
+    });
+
+    /**
+     * [S1, D1, S2] - D1 after S2 should remove metadata
+     * Physical: [WB(S1, S2), D1]
+     * tab_order: [S1, D1, S2]
+     * Action: Drag D1 after S2
+     * Result display: [S1, S2, D1]
+     * Natural from physical: [S1, S2, D1]
+     * They match! Metadata NOT needed
+     */
+    it('D1 after S2 in [S1, D1, S2] - should remove metadata', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },
+            { type: 'document', docIndex: 0 },
+            { type: 'sheet', sheetIndex: 1 },
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D1 (tabIndex 1) to after S2 (tabIndex 3)
+        const action = determineReorderAction(tabs, 1, 3);
+
+        expect(action.actionType).toBe('metadata');
+        expect(action.metadataRequired).toBe(false); // should delete metadata
+    });
+
+    /**
+     * [D1, S1, S2] - S1 to position 0 (before D1)
+     * Physical: [D1, WB(S1, S2)]
+     * Action: Drag S1 before D1
+     * New display: [S1, D1, S2]
+     * New physical: [WB(S1, S2), D1] (WB moves before D1)
+     * Natural from new physical: [S1, S2, D1]
+     * [S1, D1, S2] != [S1, S2, D1] → metadata still needed
+     */
+    it('[D1, S1, S2] - S1 before D1 - should be physical+metadata', () => {
+        const tabs: TestTab[] = [
+            { type: 'document', docIndex: 0 },
+            { type: 'sheet', sheetIndex: 0 },
+            { type: 'sheet', sheetIndex: 1 },
+            { type: 'add-sheet' }
+        ];
+
+        // Drag S1 (tabIndex 1) to before D1 (tabIndex 0)
+        const action = determineReorderAction(tabs, 1, 0);
+
+        // WB moves before D1: [WB(S1,S2), D1]
+        // Display: [S1, D1, S2] != natural [S1, S2, D1]
+        expect(action.actionType).toBe('physical+metadata');
+        expect(action.physicalMove?.type).toBe('move-workbook');
+        expect(action.metadataRequired).toBe(true); // display differs from natural
+    });
+});
+
+// =============================================================================
+// EDGE CASES: Multiple Docs between sheets, No Workbook, etc.
+// =============================================================================
+
+describe('Edge Cases', () => {
+    it('No workbook - Doc to Doc reorder', () => {
+        const tabs: TestTab[] = [
+            { type: 'document', docIndex: 0 },
+            { type: 'document', docIndex: 1 },
+            { type: 'document', docIndex: 2 },
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D1 (tabIndex 0) to after D2 (tabIndex 2)
+        const action = determineReorderAction(tabs, 0, 2);
+
+        expect(action.actionType).toBe('physical');
+        expect(action.physicalMove?.type).toBe('move-document');
+    });
+
+    it('Multiple docs between sheets - move one after another', () => {
+        // Physical: [WB(S1, S2), D1, D2]
+        // tab_order: [S1, D1, D2, S2] (both D1 and D2 between sheets)
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },
+            { type: 'document', docIndex: 0 },
+            { type: 'document', docIndex: 1 },
+            { type: 'sheet', sheetIndex: 1 },
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D1 (tabIndex 1) to after D2 (tabIndex 3)
+        const action = determineReorderAction(tabs, 1, 3);
+
+        // D1 is between sheets, moving to position still between sheets
+        expect(action.actionType).toBe('metadata');
+        expect(action.metadataRequired).toBe(true);
+    });
+
+    it('Doc between sheets → before first sheet (physical move needed)', () => {
+        // Physical: [WB(S1, S2), D1]
+        // tab_order: [S1, D1, S2]
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },
+            { type: 'document', docIndex: 0 },
+            { type: 'sheet', sheetIndex: 1 },
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D1 (tabIndex 1) to before S1 (tabIndex 0)
+        const action = determineReorderAction(tabs, 1, 0);
+
+        // D1 needs to physically move before WB
+        expect(action.actionType).toBe('physical+metadata');
+        expect(action.physicalMove?.type).toBe('move-document');
+        if (action.physicalMove?.type === 'move-document') {
+            expect(action.physicalMove.toBeforeWorkbook).toBe(true);
+        }
+        // Result: [D1, S1, S2] matches natural from [D1, WB(S1,S2)]
+        expect(action.metadataRequired).toBe(false);
+    });
+});
+
+// =============================================================================
+// D8: Doc after WB to between Sheets (physical reorder needed)
+// =============================================================================
+
+describe('SPECS.md 8.6.5 D8: Doc reorder when moving between sheets', () => {
+    /**
+     * D8 BUG REPRODUCTION:
+     * Physical: [WB(S1, S2), D1, D2]
+     * Initial tab order: [S1, S2, D1, D2] (natural order)
+     * Action: Drag D2 to between S1 & S2
+     * Expected:
+     *   - File: [WB(S1,S2), D2, D1] (D2 now first among docs)
+     *   - Tab: [S1, D2, S2, D1]
+     * Reason: D2 is now first displayed doc, so should be first in physical order
+     */
+    it('D8: should physically reorder docs when D2 moves between sheets before D1', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
+            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 1
+            { type: 'document', docIndex: 0 },   // D1 at tab 2
+            { type: 'document', docIndex: 1 },   // D2 at tab 3
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D2 (tabIndex 3) to after S1 = left of S2 (toIndex = 1)
+        const action = determineReorderAction(tabs, 3, 1);
+
+        // D2 is physically after D1 but now appears before D1 in tab order
+        // Therefore, D2 should be physically moved before D1
+        expect(action.actionType).toBe('physical+metadata');
+        expect(action.physicalMove?.type).toBe('move-document');
+        if (action.physicalMove?.type === 'move-document') {
+            expect(action.physicalMove.fromDocIndex).toBe(1); // D2
+            expect(action.physicalMove.toDocIndex).toBeNull();
+            expect(action.physicalMove.toAfterWorkbook).toBe(true);
+        }
+        expect(action.metadataRequired).toBe(true); // D2 is between sheets
+
+        // Verify newTabOrder has remapped docIndex values:
+        // After physical move: D2 becomes docIndex 0, D1 becomes docIndex 1
+        expect(action.newTabOrder).toEqual([
+            { type: 'sheet', index: 0 },   // S1
+            { type: 'document', index: 0 }, // D2 (was 1, now 0 after move)
+            { type: 'sheet', index: 1 },   // S2
+            { type: 'document', index: 1 }  // D1 (was 0, now 1 after move)
+        ]);
+    });
+
+    /**
+     * Variant: D1 moves between sheets - no physical reorder needed
+     * Physical: [WB(S1, S2), D1, D2]
+     * Action: Drag D1 to between S1 & S2
+     * Expected: Metadata only (D1 is already first in physical order)
+     */
+    it('D1 between sheets - no reorder needed (already first)', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },
+            { type: 'sheet', sheetIndex: 1 },
+            { type: 'document', docIndex: 0 },
+            { type: 'document', docIndex: 1 },
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D1 (tabIndex 2) to after S1 = left of S2 (toIndex = 1)
+        const action = determineReorderAction(tabs, 2, 1);
+
+        // D1 is already first in physical order, just metadata update
+        expect(action.actionType).toBe('metadata');
+        expect(action.metadataRequired).toBe(true);
+    });
+});
+
+describe('SPECS.md 8.6.5 D8: 3-doc scenario (matching workbook.md)', () => {
+    /**
+     * Physical: [WB(S1, S2), D1, D2, D3]
+     * Action: Drag D3 to after S1
+     * Expected: D3 moves to first physical position
+     */
+    it('D3 after S1 - should physically reorder docs', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
+            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 1
+            { type: 'document', docIndex: 0 },   // D1 at tab 2
+            { type: 'document', docIndex: 1 },   // D2 at tab 3
+            { type: 'document', docIndex: 2 },   // D3 at tab 4
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D3 (tabIndex 4) to after S1 = left of S2 (toIndex = 1)
+        const action = determineReorderAction(tabs, 4, 1);
+
+        expect(action.actionType).toBe('physical+metadata');
+        expect(action.physicalMove?.type).toBe('move-document');
+        if (action.physicalMove?.type === 'move-document') {
+            expect(action.physicalMove.fromDocIndex).toBe(2); // D3
+            expect(action.physicalMove.toDocIndex).toBeNull();
+            expect(action.physicalMove.toAfterWorkbook).toBe(true);
+        }
+        expect(action.metadataRequired).toBe(true);
+    });
+
+    it('D2 after S1 - should physically reorder docs', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },
+            { type: 'sheet', sheetIndex: 1 },
+            { type: 'document', docIndex: 0 },
+            { type: 'document', docIndex: 1 },
+            { type: 'document', docIndex: 2 },
+            { type: 'add-sheet' }
+        ];
+
+        // Drag D2 (tabIndex 3) to after S1 = left of S2 (toIndex = 1)
+        const action = determineReorderAction(tabs, 3, 1);
+
+        expect(action.actionType).toBe('physical+metadata');
+        expect(action.physicalMove?.type).toBe('move-document');
+        if (action.physicalMove?.type === 'move-document') {
+            expect(action.physicalMove.fromDocIndex).toBe(1); // D2
+            expect(action.physicalMove.toDocIndex).toBeNull();
+            expect(action.physicalMove.toAfterWorkbook).toBe(true);
+        }
+        expect(action.metadataRequired).toBe(true);
+    });
+});

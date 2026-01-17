@@ -65,11 +65,17 @@ export function initializeTabOrderFromStructure(
 
 /**
  * Update the tab display order in workbook metadata.
+ * Pass null to delete tab_order (when metadata is not needed).
  */
-export function updateWorkbookTabOrder(context: EditorContext, tabOrder: TabOrderItem[]): UpdateResult {
+export function updateWorkbookTabOrder(context: EditorContext, tabOrder: TabOrderItem[] | null): UpdateResult {
     const wbTransform = (wb: Workbook): Workbook => {
         const currentMetadata = wb.metadata ? { ...wb.metadata } : {};
-        currentMetadata.tab_order = tabOrder;
+        if (tabOrder === null) {
+            // Delete tab_order when not needed
+            delete currentMetadata.tab_order;
+        } else {
+            currentMetadata.tab_order = tabOrder;
+        }
         return new Workbook({
             ...wb,
             metadata: currentMetadata

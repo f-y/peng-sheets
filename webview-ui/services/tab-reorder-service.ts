@@ -186,21 +186,75 @@ export function determineReorderAction(
     if (fromTab.type === 'sheet') {
         const fromSheetIndex = fromTab.sheetIndex!;
 
+        // Compute new tab order for metadata necessity check
+        const newTabs = computeNewTabOrder();
+        const newTabOrder = newTabs
+            .filter((t) => t.type === 'sheet' || t.type === 'document')
+            .map((t) => ({
+                type: t.type as 'sheet' | 'document',
+                index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
+            }));
+        const currentStructure = parseFileStructure(tabs);
+        const needsMetadata = isMetadataRequired(newTabOrder, currentStructure);
+
         // S1, S2: Sheet → Sheet (Physical reorder within Workbook)
         if (toTab?.type === 'sheet') {
             const toSheetIndex = toTab.sheetIndex!;
+
+            // Check if new order has docs before sheets (requires WB move)
+            // Only if docs weren't already before WB in current order
+            const oldFirstSheetIdx = firstSheetIdx; // Already computed above
+            const newFirstSheetIdx = newTabs.findIndex((t) => t.type === 'sheet');
+
+            // WB move needed only if: (1) there are now docs before sheets, AND
+            // (2) there weren't docs before sheets in original order
+            const docsWereBeforeWb = oldFirstSheetIdx > 0;
+            const docsNowBeforeWb = newFirstSheetIdx > 0;
+
+            if (docsNowBeforeWb && !docsWereBeforeWb) {
+                // New: docs appeared before sheets - WB needs to move after those docs
+                const docsBeforeSheet = newTabs.slice(0, newFirstSheetIdx).filter((t) => t.type === 'document');
+                if (docsBeforeSheet.length > 0) {
+                    const lastDocBeforeSheet = docsBeforeSheet[docsBeforeSheet.length - 1];
+                    const wbNewStructure = parseFileStructure(newTabs);
+                    const wbNeedsMetadata = isMetadataRequired(newTabOrder, wbNewStructure);
+                    return {
+                        actionType: 'physical+metadata',
+                        physicalMove: {
+                            type: 'move-workbook',
+                            direction: 'after-doc',
+                            targetDocIndex: lastDocBeforeSheet.docIndex!
+                        },
+                        newTabOrder,
+                        metadataRequired: wbNeedsMetadata
+                    };
+                }
+            }
+
+            // Normal case: just reorder sheets within WB
             return {
-                actionType: 'physical',
-                physicalMove: { type: 'move-sheet', fromSheetIndex, toSheetIndex },
-                metadataRequired: false
+                actionType: needsMetadata ? 'metadata' : 'physical',
+                physicalMove: needsMetadata ? undefined : { type: 'move-sheet', fromSheetIndex, toSheetIndex },
+                newTabOrder: needsMetadata ? newTabOrder : undefined,
+                metadataRequired: needsMetadata
             };
         }
 
         // S3-S6: Sheet → Document Position
         // Per Fundamental Principle: Moving Sheet to Doc position moves entire Workbook
         if (toTab?.type === 'document' || toIndex <= firstSheetIdx || toIndex > lastSheetIdx) {
-            const newTabs = computeNewTabOrder();
-            const newFirstSheetIdx = newTabs.findIndex((t) => t.type === 'sheet');
+            const sheetDocTabs = computeNewTabOrder();
+            const newFirstSheetIdx = sheetDocTabs.findIndex((t) => t.type === 'sheet');
+
+            // Compute needsMetadata for move-workbook cases
+            const wbNewTabOrder = sheetDocTabs
+                .filter((t) => t.type === 'sheet' || t.type === 'document')
+                .map((t) => ({
+                    type: t.type as 'sheet' | 'document',
+                    index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
+                }));
+            const wbNewStructure = parseFileStructure(sheetDocTabs);
+            const wbNeedsMetadata = isMetadataRequired(wbNewTabOrder, wbNewStructure);
 
             // Check if Workbook needs to move
             if (newFirstSheetIdx === 0 && firstSheetIdx > 0) {
@@ -215,7 +269,7 @@ export function determineReorderAction(
                             direction: 'before-doc',
                             targetDocIndex: docBeforeWb.docIndex!
                         },
-                        metadataRequired: true
+                        metadataRequired: wbNeedsMetadata
                     };
                 }
             }
@@ -224,7 +278,7 @@ export function determineReorderAction(
             if (newFirstSheetIdx > 0) {
                 // There's a Doc before Sheet in new tab order
                 // → Move Workbook to after the last Doc before the first Sheet in new order
-                const docsBeforeSheet = newTabs.slice(0, newFirstSheetIdx).filter((t) => t.type === 'document');
+                const docsBeforeSheet = sheetDocTabs.slice(0, newFirstSheetIdx).filter((t) => t.type === 'document');
                 if (docsBeforeSheet.length > 0) {
                     const lastDocBeforeSheet = docsBeforeSheet[docsBeforeSheet.length - 1];
                     return {
@@ -234,7 +288,7 @@ export function determineReorderAction(
                             direction: 'after-doc',
                             targetDocIndex: lastDocBeforeSheet.docIndex!
                         },
-                        metadataRequired: true
+                        metadataRequired: wbNeedsMetadata
                     };
                 }
             }
@@ -249,20 +303,13 @@ export function determineReorderAction(
             }
         }
 
-        // Fallback: metadata only
-        const newTabs = computeNewTabOrder();
-        const newStructure = parseFileStructure(newTabs);
-        const newTabOrder = newTabs
-            .filter((t) => t.type === 'sheet' || t.type === 'document')
-            .map((t) => ({
-                type: t.type as 'sheet' | 'document',
-                index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
-            }));
+        // Fallback: metadata only (use already computed newTabOrder, newTabs)
+        const fallbackStructure = parseFileStructure(newTabs);
 
         return {
             actionType: 'metadata',
             newTabOrder,
-            metadataRequired: isMetadataRequired(newTabOrder, newStructure)
+            metadataRequired: isMetadataRequired(newTabOrder, fallbackStructure)
         };
     }
 
@@ -272,9 +319,57 @@ export function determineReorderAction(
     if (fromTab.type === 'document') {
         const fromDocIndex = fromTab.docIndex!;
 
-        // D1-D3: Document → Document (Physical move)
-        // When dragging D1 "after D2", toIndex points to D3's position
-        // So we need tabs[toIndex-1] to get D2 (the doc we're inserting after)
+        const isFromBeforeWb = fromIndex < firstSheetIdx;
+        const isToBeforeWb = toIndex <= firstSheetIdx;
+        const isToAfterWb = toIndex > lastSheetIdx;
+        const isFromBetweenSheets = fromIndex > firstSheetIdx && fromIndex < lastSheetIdx;
+
+        // Compute new tab order after move
+        const newTabs = computeNewTabOrder();
+        const newTabOrder = newTabs
+            .filter((t) => t.type === 'sheet' || t.type === 'document')
+            .map((t) => ({
+                type: t.type as 'sheet' | 'document',
+                index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
+            }));
+
+        // For metadata-only moves (isFromBetweenSheets), physical structure doesn't change
+        // So we compare new tab order with CURRENT physical structure
+        const currentStructure = parseFileStructure(tabs);
+
+        // Case 1: Doc is displayed between sheets (via metadata)
+        if (isFromBetweenSheets) {
+            // Sub-case 1a: Moving to before WB - needs physical move
+            if (isToBeforeWb) {
+                const newStructure = parseFileStructure(newTabs);
+                const needsMetadata = isMetadataRequired(newTabOrder, newStructure);
+                return {
+                    actionType: needsMetadata ? 'physical+metadata' : 'physical+metadata',
+                    physicalMove: {
+                        type: 'move-document',
+                        fromDocIndex,
+                        toDocIndex: null,
+                        toAfterWorkbook: false,
+                        toBeforeWorkbook: true
+                    },
+                    newTabOrder,
+                    metadataRequired: needsMetadata
+                };
+            }
+            // Sub-case 1b: Moving within/after sheets - metadata-only
+            const needsMetadata = isMetadataRequired(newTabOrder, currentStructure);
+            return {
+                actionType: 'metadata',
+                newTabOrder,
+                metadataRequired: needsMetadata
+            };
+        }
+
+        // For physical moves, compute what the structure will be after the move
+        const newStructure = parseFileStructure(newTabs);
+        const needsMetadata = isMetadataRequired(newTabOrder, newStructure);
+
+        // Case 2: Doc → Doc (both on same side of WB, not between sheets)
         const prevTab = toIndex > 0 ? tabs[toIndex - 1] : null;
         if (prevTab?.type === 'document' && prevTab !== fromTab) {
             const toDocIndex = prevTab.docIndex!;
@@ -287,32 +382,19 @@ export function determineReorderAction(
                     toAfterWorkbook: false,
                     toBeforeWorkbook: false
                 },
-                metadataRequired: false
+                metadataRequired: needsMetadata
             };
         }
 
         if (!hasWorkbook) {
-            // No workbook - just metadata
-            return { actionType: 'metadata', metadataRequired: false };
+            return { actionType: 'metadata', metadataRequired: needsMetadata };
         }
 
-        // D4: Doc before WB to after WB (to end position)
-        // D5: Doc after WB to before WB (to start position)
-        // If moving to natural boundary position: Physical only (tab order = file order)
-        // If moving to position with other content: Physical + Metadata
-
-        const isFromBeforeWb = fromIndex < firstSheetIdx;
-        const isToBeforeWb = toIndex <= firstSheetIdx;
-        const isToAfterWb = toIndex > lastSheetIdx;
-
+        // Case 3: Doc crosses WB boundary
         if (isFromBeforeWb && isToAfterWb) {
-            // D4: Doc before WB → after WB
-            // Check if moving to last position (natural file order)
-            const docsAfterWb = tabs.filter((t, i) => t.type === 'document' && i > lastSheetIdx);
-            const isToNaturalEnd = toIndex >= tabs.length - 1 || (docsAfterWb.length === 0 && isToAfterWb);
-
+            // Doc before WB → after WB
             return {
-                actionType: isToNaturalEnd ? 'physical' : 'physical+metadata',
+                actionType: needsMetadata ? 'physical+metadata' : 'physical',
                 physicalMove: {
                     type: 'move-document',
                     fromDocIndex,
@@ -320,18 +402,14 @@ export function determineReorderAction(
                     toAfterWorkbook: true,
                     toBeforeWorkbook: false
                 },
-                metadataRequired: !isToNaturalEnd
+                metadataRequired: needsMetadata
             };
         }
 
         if (!isFromBeforeWb && isToBeforeWb) {
-            // D5: Doc after WB → before WB
-            // Check if moving to first position (natural file order)
-            const docsBeforeWb = tabs.filter((t, i) => t.type === 'document' && i < firstSheetIdx);
-            const isToNaturalStart = toIndex === 0 || (docsBeforeWb.length === 0 && isToBeforeWb);
-
+            // Doc after WB → before WB
             return {
-                actionType: isToNaturalStart ? 'physical' : 'physical+metadata',
+                actionType: needsMetadata ? 'physical+metadata' : 'physical',
                 physicalMove: {
                     type: 'move-document',
                     fromDocIndex,
@@ -339,43 +417,89 @@ export function determineReorderAction(
                     toAfterWorkbook: false,
                     toBeforeWorkbook: true
                 },
-                metadataRequired: !isToNaturalStart
+                metadataRequired: needsMetadata
             };
         }
 
-        // D6: Doc before WB → between Sheets (Physical move + metadata)
-        if (isFromBeforeWb && !isToBeforeWb && !isToAfterWb) {
+        // Case 4: Doc → between sheets
+        if (!isToBeforeWb && !isToAfterWb) {
+            // D8 case: If moving doc that is after WB and it will now appear
+            // before other docs (in tab order) that were physically before it,
+            // we need to physically reorder the docs.
+            if (!isFromBeforeWb) {
+                // Check if this doc's display position among docs-after-WB changed
+                // Find docs after WB in original order
+                const docsAfterWbOriginal = tabs
+                    .filter((t) => t.type === 'document')
+                    .filter((_, i, arr) => {
+                        // Check if this doc was after WB by comparing with firstSheetIdx
+                        const docTab = tabs.find((t) => t.type === 'document' && t.docIndex === arr[i].docIndex);
+                        if (!docTab) return false;
+                        return tabs.indexOf(docTab) > firstSheetIdx;
+                    })
+                    .map((t) => t.docIndex!);
+
+                // In new tab order, get the order of docs that will be after WB
+                const newDocsOrder = newTabOrder
+                    .filter((t) => t.type === 'document')
+                    .map((t) => t.index);
+
+                // Find the first doc in new display order that's between sheets or after last sheet
+                // This is the doc that should be first physically
+                const firstDocInNewOrder = newDocsOrder[0];
+                const firstDocInPhysicalOrder = docsAfterWbOriginal[0];
+
+                if (firstDocInNewOrder !== firstDocInPhysicalOrder && firstDocInNewOrder === fromDocIndex) {
+                    // This doc is now first in display, but wasn't first physically
+                    // Need to physically move it to the start of docs-after-WB
+                    // Use toAfterWorkbook=true to insert right after WB (= before all other docs)
+
+                    // Remap docIndex values in newTabOrder:
+                    // - fromDocIndex becomes 0 (first in file)
+                    // - docs that were at index < fromDocIndex stay the same
+                    // - docs that were at index >= firstDocInPhysicalOrder and < fromDocIndex get +1
+                    const remappedTabOrder = newTabOrder.map((item) => {
+                        if (item.type !== 'document') return item;
+                        if (item.index === fromDocIndex) {
+                            // Moving doc becomes first
+                            return { ...item, index: firstDocInPhysicalOrder };
+                        } else if (item.index >= firstDocInPhysicalOrder && item.index < fromDocIndex) {
+                            // Docs between first and fromDoc shift down by 1
+                            return { ...item, index: item.index + 1 };
+                        }
+                        return item;
+                    });
+
+                    return {
+                        actionType: 'physical+metadata',
+                        physicalMove: {
+                            type: 'move-document' as const,
+                            fromDocIndex,
+                            toDocIndex: null,
+                            toAfterWorkbook: true,
+                            toBeforeWorkbook: false
+                        },
+                        newTabOrder: remappedTabOrder,
+                        metadataRequired: needsMetadata
+                    };
+                }
+            }
+
             return {
-                actionType: 'physical+metadata',
-                physicalMove: {
-                    type: 'move-document',
+                actionType: isFromBeforeWb ? 'physical+metadata' : 'metadata',
+                physicalMove: isFromBeforeWb ? {
+                    type: 'move-document' as const,
                     fromDocIndex,
                     toDocIndex: null,
                     toAfterWorkbook: true,
                     toBeforeWorkbook: false
-                },
-                metadataRequired: true
-            };
-        }
-
-        // D7: Doc after WB → between Sheets (Metadata only, already after WB)
-        if (!isFromBeforeWb && !isToBeforeWb && !isToAfterWb) {
-            const newTabs = computeNewTabOrder();
-            const newTabOrder = newTabs
-                .filter((t) => t.type === 'sheet' || t.type === 'document')
-                .map((t) => ({
-                    type: t.type as 'sheet' | 'document',
-                    index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
-                }));
-
-            return {
-                actionType: 'metadata',
+                } : undefined,
                 newTabOrder,
-                metadataRequired: true
+                metadataRequired: needsMetadata
             };
         }
 
-        // D4/D5: Doc → Workbook boundary
+        // Fallback: physical only to boundary
         if (isToBeforeWb) {
             return {
                 actionType: 'physical',
@@ -386,7 +510,7 @@ export function determineReorderAction(
                     toAfterWorkbook: false,
                     toBeforeWorkbook: true
                 },
-                metadataRequired: false
+                metadataRequired: needsMetadata
             };
         }
 
@@ -400,7 +524,7 @@ export function determineReorderAction(
                     toAfterWorkbook: true,
                     toBeforeWorkbook: false
                 },
-                metadataRequired: false
+                metadataRequired: needsMetadata
             };
         }
     }

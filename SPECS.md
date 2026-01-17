@@ -261,12 +261,16 @@ This matrix defines the expected behavior for all tab drag-and-drop scenarios. E
 |---|----------|--------------|--------|-------------------|-------------------|
 | D6 | Doc before WB to between Sheets | `[D1, WB(S1,S2), D2]` | Drag D1 between S1 & S2 | File: `[WB(S1,S2), D1, D2]`, tab: [S1,D1,S2,D2] | Physical + Metadata |
 | D7 | Doc after WB to between Sheets | `[D1, WB(S1,S2), D2]` | Drag D2 between S1 & S2 | File unchanged, tab: [D1,S1,D2,S2] | Metadata only |
+| D8 | Doc after WB to between Sheets (reorder) | `[WB(S1,S2), D1, D2]` | Drag D2 between S1 & S2 | File: `[WB(S1,S2), D2, D1]`, tab: [S1,D2,S2,D1] | Physical + Metadata |
+
+**Key principle for D8**: When tab order for docs-after-WB differs from physical order, the physical order should be updated to match. This ensures the first displayed doc is also first in the file.
 
 **Key Rules:**
 1. Sheet→Sheet: Physical reorder within Workbook section only
 2. Sheet→Doc position: **Workbook moves** to place Sheet at target position + tab_order updates
 3. Doc→Sheet position: Physical move if Doc changes sides of WB; Metadata-only if stays same side
 4. Doc→Doc: Always physical move
+5. Doc between sheets reorder: If display order of docs-after-WB differs from file order, **physical reorder** needed
 
 **Metadata Necessity:**
 

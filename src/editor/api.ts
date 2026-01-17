@@ -58,8 +58,9 @@ export function createNewSpreadsheet(columnNames: string[] | null = null): Updat
 
 /**
  * Update tab order in workbook metadata.
+ * Pass null to delete tab_order (when metadata is not needed).
  */
-export function updateWorkbookTabOrder(tabOrder: TabOrderItem[]): UpdateResult {
+export function updateWorkbookTabOrder(tabOrder: TabOrderItem[] | null): UpdateResult {
     return workbookService.updateWorkbookTabOrder(getContext(), tabOrder);
 }
 

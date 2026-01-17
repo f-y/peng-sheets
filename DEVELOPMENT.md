@@ -25,6 +25,23 @@ graph TD
 -   `webview-ui/`: Frontend (Lit) code.
 -   `webview-ui/tests/`: Vitest tests for webview and editor.
 
+## 2.5 Code Style Rules
+
+### Import Statements
+
+**All imports must be placed at the top of the file.** Do not use dynamic `await import()` within functions. Use static imports at the file header.
+
+```typescript
+// ✅ CORRECT: Static imports at file top
+import * as editor from '../../src/editor';
+import { someFunction } from './utils';
+
+// ❌ WRONG: Dynamic import inside function
+async function example() {
+    const editor = await import('../../src/editor'); // Don't do this!
+}
+```
+
 ## 3. Parser Package
 
 The extension uses the `md-spreadsheet-parser` NPM package for Markdown parsing. This package is installed as a dependency and bundled with the extension.
