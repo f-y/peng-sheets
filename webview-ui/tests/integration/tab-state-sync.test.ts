@@ -92,7 +92,7 @@ Content of Doc 3
         const newTabs = buildTabsFromStructure();
 
         // Extract document tabs and verify their docIndex
-        const docTabs = newTabs.filter(t => t.type === 'document');
+        const docTabs = newTabs.filter((t) => t.type === 'document');
 
         // docIndex 0 should now be Doc 2 (it moved to first position)
         // docIndex 1 should now be Doc 1
@@ -126,7 +126,7 @@ Content of Doc 3
             { type: 'sheet', sheetIndex: 1 },
             { type: 'document', docIndex: 0 }, // Was D1, NOW D2
             { type: 'document', docIndex: 1 }, // Was D2, NOW D1 (!)
-            { type: 'document', docIndex: 2 }  // D3
+            { type: 'document', docIndex: 2 } // D3
         ];
 
         // Step 3: User thinks they're dragging "D2" (tab at position 3)
@@ -142,7 +142,7 @@ Content of Doc 3
 
         // BUG DETECTED: User thinks they're moving D2, but docIndex 1 = D1 now!
         expect(actualDocAtIndex1).not.toBe('Doc 2'); // This proves the bug
-        expect(actualDocAtIndex1).toBe('Doc 1');    // docIndex 1 = D1, not D2!
+        expect(actualDocAtIndex1).toBe('Doc 1'); // docIndex 1 = D1, not D2!
     });
 
     it('SOLUTION: tabs must be refreshed after physical move', () => {
@@ -151,7 +151,7 @@ Content of Doc 3
 
         // Immediately rebuild tabs from current structure
         const freshTabs = buildTabsFromStructure();
-        const docTabs = freshTabs.filter(t => t.type === 'document');
+        const docTabs = freshTabs.filter((t) => t.type === 'document');
 
         // Now docIndex correctly maps to documents
         const titles = getDocTitlesFromFile();

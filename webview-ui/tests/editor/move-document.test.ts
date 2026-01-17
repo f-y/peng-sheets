@@ -330,8 +330,8 @@ Integrates with Pydantic and Dataclasses to validate table data as structured da
             const state = JSON.parse(getState());
             const docs = state.structure.filter((s: { type: string }) => s.type === 'document');
             expect(docs[0].title).toBe('Doc 1');
-            expect(docs[1].title).toBe('Doc 3');  // Before Workbook
-            expect(docs[2].title).toBe('Doc 2');  // After Workbook
+            expect(docs[1].title).toBe('Doc 3'); // Before Workbook
+            expect(docs[2].title).toBe('Doc 2'); // After Workbook
 
             // Move Doc 3 (docIndex=1) to after Workbook with toAfterWorkbook=true
             // In UI: toIndex=4 (position after Sheet2, which is at lastSheetIdx=3, so toIndex=lastSheetIdx+1=4)
@@ -349,7 +349,7 @@ Integrates with Pydantic and Dataclasses to validate table data as structured da
             const doc2Pos = content.indexOf('# Doc 2');
 
             expect(doc3Pos).toBeGreaterThan(tablesPos);
-            expect(doc3Pos).toBeLessThan(doc2Pos);  // KEY: Doc 3 BEFORE Doc 2
+            expect(doc3Pos).toBeLessThan(doc2Pos); // KEY: Doc 3 BEFORE Doc 2
         });
 
         /**

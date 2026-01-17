@@ -67,8 +67,7 @@ Content of Doc 3
         // THE BUG: These ranges are different!
         // If batch only sends the last one, the move is LOST
         const rangesAreDifferent =
-            moveResult.startLine !== metadataResult.startLine ||
-            moveResult.endLine !== metadataResult.endLine;
+            moveResult.startLine !== metadataResult.startLine || moveResult.endLine !== metadataResult.endLine;
 
         // This assertion documents the bug
         expect(rangesAreDifferent).toBe(true);

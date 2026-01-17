@@ -37,12 +37,12 @@ export type PhysicalMove =
     | { type: 'move-sheet'; fromSheetIndex: number; toSheetIndex: number }
     | { type: 'move-workbook'; direction: 'before-doc' | 'after-doc'; targetDocIndex: number }
     | {
-        type: 'move-document';
-        fromDocIndex: number;
-        toDocIndex: number | null;
-        toAfterWorkbook: boolean;
-        toBeforeWorkbook: boolean;
-    };
+          type: 'move-document';
+          fromDocIndex: number;
+          toDocIndex: number | null;
+          toAfterWorkbook: boolean;
+          toBeforeWorkbook: boolean;
+      };
 
 /**
  * Result of determining what action to take for a tab reorder.
@@ -203,7 +203,8 @@ export function determineReorderAction(
         // - Moving to just after last sheet (toIndex between firstSheetIdx and lastSheetIdx+1)
         //   but only if there's no doc at that position OR doc isn't between sheets
         const targetIsWithinSheetRange = toIndex >= firstSheetIdx && toIndex <= lastSheetIdx + 1;
-        const isSheetToSheetMove = toTab?.type === 'sheet' ||
+        const isSheetToSheetMove =
+            toTab?.type === 'sheet' ||
             (targetIsWithinSheetRange && toIndex === lastSheetIdx + 1 && firstSheetIdx === 0);
 
         if (isSheetToSheetMove) {
@@ -250,12 +251,12 @@ export function determineReorderAction(
             // Doc is "between" if: firstSheet < doc < lastSheet in tab order
             const newFirstSheetTabIdx = newTabs.findIndex((t) => t.type === 'sheet');
             const newLastSheetTabIdx = newTabs.reduce((acc, t, i) => (t.type === 'sheet' ? i : acc), -1);
-            const docMovedBetweenSheets = newTabs.some((t, i) =>
-                t.type === 'document' && i > newFirstSheetTabIdx && i < newLastSheetTabIdx
+            const docMovedBetweenSheets = newTabs.some(
+                (t, i) => t.type === 'document' && i > newFirstSheetTabIdx && i < newLastSheetTabIdx
             );
 
-            const sheetSwapNeedsMetadata = docOrderChanged || docMovedBetweenSheets ||
-                (needsMetadata && newFirstSheetIdx !== oldFirstSheetIdx);
+            const sheetSwapNeedsMetadata =
+                docOrderChanged || docMovedBetweenSheets || (needsMetadata && newFirstSheetIdx !== oldFirstSheetIdx);
 
             return {
                 actionType: sheetSwapNeedsMetadata ? 'metadata' : 'physical',
@@ -287,7 +288,8 @@ export function determineReorderAction(
             const movedSheetPosInNew = sheetDocTabs.findIndex(
                 (t) => t.type === 'sheet' && t.sheetIndex === fromSheetIndex
             );
-            const isMovedSheetInsideDocRange = movedSheetPosInNew > newFirstSheetIdx && movedSheetPosInNew < sheetDocTabs.length;
+            const isMovedSheetInsideDocRange =
+                movedSheetPosInNew > newFirstSheetIdx && movedSheetPosInNew < sheetDocTabs.length;
 
             // Check if there are docs between the moved sheet and the first sheet
             const hasDocsBetweenFirstAndMoved = sheetDocTabs
@@ -512,9 +514,7 @@ export function determineReorderAction(
                     .map((t) => t.docIndex!);
 
                 // In new tab order, get the order of docs that will be after WB
-                const newDocsOrder = newTabOrder
-                    .filter((t) => t.type === 'document')
-                    .map((t) => t.index);
+                const newDocsOrder = newTabOrder.filter((t) => t.type === 'document').map((t) => t.index);
 
                 // Find the first doc in new display order that's between sheets or after last sheet
                 // This is the doc that should be first physically
@@ -559,13 +559,15 @@ export function determineReorderAction(
 
             return {
                 actionType: isFromBeforeWb ? 'physical+metadata' : 'metadata',
-                physicalMove: isFromBeforeWb ? {
-                    type: 'move-document' as const,
-                    fromDocIndex,
-                    toDocIndex: null,
-                    toAfterWorkbook: true,
-                    toBeforeWorkbook: false
-                } : undefined,
+                physicalMove: isFromBeforeWb
+                    ? {
+                          type: 'move-document' as const,
+                          fromDocIndex,
+                          toDocIndex: null,
+                          toAfterWorkbook: true,
+                          toBeforeWorkbook: false
+                      }
+                    : undefined,
                 newTabOrder,
                 metadataRequired: needsMetadata
             };

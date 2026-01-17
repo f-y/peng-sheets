@@ -885,7 +885,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet' && isSheetJSON(activeTab.data)
-                ? html`
+                    ? html`
                           <div class="sheet-container" style="height: 100%">
                               <layout-container
                                   .layout="${(activeTab.data as SheetJSON).metadata?.layout}"
@@ -893,28 +893,28 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                                   .sheetIndex="${activeTab.sheetIndex}"
                                   .workbook="${this.workbook}"
                                   .dateFormat="${((this.config?.validation as Record<string, unknown>)
-                        ?.dateFormat as string) || 'YYYY-MM-DD'}"
+                                      ?.dateFormat as string) || 'YYYY-MM-DD'}"
                                   @save-requested="${this._handleSave}"
                                   @selection-change="${this._handleSelectionChange}"
                               ></layout-container>
                           </div>
                       `
-                : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
-                    ? html`
+                    : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
+                      ? html`
                             <spreadsheet-document-view
                                 .title="${activeTab.title}"
                                 .content="${(activeTab.data as DocumentJSON).content}"
                                 @toolbar-action="${this._handleToolbarAction}"
                             ></spreadsheet-document-view>
                         `
-                    : html``}
+                      : html``}
                 ${activeTab.type === 'onboarding'
-                ? html`
+                    ? html`
                           <spreadsheet-onboarding
                               @create-spreadsheet="${this._onCreateSpreadsheet}"
                           ></spreadsheet-onboarding>
                       `
-                : html``}
+                    : html``}
             </div>
 
             <bottom-tabs
@@ -923,17 +923,17 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 .editingIndex="${this.editingTabIndex}"
                 @tab-select="${(e: CustomEvent) => (this.activeTabIndex = e.detail.index)}"
                 @tab-edit-start="${(e: CustomEvent) =>
-                this._handleTabDoubleClick(e.detail.index, this.tabs[e.detail.index])}"
+                    this._handleTabDoubleClick(e.detail.index, this.tabs[e.detail.index])}"
                 @tab-rename="${(e: CustomEvent) =>
-                this._handleTabRename(e.detail.index, e.detail.tab, e.detail.newName)}"
+                    this._handleTabRename(e.detail.index, e.detail.tab, e.detail.newName)}"
                 @tab-context-menu="${(e: CustomEvent) => {
-                this.tabContextMenu = {
-                    x: e.detail.x,
-                    y: e.detail.y,
-                    index: e.detail.index,
-                    tabType: e.detail.tabType
-                };
-            }}"
+                    this.tabContextMenu = {
+                        x: e.detail.x,
+                        y: e.detail.y,
+                        index: e.detail.index,
+                        tabType: e.detail.tabType
+                    };
+                }}"
                 @tab-reorder="${(e: CustomEvent) => this._handleTabReorder(e.detail.fromIndex, e.detail.toIndex)}"
                 @add-sheet-click="${this._handleAddSheet}"
             ></bottom-tabs>
@@ -945,12 +945,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 .tabType="${this.tabContextMenu?.tabType ?? 'sheet'}"
                 @rename="${() => this._renameTab(this.tabContextMenu!.index)}"
                 @delete="${() => {
-                if (this.tabContextMenu?.tabType === 'sheet') {
-                    this._deleteSheet(this.tabContextMenu.index);
-                } else {
-                    this._deleteDocument(this.tabContextMenu!.index);
-                }
-            }}"
+                    if (this.tabContextMenu?.tabType === 'sheet') {
+                        this._deleteSheet(this.tabContextMenu.index);
+                    } else {
+                        this._deleteDocument(this.tabContextMenu!.index);
+                    }
+                }}"
                 @add-document="${this._addDocumentFromMenu}"
                 @add-sheet="${this._addSheetFromMenu}"
                 @close="${() => (this.tabContextMenu = null)}"
@@ -960,8 +960,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             <confirmation-modal
                 .open="${this.confirmDeleteIndex !== null}"
                 title="${this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
-                ? t('deleteDocument')
-                : t('deleteSheet')}"
+                    ? t('deleteDocument')
+                    : t('deleteSheet')}"
                 confirmLabel="${t('delete')}"
                 cancelLabel="${t('cancel')}"
                 @confirm="${this._performDelete}"
@@ -972,9 +972,10 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                         this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
                             ? 'deleteDocumentConfirm'
                             : 'deleteSheetConfirm',
-                        `<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null
-                            ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
-                            : ''
+                        `<span style="color: var(--vscode-textPreformat-foreground);">${
+                            this.confirmDeleteIndex !== null
+                                ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
+                                : ''
                         }</span>`
                     )
                 )}
@@ -1393,19 +1394,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
         const action = determineReorderAction(tabs, fromIndex, toIndex);
 
-        // DEBUG: Trace reorder action with actual document names
-        const tabsDebug = tabs.map((t, idx) => {
-            if (t.type === 'document' && this.structure) {
-                const docSections = this.structure.filter(s => s.type === 'document');
-                const doc = docSections[t.docIndex!];
-                return `${idx}:${t.type}:${t.docIndex}(${doc?.title || 'unknown'})`;
-            }
-            return `${idx}:${t.type}:${t.sheetIndex ?? t.docIndex}`;
-        });
-        console.log('[TabReorder] tabs with names:', tabsDebug.join(', '));
-        console.log('[TabReorder] fromIndex:', fromIndex, 'toIndex:', toIndex);
-        console.log('[TabReorder] action:', JSON.stringify(action, null, 2));
-
         if (action.actionType === 'no-op') {
             return;
         }
@@ -1420,7 +1408,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
             // Update metadata FIRST (if needed) so it's included in the physical move result
             if (action.metadataRequired && action.physicalMove) {
-                console.log('[TabReorder] Updating metadata BEFORE physical move');
                 if (action.newTabOrder) {
                     const result = editor.updateWorkbookTabOrder(action.newTabOrder);
                     // Don't send this - it will be included in the physical move result
@@ -1432,7 +1419,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
             // Execute physical move AFTER metadata (so it includes the metadata changes)
             if (action.physicalMove) {
-                console.log('[TabReorder] Executing physical move:', action.physicalMove.type);
                 switch (action.physicalMove.type) {
                     case 'move-sheet': {
                         const { fromSheetIndex, toSheetIndex } = action.physicalMove;
@@ -1451,11 +1437,14 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                     }
                     case 'move-document': {
                         const { fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook } = action.physicalMove;
-                        console.log('[TabReorder] move-document: fromDocIndex=', fromDocIndex, 'toDocIndex=', toDocIndex,
-                            'toAfterWorkbook=', toAfterWorkbook, 'toBeforeWorkbook=', toBeforeWorkbook);
 
                         // Step 1: Physical move (updates mdText but not workbook section)
-                        const moveResult = editor.moveDocumentSection(fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook);
+                        const moveResult = editor.moveDocumentSection(
+                            fromDocIndex,
+                            toDocIndex,
+                            toAfterWorkbook,
+                            toBeforeWorkbook
+                        );
 
                         if (moveResult.error) {
                             console.error('[TabReorder] Move failed:', moveResult.error);
@@ -1484,12 +1473,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                                 ];
                                 const mergedContent = mergedLines.join('\n');
 
-                                // DEBUG: Show what content will be written to file
-                                const docHeaders = mergedContent.match(/^# Doc \d+/gm);
-                                const hasTabOrder = mergedContent.includes('tab_order');
-                                console.log('[TabReorder] RESULT doc order:', docHeaders?.join(', ') || 'none found');
-                                console.log('[TabReorder] RESULT has tab_order:', hasTabOrder);
-
                                 this._postBatchUpdate({
                                     content: mergedContent,
                                     startLine: 0,
@@ -1500,7 +1483,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                             }
                         } else {
                             // Physical-only case: just send the move result (no metadata)
-                            console.log('[TabReorder] Physical-only move, no metadata regeneration');
                             this._postBatchUpdate(moveResult);
                         }
                         break;
@@ -1508,9 +1490,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 }
             } else {
                 // Metadata-only case (no physical move)
-                console.log('[TabReorder] No physical move, metadata only');
                 if (action.metadataRequired) {
-                    console.log('[TabReorder] Updating metadata (metadataRequired=true)');
                     if (action.newTabOrder) {
                         const result = editor.updateWorkbookTabOrder(action.newTabOrder);
                         if (result) this._postBatchUpdate(result);
@@ -1521,7 +1501,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                         if (result) this._postBatchUpdate(result);
                     }
                 } else if (action.actionType === 'metadata') {
-                    console.log('[TabReorder] Deleting metadata (no longer needed)');
                     const result = editor.updateWorkbookTabOrder(null);
                     if (result) this._postBatchUpdate(result);
                     this._reorderTabsArray(fromIndex, toIndex);
@@ -1561,7 +1540,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
             }));
     }
-
 
     /**
      * Reorder the tabs array by moving element from fromIndex to toIndex.

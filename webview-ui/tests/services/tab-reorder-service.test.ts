@@ -513,11 +513,11 @@ describe('Metadata Cleanup: D between sheets to after WB', () => {
         // Tab display: [S1, D1, S2, D2, D3] (from tab_order metadata)
         // But physical file is: [WB(S1, S2), D1, D2, D3]
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
-            { type: 'document', docIndex: 0 },   // D1 at tab 1 (between sheets via metadata)
-            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 2
-            { type: 'document', docIndex: 1 },   // D2 at tab 3
-            { type: 'document', docIndex: 2 },   // D3 at tab 4
+            { type: 'sheet', sheetIndex: 0 }, // S1 at tab 0
+            { type: 'document', docIndex: 0 }, // D1 at tab 1 (between sheets via metadata)
+            { type: 'sheet', sheetIndex: 1 }, // S2 at tab 2
+            { type: 'document', docIndex: 1 }, // D2 at tab 3
+            { type: 'document', docIndex: 2 }, // D3 at tab 4
             { type: 'add-sheet' }
         ];
 
@@ -567,11 +567,11 @@ describe('Metadata Cleanup: D between sheets to after WB', () => {
      */
     it('should remove metadata when D1 moves from between sheets to before S1', () => {
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
-            { type: 'document', docIndex: 0 },   // D1 at tab 1 (between sheets via metadata)
-            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 2
-            { type: 'document', docIndex: 1 },   // D2 at tab 3
-            { type: 'document', docIndex: 2 },   // D3 at tab 4
+            { type: 'sheet', sheetIndex: 0 }, // S1 at tab 0
+            { type: 'document', docIndex: 0 }, // D1 at tab 1 (between sheets via metadata)
+            { type: 'sheet', sheetIndex: 1 }, // S2 at tab 2
+            { type: 'document', docIndex: 1 }, // D2 at tab 3
+            { type: 'document', docIndex: 2 }, // D3 at tab 4
             { type: 'add-sheet' }
         ];
 
@@ -609,9 +609,9 @@ describe('Sheet Movement with Metadata Cleanup', () => {
      */
     it('S1 after D1 in [S1, D1, S2] - should move WB and delete metadata', () => {
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
-            { type: 'document', docIndex: 0 },   // D1 at tab 1 (between sheets via metadata)
-            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 2
+            { type: 'sheet', sheetIndex: 0 }, // S1 at tab 0
+            { type: 'document', docIndex: 0 }, // D1 at tab 1 (between sheets via metadata)
+            { type: 'sheet', sheetIndex: 1 }, // S2 at tab 2
             { type: 'add-sheet' }
         ];
 
@@ -761,10 +761,10 @@ describe('SPECS.md 8.6.5 D8: Doc reorder when moving between sheets', () => {
      */
     it('D8: should physically reorder docs when D2 moves between sheets before D1', () => {
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
-            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 1
-            { type: 'document', docIndex: 0 },   // D1 at tab 2
-            { type: 'document', docIndex: 1 },   // D2 at tab 3
+            { type: 'sheet', sheetIndex: 0 }, // S1 at tab 0
+            { type: 'sheet', sheetIndex: 1 }, // S2 at tab 1
+            { type: 'document', docIndex: 0 }, // D1 at tab 2
+            { type: 'document', docIndex: 1 }, // D2 at tab 3
             { type: 'add-sheet' }
         ];
 
@@ -785,10 +785,10 @@ describe('SPECS.md 8.6.5 D8: Doc reorder when moving between sheets', () => {
         // Verify newTabOrder has remapped docIndex values:
         // After physical move: D2 becomes docIndex 0, D1 becomes docIndex 1
         expect(action.newTabOrder).toEqual([
-            { type: 'sheet', index: 0 },   // S1
+            { type: 'sheet', index: 0 }, // S1
             { type: 'document', index: 0 }, // D2 (was 1, now 0 after move)
-            { type: 'sheet', index: 1 },   // S2
-            { type: 'document', index: 1 }  // D1 (was 0, now 1 after move)
+            { type: 'sheet', index: 1 }, // S2
+            { type: 'document', index: 1 } // D1 (was 0, now 1 after move)
         ]);
     });
 
@@ -824,11 +824,11 @@ describe('SPECS.md 8.6.5 D8: 3-doc scenario (matching workbook.md)', () => {
      */
     it('D3 after S1 - should physically reorder docs', () => {
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
-            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 1
-            { type: 'document', docIndex: 0 },   // D1 at tab 2
-            { type: 'document', docIndex: 1 },   // D2 at tab 3
-            { type: 'document', docIndex: 2 },   // D3 at tab 4
+            { type: 'sheet', sheetIndex: 0 }, // S1 at tab 0
+            { type: 'sheet', sheetIndex: 1 }, // S2 at tab 1
+            { type: 'document', docIndex: 0 }, // D1 at tab 2
+            { type: 'document', docIndex: 1 }, // D2 at tab 3
+            { type: 'document', docIndex: 2 }, // D3 at tab 4
             { type: 'add-sheet' }
         ];
 
@@ -892,11 +892,11 @@ describe('SPECS.md 8.6.2 C8: Sheet inside doc range', () => {
      */
     it('C8: S1 to after D1 in [S1, S2, D1, D2, D3] - should reorder sheets physically', () => {
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 at tab 0
-            { type: 'sheet', sheetIndex: 1 },    // S2 at tab 1
-            { type: 'document', docIndex: 0 },   // D1 at tab 2
-            { type: 'document', docIndex: 1 },   // D2 at tab 3
-            { type: 'document', docIndex: 2 },   // D3 at tab 4
+            { type: 'sheet', sheetIndex: 0 }, // S1 at tab 0
+            { type: 'sheet', sheetIndex: 1 }, // S2 at tab 1
+            { type: 'document', docIndex: 0 }, // D1 at tab 2
+            { type: 'document', docIndex: 1 }, // D2 at tab 3
+            { type: 'document', docIndex: 2 }, // D3 at tab 4
             { type: 'add-sheet' }
         ];
 
@@ -909,7 +909,7 @@ describe('SPECS.md 8.6.2 C8: Sheet inside doc range', () => {
         expect(action.physicalMove?.type).toBe('move-sheet');
         if (action.physicalMove?.type === 'move-sheet') {
             expect(action.physicalMove.fromSheetIndex).toBe(0); // S1
-            expect(action.physicalMove.toSheetIndex).toBe(1);   // Move to after S2
+            expect(action.physicalMove.toSheetIndex).toBe(1); // Move to after S2
         }
         expect(action.metadataRequired).toBe(true); // S1 is between docs
     });

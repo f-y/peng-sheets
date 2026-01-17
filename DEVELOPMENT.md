@@ -55,6 +55,23 @@ The extension uses the `md-spreadsheet-parser` NPM package for Markdown parsing.
     ```
     Test UI components and editor services in isolation (`webview-ui/tests/`).
 
+### Linting & Formatting
+
+-   **Lint check**:
+    ```bash
+    npm run lint
+    ```
+    Runs ESLint with Prettier integration to check for code style issues.
+
+-   **Auto-fix lint issues**:
+    ```bash
+    npm run lint -- --fix
+    ```
+    Automatically fixes formatting and simple lint errors.
+
+> [!IMPORTANT]
+> Always run `npm run lint -- --fix` before committing changes.
+
 ### Internationalization (i18n)
 -   Use `t('key')`.
 -   Update `webview-ui/utils/i18n.ts`.
@@ -313,6 +330,22 @@ This section describes the release procedure for publishing a new version.
 - [ ] All changes are tested and working correctly.
 - [ ] All tests pass (`npm test` and `npm run test:webview`).
 - [ ] Extension packages successfully (`vsce package`).
+
+### 7.1.1 Commit Policy for Bug Fixes
+
+> [!CAUTION]
+> **Do NOT commit bug fixes until UI verification is complete.**
+
+For bug fixes that affect user-visible behavior:
+
+1. **Write failing test** that reproduces the bug
+2. **Implement the fix** to make the test pass
+3. **Run full test suite** (`npm run test:webview`)
+4. **Notify user for UI verification** - DO NOT COMMIT YET
+5. **User confirms fix works** in actual extension
+6. **Then commit** with descriptive message
+
+This prevents committing fixes that pass tests but fail in real UI.
 
 ### 7.2 Update CHANGELOG.md
 

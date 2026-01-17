@@ -27,11 +27,11 @@ describe('Edge Cases: 3+ Sheets with docs', () => {
      */
     it('3 sheets: S2 to after D1 - should move S2 to last in WB', () => {
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1
-            { type: 'sheet', sheetIndex: 1 },    // S2
-            { type: 'sheet', sheetIndex: 2 },    // S3
-            { type: 'document', docIndex: 0 },   // D1
-            { type: 'document', docIndex: 1 },   // D2
+            { type: 'sheet', sheetIndex: 0 }, // S1
+            { type: 'sheet', sheetIndex: 1 }, // S2
+            { type: 'sheet', sheetIndex: 2 }, // S3
+            { type: 'document', docIndex: 0 }, // D1
+            { type: 'document', docIndex: 1 }, // D2
             { type: 'add-sheet' }
         ];
 
@@ -43,7 +43,7 @@ describe('Edge Cases: 3+ Sheets with docs', () => {
         expect(action.physicalMove?.type).toBe('move-sheet');
         if (action.physicalMove?.type === 'move-sheet') {
             expect(action.physicalMove.fromSheetIndex).toBe(1); // S2
-            expect(action.physicalMove.toSheetIndex).toBe(2);   // Move to last
+            expect(action.physicalMove.toSheetIndex).toBe(2); // Move to last
         }
         expect(action.metadataRequired).toBe(true);
     });
@@ -137,12 +137,12 @@ describe('Edge Cases: Last sheet to doc position', () => {
      */
     it('S1 after S2 (toIndex=2) - USER BUG - should be physical sheet swap', () => {
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 at 0
-            { type: 'sheet', sheetIndex: 1 },    // S2 at 1
-            { type: 'document', docIndex: 0 },   // D1 at 2
-            { type: 'document', docIndex: 1 },   // D2 at 3
-            { type: 'document', docIndex: 2 },   // D3 at 4
-            { type: 'add-sheet' }                // at 5
+            { type: 'sheet', sheetIndex: 0 }, // S1 at 0
+            { type: 'sheet', sheetIndex: 1 }, // S2 at 1
+            { type: 'document', docIndex: 0 }, // D1 at 2
+            { type: 'document', docIndex: 1 }, // D2 at 3
+            { type: 'document', docIndex: 2 }, // D3 at 4
+            { type: 'add-sheet' } // at 5
         ];
 
         // USER's actual input: Drag S1 (tabIndex 0) and drop results in toIndex=2

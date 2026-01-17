@@ -35,11 +35,11 @@ describe('Category A: metadataRequired MUST be false', () => {
          */
         it('toIndex=2 - S1 after S2 with docs after WB', () => {
             const tabs: TestTab[] = [
-                { type: 'sheet', sheetIndex: 0 },    // S1 at 0
-                { type: 'sheet', sheetIndex: 1 },    // S2 at 1
-                { type: 'document', docIndex: 0 },   // D1 at 2
-                { type: 'document', docIndex: 1 },   // D2 at 3
-                { type: 'document', docIndex: 2 },   // D3 at 4
+                { type: 'sheet', sheetIndex: 0 }, // S1 at 0
+                { type: 'sheet', sheetIndex: 1 }, // S2 at 1
+                { type: 'document', docIndex: 0 }, // D1 at 2
+                { type: 'document', docIndex: 1 }, // D2 at 3
+                { type: 'document', docIndex: 2 }, // D3 at 4
                 { type: 'add-sheet' }
             ];
 
@@ -102,10 +102,10 @@ describe('Category A: metadataRequired MUST be false', () => {
          */
         it('S1 after S2 with docs on both sides', () => {
             const tabs: TestTab[] = [
-                { type: 'document', docIndex: 0 },   // D1 at 0
-                { type: 'sheet', sheetIndex: 0 },    // S1 at 1
-                { type: 'sheet', sheetIndex: 1 },    // S2 at 2
-                { type: 'document', docIndex: 1 },   // D2 at 3
+                { type: 'document', docIndex: 0 }, // D1 at 0
+                { type: 'sheet', sheetIndex: 0 }, // S1 at 1
+                { type: 'sheet', sheetIndex: 1 }, // S2 at 2
+                { type: 'document', docIndex: 1 }, // D2 at 3
                 { type: 'add-sheet' }
             ];
 
@@ -124,8 +124,8 @@ describe('Category A: metadataRequired MUST be false', () => {
          */
         it('S3: Single sheet to before doc - no metadata needed', () => {
             const tabs: TestTab[] = [
-                { type: 'document', docIndex: 0 },   // D1 at 0
-                { type: 'sheet', sheetIndex: 0 },    // S1 at 1
+                { type: 'document', docIndex: 0 }, // D1 at 0
+                { type: 'sheet', sheetIndex: 0 }, // S1 at 1
                 { type: 'add-sheet' }
             ];
 
@@ -143,8 +143,8 @@ describe('Category A: metadataRequired MUST be false', () => {
          */
         it('S4: Single sheet to after doc - no metadata needed', () => {
             const tabs: TestTab[] = [
-                { type: 'sheet', sheetIndex: 0 },    // S1 at 0
-                { type: 'document', docIndex: 0 },   // D1 at 1
+                { type: 'sheet', sheetIndex: 0 }, // S1 at 0
+                { type: 'document', docIndex: 0 }, // D1 at 1
                 { type: 'add-sheet' }
             ];
 

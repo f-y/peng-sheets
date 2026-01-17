@@ -51,14 +51,8 @@ Content of Doc 3
         const initialStructure = initialState.structure;
 
         // Verify initial physical order by checking document titles
-        const docSections = initialStructure.filter(
-            (s: { type: string; title?: string }) => s.type === 'document'
-        );
-        expect(docSections.map((d: { title: string }) => d.title)).toEqual([
-            'Doc 1',
-            'Doc 2',
-            'Doc 3'
-        ]);
+        const docSections = initialStructure.filter((s: { type: string; title?: string }) => s.type === 'document');
+        expect(docSections.map((d: { title: string }) => d.title)).toEqual(['Doc 1', 'Doc 2', 'Doc 3']);
 
         // D2 is at physical index 1
         const d2PhysicalIndex = 1;
@@ -67,8 +61,8 @@ Content of Doc 3
         const result = editor.moveDocumentSection(
             d2PhysicalIndex, // fromDocIndex = 1 (D2)
             null,
-            true,  // toAfterWorkbook
-            false  // toBeforeWorkbook
+            true, // toAfterWorkbook
+            false // toBeforeWorkbook
         );
 
         expect(result.error).toBeUndefined();
@@ -78,30 +72,22 @@ Content of Doc 3
         const afterStructure = afterState.structure;
 
         // Verify new physical order by checking document TITLES (not indices)
-        const afterDocSections = afterStructure.filter(
-            (s: { type: string; title?: string }) => s.type === 'document'
-        );
+        const afterDocSections = afterStructure.filter((s: { type: string; title?: string }) => s.type === 'document');
         const afterTitles = afterDocSections.map((d: { title: string }) => d.title);
 
         // KEY ASSERTION: D2 should now be FIRST, D1 second, D3 third
         expect(afterTitles).toEqual([
-            'Doc 2',  // D2 moved to first position
-            'Doc 1',  // D1 is now second
-            'Doc 3'   // D3 unchanged
+            'Doc 2', // D2 moved to first position
+            'Doc 1', // D1 is now second
+            'Doc 3' // D3 unchanged
         ]);
     });
 
     it('D8: moving D3 to after workbook should physically move D3, not any other doc', () => {
         // Get initial state
         const initialState = JSON.parse(editor.getState());
-        const docSections = initialState.structure.filter(
-            (s: { type: string }) => s.type === 'document'
-        );
-        expect(docSections.map((d: { title: string }) => d.title)).toEqual([
-            'Doc 1',
-            'Doc 2',
-            'Doc 3'
-        ]);
+        const docSections = initialState.structure.filter((s: { type: string }) => s.type === 'document');
+        expect(docSections.map((d: { title: string }) => d.title)).toEqual(['Doc 1', 'Doc 2', 'Doc 3']);
 
         // D3 is at physical index 2
         const d3PhysicalIndex = 2;
@@ -110,7 +96,7 @@ Content of Doc 3
         const result = editor.moveDocumentSection(
             d3PhysicalIndex, // fromDocIndex = 2 (D3)
             null,
-            true,  // toAfterWorkbook
+            true, // toAfterWorkbook
             false
         );
 
@@ -118,15 +104,13 @@ Content of Doc 3
 
         // Verify D3 is now first
         const afterState = JSON.parse(editor.getState());
-        const afterDocSections = afterState.structure.filter(
-            (s: { type: string }) => s.type === 'document'
-        );
+        const afterDocSections = afterState.structure.filter((s: { type: string }) => s.type === 'document');
         const afterTitles = afterDocSections.map((d: { title: string }) => d.title);
 
         expect(afterTitles).toEqual([
-            'Doc 3',  // D3 moved to first
-            'Doc 1',  // D1 unchanged relative position
-            'Doc 2'   // D2 unchanged relative position
+            'Doc 3', // D3 moved to first
+            'Doc 1', // D1 unchanged relative position
+            'Doc 2' // D2 unchanged relative position
         ]);
     });
 
