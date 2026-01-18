@@ -254,6 +254,42 @@ function handleSheetToSheet(
 
     const needsMetadata = isMetadataRequired(newTabOrder, predictedFileStructure);
 
+    // =========================================================================
+    // H9 Physical Normalization Principle:
+    // When a Sheet move causes a Document to become visually FIRST (before all
+    // Sheets), and that Document is currently physically AFTER the Workbook,
+    // we MUST move the Workbook physically after that Document.
+    // 
+    // Example: File [WB(S1,S2), D1], Tab [S1, D1, S2]
+    //          Drag S1 to index 2 → Tab [D1, S1, S2]
+    //          D1 is now first visually but still physically after WB.
+    //          → Return move-workbook to make File [D1, WB(S1,S2)]
+    // =========================================================================
+
+    if (newTabOrder.length > 0 && newTabOrder[0].type === 'document') {
+        const firstDocIndex = newTabOrder[0].index;
+
+        // Check if this document is physically AFTER the Workbook
+        // In currentFileStructure: docsBeforeWb are before WB, docsAfterWb are after
+        const isPhysicallyAfterWb = currentFileStructure.docsAfterWb.includes(firstDocIndex);
+
+        if (isPhysicallyAfterWb) {
+            // H9: Document needs to be physically first → move Workbook after this Doc
+            // After move, the file structure will match visual order: [D1, WB, ...]
+            // No metadata will be needed since physical = visual
+            return {
+                actionType: 'physical+metadata',
+                physicalMove: {
+                    type: 'move-workbook',
+                    direction: 'after-doc',
+                    targetDocIndex: firstDocIndex
+                },
+                metadataRequired: false,  // After physical move, order matches
+                newTabOrder: undefined        // No metadata needed
+            };
+        }
+    }
+
     return {
         actionType: 'physical',
         physicalMove: {

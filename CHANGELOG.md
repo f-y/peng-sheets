@@ -15,7 +15,7 @@ All notable changes to the "PengSheets" extension will be documented in this fil
   - **Error Detection**: Non-numeric values in calculations return N/A for easy detection of broken references
 
 ### Fixed
-- Block global Undo/Redo shortcuts while Formula Dialog is open to prevent accidental document changes
+- Fix sheet reordering across interleaved documents being incorrectly treated as physical-only moves, causing metadata removal and incorrect document order.
 
 ## [1.0.6] - 2026-01-11
 

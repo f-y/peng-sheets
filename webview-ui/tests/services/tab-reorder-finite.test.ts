@@ -633,33 +633,15 @@ describe('Finite Pattern Coverage', () => {
 
             console.log('[DEBUG] S_H4 Result:', JSON.stringify(result, null, 2));
 
-            // We expect D1, S1, S2.
-            // This requires Metadata because physically S1 is before S2?
-            // Physical: [S1, S2], D1. 
-            // D1 is physically AFTER WB (Because interleaved).
-            // To get D1 BEFORE S1 visually, we need metadata.
-            // If result.actionType is 'physical' (metadataRequired: false), it removes metadata -> [S1, S2, D1].
-            // So we EXPECT 'metadata' action or 'physical+metadata'.
-            // Definitely expect metadataRequired: true.
+            // H9 Physical Normalization:
+            // D1 becomes visually first → need to move WB physically after D1
+            // Result: move-workbook, metadataRequired: false (physical = visual)
+            expect(result.actionType).toBe('physical+metadata');
+            expect(result.physicalMove?.type).toBe('move-workbook');
+            expect(result.metadataRequired).toBe(false);
 
-            expect(result.metadataRequired).toBe(true);
-
-            // Verify intermediate order
-            if (result.newTabOrder) {
-                expect(result.newTabOrder[0].type).toBe('document'); // D1
-                expect(result.newTabOrder[1].type).toBe('sheet');    // S1
-                expect(result.newTabOrder[2].type).toBe('sheet');    // S2
-            }
-
-            // ===== E2E FINAL STATE VERIFICATION =====
-            const state = JSON.parse(editor.getState());
-
-            // Verify metadata tab_order reflects [D1, S1, S2]
-            const tabOrder = state.workbook?.metadata?.tab_order;
-            expect(tabOrder).toBeDefined();
-            expect(tabOrder[0]).toEqual({ type: 'document', index: 0 }); // D1
-            expect(tabOrder[1]).toEqual({ type: 'sheet', index: 0 });    // S1
-            expect(tabOrder[2]).toEqual({ type: 'sheet', index: 1 });    // S2
+            // newTabOrder is undefined because physical move achieves the desired order
+            expect(result.newTabOrder).toBeUndefined();
         });
 
         // S_H5: Sheet Drag Across Interleaved Doc (R->L)

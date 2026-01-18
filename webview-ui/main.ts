@@ -1391,9 +1391,15 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             docIndex: t.docIndex
         }));
 
+        console.log('[DEBUG H9] _handleTabReorder START:', { fromIndex, toIndex });
+        console.log('[DEBUG H9] Current tabs:', JSON.stringify(tabs, null, 2));
+
         const action = determineReorderAction(tabs, fromIndex, toIndex);
 
+        console.log('[DEBUG H9] determineReorderAction result:', JSON.stringify(action, null, 2));
+
         if (action.actionType === 'no-op') {
+            console.log('[DEBUG H9] NO-OP - returning early');
             return;
         }
 
@@ -1407,26 +1413,35 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
             // Update metadata FIRST (if needed) so it's included in the physical move result
             if (action.metadataRequired && action.physicalMove) {
+                console.log('[DEBUG H9] Branch: metadataRequired && physicalMove');
                 if (action.newTabOrder) {
+                    console.log('[DEBUG H9] Calling editor.updateWorkbookTabOrder with:', JSON.stringify(action.newTabOrder));
                     const result = editor.updateWorkbookTabOrder(action.newTabOrder);
+                    console.log('[DEBUG H9] updateWorkbookTabOrder result:', JSON.stringify(result));
                     // Don't send this - it will be included in the physical move result
                     if (result && result.error) {
                         console.error('[TabReorder] Metadata update failed:', result.error);
                     }
+                } else {
+                    console.log('[DEBUG H9] WARNING: metadataRequired=true but newTabOrder is null/undefined!');
                 }
             } else if (!action.metadataRequired && action.physicalMove) {
+                console.log('[DEBUG H9] Branch: !metadataRequired && physicalMove - removing tab_order');
                 // Result is natural order - remove existing tab_order before physical move
                 editor.updateWorkbookTabOrder(null);
             }
 
             // Execute physical move AFTER metadata (so it includes the metadata changes)
             if (action.physicalMove) {
+                console.log('[DEBUG H9] Executing physicalMove:', JSON.stringify(action.physicalMove));
                 switch (action.physicalMove.type) {
                     case 'move-sheet': {
                         const { fromSheetIndex, toSheetIndex } = action.physicalMove;
                         // Only pass toIndex if metadata is required, otherwise null (no metadata)
                         const targetTabOrderIndex = action.metadataRequired ? toIndex : null;
+                        console.log('[DEBUG H9] move-sheet:', { fromSheetIndex, toSheetIndex, targetTabOrderIndex });
                         const result = editor.moveSheet(fromSheetIndex, toSheetIndex, targetTabOrderIndex);
+                        console.log('[DEBUG H9] moveSheet result:', JSON.stringify(result));
                         if (result) this._postBatchUpdate(result);
                         break;
                     }

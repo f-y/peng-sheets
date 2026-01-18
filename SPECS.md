@@ -289,6 +289,7 @@ These scenarios target specific reported bugs where outcome types are misidentif
 | H1 | Restore Natural Order (Stale Metadata failure) | File: `[WB(S1,S2), D1]`, Tab: `[S1, D1, S2]` | Drag D1 after S2 | Tab: `[S1, S2, D1]` (Matches File) | Metadata (Remove) |
 | H2 | Force Physical Normalization (Missing Physical failure) | File: `[D1, WB(S1,S2)]`, Tab: `[D1, S1, S2]` | Drag D1 between S1/S2 | File: `[WB, D1]`, Tab: `[S1, D1, S2]` | Physical + Metadata |
 | H8 | Interleaved Doc -> Doc (Group Internal Reorder) | File: `[S1, D1, S2, D2]`, Tab: `[S1, D1, S2, D2]` | Drag D2 before D1 | File: `[S1, D2, D1, S2]`, Tab: `[S1, D2, D1, S2]` | Physical |
+| H9 | Sheet across interleaved Doc (Physical Normalization) | File: `[WB(S1,S2), D1]`, Tab: `[S1, D1, S2]` | Drag S1 between D1/S2 | File: `[D1, WB(S1,S2)]`, Tab: `[D1, S1, S2]` | Physical (move WB) + Metadata (remove) |
 
 **Key Rules:**
 1. Sheet→Sheet: Physical reorder within Workbook section only
@@ -296,6 +297,7 @@ These scenarios target specific reported bugs where outcome types are misidentif
 3. Doc→Sheet position: Physical move if Doc changes sides of WB; Metadata-only if stays same side
 4. Doc→Doc: Always physical move
 5. Doc between sheets reorder: If display order of docs-after-WB differs from file order, **physical reorder** needed
+6. **Physical Normalization Principle (H9)**: When a Sheet move causes a Document to become visually first (before all Sheets), the Workbook MUST be physically moved after that Document. The resulting file structure should match the visual order, eliminating the need for metadata.
 
 **Metadata Necessity:**
 
