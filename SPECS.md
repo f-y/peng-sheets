@@ -291,6 +291,7 @@ These scenarios target specific reported bugs where outcome types are misidentif
 | H8 | Interleaved Doc -> Doc (Group Internal Reorder) | File: `[S1, D1, S2, D2]`, Tab: `[S1, D1, S2, D2]` | Drag D2 before D1 | File: `[S1, D2, D1, S2]`, Tab: `[S1, D2, D1, S2]` | Physical |
 | H9 | Sheet across interleaved Doc (Physical Normalization) | File: `[WB(S1,S2), D1]`, Tab: `[S1, D1, S2]` | Drag S1 between D1/S2 | File: `[D1, WB(S1,S2)]`, Tab: `[D1, S1, S2]` | Physical (move WB) + Metadata (remove) |
 | H10 | Sheet to end across docs (Interleaved Metadata) | File: `[WB(S1,S2), D1, D2]`, Tab: `[S1, D1, S2, D2]` | Drag S1 to end | File: `[WB(S2,S1)]`, Tab: `[D1, S2, D2, S1]` | Physical (move sheet) + Metadata |
+| H11 | Sheet to between S2/D2 (Sheet order differs) | File: `[WB(S1,S2), D1, D2]`, Tab: `[S1, D1, S2, D2]` | Drag S1 between S2/D2 | File: `[D1, WB(S1,S2), D2]`, Tab: `[D1, S2, S1, D2]` | Physical (move WB) + Metadata (order differs) |
 
 **Key Rules:**
 1. Sheet→Sheet: Physical reorder within Workbook section only
@@ -299,6 +300,7 @@ These scenarios target specific reported bugs where outcome types are misidentif
 4. Doc→Doc: Always physical move
 5. Doc between sheets reorder: If display order of docs-after-WB differs from file order, **physical reorder** needed
 6. **Physical Normalization Principle (H9)**: When a Sheet move causes a Document to become visually first (before all Sheets), the Workbook MUST be physically moved after that Document. The resulting file structure should match the visual order, eliminating the need for metadata.
+7. **Sheet Order Check (H11)**: After Physical Normalization, if the visual sheet order differs from the physical sheet order, metadata IS required to express the display order.
 
 **Metadata Necessity:**
 
@@ -319,6 +321,69 @@ The `tab_order` metadata is **only required** when the display order differs fro
 1. After physical move, recalculate expected tab_order from new file structure
 2. If expected tab_order matches desired display order → **remove metadata** (keep file clean)
 3. If expected tab_order differs from desired display order → **save metadata**
+
+#### 8.6.8. Finite Pattern Classification Matrix
+
+All tab reorder scenarios classified by explicit pattern for implementation:
+
+**Sheet → Sheet (In-Workbook)**
+
+| Pattern ID | Name | Trigger | Physical | Metadata |
+|------------|------|---------|----------|----------|
+| SS1 | Adjacent swap (no docs) | S1↔S2, no docs present | move-sheet | None |
+| SS2 | Adjacent swap (docs present) | S1↔S2, docs exist | move-sheet | Remove if matches |
+| SS3 | Non-adjacent swap | S1→S3 position | move-sheet | Remove if matches |
+
+**Sheet → Before Document**
+
+| Pattern ID | Name | Trigger | Physical | Metadata |
+|------------|------|---------|----------|----------|
+| SBD1 | Single sheet before doc | 1 sheet, move before doc | move-workbook (before-doc) | None |
+| SBD2 | Multi-sheet, one before doc | 2+ sheets, 1 before doc | move-workbook (before-doc) | Required |
+
+**Sheet → After Document**
+
+| Pattern ID | Name | Trigger | Physical | Metadata |
+|------------|------|---------|----------|----------|
+| SAD1 | Single sheet after doc | 1 sheet, move after doc | move-workbook (after-doc) | None |
+| SAD2 | Multi-sheet after doc (no reorder) | 2+ sheets, last sheet after doc | move-workbook | Required |
+| SAD3 | Doc becomes first, sheets contiguous, order same | D first in visual, sheet order unchanged | move-workbook | None (H9) |
+| SAD4 | Doc becomes first, sheets contiguous, order differs | D first in visual, sheet order changed | move-workbook | Required (H11) |
+| SAD5 | Sheet to end across multiple docs | Sheet past docs | move-sheet | Required (H10) |
+
+**Sheet → Inside Doc Range (C8)**
+
+| Pattern ID | Name | Trigger | Physical | Metadata |
+|------------|------|---------|----------|----------|
+| SIDR1 | Sheet inside doc range (not last) | Non-last sheet to doc range | move-sheet (to end) | Required |
+| SIDR2 | Sheet inside doc range (already last) | Last sheet to doc range | None | Required |
+
+**Document → Document**
+
+| Pattern ID | Name | Trigger | Physical | Metadata |
+|------------|------|---------|----------|----------|
+| DD1 | Both before WB | D1↔D2, both before WB | move-document | Remove if matches |
+| DD2 | Both after WB | D1↔D2, both after WB | move-document | Remove if matches |
+| DD3 | Cross WB (before→after) | D moves from before to after WB | move-document | Remove if matches |
+| DD4 | Cross WB (after→before) | D moves from after to before WB | move-document | Remove if matches |
+| DD5 | Interleaved docs reorder | Docs interleaved with sheets, reorder | move-document | Required |
+
+**Document → Between Sheets**
+
+| Pattern ID | Name | Trigger | Physical | Metadata |
+|------------|------|---------|----------|----------|
+| DBS1 | Doc before WB to between sheets | D before WB → between S1/S2 | move-document | Required |
+| DBS2 | Doc after WB to between sheets (no move) | D after WB already in position | None | Required |
+| DBS3 | Doc after WB to between sheets (reorder) | D after WB needs reorder | move-document | Required |
+
+**Metadata Removal Patterns**
+
+| Pattern ID | Name | Trigger | Action |
+|------------|------|---------|--------|
+| MR1 | Restore natural order | Visual matches physical after move | Remove metadata |
+| MR2 | Physical normalization complete | After move-workbook, visual = physical | Remove metadata |
+
+
 
 
 ## 9. Markdown Specific Features

@@ -39,7 +39,7 @@ describe('H11 Compound Move Bug', () => {
      * Visual via metadata: [S1, D1, S2, D2]
      * 
      * Action: S1 to index 3 (between S2 and D2)
-     * Expected result: [D1, WB(S2,S1), D2] without metadata
+     * Expected result: [D1, WB(S1,S2), D2] WITH metadata (sheet order S2,S1 differs from physical S1,S2)
      */
     it('H11_A: S1 to between S2/D2 - requires move-workbook + move-sheet', () => {
         // Physical structure: WB(S1, S2), then D1, D2
@@ -83,16 +83,13 @@ describe('H11 Compound Move Bug', () => {
 
         console.log('[H11_A] Result:', JSON.stringify(action, null, 2));
 
-        // Expected:
+        // Expected (H11 FIX):
         // 1. D1 becomes first → move-workbook after D1
-        // 2. S1 moves to end of WB → (S2, S1)
-        // 3. Physical after both moves: [D1, WB(S2,S1), D2]
-        // 4. Visual matches physical → NO metadata
-
-        // Current bug: Returns move-sheet only (no move-workbook)
-        // Physical stays [WB, D1, D2] instead of [D1, WB, D2]
+        // 2. Physical: [D1, WB(S1,S2), D2] (sheet order unchanged)
+        // 3. Visual: [D1, S2, S1, D2] (sheet order reversed)
+        // 4. Visual ≠ Physical → metadata REQUIRED
         expect(action.physicalMove?.type).toBe('move-workbook');
-        expect(action.metadataRequired).toBe(false);
+        expect(action.metadataRequired).toBe(true);
     });
 
     /**
@@ -135,10 +132,11 @@ describe('H11 Compound Move Bug', () => {
 
         console.log('[H11_B] Result:', JSON.stringify(action, null, 2));
 
-        // D1 first, sheets contiguous [S2, S1] → H9 applies
-        // Expected: move-workbook, no metadata
+        // D1 first, sheets contiguous [S2, S1]
+        // BUT visual order (S2, S1) ≠ physical order (S1, S2)
+        // → H11: move-workbook + metadata REQUIRED
         expect(action.physicalMove?.type).toBe('move-workbook');
-        expect(action.metadataRequired).toBe(false);
+        expect(action.metadataRequired).toBe(true);
     });
 
     /**
