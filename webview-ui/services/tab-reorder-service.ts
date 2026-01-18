@@ -1019,6 +1019,58 @@ export function determineReorderAction(
     const lastSheetIdx = tabs.reduce((acc, t, i) => t.type === 'sheet' ? i : acc, -1);
     const hasWorkbook = firstSheetIdx !== -1;
 
+    // =========================================================================
+    // H9 Early Check: Sheet move causing Doc (after WB) to become visually first
+    // This requires move-workbook to normalize the physical structure
+    // NOTE: Only applies when WB has MULTIPLE sheets. Single-sheet cases use S3/S4 pattern.
+    // =========================================================================
+    const sheetCount = tabs.filter(t => t.type === 'sheet').length;
+    if (hasWorkbook && fromTab.type === 'sheet' && sheetCount > 1) {
+        // Simulate the new tab order after this move
+        const newTabs = [...tabs];
+        const [movedTab] = newTabs.splice(fromIndex, 1);
+        const adjustedToIndex = toIndex > fromIndex ? toIndex - 1 : toIndex;
+        newTabs.splice(adjustedToIndex, 0, movedTab);
+
+        // Check if first tab after move is a Doc that is physically after WB
+        const newFirstTab = newTabs[0];
+        if (newFirstTab?.type === 'document') {
+            // Parse current file structure to check if this doc is after WB
+            const fileStructure = parseFileStructure(tabs);
+            const docIndex = newFirstTab.docIndex!;
+            const isDocAfterWb = fileStructure.docsAfterWb.includes(docIndex);
+
+            if (isDocAfterWb) {
+                // H9 pattern: need move-workbook to put WB after this doc
+                // Build newTabOrder from the simulated new tab arrangement
+                const newTabOrder = newTabs
+                    .filter((t) => t.type === 'sheet' || t.type === 'document')
+                    .map((t) => ({
+                        type: t.type as 'sheet' | 'document',
+                        index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
+                    }));
+                const needsMetadata = isMetadataRequired(newTabOrder, fileStructure);
+
+                // CRITICAL: Only trigger H9 move-workbook if result DIFFERS from natural order
+                // If result matches natural order, skip H9 and let normal routing handle it
+                // (This allows metadata REMOVAL when restoring natural order)
+                if (needsMetadata) {
+                    return {
+                        actionType: 'physical+metadata',
+                        physicalMove: {
+                            type: 'move-workbook',
+                            direction: 'after-doc',
+                            targetDocIndex: docIndex
+                        },
+                        newTabOrder: newTabOrder,
+                        metadataRequired: true
+                    };
+                }
+                // else: falls through to normal routing for natural order restoration
+            }
+        }
+    }
+
     // Is Target Inside Workbook?
     // Inside = [FirstSheet ... LastSheet+1] (Inclusive of append to sheets)
     // BUT exception: If dropping onto a Doc that is "between sheets" (visually), it's Inside.
