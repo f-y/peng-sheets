@@ -163,7 +163,12 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
      * Bug: Metadata is NOT removed
      */
     describe('USER BUG: S1→before S2 (D1 was between sheets)', () => {
-        const WORKBOOK_MD = `# Tables
+        // Physical structure: [D1, WB(S1, S2), D3, D2]
+        // tab_order shows D1 between sheets: [S1, D1, S2, D3, D2]
+        // After S1→before S2: [D1, S1, S2, D3, D2] = natural order → no metadata needed
+        const WORKBOOK_MD = `# Doc 1
+
+# Tables
 
 ## Sheet 1
 
@@ -179,8 +184,6 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
 
 <!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "sheet", "index": 0}, {"type": "document", "index": 0}, {"type": "sheet", "index": 1}, {"type": "document", "index": 1}, {"type": "document", "index": 2}]} -->
 
-# Doc 1
-
 # Doc 3
 
 
@@ -194,9 +197,9 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
         it('should verify initial state: D1 displayed between S1 and S2', () => {
             const state = JSON.parse(editor.getState());
 
-            // Physical order: WB(S1, S2), D1, D3, D2
-            expect(state.structure[0].type).toBe('workbook');
-            expect(state.structure[1].title).toBe('Doc 1');
+            // Physical order: D1, WB(S1, S2), D3, D2
+            expect(state.structure[0].title).toBe('Doc 1');
+            expect(state.structure[1].type).toBe('workbook');
             expect(state.structure[2].title).toBe('Doc 3');
             expect(state.structure[3].title).toBe('Doc 2');
 
@@ -212,6 +215,10 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
         });
 
         it('BUG REPRODUCTION via determineReorderAction: S1→before S2 should return metadataRequired=false', () => {
+            // Get physical structure from editor state
+            const state = JSON.parse(editor.getState());
+            const physicalStructure = buildFileStructure(state.structure, state.workbook?.sheets?.length ?? 0);
+
             // Simulate UI tabs array based on tab_order: [S1, D1, S2, D3, D2]
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
                 { type: 'sheet', sheetIndex: 0 },    // S1 at index 0
@@ -222,8 +229,8 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
             ];
 
             // User action: Move S1 (index 0) to before S2 (index 2)
-            // This means: fromIndex=0, toIndex=2
-            const action = determineReorderAction(tabs, 0, 2);
+            // Pass physicalStructure for accurate natural order comparison
+            const action = determineReorderAction(tabs, 0, 2, physicalStructure);
 
             // After move: [D1, S1, S2, D3, D2] which is natural order
             // So metadataRequired should be FALSE
@@ -231,6 +238,10 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
         });
 
         it('FULL BUG REPRODUCTION: S1→before S2 should produce clean file without tab_order', () => {
+            // Get physical structure from editor state
+            const state = JSON.parse(editor.getState());
+            const physicalStructure = buildFileStructure(state.structure, state.workbook?.sheets?.length ?? 0);
+
             // Simulate UI tabs array based on tab_order: [S1, D1, S2, D3, D2]
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
                 { type: 'sheet', sheetIndex: 0 },    // S1 at index 0
@@ -241,7 +252,8 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
             ];
 
             // User action: Move S1 (index 0) to before S2 (index 2)
-            const action = determineReorderAction(tabs, 0, 2);
+            // Pass physicalStructure for accurate natural order comparison
+            const action = determineReorderAction(tabs, 0, 2, physicalStructure);
 
             // Execute the action like _handleTabReorder would
             if (action.newTabOrder) {

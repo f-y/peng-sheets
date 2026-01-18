@@ -196,7 +196,8 @@ export function parseFileStructure(tabs: Array<TabInfo>): FileStructure {
 function buildPatternContext(
     tabs: TabInfo[],
     fromIndex: number,
-    toIndex: number
+    toIndex: number,
+    physicalStructure?: FileStructure
 ): PatternContext {
     const fromTab = tabs[fromIndex];
     const toTab = toIndex < tabs.length ? tabs[toIndex] : undefined;
@@ -216,7 +217,8 @@ function buildPatternContext(
             index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
         }));
 
-    const currentFileStructure = parseFileStructure(tabs);
+    // Use provided physicalStructure if available, otherwise derive from tabs (may be inaccurate)
+    const currentFileStructure = physicalStructure ?? parseFileStructure(tabs);
 
     return {
         tabs,
@@ -492,9 +494,10 @@ function classifyDocToSheetPattern(ctx: PatternContext): DocToSheetPattern {
 function handleSheetToSheet(
     fromIndex: number,
     toIndex: number,
-    tabs: TabInfo[]
+    tabs: TabInfo[],
+    physicalStructure?: FileStructure
 ): ReorderAction {
-    const ctx = buildPatternContext(tabs, fromIndex, toIndex);
+    const ctx = buildPatternContext(tabs, fromIndex, toIndex, physicalStructure);
     const pattern = classifySheetToSheetPattern(ctx);
 
     // Compute toSheetIndex for physical moves
@@ -621,9 +624,10 @@ function handleSheetToSheet(
 function handleSheetToDoc(
     fromIndex: number,
     toIndex: number,
-    tabs: TabInfo[]
+    tabs: TabInfo[],
+    physicalStructure?: FileStructure
 ): ReorderAction {
-    const ctx = buildPatternContext(tabs, fromIndex, toIndex);
+    const ctx = buildPatternContext(tabs, fromIndex, toIndex, physicalStructure);
     const pattern = classifySheetToDocPattern(ctx);
 
 
@@ -776,9 +780,10 @@ function handleSheetToDoc(
 function handleDocToDoc(
     fromIndex: number,
     toIndex: number,
-    tabs: TabInfo[]
+    tabs: TabInfo[],
+    physicalStructure?: FileStructure
 ): ReorderAction {
-    const ctx = buildPatternContext(tabs, fromIndex, toIndex);
+    const ctx = buildPatternContext(tabs, fromIndex, toIndex, physicalStructure);
     const pattern = classifyDocToDocPattern(ctx);
 
     const fromDocIndex = ctx.fromTab.docIndex!;
@@ -904,13 +909,14 @@ function handleDocToDoc(
 function handleDocToSheet(
     fromIndex: number,
     toIndex: number,
-    tabs: TabInfo[]
+    tabs: TabInfo[],
+    physicalStructure?: FileStructure
 ): ReorderAction {
-    const ctx = buildPatternContext(tabs, fromIndex, toIndex);
+    const ctx = buildPatternContext(tabs, fromIndex, toIndex, physicalStructure);
     const pattern = classifyDocToSheetPattern(ctx);
 
     const fromDocIndex = ctx.fromTab.docIndex!;
-    const needsMetadata = isMetadataRequired(ctx.newTabOrder, parseFileStructure(ctx.newTabs));
+    const needsMetadata = isMetadataRequired(ctx.newTabOrder, ctx.currentFileStructure);
 
     switch (pattern) {
         // =====================================================================
@@ -1001,10 +1007,21 @@ function handleDocToSheet(
 // Main Dispatcher
 // =============================================================================
 
+/**
+ * Determine the reorder action for a tab move.
+ *
+ * @param tabs - Current tab array (visual order based on tab_order metadata)
+ * @param fromIndex - Index of tab being moved
+ * @param toIndex - Target index to move to
+ * @param physicalStructure - (Optional) File structure from editor.getState().structure.
+ *                            When provided, uses this for accurate natural order comparison.
+ *                            When omitted, derives structure from tabs (may be inaccurate for metadata scenarios).
+ */
 export function determineReorderAction(
     tabs: Array<TabInfo>,
     fromIndex: number,
-    toIndex: number
+    toIndex: number,
+    physicalStructure?: FileStructure
 ): ReorderAction {
     if (fromIndex === toIndex || toIndex === fromIndex + 1) {
         // Index+1 check: Dropping "after" self is same position
@@ -1117,11 +1134,11 @@ export function determineReorderAction(
     // Dispatch
     let result: ReorderAction;
     if (fromTab.type === 'sheet') {
-        if (targetZone === 'inside-wb') result = handleSheetToSheet(fromIndex, toIndex, tabs);
-        else result = handleSheetToDoc(fromIndex, toIndex, tabs);
+        if (targetZone === 'inside-wb') result = handleSheetToSheet(fromIndex, toIndex, tabs, physicalStructure);
+        else result = handleSheetToDoc(fromIndex, toIndex, tabs, physicalStructure);
     } else { // fromTab.type === 'document'
-        if (targetZone === 'outside-wb') result = handleDocToDoc(fromIndex, toIndex, tabs);
-        else result = handleDocToSheet(fromIndex, toIndex, tabs);
+        if (targetZone === 'outside-wb') result = handleDocToDoc(fromIndex, toIndex, tabs, physicalStructure);
+        else result = handleDocToSheet(fromIndex, toIndex, tabs, physicalStructure);
     }
 
     // Promote 'physical' to 'physical+metadata' if metadata is required
