@@ -208,8 +208,8 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
         });
 
         const D1_WB_D2 = `# D1\n\n# Tables\n\n# D2\n`;
-        // BUG: DD classifier returns metadata-only instead of physical for cross-WB moves
-        it.skip('D3: Doc to Doc (cross WB)', () => { // [D1, WB, D2] drag D1 after D2
+        // TEMP: Unskip to test with current fixes
+        it('D3: Doc to Doc (cross WB)', () => { // [D1, WB, D2] drag D1 after D2
             editor.initializeWorkbook(D1_WB_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'sheet', sheetIndex: 0 },
@@ -230,8 +230,8 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
     describe('8.6.4 Doc -> WB Boundary', () => {
         const D1_WB_D2 = `# D1\n\n# Tables\n\n# D2\n`;
 
-        // BUG: DD classifier returns metadata-only instead of physical for cross-WB moves
-        it.skip('D4: Doc before WB to after WB', () => { // [D1, WB, D2] drag D1 after WB
+        // TEMP: Unskip to test with current fixes
+        it('D4: Doc before WB to after WB', () => { // [D1, WB, D2] drag D1 after WB
             editor.initializeWorkbook(D1_WB_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'sheet', sheetIndex: 0 },
@@ -249,8 +249,8 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
             expect(result.metadata?.tab_order).toBeUndefined();
         });
 
-        // BUG: DD classifier returns metadata-only instead of physical for cross-WB moves
-        it.skip('D5: Doc after WB to before WB', () => { // [D1, WB, D2] drag D2 before WB
+        // TEMP: Unskip to test with current fixes
+        it('D5: Doc after WB to before WB', () => { // [D1, WB, D2] drag D2 before WB
             editor.initializeWorkbook(D1_WB_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'sheet', sheetIndex: 0 },

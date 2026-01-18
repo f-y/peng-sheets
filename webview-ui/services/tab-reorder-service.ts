@@ -791,9 +791,11 @@ function handleDocToDoc(
 
     if (toTab?.type === 'document') {
         toDocIndex = toTab.docIndex!;
+    } else if (toTab === null || toTab === undefined) {
+        // Appending to end of list - let moveDocumentSection handle it
+        toDocIndex = null;
     } else {
-        // If toTab is not a document (e.g., sheet position in DD1),
-        // calculate toDocIndex from the last document before toIndex
+        // toTab is sheet or add-sheet - find last document before this position
         // Add +1 because moveDocumentSection inserts BEFORE toDocIndex,
         // but we want to insert AFTER the last doc (position after it)
         for (let i = toIndex - 1; i >= 0; i--) {
@@ -830,14 +832,16 @@ function handleDocToDoc(
         // DD3/DD4: Cross WB
         // =====================================================================
         case 'DD3_cross_before_to_after': {
-            toAfterWorkbook = true;
+            // Cross WB: Doc before WB moves to after WB
+            // toAfterWorkbook=false lets moveDocumentSection append to EOF when toDocIndex=null
+            // This is correct for D1→after D2 case where D1 should follow D2
             return {
                 actionType: needsMetadata ? 'physical+metadata' : 'physical',
                 physicalMove: {
                     type: 'move-document',
                     fromDocIndex,
                     toDocIndex,
-                    toAfterWorkbook,
+                    toAfterWorkbook: false,  // Don't use wbEnd, just append to EOF
                     toBeforeWorkbook: false
                 },
                 newTabOrder: needsMetadata ? ctx.newTabOrder : undefined,
