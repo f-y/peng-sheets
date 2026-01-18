@@ -21,7 +21,7 @@ export function executeTabReorderLikeMainTs(
     tabs: TestTab[],
     fromIndex: number,
     toIndex: number
-): { content: string; metadata: { tab_order?: TabOrderItem[] } | null } {
+): { content: string; metadata: { tab_order?: TabOrderItem[] } | null; actionType: string } {
 
     // 1. Determine Action
     const action = determineReorderAction(tabs, fromIndex, toIndex);
@@ -75,7 +75,8 @@ export function executeTabReorderLikeMainTs(
     const state = JSON.parse(editor.getState());
     return {
         content,
-        metadata: state.workbook?.metadata || null
+        metadata: state.workbook?.metadata || null,
+        actionType: action.actionType
     };
 }
 
