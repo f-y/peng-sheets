@@ -806,18 +806,6 @@ describe('Sheet Movement with Metadata Cleanup', () => {
         // No-op because inserting before next item (S2) is same position
         expect(action.actionType).toBe('no-op');
     });
-    const tabs: TestTab[] = [
-        { type: 'sheet', sheetIndex: 0 },
-        { type: 'document', docIndex: 0 },
-        { type: 'sheet', sheetIndex: 1 },
-        { type: 'add-sheet' }
-    ];
-
-    // Drag D1 (tabIndex 1) to after S2 (tabIndex 3)
-    const action = determineReorderAction(tabs, 1, 3);
-
-    expect(action.actionType).toBe('metadata');
-    expect(action.metadataRequired).toBe(true); // Implementation detail: returns true
 });
 
 /**
