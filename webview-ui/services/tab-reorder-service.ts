@@ -900,19 +900,21 @@ function handleDocToSheet(
     switch (pattern) {
         // =====================================================================
         // DBS1: Doc before WB moving to between sheets
+        // Doc must move from before WB to after WB, so toAfterWorkbook=true
+        // Always requires metadata since doc ends up between sheets
         // =====================================================================
         case 'DBS1_before_wb_to_between': {
             return {
-                actionType: needsMetadata ? 'physical+metadata' : 'physical',
+                actionType: 'physical+metadata',
                 physicalMove: {
                     type: 'move-document',
                     fromDocIndex,
                     toDocIndex: null,
-                    toAfterWorkbook: false,
+                    toAfterWorkbook: true,  // KEY FIX: Doc moves to after WB
                     toBeforeWorkbook: false
                 },
-                newTabOrder: needsMetadata ? ctx.newTabOrder : undefined,
-                metadataRequired: needsMetadata
+                newTabOrder: ctx.newTabOrder,
+                metadataRequired: true  // Always true for between-sheets position
             };
         }
 

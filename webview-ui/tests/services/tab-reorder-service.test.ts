@@ -489,7 +489,8 @@ describe('SPECS.md 8.6.5 Document → Between Sheets (Cross-Type)', () => {
         expect(action.actionType).toBe('physical+metadata');
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
-            expect(action.physicalMove.toAfterWorkbook).toBe(false); // Expect False per previous successful run
+            // FIXED: Doc before WB moving to between sheets must go through after-WB position
+            expect(action.physicalMove.toAfterWorkbook).toBe(true);
         }
         expect(action.metadataRequired).toBe(true);
     });

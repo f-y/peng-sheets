@@ -11,8 +11,8 @@ import type { TestTab } from '../helpers/tab-reorder-test-utils';
 
 const CONFIG = JSON.stringify({ rootMarker: '# Tables' });
 
-// BUG: Classifier issues with SS, DD, DS patterns causing failures
-describe.skip('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
+// Unskip after DBS1 classifier fix
+describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
 
     // =========================================================================
     // 8.6.1 Sheet -> Sheet (Within Workbook)
@@ -32,7 +32,8 @@ describe.skip('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
 
         const D1_WB_S1_S2_D2 = `# D1\n\n# Tables\n\n## S1\n\n## S2\n\n# D2\n`;
 
-        it('S2: Sheet over Sheet (with Docs)', () => { // [D1, WB(S1,S2), D2] drag S1 after S2
+        // BUG: SS classifier returns metadata-only instead of physical for sheet swap with docs
+        it.skip('S2: Sheet over Sheet (with Docs)', () => { // [D1, WB(S1,S2), D2] drag S1 after S2
             editor.initializeWorkbook(D1_WB_S1_S2_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 },
@@ -176,7 +177,8 @@ describe.skip('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
     // =========================================================================
     describe('8.6.3 Doc -> Doc', () => {
         const D1_D2_WB = `# D1\n\n# D2\n\n# Tables\n`;
-        it('D1: Doc to Doc (before WB)', () => { // [D1, D2, WB] drag D1 after D2
+        // BUG: DD classifier returns metadata-only instead of physical for before-WB doc moves
+        it.skip('D1: Doc to Doc (before WB)', () => { // [D1, D2, WB] drag D1 after D2
             editor.initializeWorkbook(D1_D2_WB, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'document', docIndex: 1 },
@@ -206,7 +208,8 @@ describe.skip('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
         });
 
         const D1_WB_D2 = `# D1\n\n# Tables\n\n# D2\n`;
-        it('D3: Doc to Doc (cross WB)', () => { // [D1, WB, D2] drag D1 after D2
+        // BUG: DD classifier returns metadata-only instead of physical for cross-WB moves
+        it.skip('D3: Doc to Doc (cross WB)', () => { // [D1, WB, D2] drag D1 after D2
             editor.initializeWorkbook(D1_WB_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'sheet', sheetIndex: 0 },
@@ -227,7 +230,8 @@ describe.skip('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
     describe('8.6.4 Doc -> WB Boundary', () => {
         const D1_WB_D2 = `# D1\n\n# Tables\n\n# D2\n`;
 
-        it('D4: Doc before WB to after WB', () => { // [D1, WB, D2] drag D1 after WB
+        // BUG: DD classifier returns metadata-only instead of physical for cross-WB moves
+        it.skip('D4: Doc before WB to after WB', () => { // [D1, WB, D2] drag D1 after WB
             editor.initializeWorkbook(D1_WB_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'sheet', sheetIndex: 0 },
@@ -245,7 +249,8 @@ describe.skip('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
             expect(result.metadata?.tab_order).toBeUndefined();
         });
 
-        it('D5: Doc after WB to before WB', () => { // [D1, WB, D2] drag D2 before WB
+        // BUG: DD classifier returns metadata-only instead of physical for cross-WB moves
+        it.skip('D5: Doc after WB to before WB', () => { // [D1, WB, D2] drag D2 before WB
             editor.initializeWorkbook(D1_WB_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'sheet', sheetIndex: 0 },
@@ -310,7 +315,8 @@ describe.skip('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
 
         const WB_S1_S2_D1_D2 = `# Tables\n\n## S1\n\n## S2\n\n# D1\n\n# D2\n`;
 
-        it('D8: Doc after WB -> between (reorder)', () => { // [WB(S1,S2), D1, D2] drag D2 between S1, S2
+        // BUG: DBS classifier returns metadata-only instead of physical+metadata for D8
+        it.skip('D8: Doc after WB -> between (reorder)', () => { // [WB(S1,S2), D1, D2] drag D2 between S1, S2
             editor.initializeWorkbook(WB_S1_S2_D1_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'sheet', sheetIndex: 0 }, { type: 'sheet', sheetIndex: 1 },
