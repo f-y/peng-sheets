@@ -138,6 +138,33 @@ function handleSheetToSheet(
     // Determine Target Sheet Index
     let toSheetIndex: number;
 
+    // Optimization: Check for Physical No-Op / Natural Order Restoration
+    const newTabs = [...tabs];
+    const [movedTab] = newTabs.splice(fromIndex, 1);
+
+    // Adjust insertion index if we moved from left to right (because removal shifted indices)
+    const insertionIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
+    newTabs.splice(insertionIndex, 0, movedTab);
+
+    const newTabOrder = newTabs.map(t => ({
+        type: t.type as 'sheet' | 'document',
+        index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
+    }));
+
+    const currentFileStructure = parseFileStructure(tabs);
+    // Sort sheets to represent True Physical Order
+    currentFileStructure.sheets.sort((a, b) => a - b);
+
+    // If the Desired Order (newTabs) matches the CURRENT Physical Structure,
+    // we don't need a physical move. We just need to remove metadata (restoring natural order).
+    if (!isMetadataRequired(newTabOrder, currentFileStructure)) {
+        return {
+            actionType: 'metadata',
+            newTabOrder: null,
+            metadataRequired: false
+        };
+    }
+
     if (toTab && toTab.type === 'sheet') {
         toSheetIndex = toTab.sheetIndex!;
     } else {
@@ -177,6 +204,53 @@ function handleSheetToSheet(
     // Special Check: Is the move effectively a NO-OP for physical layer?
     // e.g. moving 0 to 1 (insert before 1) -> 0,1. No change.
 
+    // Predicte Physical Structure after Move
+    const predictedFileStructure = parseFileStructure(tabs);
+    // Sort logic from before is irrelevant if we simply simulate the splice on the sheets array?
+    // Actually, currentFileStructure.sheets IS the sorted list of indices [0, 1, 2...].
+    // If we move sheet 0 to 0, it remains [0, 1, 2...].
+    // If we move sheet 0 to 1, it becomes [1, 0, 2...] ? NO.
+    // moveSheet reorders content. The indices 0, 1, 2... refer to POSITIONS in the new array.
+    // So the 'sheets' part of file structure ALWAYS remains [0, 1, 2...] physically (unless we deleted?).
+    // No, wait. 
+    // FileStructure.sheets is list of ID-like indices?
+    // No. parseFileStructure pushes tab.sheetIndex.
+    // If we move sheet 0 to position 1.
+    // The sheet that WAS 0 is now at position 1.
+    // The sheet that WAS 1 is now at position 0.
+    // On Disk, the content is swapped.
+    // BUT the 'sheetIndex' property in TabInfo assumes we reload state?
+    // isMetadataRequired compares NEW STATE vs NEW STRUCTURE.
+    // In NEW structure, the sheet at position 0 will have index 0 (renumbered?).
+    // NO. ID persists?
+    // In this codebase, `sheetIndex` is index in `workbook.sheets` array.
+    // If we verify using `isMetadataRequired`, we compare:
+    // DisplayItem.index vs FileStructure.sheets[i].
+    // DisplayItem.index comes from `t.sheetIndex`.
+    // If we executed move, the sheet at pos 0 in Display is `S1` (old index 0).
+    // In Logic, does `moveSheet` reassign indices?
+    // `editor.getState()` returns updated structure.
+    // If we rely on `isMetadataRequired` to predict, we assume indices match positions.
+    // The "Sheet Indices" in `currentFileStructure` are [0, 1, 2...].
+    // After move, the Physical Structure's `sheets` array will STILL be [0, 1, 2...] (because it lists indices in order).
+    // So `predictedFileStructure` is SAME as `currentFileStructure` regarding `sheets` array content (just filtered 0..N).
+    // The CHANGE is in `newTabOrder`.
+    // `newTabOrder` has `S1` at pos X. `S1.index` is 0.
+    // `predictedFileStructure.sheets` has `0` at pos 0.
+    // So `isMetadataRequired` effectively compares Visual Position vs Physical Position.
+    // And `docs` positions matter.
+    // If `docs` are interleaved visually, `newTabOrder` reflects that.
+    // `predictedFileStructure` keeps `docs` where they physically are.
+    // So `isMetadataRequired` will return TRUE if Visual != Physical.
+
+    // So we just need to pass `currentFileStructure` (with sorted sheets) to `isMetadataRequired`?
+    // Yes, essentially.
+
+    // Re-ensure sheets are sorted (Physical Definition)
+    predictedFileStructure.sheets.sort((a, b) => a - b);
+
+    const needsMetadata = isMetadataRequired(newTabOrder, predictedFileStructure);
+
     return {
         actionType: 'physical',
         physicalMove: {
@@ -184,7 +258,8 @@ function handleSheetToSheet(
             fromSheetIndex: fromTab.sheetIndex!,
             toSheetIndex
         },
-        metadataRequired: false
+        metadataRequired: needsMetadata,
+        newTabOrder: needsMetadata ? newTabOrder : undefined
     };
 }
 
@@ -602,13 +677,24 @@ export function determineReorderAction(
     }
 
     // Dispatch
+    let result: ReorderAction;
     if (fromTab.type === 'sheet') {
-        if (targetZone === 'inside-wb') return handleSheetToSheet(fromIndex, toIndex, tabs);
-        return handleSheetToDoc(fromIndex, toIndex, tabs);
-    } else if (fromTab.type === 'document') {
-        if (targetZone === 'outside-wb') return handleDocToDoc(fromIndex, toIndex, tabs);
-        return handleDocToSheet(fromIndex, toIndex, tabs);
+        if (targetZone === 'inside-wb') result = handleSheetToSheet(fromIndex, toIndex, tabs);
+        else result = handleSheetToDoc(fromIndex, toIndex, tabs);
+    } else { // fromTab.type === 'document'
+        if (targetZone === 'outside-wb') result = handleDocToDoc(fromIndex, toIndex, tabs);
+        else result = handleDocToSheet(fromIndex, toIndex, tabs);
     }
+
+    // Promote 'physical' to 'physical+metadata' if metadata is required
+    if (result.actionType === 'physical' && result.metadataRequired && result.physicalMove) {
+        return {
+            ...result,
+            actionType: 'physical+metadata'
+        };
+    }
+
+    return result;
 
     // Fallback
     return { actionType: 'no-op', metadataRequired: false };

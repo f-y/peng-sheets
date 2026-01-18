@@ -21,7 +21,14 @@ export function executeTabReorderLikeMainTs(
     tabs: TestTab[],
     fromIndex: number,
     toIndex: number
-): { content: string; metadata: { tab_order?: TabOrderItem[] } | null; actionType: string } {
+): {
+    content: string;
+    metadata: { tab_order?: TabOrderItem[] } | null;
+    actionType: string;
+    metadataRequired?: boolean;
+    newTabOrder?: TabOrderItem[] | null;
+    physicalMove?: any;
+} {
 
     // 1. Determine Action
     const action = determineReorderAction(tabs, fromIndex, toIndex);
@@ -82,7 +89,9 @@ export function executeTabReorderLikeMainTs(
         content,
         metadata: state.workbook?.metadata || null,
         actionType: action.actionType,
-        physicalMove: action.physicalMove
+        physicalMove: action.physicalMove,
+        metadataRequired: action.metadataRequired,
+        newTabOrder: action.newTabOrder
     };
 }
 

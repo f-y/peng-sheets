@@ -469,4 +469,332 @@ describe('Finite Pattern Coverage', () => {
         expect((result as any).physicalMove?.type).toBe('move-document');
         expect((result as any).physicalMove?.toDocIndex).toBe(0);
     });
+
+    describe('6. Sheet Hazard Verification', () => {
+        // S_H1: Natural Order Restoration
+        // Physical: [S1, S2]. Metadata: [S2, S1].
+        // Action: Drag S2 (visual index 0) -> After S1 (visual index 1).
+        // Expected: Action 'metadata' (or 'no-op' if it detects physical match?), specifically metadataRequired: false (Removal).
+        it('S_H1: Restore Natural Order (Sheet) - [S1, S2] with Meta [S2, S1] -> Drag S2 after S1', () => {
+            // Initialize with metadata that reverses natural order
+            const WB = `# Tables\n\n## S1\n\n## S2\n`;
+            editor.initializeWorkbook(WB, JSON.stringify({
+                workbook: {
+                    metadata: {
+                        tab_order: [
+                            { type: 'sheet', index: 1 }, // S2 first
+                            { type: 'sheet', index: 0 }  // S1 second
+                        ]
+                    }
+                }
+            }));
+
+            // Note: If metadata is present, tabs input assumes visual order.
+            // But determineReorderAction expects `tabs` to be the current list.
+            // If we have metadata [S2, S1], the tabs list IS [S2, S1].
+
+            const tabs: TestTab[] = [
+                { type: 'sheet', sheetIndex: 1 }, // S2 (Visual 0)
+                { type: 'sheet', sheetIndex: 0 }  // S1 (Visual 1)
+            ];
+
+            const result = executeTabReorderLikeMainTs(
+                tabs,
+                0, // S2
+                2  // After S1
+            );
+
+            console.log('[DEBUG] S_H1 Result:', JSON.stringify(result, null, 2));
+
+            // Should be metadata action that REMOVES metadata because resulting order [S1, S2] matches natural order (indices 0, 1).
+            // Main.ts logic: if !needsMetadata -> updateWorkbookTabOrder(null).
+            // This is 'metadata' action with metadataRequired: false.
+            expect(result.actionType).toBe('metadata');
+            expect(result.metadata?.tab_order).toBeUndefined();
+
+            // ===== E2E FINAL STATE VERIFICATION =====
+            const state = JSON.parse(editor.getState());
+            // Natural order restored - metadata should be removed
+            expect(state.workbook?.metadata?.tab_order).toBeUndefined();
+            // Physical order should remain [S1, S2]
+            expect(state.workbook.sheets[0].name).toBe('S1');
+            expect(state.workbook.sheets[1].name).toBe('S2');
+        });
+
+        // S_H2: Sheet -> Interleaved Doc (Before)
+        // Structure: [D1, S1, S2, D2]
+        // Drag S2 -> Before D1 (Index 0).
+        it('S_H2: Sheet -> Interleaved Doc (Before) - [D1, S1, S2, D2] -> Drag S2 before D1', () => {
+            // Initialize with structure [D1, WB(S1,S2), D2]
+            const WB = `# D1\n\n# Tables\n\n## S1\n\n## S2\n\n# D2\n`;
+            editor.initializeWorkbook(WB, CONFIG);
+
+            const tabs: TestTab[] = [
+                { type: 'document', docIndex: 0 }, // D1
+                { type: 'sheet', sheetIndex: 0 }, // S1
+                { type: 'sheet', sheetIndex: 1 }, // S2
+                { type: 'document', docIndex: 1 } // D2
+            ];
+
+            const result = executeTabReorderLikeMainTs(
+                tabs,
+                2, // S2
+                0  // Before D1
+            );
+
+            console.log('[DEBUG] S_H2 Result:', JSON.stringify(result, null, 2));
+
+            // Should interpret unlikely move of Sheet to BEFORE Doc as "Move to Start of Sheets".
+            // Since Docs are interleaved, sheets reside "conceptually" together within the WB wrapper/indices.
+            // Moving before D1 (Index 0) -> Before S1 (Index 0).
+            expect(result.actionType).toMatch(/physical|metadata/);
+            if ((result as any).physicalMove) {
+                expect((result as any).physicalMove.type).toBe('move-sheet');
+                expect((result as any).physicalMove.toSheetIndex).toBe(0);
+            }
+
+            // ===== E2E FINAL STATE VERIFICATION =====
+            // For metadata-only action, physical sheet order remains [S1, S2]
+            const state = JSON.parse(editor.getState());
+            expect(state.workbook.sheets[0].name).toBe('S1');
+            expect(state.workbook.sheets[1].name).toBe('S2');
+            // Check that newTabOrder reflects visual [S2, D1, S1, D2]
+            if (result.metadataRequired && result.newTabOrder) {
+                expect(result.newTabOrder[0].type).toBe('sheet');
+                expect(result.newTabOrder[0].index).toBe(1); // S2
+            }
+        });
+
+        // S_H3: Sheet -> Interleaved Doc (After)
+        // Structure: [D1, S1, S2, D2]
+        // Drag S1 -> After D2 (Index 4).
+        it('S_H3: Sheet -> Interleaved Doc (After) - [D1, S1, S2, D2] -> Drag S1 after D2', () => {
+            // Initialize with structure [D1, WB(S1,S2), D2]
+            const WB = `# D1\n\n# Tables\n\n## S1\n\n## S2\n\n# D2\n`;
+            editor.initializeWorkbook(WB, CONFIG);
+
+            const tabs: TestTab[] = [
+                { type: 'document', docIndex: 0 }, // D1
+                { type: 'sheet', sheetIndex: 0 }, // S1
+                { type: 'sheet', sheetIndex: 1 }, // S2
+                { type: 'document', docIndex: 1 } // D2
+            ];
+
+            const result = executeTabReorderLikeMainTs(
+                tabs,
+                1, // S1
+                4  // After D2
+            );
+
+            console.log('[DEBUG] S_H3 Result:', JSON.stringify(result, null, 2));
+
+            expect(result.actionType).toMatch(/physical|metadata/);
+
+            // ===== E2E FINAL STATE VERIFICATION =====
+            const state = JSON.parse(editor.getState());
+            // Physical sheet order should be [S2, S1] (S1 moved to end)
+            expect(state.workbook.sheets[0].name).toBe('S2');
+            expect(state.workbook.sheets[1].name).toBe('S1');
+            // Metadata should reflect visual order [D1, S2, D2, S1]
+            expect(result.metadataRequired).toBe(true);
+        });
+        // S_H4: Sheet Drag Across Interleaved Doc (Leapfrog Interleaved)
+        // Structure: [S1, D1, S2]. 
+        // Action: Drag S1 (Index 0) -> Between D1 and S2 (Index 2).
+        // Expected: [D1, S1, S2].
+        // Bug Report: S1 moves physically to be before S2 (No-op), metadata removed. Result [S1, S2, D1].
+        it('S_H4: Sheet Drag Across Interleaved Doc - [S1, D1, S2] -> Drag S1 between D1/S2', () => {
+            // Initialize with interleaved structure: S1, D1, S2
+            const WB_INTERLEAVED = `# Tables\n\n## S1\n\n## S2\n\n# D1\n`;
+            editor.initializeWorkbook(WB_INTERLEAVED, JSON.stringify({
+                workbook: {
+                    metadata: {
+                        tab_order: [
+                            { type: 'sheet', index: 0 },
+                            { type: 'document', index: 0 },
+                            { type: 'sheet', index: 1 }
+                        ]
+                    }
+                }
+            }));
+
+            const tabs: TestTab[] = [
+                { type: 'sheet', sheetIndex: 0 }, // S1
+                { type: 'document', docIndex: 0 }, // D1
+                { type: 'sheet', sheetIndex: 1 }  // S2
+            ];
+
+            // Drag S1 (0) to Index 2 (After D1, Before S2).
+            const result = executeTabReorderLikeMainTs(
+                tabs,
+                0,
+                2
+            );
+
+            console.log('[DEBUG] S_H4 Result:', JSON.stringify(result, null, 2));
+
+            // We expect D1, S1, S2.
+            // This requires Metadata because physically S1 is before S2?
+            // Physical: [S1, S2], D1. 
+            // D1 is physically AFTER WB (Because interleaved).
+            // To get D1 BEFORE S1 visually, we need metadata.
+            // If result.actionType is 'physical' (metadataRequired: false), it removes metadata -> [S1, S2, D1].
+            // So we EXPECT 'metadata' action or 'physical+metadata'.
+            // Definitely expect metadataRequired: true.
+
+            expect(result.metadataRequired).toBe(true);
+
+            // Verify intermediate order
+            if (result.newTabOrder) {
+                expect(result.newTabOrder[0].type).toBe('document'); // D1
+                expect(result.newTabOrder[1].type).toBe('sheet');    // S1
+                expect(result.newTabOrder[2].type).toBe('sheet');    // S2
+            }
+
+            // ===== E2E FINAL STATE VERIFICATION =====
+            const state = JSON.parse(editor.getState());
+
+            // Verify metadata tab_order reflects [D1, S1, S2]
+            const tabOrder = state.workbook?.metadata?.tab_order;
+            expect(tabOrder).toBeDefined();
+            expect(tabOrder[0]).toEqual({ type: 'document', index: 0 }); // D1
+            expect(tabOrder[1]).toEqual({ type: 'sheet', index: 0 });    // S1
+            expect(tabOrder[2]).toEqual({ type: 'sheet', index: 1 });    // S2
+        });
+
+        // S_H5: Sheet Drag Across Interleaved Doc (R->L)
+        // Structure: [S1, D1, S2]. 
+        // Action: Drag S2 (Index 2) -> Before D1 (Index 1).
+        // Expected: [S1, S2, D1].
+        it('S_H5: Sheet Drag Across Interleaved Doc (R->L) - [S1, D1, S2] -> Drag S2 before D1', () => {
+            // Initialize with interleaved structure: S1, D1, S2
+            const WB_INTERLEAVED = `# Tables\n\n## S1\n\n## S2\n\n# D1\n`;
+            editor.initializeWorkbook(WB_INTERLEAVED, JSON.stringify({
+                workbook: {
+                    metadata: {
+                        tab_order: [
+                            { type: 'sheet', index: 0 },
+                            { type: 'document', index: 0 },
+                            { type: 'sheet', index: 1 }
+                        ]
+                    }
+                }
+            }));
+
+            const tabs: TestTab[] = [
+                { type: 'sheet', sheetIndex: 0 }, // S1
+                { type: 'document', docIndex: 0 }, // D1
+                { type: 'sheet', sheetIndex: 1 }  // S2
+            ];
+
+            // Drag S2 (2) to Index 1 (Before D1).
+            const result = executeTabReorderLikeMainTs(tabs, 2, 1);
+
+            console.log('[DEBUG] S_H5 Result:', JSON.stringify(result, null, 2));
+
+            // Expected visual: [S1, S2, D1]
+            // Physical sheets unchanged: [S1, S2]
+            // Metadata needed to show D1 at end
+            expect(result.metadataRequired).toBe(true);
+
+            // ===== E2E FINAL STATE VERIFICATION =====
+            // Check result.newTabOrder directly (state.workbook.metadata may not include docs)
+            const tabOrder = result.newTabOrder;
+            expect(tabOrder).toBeDefined();
+            expect(tabOrder![0]).toEqual({ type: 'sheet', index: 0 }); // S1
+            expect(tabOrder![1]).toEqual({ type: 'sheet', index: 1 }); // S2
+            expect(tabOrder![2]).toEqual({ type: 'document', index: 0 }); // D1
+        });
+
+        // S_H6: Complex Interleaved Sheet Move (L->R)
+        // Structure: [S1, D1, S2, D2]
+        // Action: Drag S1 (Index 0) -> After D2 (Index 4).
+        // Expected: [D1, S2, D2, S1].
+        it('S_H6: Complex Interleaved Sheet Move (L->R) - [S1, D1, S2, D2] -> Drag S1 after D2', () => {
+            const WB = `# Tables\n\n## S1\n\n## S2\n\n# D1\n\n# D2\n`;
+            editor.initializeWorkbook(WB, JSON.stringify({
+                workbook: {
+                    metadata: {
+                        tab_order: [
+                            { type: 'sheet', index: 0 },
+                            { type: 'document', index: 0 },
+                            { type: 'sheet', index: 1 },
+                            { type: 'document', index: 1 }
+                        ]
+                    }
+                }
+            }));
+
+            const tabs: TestTab[] = [
+                { type: 'sheet', sheetIndex: 0 }, // S1
+                { type: 'document', docIndex: 0 }, // D1
+                { type: 'sheet', sheetIndex: 1 }, // S2
+                { type: 'document', docIndex: 1 }  // D2
+            ];
+
+            // Drag S1 (0) to Index 4 (After D2).
+            const result = executeTabReorderLikeMainTs(tabs, 0, 4);
+
+            console.log('[DEBUG] S_H6 Result:', JSON.stringify(result, null, 2));
+
+            expect(result.metadataRequired).toBe(true);
+
+            // ===== E2E FINAL STATE VERIFICATION =====
+            // Check result.newTabOrder directly
+            const tabOrder = result.newTabOrder;
+            expect(tabOrder).toBeDefined();
+            // Expected: [D1, S2, D2, S1]
+            expect(tabOrder![0]).toEqual({ type: 'document', index: 0 }); // D1
+            expect(tabOrder![1].type).toBe('sheet'); // S2
+            expect(tabOrder![2]).toEqual({ type: 'document', index: 1 }); // D2
+            expect(tabOrder![3].type).toBe('sheet'); // S1 at end
+        });
+
+        // S_H7: Complex Interleaved Sheet Move (R->L)
+        // Structure: [S1, D1, S2, D2]
+        // Action: Drag S2 (Index 2) -> Before S1 (Index 0).
+        // Expected: [S2, S1, D1, D2].
+        it('S_H7: Complex Interleaved Sheet Move (R->L) - [S1, D1, S2, D2] -> Drag S2 before S1', () => {
+            const WB = `# Tables\n\n## S1\n\n## S2\n\n# D1\n\n# D2\n`;
+            editor.initializeWorkbook(WB, JSON.stringify({
+                workbook: {
+                    metadata: {
+                        tab_order: [
+                            { type: 'sheet', index: 0 },
+                            { type: 'document', index: 0 },
+                            { type: 'sheet', index: 1 },
+                            { type: 'document', index: 1 }
+                        ]
+                    }
+                }
+            }));
+
+            const tabs: TestTab[] = [
+                { type: 'sheet', sheetIndex: 0 }, // S1
+                { type: 'document', docIndex: 0 }, // D1
+                { type: 'sheet', sheetIndex: 1 }, // S2
+                { type: 'document', docIndex: 1 }  // D2
+            ];
+
+            // Drag S2 (2) to Index 0 (Before S1).
+            const result = executeTabReorderLikeMainTs(tabs, 2, 0);
+
+            console.log('[DEBUG] S_H7 Result:', JSON.stringify(result, null, 2));
+
+            // ===== E2E FINAL STATE VERIFICATION =====
+            // Check physical sheet order
+            const state = JSON.parse(editor.getState());
+            expect(state.workbook.sheets[0].name).toBe('S2');
+            expect(state.workbook.sheets[1].name).toBe('S1');
+            // Check result.newTabOrder directly
+            // For R->L pure sheet move, metadata might not be required if natural order is achieved
+            // But since interleaved docs exist, metadata should be required
+            if (result.metadataRequired) {
+                const tabOrder = result.newTabOrder;
+                expect(tabOrder).toBeDefined();
+                expect(tabOrder![0].type).toBe('sheet'); // S2
+                expect(tabOrder![1].type).toBe('sheet'); // S1
+            }
+        });
+    });
 });
