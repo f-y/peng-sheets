@@ -24,34 +24,47 @@ type TestTab = {
 // =============================================================================
 
 describe('Category A: metadataRequired MUST be false', () => {
-    describe('A1: Sheet swap within WB - display matches physical after move', () => {
-        /**
-         * [S1, S2, D1, D2, D3] → S1 after S2 (toIndex=2)
-         *
-         * Before: Physical=[S1,S2], Display=[S1,S2,D1,D2,D3]
-         * After:  Physical=[S2,S1], Display=[S2,S1,D1,D2,D3]
-         *
-         * Display order matches physical order → NO metadata needed
-         */
-        it('toIndex=2 - S1 after S2 with docs after WB', () => {
-            const tabs: TestTab[] = [
-                { type: 'sheet', sheetIndex: 0 }, // S1 at 0
-                { type: 'sheet', sheetIndex: 1 }, // S2 at 1
-                { type: 'document', docIndex: 0 }, // D1 at 2
-                { type: 'document', docIndex: 1 }, // D2 at 3
-                { type: 'document', docIndex: 2 }, // D3 at 4
-                { type: 'add-sheet' }
-            ];
+    /**
+     * [S1, S2, D1, D2, D3] → S1 after S2 (toIndex=1)
+     * Note: toIndex=1 means "insert before index 1 after removal"
+     * This is a no-op since S1 is already before S2.
+     * 
+     * For actual swap, we need toIndex=2 AFTER removal adjusts,
+     * which means the "insert at" position in the post-removal array.
+     * 
+     * Actually: Drag S1 from 0 to 2 means:
+     * - Remove S1 → [S2, D1, D2, D3]
+     * - Insert at 2 → [S2, D1, S1, D2, D3]
+     * This puts D1 between sheets = metadata REQUIRED
+     * 
+     * To get S1 after S2: After removal [S2,D1,D2,D3], insert at 1
+     * Result: [S2, S1, D1, D2, D3] = no metadata needed
+     */
+    it('S1 after S2 with docs after WB (proper index)', () => {
+        const tabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 }, // S1 at 0
+            { type: 'sheet', sheetIndex: 1 }, // S2 at 1
+            { type: 'document', docIndex: 0 }, // D1 at 2
+            { type: 'document', docIndex: 1 }, // D2 at 3
+            { type: 'document', docIndex: 2 }, // D3 at 4
+            { type: 'add-sheet' }
+        ];
 
-            const action = determineReorderAction(tabs, 0, 2);
+        // toIndex=2 means "insert before what is currently at index 2 AFTER removal"
+        // Remove S1: [S2, D1, D2, D3, add-sheet]
+        // Insert at 1: [S2, S1, D1, D2, D3, add-sheet]
+        const action = determineReorderAction(tabs, 0, 2);
 
-            expect(action.actionType).toBe('physical');
-            expect(action.metadataRequired).toBe(false);
-            expect(action.physicalMove).toEqual({
-                type: 'move-sheet',
-                fromSheetIndex: 0,
-                toSheetIndex: 1
-            });
+        // Actually, 0→2 in this framework means:
+        // After removal, insertionIndex = fromIndex < toIndex ? toIndex - 1 : toIndex
+        // = 0 < 2 ? 1 : 2 = 1
+        // So result IS [S2, S1, D1, D2, D3] - sheets contiguous
+        expect(action.actionType).toBe('physical');
+        expect(action.metadataRequired).toBe(false);
+        expect(action.physicalMove).toEqual({
+            type: 'move-sheet',
+            fromSheetIndex: 0,
+            toSheetIndex: 1
         });
 
         /**
