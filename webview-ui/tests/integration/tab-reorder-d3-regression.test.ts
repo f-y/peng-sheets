@@ -20,8 +20,8 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import * as editor from '../../../src/editor';
 import { determineReorderAction } from '../../services/tab-reorder-service';
 
-// BUG: Classifier issue with D3→Sheet pattern - returns metadata instead of physical+metadata
-describe.skip('Regression: D3→after S1 with D1 before WB', () => {
+// TEMP: Unskip to test with current classifier and editor fixes
+describe('Regression: D3→after S1 with D1 before WB', () => {
     // Exact user scenario: D1 is BEFORE workbook
     const WORKBOOK_MD = `# Doc 1
 

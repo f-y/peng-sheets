@@ -628,8 +628,8 @@ describe('Exact Reproduction: workbook.md [WB, D1, D2, D3]', () => {
         // Dragging D2 "after D3" lands at tabIndex 5 (add-sheet position)
         const action = determineReorderAction(tabs, 3, 5);
 
-        // Implementation Stability Preference: Returns metadata
-        expect(action.actionType).toBe('metadata');
+        // D2 moving to after D3 needs physical reorder since D2 is not first doc after WB
+        expect(action.actionType).toBe('physical+metadata');
     });
 });
 
@@ -935,7 +935,8 @@ describe('SPECS.md 8.6.5 D8: Doc reorder when moving between sheets', () => {
         // Drag D2 (tabIndex 3) to after S1 = left of S2 (toIndex = 1)
         const action = determineReorderAction(tabs, 3, 1);
 
-        expect(action.actionType).toBe('metadata');
+        // D2 is not first doc after WB, so needs physical reorder to appear between sheets
+        expect(action.actionType).toBe('physical+metadata');
         expect(action.metadataRequired).toBe(true);
     });
 
@@ -982,7 +983,8 @@ describe('SPECS.md 8.6.5 D8: 3-doc scenario (matching workbook.md)', () => {
         // Drag D3 (tabIndex 4) to after S1 = left of S2 (toIndex = 1)
         const action = determineReorderAction(tabs, 4, 1);
 
-        expect(action.actionType).toBe('metadata');
+        // D3 is not first doc after WB, so needs physical reorder
+        expect(action.actionType).toBe('physical+metadata');
         expect(action.metadataRequired).toBe(true);
     });
 
@@ -999,7 +1001,8 @@ describe('SPECS.md 8.6.5 D8: 3-doc scenario (matching workbook.md)', () => {
         // Drag D2 (tabIndex 3) to after S1 = left of S2 (toIndex = 1)
         const action = determineReorderAction(tabs, 3, 1);
 
-        expect(action.actionType).toBe('metadata');
+        // D2 is not first doc after WB, so needs physical reorder
+        expect(action.actionType).toBe('physical+metadata');
         expect(action.metadataRequired).toBe(true);
     });
 });

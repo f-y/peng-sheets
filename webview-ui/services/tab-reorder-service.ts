@@ -957,10 +957,32 @@ function handleDocToSheet(
         }
 
         // =====================================================================
-        // DBS2: Doc after WB, no physical move needed (metadata only)
+        // DBS2: Doc after WB moving to between sheets
+        // If doc is not already first doc after WB, it needs physical reorder
         // =====================================================================
         case 'DBS2_after_wb_no_move':
         default: {
+            // Check if this doc is NOT the first doc after WB
+            const firstDocAfterWb = Math.min(...ctx.currentFileStructure.docsAfterWb);
+            const needsPhysicalReorder = fromDocIndex > firstDocAfterWb;
+
+            if (needsPhysicalReorder) {
+                // Doc needs to move to first position after WB
+                return {
+                    actionType: 'physical+metadata',
+                    physicalMove: {
+                        type: 'move-document',
+                        fromDocIndex,
+                        toDocIndex: null,
+                        toAfterWorkbook: true,  // Move to first position after WB
+                        toBeforeWorkbook: false
+                    },
+                    newTabOrder: ctx.newTabOrder,
+                    metadataRequired: true
+                };
+            }
+
+            // Already first doc after WB - metadata only
             return {
                 actionType: 'metadata',
                 newTabOrder: ctx.newTabOrder,

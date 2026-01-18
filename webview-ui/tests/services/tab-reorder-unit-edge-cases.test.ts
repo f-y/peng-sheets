@@ -236,9 +236,9 @@ describe('USER BUG: Doc to before Sheet (metadata-only)', () => {
         // Drag D2 (index 3) to before S2 (toIndex = 2)
         const action = determineReorderAction(tabs, 3, 2);
 
-        // Should be metadata-only since D2 stays after WB in physical file
-        expect(action.actionType).toBe('metadata');
-        expect(action.physicalMove).toBeUndefined();
+        // D2 is not first doc after WB, so needs physical reorder to appear between sheets
+        expect(action.actionType).toBe('physical+metadata');
+        expect(action.physicalMove).toBeDefined();
         expect(action.metadataRequired).toBe(true);
 
         // Verify the new tab order
