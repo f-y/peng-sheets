@@ -791,6 +791,17 @@ function handleDocToDoc(
 
     if (toTab?.type === 'document') {
         toDocIndex = toTab.docIndex!;
+    } else {
+        // If toTab is not a document (e.g., sheet position in DD1),
+        // calculate toDocIndex from the last document before toIndex
+        // Add +1 because moveDocumentSection inserts BEFORE toDocIndex,
+        // but we want to insert AFTER the last doc (position after it)
+        for (let i = toIndex - 1; i >= 0; i--) {
+            if (tabs[i].type === 'document' && i !== fromIndex) {
+                toDocIndex = tabs[i].docIndex! + 1;  // +1 to insert AFTER this doc
+                break;
+            }
+        }
     }
 
     const needsMetadata = isMetadataRequired(ctx.newTabOrder, parseFileStructure(ctx.newTabs));
@@ -1009,7 +1020,13 @@ export function determineReorderAction(
         // Depending on existing structure? Usually Inside.
         targetZone = 'inside-wb';
     } else if (toTab?.type === 'document') {
-        targetZone = 'outside-wb';
+        // Special Case: Sheet moving to just after last sheet (toIndex is first doc after sheets)
+        // This is a sheet swap, not a sheet-to-doc move
+        if (fromTab.type === 'sheet' && toIndex > 0 && tabs[toIndex - 1]?.type === 'sheet') {
+            targetZone = 'inside-wb';
+        } else {
+            targetZone = 'outside-wb';
+        }
     } else {
         // Appending to end or empty space
         // If last tab was sheet -> Inside/Append?

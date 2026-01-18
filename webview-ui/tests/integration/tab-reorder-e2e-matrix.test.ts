@@ -32,8 +32,8 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
 
         const D1_WB_S1_S2_D2 = `# D1\n\n# Tables\n\n## S1\n\n## S2\n\n# D2\n`;
 
-        // BUG: SS classifier returns metadata-only instead of physical for sheet swap with docs
-        it.skip('S2: Sheet over Sheet (with Docs)', () => { // [D1, WB(S1,S2), D2] drag S1 after S2
+        // FIXED: SS routing now correctly routes sheet→after-last-sheet to handleSheetToSheet
+        it('S2: Sheet over Sheet (with Docs)', () => { // [D1, WB(S1,S2), D2] drag S1 after S2
             editor.initializeWorkbook(D1_WB_S1_S2_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 },
@@ -177,7 +177,7 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
     // =========================================================================
     describe('8.6.3 Doc -> Doc', () => {
         const D1_D2_WB = `# D1\n\n# D2\n\n# Tables\n`;
-        // BUG: DD classifier returns metadata-only instead of physical for before-WB doc moves
+        // BUG: Classifier fixed (toDocIndex=2), but moveDocumentSection boundary logic needs fix
         it.skip('D1: Doc to Doc (before WB)', () => { // [D1, D2, WB] drag D1 after D2
             editor.initializeWorkbook(D1_D2_WB, CONFIG);
             const tabs: TestTab[] = [
