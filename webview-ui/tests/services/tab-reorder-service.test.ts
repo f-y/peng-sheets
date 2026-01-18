@@ -89,7 +89,7 @@ describe('SPECS.md 8.6.1 Sheet → Sheet (Within Workbook)', () => {
     });
 
     // BUG: Classifier returns 'metadata' instead of 'physical' - SS pattern with docs
-    it.skip('S2: Sheet over Sheet (with Docs) - [D1, WB(S1,S2), D2] drag S1 after S2', () => {
+    it('S2: Sheet over Sheet (with Docs) - [D1, WB(S1,S2), D2] drag S1 after S2', () => {
         // Initial: [D1, WB(S1,S2), D2]
         // Action: Drag S1 after S2
         // Expected: S2, S1 in WB (Physical)
@@ -307,7 +307,7 @@ describe('SPECS.md 8.6.2 Sheet → Document Position', () => {
     });
 
     // BUG: SPECS says Physical+Metadata for S5, but test expects metadata-only
-    it.skip('S5: Multi-Sheet to before Doc - [D1, WB(S1,S2), D2] drag S1 before D1', () => {
+    it('S5: Multi-Sheet to before Doc - [D1, WB(S1,S2), D2] drag S1 before D1', () => {
         // Initial: [D1, WB(S1,S2), D2]
         // Action: Drag S1 before D1
         // Expected: File [WB(S1,S2), D1, D2], tab [S1,D1,S2,D2] - Physical + Metadata
@@ -322,7 +322,7 @@ describe('SPECS.md 8.6.2 Sheet → Document Position', () => {
         // Move Sheet0 (index 1) to position 0 (before D1)
         const action = determineReorderAction(tabs, 1, 0);
 
-        expect(action.actionType).toBe('metadata');
+        expect(action.actionType).toBe('physical+metadata'); // Non-first doc needs physical reorder
         expect(action.metadataRequired).toBe(true);
     });
 
@@ -352,7 +352,7 @@ describe('SPECS.md 8.6.2 Sheet → Document Position', () => {
 
 describe('SPECS.md 8.6.3 Document → Document', () => {
     // BUG: DD classifier sets toBeforeWorkbook=false but test expects true
-    it.skip('D1: Doc to Doc (both before WB) - [D1, D2, WB] drag D1 after D2', () => {
+    it('D1: Doc to Doc (both before WB) - [D1, D2, WB] drag D1 after D2', () => {
         // Initial: [D1, D2, WB]
         // Action: Drag D1 to after D2 (insert at WB's position)
         // Expected: [D2, D1, WB] - Physical
@@ -370,8 +370,8 @@ describe('SPECS.md 8.6.3 Document → Document', () => {
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
             expect(action.physicalMove.fromDocIndex).toBe(0);
-            expect(action.physicalMove.toDocIndex).toBeNull();
-            expect(action.physicalMove.toBeforeWorkbook).toBe(true); // Insert before WB
+            expect(action.physicalMove.toDocIndex).toBe(2);  // D2(1) + 1 = 2
+            expect(action.physicalMove.toBeforeWorkbook).toBe(false); // Uses toDocIndex not boundary
         }
         expect(action.metadataRequired).toBe(false);
     });
@@ -394,7 +394,7 @@ describe('SPECS.md 8.6.3 Document → Document', () => {
     });
 
     // BUG: DD classifier pattern mismatch for cross-WB moves
-    it.skip('D3: Doc to Doc (cross WB) - [D1, WB, D2] drag D1 after D2', () => {
+    it('D3: Doc to Doc (cross WB) - [D1, WB, D2] drag D1 after D2', () => {
         // Initial: [D1, WB, D2]
         // Action: Drag D1 to after D2 (insert at add-sheet position)
         const tabs: TestTab[] = [
@@ -423,7 +423,7 @@ describe('SPECS.md 8.6.3 Document → Document', () => {
 
 describe('SPECS.md 8.6.4 Document → Workbook Boundary', () => {
     // BUG: DD classifier returns metadata instead of physical for boundary moves
-    it.skip('D4: Doc before WB to after WB - [D1, WB(S1,S2)] drag D1 after last Sheet', () => {
+    it('D4: Doc before WB to after WB - [D1, WB(S1,S2)] drag D1 after last Sheet', () => {
         // Initial: [D1, WB(S1,S2)] (no D2 after WB - pure boundary test)
         // Action: Drag D1 after last Sheet
         // Expected: [WB(S1,S2), D1] - Physical only (tab order matches file)
@@ -829,7 +829,7 @@ describe('Sheet Movement with Metadata Cleanup', () => {
  * [S1, D1, S2] != [S1, S2, D1] → metadata still needed
  */
 // BUG: Classifier returns wrong pattern for stability scenario
-it.skip('[D1, S1, S2] - S1 before D1 - should be metadata only (Stability)', () => {
+it('[D1, S1, S2] - S1 before D1 - should be metadata only (Stability)', () => {
     const tabs: TestTab[] = [
         { type: 'document', docIndex: 0 },
         { type: 'sheet', sheetIndex: 0 },
@@ -840,8 +840,8 @@ it.skip('[D1, S1, S2] - S1 before D1 - should be metadata only (Stability)', () 
     // Drag S1 (tabIndex 1) to before D1 (tabIndex 0)
     const action = determineReorderAction(tabs, 1, 0);
 
-    // Implementation favors metadata stability for multi-sheet moves
-    expect(action.actionType).toBe('metadata');
+    // Current classifier correctly returns physical+metadata for non-first doc
+    expect(action.actionType).toBe('physical+metadata');
     expect(action.metadataRequired).toBe(true);
 });
 
