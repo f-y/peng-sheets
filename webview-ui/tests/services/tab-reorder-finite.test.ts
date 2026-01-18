@@ -441,4 +441,32 @@ describe('Finite Pattern Coverage', () => {
         // Metadata: Should be removed
         expect(result.metadata?.tab_order).toBeUndefined();
     });
+
+    it('H8: Interleaved Group Internal Reorder - [S1, D1, S2, D2] -> Drag D2 before D1', () => {
+        // Initial: S1(0), D1(0), S2(1), D2(1)
+        // D1 at tabIndex 1, D2 at tabIndex 3
+
+        const initialTabs: TestTab[] = [
+            { type: 'sheet', sheetIndex: 0 },
+            { type: 'document', docIndex: 0 },
+            { type: 'sheet', sheetIndex: 1 },
+            { type: 'document', docIndex: 1 } // D2
+        ];
+
+        // Action: Drag D2 (index 3) to before D1 (index 1) -> toIndex 1
+        const result = executeTabReorderLikeMainTs(
+            initialTabs,
+            3, // From D2
+            1  // To before D1
+        );
+
+        console.log('[DEBUG] H8 Result:', JSON.stringify(result, null, 2));
+
+        // Should be a physical move to docIndex 0
+        expect(result.actionType).toMatch(/physical/);
+
+        // Cast to any to access physicalMove because return type inferred incorrectly in test sometimes
+        expect((result as any).physicalMove?.type).toBe('move-document');
+        expect((result as any).physicalMove?.toDocIndex).toBe(0);
+    });
 });

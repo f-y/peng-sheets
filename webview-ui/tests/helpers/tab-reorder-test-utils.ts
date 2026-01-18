@@ -81,7 +81,8 @@ export function executeTabReorderLikeMainTs(
     return {
         content,
         metadata: state.workbook?.metadata || null,
-        actionType: action.actionType
+        actionType: action.actionType,
+        physicalMove: action.physicalMove
     };
 }
 

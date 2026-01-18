@@ -311,7 +311,7 @@ function handleDocToDoc(
     let toBeforeWorkbook = false;
     let toAfterWorkbook = false;
 
-    if (toTab?.type === 'document' && !isToBetweenSheets) {
+    if (toTab?.type === 'document') {
         // Explicit Insert-Before-Doc
         toDocIndex = toTab.docIndex!;
     } else if (toTab?.type === 'sheet' && !isToBetweenSheets) {
@@ -356,7 +356,7 @@ function handleDocToDoc(
     const newFileStructure = parseFileStructure(newTabs);
     const needsMetadata = isMetadataRequired(newTabOrder, newFileStructure);
 
-    if (isToBetweenSheets) {
+    if (isToBetweenSheets && toTab?.type !== 'document') {
         // Case 4: Doc → Sheet (Metadata only or Hybrid)
         const currentFileStructure = parseFileStructure(tabs);
         const isFromBeforeWb = currentFileStructure.docsBeforeWb.includes(fromDocIndex);

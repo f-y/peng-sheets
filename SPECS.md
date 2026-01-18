@@ -288,6 +288,7 @@ These scenarios target specific reported bugs where outcome types are misidentif
 |---|----------|---------------|--------|-------------------|-------------------|
 | H1 | Restore Natural Order (Stale Metadata failure) | File: `[WB(S1,S2), D1]`, Tab: `[S1, D1, S2]` | Drag D1 after S2 | Tab: `[S1, S2, D1]` (Matches File) | Metadata (Remove) |
 | H2 | Force Physical Normalization (Missing Physical failure) | File: `[D1, WB(S1,S2)]`, Tab: `[D1, S1, S2]` | Drag D1 between S1/S2 | File: `[WB, D1]`, Tab: `[S1, D1, S2]` | Physical + Metadata |
+| H8 | Interleaved Doc -> Doc (Group Internal Reorder) | File: `[S1, D1, S2, D2]`, Tab: `[S1, D1, S2, D2]` | Drag D2 before D1 | File: `[S1, D2, D1, S2]`, Tab: `[S1, D2, D1, S2]` | Physical |
 
 **Key Rules:**
 1. Sheet→Sheet: Physical reorder within Workbook section only
