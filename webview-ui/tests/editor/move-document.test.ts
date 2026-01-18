@@ -665,4 +665,45 @@ Second doc.
             expect(doc3Pos).toBeLessThan(doc2Pos); // KEY: D3 before D2
         });
     });
+
+    describe('D1 E2E Scenario: Before-WB doc reorder', () => {
+        // D1 scenario: [D1, D2, WB] → [D2, D1, WB]
+        // This is the exact E2E failing scenario
+        const D1_D2_WB = `# D1
+
+First doc.
+
+# D2
+
+Second doc.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+`;
+
+        beforeEach(() => {
+            initializeWorkbook(D1_D2_WB, SAMPLE_CONFIG);
+        });
+
+        it('should reorder D1 after D2 (toDocIndex=2)', () => {
+            // fromDocIndex=0 (D1), toDocIndex=2 (position after D2)
+            const result = moveDocumentSection(0, 2, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+            const doc1Pos = content.indexOf('# D1');
+            const doc2Pos = content.indexOf('# D2');
+            const tablesPos = content.indexOf('# Tables');
+
+            // Expected order: D2 < D1 < Tables
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 should come before D1
+            expect(doc1Pos).toBeLessThan(tablesPos);
+        });
+    });
 });

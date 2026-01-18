@@ -470,9 +470,22 @@ export function moveDocumentSection(
             }
         }
 
-        // Check if target is "After Last Document" (Append)
+        // Check if target is "After Last Document" (Append to doc zone)
         if (!foundTarget && docIdx === adjustedToDocIndex) {
-            targetLine = linesWithoutDoc.length;
+            // For before-WB docs, insert before WB (not at EOF)
+            const tempText = linesWithoutDoc.join('\\n');
+            const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
+            const originalText = context.mdText;
+            const [originalWbStart] = getWorkbookRange(originalText, rootMarker, sheetHeaderLevel);
+            const fromDocWasBeforeWb = startLine < originalWbStart;
+
+            if (wbStart < linesWithoutDoc.length && fromDocWasBeforeWb) {
+                // WB exists and from-doc was before WB - insert just before WB
+                targetLine = wbStart;
+            } else {
+                // No WB or from-doc was after WB - insert at EOF
+                targetLine = linesWithoutDoc.length;
+            }
             foundTarget = true;
         }
 

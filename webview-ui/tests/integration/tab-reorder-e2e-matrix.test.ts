@@ -177,8 +177,8 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
     // =========================================================================
     describe('8.6.3 Doc -> Doc', () => {
         const D1_D2_WB = `# D1\n\n# D2\n\n# Tables\n`;
-        // BUG: Classifier fixed (toDocIndex=2), but moveDocumentSection boundary logic needs fix
-        it.skip('D1: Doc to Doc (before WB)', () => { // [D1, D2, WB] drag D1 after D2
+        // FIXED: moveDocumentSection now inserts before WB for before-WB docs
+        it('D1: Doc to Doc (before WB)', () => { // [D1, D2, WB] drag D1 after D2
             editor.initializeWorkbook(D1_D2_WB, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'document', docIndex: 1 },
