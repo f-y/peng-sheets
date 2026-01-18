@@ -1,14 +1,21 @@
 import { describe, it, expect } from 'vitest';
-import { executeTabReorderLikeMainTs, TestTab, verifyFinalState } from '../helpers/tab-reorder-test-utils';
-import { TabOrderItem } from '../../../src/editor/types';
+import { executeTabReorderLikeMainTs, TestTab } from '../helpers/tab-reorder-test-utils';
 
 import * as editor from '../../../src/editor';
 
 const CONFIG = JSON.stringify({ rootMarker: '# Tables' });
 
 describe('H9 Bug Reproduction', () => {
-    it('S_H4_UserReport: S1 -> Between D1 and S2 (Interleaved)', () => {
-        // User Provided Markdown
+    /**
+     * S_H4: [S1, D1, S2, D2, D3] → Drag S1 to index 2 → [D1, S1, S2, D2, D3]
+     * 
+     * H9 Physical Normalization:
+     * - D1 becomes first visually
+     * - D1 is physically after WB → move WB after D1
+     * - Result: [D1, WB(S1,S2), D2, D3]
+     * - Visual = Physical → NO metadata needed
+     */
+    it('S_H4_UserReport: S1 -> Between D1 and S2 (H9 Physical Normalization)', () => {
         const USER_MARKDOWN = `# Tables
 
 ## Sheet 1
@@ -32,21 +39,12 @@ describe('H9 Bug Reproduction', () => {
 
         editor.initializeWorkbook(USER_MARKDOWN, CONFIG);
 
-        // User Markdown implies:
-        // Sheets: S1 (0), S2 (1)
-        // Docs: D1 (0), D2 (1), D3 (2)? (Metadata has index 2)
-        // Tabs Order: S1(0), D1(0), S2(1), D2(1), D3(2) if strictly following metadata.
-        // User says "S1 between D1 and S2".
-        // Current: S1, D1, S2, D2...
-        // Drag S1 (0) -> After D1 (1).
-        // Target Index: 2 (Before S2).
-
         const tabs: TestTab[] = [
             { type: 'sheet', sheetIndex: 0 },   // S1 (0)
             { type: 'document', docIndex: 0 },  // D1 (1)
             { type: 'sheet', sheetIndex: 1 },   // S2 (2)
-            { type: 'document', docIndex: 1 },  // D2 (3) (Assuming exists)
-            { type: 'document', docIndex: 2 }   // D3 (4) (Assuming exists based on metadata)
+            { type: 'document', docIndex: 1 },  // D2 (3)
+            { type: 'document', docIndex: 2 }   // D3 (4)
         ];
 
         // Action: Drag S1 (Index 0) to Index 2 (Before S2).
@@ -54,28 +52,12 @@ describe('H9 Bug Reproduction', () => {
 
         console.log('[DEBUG] H9 Reproduction Result:', JSON.stringify(result, null, 2));
 
-        // Result Expectation:
-        // Visual: D1, S1, S2, D2, D3.
-        // Physical: S1, S2, D1, D2, D3.
-        // Mismatch: D1 is at 0 (Vis) vs 2 (Phys).
-        // Action: Metadata Required.
-
-        expect(result.metadataRequired).toBe(true);
-        expect(result.actionType).toMatch(/physical\+metadata|metadata/);
-
-        // Verify Tab Order
-        if (result.newTabOrder) {
-            expect(result.newTabOrder[0].type).toBe('document');
-            expect(result.newTabOrder[0].index).toBe(0); // D1
-
-            expect(result.newTabOrder[1].type).toBe('sheet');
-            expect(result.newTabOrder[1].index).toBe(0); // S1
-
-            expect(result.newTabOrder[2].type).toBe('sheet');
-            expect(result.newTabOrder[2].index).toBe(1); // S2
-        } else {
-            // Failure case: null order implies removal
-            throw new Error('Tab Order was Null (Metadata Removed) - Bug Reproduced');
-        }
+        // H9 Result: move-workbook with NO metadata needed
+        // Visual: [D1, S1, S2, D2, D3]
+        // Physical after WB move: [D1, WB(S1,S2), D2, D3]
+        // These MATCH → metadataRequired: false
+        expect(result.actionType).toBe('physical+metadata');
+        expect(result.physicalMove?.type).toBe('move-workbook');
+        expect(result.metadataRequired).toBe(false);
     });
 });

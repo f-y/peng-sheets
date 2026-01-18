@@ -274,19 +274,40 @@ function handleSheetToSheet(
         const isPhysicallyAfterWb = currentFileStructure.docsAfterWb.includes(firstDocIndex);
 
         if (isPhysicallyAfterWb) {
-            // H9: Document needs to be physically first → move Workbook after this Doc
-            // After move, the file structure will match visual order: [D1, WB, ...]
-            // No metadata will be needed since physical = visual
-            return {
-                actionType: 'physical+metadata',
-                physicalMove: {
-                    type: 'move-workbook',
-                    direction: 'after-doc',
-                    targetDocIndex: firstDocIndex
-                },
-                metadataRequired: false,  // After physical move, order matches
-                newTabOrder: undefined        // No metadata needed
-            };
+            // H10 Check: After move-workbook, will we still need metadata?
+            // Check if sheets remain contiguous in newTabOrder
+            let sheetsContiguous = true;
+            let lastWasSheet = false;
+            let sawDocAfterSheet = false;
+
+            for (let i = 1; i < newTabOrder.length; i++) {
+                const item = newTabOrder[i];
+                if (item.type === 'sheet') {
+                    if (sawDocAfterSheet && !lastWasSheet) {
+                        sheetsContiguous = false;
+                        break;
+                    }
+                    lastWasSheet = true;
+                } else {
+                    if (lastWasSheet) sawDocAfterSheet = true;
+                    lastWasSheet = false;
+                }
+            }
+
+            if (sheetsContiguous) {
+                // Pure H9: Just move WB, no metadata needed
+                return {
+                    actionType: 'physical+metadata',
+                    physicalMove: {
+                        type: 'move-workbook',
+                        direction: 'after-doc',
+                        targetDocIndex: firstDocIndex
+                    },
+                    metadataRequired: false,
+                    newTabOrder: undefined
+                };
+            }
+            // H10: Sheets interleaved with docs, skip H9 early return
         }
     }
 
