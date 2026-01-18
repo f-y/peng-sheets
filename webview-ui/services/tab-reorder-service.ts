@@ -146,10 +146,13 @@ function handleSheetToSheet(
     const insertionIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
     newTabs.splice(insertionIndex, 0, movedTab);
 
-    const newTabOrder = newTabs.map(t => ({
-        type: t.type as 'sheet' | 'document',
-        index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
-    }));
+    // Filter out 'add-sheet' which is a UI-only tab and should not be in metadata
+    const newTabOrder = newTabs
+        .filter(t => t.type !== 'add-sheet')
+        .map(t => ({
+            type: t.type as 'sheet' | 'document',
+            index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
+        }));
 
     const currentFileStructure = parseFileStructure(tabs);
     // Sort sheets to represent True Physical Order
