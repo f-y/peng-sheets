@@ -205,7 +205,7 @@ export function determineReorderAction(
         const targetIsWithinSheetRange = toIndex >= firstSheetIdx && toIndex <= lastSheetIdx + 1;
         const isSheetToSheetMove =
             toTab?.type === 'sheet' ||
-            (targetIsWithinSheetRange && toIndex === lastSheetIdx + 1 && firstSheetIdx === 0);
+            (targetIsWithinSheetRange && toIndex <= lastSheetIdx + 1);
 
         if (isSheetToSheetMove) {
             // Compute the target sheet index for the swap
@@ -350,6 +350,7 @@ export function determineReorderAction(
                             direction: 'after-doc',
                             targetDocIndex: lastDocBeforeSheet.docIndex!
                         },
+                        newTabOrder: needsMeta ? wbNewTabOrder : undefined,
                         metadataRequired: needsMeta
                     };
                 }
@@ -454,19 +455,35 @@ export function determineReorderAction(
 
         // Case 2: Doc → Doc (both on same side of WB, not between sheets)
         // Skip this case if target is between sheets - that's Case 4 (metadata-only)
-        const prevTab = toIndex > 0 ? tabs[toIndex - 1] : null;
-        if (prevTab?.type === 'document' && prevTab !== fromTab && !isToBetweenSheets) {
-            const toDocIndex = prevTab.docIndex!;
+        const toTab = toIndex < tabs.length ? tabs[toIndex] : null;
+
+        // If inserting before a Document
+        if (toTab?.type === 'document' && toTab !== fromTab && !isToBetweenSheets) {
+            const toDocIndex = toTab.docIndex!;
             return {
                 actionType: needsMetadata ? 'physical+metadata' : 'physical',
                 physicalMove: {
                     type: 'move-document',
                     fromDocIndex,
-                    toDocIndex,
+                    toDocIndex, // Insert Before this doc
                     toAfterWorkbook: false,
                     toBeforeWorkbook: false
                 },
-                newTabOrder: needsMetadata ? newTabOrder : undefined,
+                metadataRequired: needsMetadata
+            };
+        }
+
+        // If inserting before the Workbook (target is the first sheet)
+        if (toTab?.type === 'sheet' && !isToBetweenSheets) {
+            return {
+                actionType: needsMetadata ? 'physical+metadata' : 'physical',
+                physicalMove: {
+                    type: 'move-document',
+                    fromDocIndex,
+                    toDocIndex: null,
+                    toAfterWorkbook: false,
+                    toBeforeWorkbook: true
+                },
                 metadataRequired: needsMetadata
             };
         }
@@ -478,13 +495,14 @@ export function determineReorderAction(
         // Case 3: Doc crosses WB boundary
         if (isFromBeforeWb && isToAfterWb) {
             // Doc before WB → after WB
+            const isAppend = toIndex === tabs.length || toTab?.type === 'add-sheet';
             return {
                 actionType: needsMetadata ? 'physical+metadata' : 'physical',
                 physicalMove: {
                     type: 'move-document',
                     fromDocIndex,
                     toDocIndex: null,
-                    toAfterWorkbook: true,
+                    toAfterWorkbook: !isAppend,
                     toBeforeWorkbook: false
                 },
                 newTabOrder: needsMetadata ? newTabOrder : undefined,
@@ -576,6 +594,7 @@ export function determineReorderAction(
                 }
             }
 
+            const isAppend = toIndex === tabs.length || toTab?.type === 'add-sheet';
             return {
                 actionType: isFromBeforeWb ? 'physical+metadata' : 'metadata',
                 physicalMove: isFromBeforeWb
@@ -583,7 +602,7 @@ export function determineReorderAction(
                         type: 'move-document' as const,
                         fromDocIndex,
                         toDocIndex: null,
-                        toAfterWorkbook: true,
+                        toAfterWorkbook: !isAppend,
                         toBeforeWorkbook: false
                     }
                     : undefined,
@@ -608,13 +627,17 @@ export function determineReorderAction(
         }
 
         if (isToAfterWb) {
+            // If appending to end (index == length), do not set toAfterWorkbook (implies insert at wbEnd)
+            // Instead leave all flags false to trigger default 'append' behavior in document.ts
+            const isAppend = toIndex === tabs.length || toTab?.type === 'add-sheet';
+
             return {
                 actionType: 'physical',
                 physicalMove: {
                     type: 'move-document',
                     fromDocIndex,
                     toDocIndex: null,
-                    toAfterWorkbook: true,
+                    toAfterWorkbook: !isAppend,
                     toBeforeWorkbook: false
                 },
                 metadataRequired: needsMetadata

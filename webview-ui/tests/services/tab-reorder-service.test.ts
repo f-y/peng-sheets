@@ -233,7 +233,8 @@ describe('SPECS.md 8.6.3 Document → Document', () => {
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
             expect(action.physicalMove.fromDocIndex).toBe(0);
-            expect(action.physicalMove.toDocIndex).toBe(1); // Insert after D2
+            expect(action.physicalMove.toDocIndex).toBeNull();
+            expect(action.physicalMove.toBeforeWorkbook).toBe(true); // Insert before WB
         }
         expect(action.metadataRequired).toBe(false);
     });
@@ -274,7 +275,8 @@ describe('SPECS.md 8.6.3 Document → Document', () => {
         expect(action.actionType).toBe('physical');
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
-            expect(action.physicalMove.toDocIndex).toBe(1); // Insert after D2
+            expect(action.physicalMove.toDocIndex).toBeNull(); // Append to end
+            expect(action.physicalMove.toAfterWorkbook).toBe(false); // Explicit append
         }
         expect(action.metadataRequired).toBe(false);
     });
@@ -302,7 +304,7 @@ describe('SPECS.md 8.6.4 Document → Workbook Boundary', () => {
         expect(action.actionType).toBe('physical');
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
-            expect(action.physicalMove.toAfterWorkbook).toBe(true);
+            expect(action.physicalMove.toAfterWorkbook).toBe(false); // Append
         }
     });
 
@@ -470,7 +472,7 @@ describe('Exact Reproduction: workbook.md [WB, D1, D2, D3]', () => {
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
             expect(action.physicalMove.fromDocIndex).toBe(0); // D1
-            expect(action.physicalMove.toDocIndex).toBe(1); // Insert after D2
+            expect(action.physicalMove.toDocIndex).toBe(2); // Insert BEFORE D3 (index 2)
         }
         expect(action.metadataRequired).toBe(false);
     });
@@ -490,7 +492,8 @@ describe('Exact Reproduction: workbook.md [WB, D1, D2, D3]', () => {
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
             expect(action.physicalMove.fromDocIndex).toBe(1); // D2
-            expect(action.physicalMove.toDocIndex).toBe(2); // Insert after D3
+            expect(action.physicalMove.toDocIndex).toBeNull(); // Append
+            expect(action.physicalMove.toAfterWorkbook).toBe(false); // Append
         }
         expect(action.metadataRequired).toBe(false);
     });

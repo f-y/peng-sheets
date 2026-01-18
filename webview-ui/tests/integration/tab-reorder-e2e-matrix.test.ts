@@ -31,7 +31,7 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
 
         const D1_WB_S1_S2_D2 = `# D1\n\n# Tables\n\n## S1\n\n## S2\n\n# D2\n`;
 
-        it.skip('S2: Sheet over Sheet (with Docs)', () => { // [D1, WB(S1,S2), D2] drag S1 after S2
+        it('S2: Sheet over Sheet (with Docs)', () => { // [D1, WB(S1,S2), D2] drag S1 after S2
             editor.initializeWorkbook(D1_WB_S1_S2_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 },
@@ -99,7 +99,7 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
             ]);
         });
 
-        it.skip('S6: Multi-Sheet after Doc', () => { // [D1, WB(S1,S2), D2] drag S2 after D2
+        it('S6: Multi-Sheet after Doc', () => { // [D1, WB(S1,S2), D2] drag S2 after D2
             editor.initializeWorkbook(D1_WB_S1_S2_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'sheet', sheetIndex: 0 },
@@ -175,7 +175,7 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
     // =========================================================================
     describe('8.6.3 Doc -> Doc', () => {
         const D1_D2_WB = `# D1\n\n# D2\n\n# Tables\n`;
-        it.skip('D1: Doc to Doc (before WB)', () => { // [D1, D2, WB] drag D1 after D2
+        it('D1: Doc to Doc (before WB)', () => { // [D1, D2, WB] drag D1 after D2
             editor.initializeWorkbook(D1_D2_WB, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'document', docIndex: 1 },
@@ -190,7 +190,7 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
         });
 
         const WB_D1_D2 = `# Tables\n\n# D1\n\n# D2\n`;
-        it.skip('D2: Doc to Doc (after WB)', () => { // [WB, D1, D2] drag D1 after D2
+        it('D2: Doc to Doc (after WB)', () => { // [WB, D1, D2] drag D1 after D2
             editor.initializeWorkbook(WB_D1_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'sheet', sheetIndex: 0 },
@@ -205,7 +205,7 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
         });
 
         const D1_WB_D2 = `# D1\n\n# Tables\n\n# D2\n`;
-        it.skip('D3: Doc to Doc (cross WB)', () => { // [D1, WB, D2] drag D1 after D2
+        it('D3: Doc to Doc (cross WB)', () => { // [D1, WB, D2] drag D1 after D2
             editor.initializeWorkbook(D1_WB_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'sheet', sheetIndex: 0 },
@@ -244,7 +244,7 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
             expect(result.metadata?.tab_order).toBeUndefined();
         });
 
-        it.skip('D5: Doc after WB to before WB', () => { // [D1, WB, D2] drag D2 before WB
+        it('D5: Doc after WB to before WB', () => { // [D1, WB, D2] drag D2 before WB
             editor.initializeWorkbook(D1_WB_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'document', docIndex: 0 }, { type: 'sheet', sheetIndex: 0 },

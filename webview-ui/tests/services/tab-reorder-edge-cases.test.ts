@@ -210,7 +210,7 @@ describe('Edge Cases: Multiple docs reorder', () => {
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
             expect(action.physicalMove.fromDocIndex).toBe(0);
-            expect(action.physicalMove.toDocIndex).toBe(1);
+            expect(action.physicalMove.toDocIndex).toBe(2); // Insert BEFORE D3 (index 2)
         }
     });
 });
