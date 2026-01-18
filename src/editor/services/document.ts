@@ -470,6 +470,12 @@ export function moveDocumentSection(
             }
         }
 
+        // Check if target is "After Last Document" (Append)
+        if (!foundTarget && docIdx === adjustedToDocIndex) {
+            targetLine = linesWithoutDoc.length;
+            foundTarget = true;
+        }
+
         // If target not found, insert at an appropriate boundary
         if (!foundTarget) {
             // Check if WB exists and determine where from-doc was originally

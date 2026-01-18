@@ -35,9 +35,14 @@ export function executeTabReorderLikeMainTs(
     } else if (!action.metadataRequired && action.physicalMove) {
         // Fix for Hazard 61: Remove tab_order when restoring natural order
         editor.updateWorkbookTabOrder(null);
-    } else if (action.actionType === 'metadata' && action.newTabOrder) {
-        // Metadata only move
-        editor.updateWorkbookTabOrder(action.newTabOrder);
+    } else if (action.actionType === 'metadata') {
+        if (action.newTabOrder) {
+            // Metadata update
+            editor.updateWorkbookTabOrder(action.newTabOrder);
+        } else if (!action.metadataRequired) {
+            // Metadata removal (explicit)
+            editor.updateWorkbookTabOrder(null);
+        }
     }
 
     // 3. Physical Move (main.ts lines 1420-1524)

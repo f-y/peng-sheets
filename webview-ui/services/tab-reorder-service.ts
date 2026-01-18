@@ -357,15 +357,14 @@ function handleDocToDoc(
     const needsMetadata = isMetadataRequired(newTabOrder, newFileStructure);
 
     if (isToBetweenSheets) {
-        // Case 4: Doc → Sheet (Metadata only)
-        // If the target is between sheets, it's a metadata-only move.
-        // The physical document must be moved to after the workbook if it's not already there.
+        // Case 4: Doc → Sheet (Metadata only or Hybrid)
         const currentFileStructure = parseFileStructure(tabs);
         const isFromBeforeWb = currentFileStructure.docsBeforeWb.includes(fromDocIndex);
 
         if (isFromBeforeWb) {
+            // Must physically move to After WB
             const result: ReorderAction = {
-                actionType: 'physical+metadata',
+                actionType: needsMetadata ? 'physical+metadata' : 'physical',
                 physicalMove: {
                     type: 'move-document',
                     fromDocIndex,
@@ -373,11 +372,41 @@ function handleDocToDoc(
                     toAfterWorkbook: true, // Force to start of After-WB section
                     toBeforeWorkbook: false
                 },
-                newTabOrder,
-                metadataRequired: true
+                newTabOrder: needsMetadata ? newTabOrder : undefined,
+                metadataRequired: needsMetadata
             };
             return result;
         } else {
+            // Already After WB (or isolated).
+            if (!needsMetadata) {
+                // Calculate target doc index (where it ends up physically)
+                // We need to count docs in 'tabs' up to the insertion point.
+
+                // Count docs before toIndex (excluding source tab if it was before)
+                let targetDocIdx = 0;
+                for (let i = 0; i < toIndex; i++) {
+                    if (i === fromIndex) continue; // Skip self
+                    if (tabs[i].type === 'document') targetDocIdx++;
+                }
+
+                // Adjust for moveDocumentSection behavior (relative to original array)
+                if (targetDocIdx >= fromTab.docIndex!) {
+                    targetDocIdx++;
+                }
+
+                return {
+                    actionType: 'physical',
+                    physicalMove: {
+                        type: 'move-document',
+                        fromDocIndex: fromTab.docIndex!,
+                        toDocIndex: targetDocIdx,
+                        toAfterWorkbook: false,
+                        toBeforeWorkbook: false
+                    },
+                    metadataRequired: false
+                };
+            }
+
             const result: ReorderAction = {
                 actionType: 'metadata',
                 newTabOrder,
@@ -455,9 +484,13 @@ function handleDocToSheet(
     // but strictly, handleDocToSheet implies target is inside WB range).
 
     // Simple logic:
+    const newFileStructure = parseFileStructure(newTabs);
+    const needsMetadata = isMetadataRequired(newTabOrder, newFileStructure);
+
+    // Simple logic:
     if (isFromBeforeWb) {
         return {
-            actionType: 'physical+metadata',
+            actionType: needsMetadata ? 'physical+metadata' : 'physical',
             physicalMove: {
                 type: 'move-document',
                 fromDocIndex: fromTab.docIndex!,
@@ -465,12 +498,42 @@ function handleDocToSheet(
                 toAfterWorkbook: false, // Standard append behavior moves it after WB
                 toBeforeWorkbook: false
             },
-            newTabOrder,
-            metadataRequired: true
+            newTabOrder: needsMetadata ? newTabOrder : undefined,
+            metadataRequired: needsMetadata
         };
     }
 
-    // If already After WB, logic is purely metadata
+    // If already After/Inside WB, check if Physical Move works (Normalization)
+    if (!needsMetadata) {
+        // Calculate target doc index (where it ends up physically)
+        // We need to count docs in 'tabs' up to the insertion point.
+        // If we move it physically to the end of the list, it's an append.
+
+        // Count docs before toIndex (excluding source tab if it was before)
+        let targetDocIdx = 0;
+        for (let i = 0; i < toIndex; i++) {
+            if (i === fromIndex) continue; // Skip self
+            if (tabs[i].type === 'document') targetDocIdx++;
+        }
+
+        // Adjust for moveDocumentSection behavior (relative to original array)
+        if (targetDocIdx >= fromTab.docIndex!) {
+            targetDocIdx++;
+        }
+
+        return {
+            actionType: 'physical',
+            physicalMove: {
+                type: 'move-document',
+                fromDocIndex: fromTab.docIndex!,
+                toDocIndex: targetDocIdx,
+                toAfterWorkbook: false,
+                toBeforeWorkbook: false
+            },
+            metadataRequired: false
+        };
+    }
+
     return {
         actionType: 'metadata',
         newTabOrder,

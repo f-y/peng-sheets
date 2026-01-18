@@ -269,6 +269,26 @@ This matrix defines the expected behavior for all tab drag-and-drop scenarios. E
 
 **Key principle for D8**: When tab order for docs-after-WB differs from physical order, the physical order should be updated to match. This ensures the first displayed doc is also first in the file.
 
+#### 8.6.6. Finite Pattern Edge Cases (Multi-Doc & No-Op)
+
+| # | Scenario | Initial File | Action | Expected Behavior | Physical/Metadata |
+|---|----------|--------------|--------|-------------------|-------------------|
+| E1 | Drop on Self (Start) | `[D1, WB]` | Drag D1 to 0 | No Change | No-Op |
+| E2 | Drop on Self (End) | `[WB, D1]` | Drag D1 to last | No Change | No-Op |
+| E3 | Same Side No-Op | `[D1, D2, WB]` | Drag D1 before WB | `[D1, D2, WB]` (Index matches self) | No-Op |
+| E4 | Leapfrog Docs | `[D1, D2, D3, WB]` | Drag D1 after D3 | `[D2, D3, D1, WB]` | Physical |
+| E5 | Reverse Leapfrog | `[D1, D2, D3, WB]` | Drag D3 before D1 | `[D3, D1, D2, WB]` | Physical |
+| E6 | Interleaved Stability | `[D1, WB, D2]` | Drag D1 after D2 | `[WB, D2, D1]` | Physical + Metadata |
+
+#### 8.6.7. Hazard Scenarios (Bug Reproduction)
+
+These scenarios target specific reported bugs where outcome types are misidentified.
+
+| # | Scenario | Initial State | Action | Expected Behavior | Physical/Metadata |
+|---|----------|---------------|--------|-------------------|-------------------|
+| H1 | Restore Natural Order (Stale Metadata failure) | File: `[WB(S1,S2), D1]`, Tab: `[S1, D1, S2]` | Drag D1 after S2 | Tab: `[S1, S2, D1]` (Matches File) | Metadata (Remove) |
+| H2 | Force Physical Normalization (Missing Physical failure) | File: `[D1, WB(S1,S2)]`, Tab: `[D1, S1, S2]` | Drag D1 between S1/S2 | File: `[WB, D1]`, Tab: `[S1, D1, S2]` | Physical + Metadata |
+
 **Key Rules:**
 1. Sheet→Sheet: Physical reorder within Workbook section only
 2. Sheet→Doc position: **Workbook moves** to place Sheet at target position + tab_order updates
