@@ -378,6 +378,58 @@ function handleSheetToDoc(
         }
     }
 
+    // =========================================================================
+    // H9/H11 Physical Normalization for Multi-Sheet WB:
+    // If a Document becomes visually FIRST (before all Sheets), and that
+    // Document is currently physically AFTER the Workbook, we need move-workbook.
+    // 
+    // Example: [S1, D1, S2, D2] → S1 to after S2 → [D1, S2, S1, D2]
+    // D1 is first visually, but physically after WB → move-workbook to [D1, WB, D2]
+    // =========================================================================
+    const currentFileStructure = parseFileStructure(tabs);
+
+    if (newTabOrder.length > 0 && newTabOrder[0].type === 'document') {
+        const firstDocIndex = newTabOrder[0].index;
+        const isPhysicallyAfterWb = currentFileStructure.docsAfterWb.includes(firstDocIndex);
+
+        if (isPhysicallyAfterWb) {
+            // Check sheet contiguity in newTabOrder
+            let sheetsContiguous = true;
+            let lastWasSheet = false;
+            let sawDocAfterSheet = false;
+
+            for (let i = 1; i < newTabOrder.length; i++) {
+                const item = newTabOrder[i];
+                if (item.type === 'sheet') {
+                    if (sawDocAfterSheet && !lastWasSheet) {
+                        sheetsContiguous = false;
+                        break;
+                    }
+                    lastWasSheet = true;
+                } else {
+                    if (lastWasSheet) sawDocAfterSheet = true;
+                    lastWasSheet = false;
+                }
+            }
+
+            if (sheetsContiguous) {
+                // H9: Move WB after D1, no metadata needed
+                // Also need to move sheet within WB to correct position
+                const toSheetIndex = sheetCount; // append to end
+                return {
+                    actionType: 'physical+metadata',
+                    physicalMove: {
+                        type: 'move-workbook',
+                        direction: 'after-doc',
+                        targetDocIndex: firstDocIndex
+                    },
+                    metadataRequired: false,
+                    newTabOrder: undefined
+                };
+            }
+        }
+    }
+
     // Multi-Sheet: Metadata (Stability)
     // Unless C8 case (Sheet inside doc range) -> Physical move sheet to end of WB + Metadata
 
