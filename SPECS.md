@@ -224,6 +224,14 @@ This matrix defines the expected behavior for all tab drag-and-drop scenarios. E
    - Documents after last Sheet in tab_order → physically after WB
    - Documents between Sheets in tab_order → physically after WB
 
+4. **Physical structure derivation**: The classifier must distinguish between:
+   - **Visual order** (tabs array): Order displayed in UI, affected by `tab_order` metadata
+   - **Physical order**: Order in Markdown file, derived from `sheetIndex`/`docIndex` values
+   
+   When reordering with existing metadata:
+   - **Sheet physical order**: `sheetIndex` 0, 1, 2, ... (always contiguous in WB)
+   - **Doc physical order**: `docIndex` 0, 1, 2, ... (always after WB unless metadata says before)
+
 #### 8.6.1. Sheet → Sheet (Within Workbook)
 
 | # | Scenario | Initial File | Action | Expected Behavior | Physical/Metadata |
@@ -292,6 +300,8 @@ These scenarios target specific reported bugs where outcome types are misidentif
 | H9 | Sheet across interleaved Doc (Physical Normalization) | File: `[WB(S1,S2), D1]`, Tab: `[S1, D1, S2]` | Drag S1 between D1/S2 | File: `[D1, WB(S1,S2)]`, Tab: `[D1, S1, S2]` | Physical (move WB) + Metadata (remove) |
 | H10 | Sheet to end across docs (Interleaved Metadata) | File: `[WB(S1,S2), D1, D2]`, Tab: `[S1, D1, S2, D2]` | Drag S1 to end | File: `[WB(S2,S1)]`, Tab: `[D1, S2, D2, S1]` | Physical (move sheet) + Metadata |
 | H11 | Sheet to between S2/D2 (Sheet order differs) | File: `[WB(S1,S2), D1, D2]`, Tab: `[S1, D1, S2, D2]` | Drag S1 between S2/D2 | File: `[D1, WB(S1,S2), D2]`, Tab: `[D1, S2, S1, D2]` | Physical (move WB) + Metadata (order differs) |
+| H12 | Interleaved Sheet Reorder (Visual != Physical) | File: `[WB(S1,S2), D1, D2]`, Tab: `[S1, D1, S2, D2]` | Drag S1 after D1 | File: `[WB(S2,S1), D1, D2]`, Tab: `[D1, S2, S1, D2]` | Physical (move sheet) + Metadata |
+| H13 | Interleaved Doc Reorder (Visual != Physical) | File: `[WB(S1,S2), D1, D2]`, Tab: `[S1, D1, S2, D2]` | Drag D2 after S1 | File: `[WB(S1,S2), D2, D1]`, Tab: `[S1, D2, D1, S2]` | Physical (move doc) + Metadata |
 
 **Key Rules:**
 1. Sheet→Sheet: Physical reorder within Workbook section only
@@ -301,6 +311,7 @@ These scenarios target specific reported bugs where outcome types are misidentif
 5. Doc between sheets reorder: If display order of docs-after-WB differs from file order, **physical reorder** needed
 6. **Physical Normalization Principle (H9)**: When a Sheet move causes a Document to become visually first (before all Sheets), the Workbook MUST be physically moved after that Document. The resulting file structure should match the visual order, eliminating the need for metadata.
 7. **Sheet Order Check (H11)**: After Physical Normalization, if the visual sheet order differs from the physical sheet order, metadata IS required to express the display order.
+8. **Interleaved Reorder (H12/H13)**: When visual order differs from physical order due to existing metadata, the classifier MUST compare visual positions with physical indices to determine if physical reorder is needed.
 
 **Metadata Necessity:**
 
@@ -357,6 +368,7 @@ All tab reorder scenarios classified by explicit pattern for implementation:
 |------------|------|---------|----------|----------|
 | SIDR1 | Sheet inside doc range (not last) | Non-last sheet to doc range | move-sheet (to end) | Required |
 | SIDR2 | Sheet inside doc range (already last) | Last sheet to doc range | None | Required |
+| SIDR3 | Interleaved sheet reorder (H12) | Visual sheet order ≠ physical (sheetIndex) order | move-sheet | Required |
 
 **Document → Document**
 
@@ -375,6 +387,7 @@ All tab reorder scenarios classified by explicit pattern for implementation:
 | DBS1 | Doc before WB to between sheets | D before WB → between S1/S2 | move-document | Required |
 | DBS2 | Doc after WB to between sheets (no move) | D after WB already in position | None | Required |
 | DBS3 | Doc after WB to between sheets (reorder) | D after WB needs reorder | move-document | Required |
+| DBS4 | Interleaved doc reorder (H13) | Visual doc order ≠ physical (docIndex) order | move-document | Required |
 
 **Metadata Removal Patterns**
 
