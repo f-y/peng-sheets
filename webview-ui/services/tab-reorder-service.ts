@@ -811,6 +811,9 @@ function handleDocToDoc(
         }
     }
 
+    // NOTE: Use parseFileStructure(ctx.newTabs) to determine if the NEW arrangement
+    // requires metadata. This differs from ctx.currentFileStructure which represents
+    // the original physical structure.
     const needsMetadata = isMetadataRequired(ctx.newTabOrder, parseFileStructure(ctx.newTabs));
 
     switch (pattern) {
@@ -1052,8 +1055,8 @@ export function determineReorderAction(
         // Check if first tab after move is a Doc that is physically after WB
         const newFirstTab = newTabs[0];
         if (newFirstTab?.type === 'document') {
-            // Parse current file structure to check if this doc is after WB
-            const fileStructure = parseFileStructure(tabs);
+            // Use physicalStructure when provided, otherwise derive from tabs (may be inaccurate)
+            const fileStructure = physicalStructure ?? parseFileStructure(tabs);
             const docIndex = newFirstTab.docIndex!;
             const isDocAfterWb = fileStructure.docsAfterWb.includes(docIndex);
 
