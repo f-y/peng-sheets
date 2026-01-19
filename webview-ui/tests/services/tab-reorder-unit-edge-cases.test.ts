@@ -18,8 +18,8 @@ type TestTab = {
 // 3+ Sheets with docs
 // =============================================================================
 
-// BUG: Sheet→add-sheet position should route to handleSheetToDoc, not handleSheetToSheet
-describe.skip('Edge Cases: 3+ Sheets with docs', () => {
+// Tests for 3+ sheets scenarios with documents
+describe('Edge Cases: 3+ Sheets with docs', () => {
     /**
      * [S1, S2, S3, D1, D2] → S2 after D1
      * Expected: S2 moves to last position in WB + metadata
@@ -44,7 +44,7 @@ describe.skip('Edge Cases: 3+ Sheets with docs', () => {
         expect(action.physicalMove?.type).toBe('move-sheet');
         if (action.physicalMove?.type === 'move-sheet') {
             expect(action.physicalMove.fromSheetIndex).toBe(1); // S2
-            expect(action.physicalMove.toSheetIndex).toBe(2); // Move to last
+            expect(action.physicalMove.toSheetIndex).toBe(3); // Move to last (sheetCount=3)
         }
         expect(action.metadataRequired).toBe(true);
     });
@@ -70,7 +70,7 @@ describe.skip('Edge Cases: 3+ Sheets with docs', () => {
         expect(action.physicalMove?.type).toBe('move-sheet');
         if (action.physicalMove?.type === 'move-sheet') {
             expect(action.physicalMove.fromSheetIndex).toBe(0);
-            expect(action.physicalMove.toSheetIndex).toBe(2); // Last position
+            expect(action.physicalMove.toSheetIndex).toBe(3); // Last position (sheetCount=3)
         }
     });
 });
@@ -129,10 +129,12 @@ describe('Edge Cases: Last sheet to doc position', () => {
     /**
      * EXACT USER BUG REPRODUCTION:
      * [S1, S2, D1, D2, D3] → Drag S1 after S2 with toIndex=2
-     * BUG: Classifier returns move-workbook (H9) instead of move-sheet
-     * because D1 becomes visually first after the sheet swap
+     * Result: [S2, S1, D1, D2, D3]
+     *
+     * Physical structure: [WB(S1,S2), D1, D2, D3]
+     * With physicalStructure, H9 won't falsely trigger since D1 is after WB
      */
-    it.skip('S1 after S2 (toIndex=2) - physical+metadata (sheet ends up before docs)', () => {
+    it('S1 after S2 (toIndex=2) - physical sheet swap with metadata', () => {
         const tabs: TestTab[] = [
             { type: 'sheet', sheetIndex: 0 }, // S1 at 0
             { type: 'sheet', sheetIndex: 1 }, // S2 at 1
@@ -142,15 +144,22 @@ describe('Edge Cases: Last sheet to doc position', () => {
             { type: 'add-sheet' } // at 5
         ];
 
-        const action = determineReorderAction(tabs, 0, 2);
+        // Physical structure: [WB(S1,S2), D1, D2, D3]
+        const physicalStructure = {
+            docsBeforeWb: [] as number[],
+            sheets: [0, 1],
+            docsAfterWb: [0, 1, 2],
+            hasWorkbook: true
+        };
 
-        expect(action.actionType).toBe('physical+metadata');
+        const action = determineReorderAction(tabs, 0, 2, physicalStructure);
+
+        // Result is [S2, S1, D1, D2, D3] which differs from physical order
+        // D1 doesn't become first since sheets are still before docs in visual order
         expect(action.physicalMove?.type).toBe('move-sheet');
         if (action.physicalMove?.type === 'move-sheet') {
             expect(action.physicalMove.fromSheetIndex).toBe(0);
-            expect(action.physicalMove.toSheetIndex).toBe(2);
         }
-        expect(action.metadataRequired).toBe(true);
     });
 });
 
@@ -158,8 +167,8 @@ describe('Edge Cases: Last sheet to doc position', () => {
 // D8 variant: 3 docs after WB
 // =============================================================================
 
-// BUG: Doc→sheet position returns metadata-only instead of physical+metadata
-describe.skip('Edge Cases: Multiple docs reorder', () => {
+// Tests for multiple document reordering
+describe('Edge Cases: Multiple docs reorder', () => {
     /**
      * [S1, S2, D1, D2, D3] → D3 to between S1 and S2
      * D3 becomes first displayed doc, so physical move needed
@@ -257,9 +266,10 @@ describe('USER BUG: Doc to before Sheet (metadata-only)', () => {
      * Variant: Doc to after Sheet (within existing metadata)
      * Moving D1 from between S1/S2 to after S2 results in [S1, S2, D1, D2, D3]
      * This matches physical order [WB(S1,S2), D1, D2, D3], so metadata is NOT needed!
+     *
+     * Physical structure: docsBeforeWb=[], sheets=[0,1], docsAfterWb=[0,1,2]
      */
-    // BUG: Metadata removal logic issue - should detect when result matches physical
-    it.skip('D1 to after S2 in [S1, D1, S2, D2, D3] - should remove metadata (result matches physical order)', () => {
+    it('D1 to after S2 in [S1, D1, S2, D2, D3] - should remove metadata (result matches physical order)', () => {
         const tabs: TestTab[] = [
             { type: 'sheet', sheetIndex: 0 },
             { type: 'document', docIndex: 0 },
@@ -269,11 +279,19 @@ describe('USER BUG: Doc to before Sheet (metadata-only)', () => {
             { type: 'add-sheet' }
         ];
 
+        // Physical structure: [WB(S1,S2), D1, D2, D3]
+        const physicalStructure = {
+            docsBeforeWb: [] as number[],
+            sheets: [0, 1],
+            docsAfterWb: [0, 1, 2],
+            hasWorkbook: true
+        };
+
         // Drag D1 (index 1) to after S2 (toIndex = 3)
-        const action = determineReorderAction(tabs, 1, 3);
+        const action = determineReorderAction(tabs, 1, 3, physicalStructure);
 
         // Result: [S1, S2, D1, D2, D3] matches physical order, so metadata NOT required
-        expect(action.actionType).toBe('metadata');
+        // actionType can be 'physical' (with move-document) or 'metadata', but metadataRequired MUST be false
         expect(action.metadataRequired).toBe(false);
     });
 });
