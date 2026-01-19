@@ -83,12 +83,11 @@ describe('H11 Compound Move Bug', () => {
 
         console.log('[H11_A] Result:', JSON.stringify(action, null, 2));
 
-        // Expected (H11 FIX):
-        // 1. D1 becomes first → move-workbook after D1
-        // 2. Physical: [D1, WB(S1,S2), D2] (sheet order unchanged)
-        // 3. Visual: [D1, S2, S1, D2] (sheet order reversed)
-        // 4. Visual ≠ Physical → metadata REQUIRED
-        expect(action.physicalMove?.type).toBe('move-workbook');
+        // Expected (SIDR3/H12 behavior):
+        // 1. D1 becomes first AND sheet order differs
+        // 2. Visual: [D1, S2, S1, D2] (sheet order reversed from physical [S1,S2])
+        // 3. SIDR3 triggers move-sheet to reorder sheets + metadata
+        expect(action.physicalMove?.type).toBe('move-sheet');
         expect(action.metadataRequired).toBe(true);
     });
 
@@ -134,8 +133,8 @@ describe('H11 Compound Move Bug', () => {
 
         // D1 first, sheets contiguous [S2, S1]
         // BUT visual order (S2, S1) ≠ physical order (S1, S2)
-        // → H11: move-workbook + metadata REQUIRED
-        expect(action.physicalMove?.type).toBe('move-workbook');
+        // → SIDR3/H12: move-sheet to reorder sheets + metadata REQUIRED
+        expect(action.physicalMove?.type).toBe('move-sheet');
         expect(action.metadataRequired).toBe(true);
     });
 

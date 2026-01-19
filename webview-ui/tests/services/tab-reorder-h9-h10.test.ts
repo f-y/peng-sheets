@@ -64,9 +64,9 @@ describe('H9 Physical Normalization', () => {
         const action = determineReorderAction(tabs, 0, 3);
 
         // Sheet order changes: [S1,S2] → [S2,S1]
-        // D1 becomes first, move-workbook needed
-        // But sheet reorder means metadata is also needed
-        expect(action.physicalMove?.type).toBe('move-workbook');
+        // D1 becomes first, SIDR3/H12 triggers move-sheet to reorder sheets
+        // Metadata is also required
+        expect(action.physicalMove?.type).toBe('move-sheet');
         expect(action.metadataRequired).toBe(true);
     });
 

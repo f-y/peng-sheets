@@ -88,20 +88,14 @@ describe('H11 Sheet Order Bug Reproduction', () => {
 
         console.log('[H11 REPRO] Action Result:', JSON.stringify(action, null, 2));
 
-        // EXPECTED CORRECT BEHAVIOR:
-        // - move-workbook after D1 (D1 becomes first physically)
+        // EXPECTED SIDR3/H12 BEHAVIOR:
+        // - move-sheet to reorder sheets (visual S2,S1 from physical S1,S2)
         // - metadataRequired: TRUE (because visual sheet order S2,S1 ≠ physical S1,S2)
         // - newTabOrder: [D1, S2, S1, D2]
 
-        // The physical file should be:
-        // # Doc 1
-        // # Tables
-        // ## Sheet 1
-        // ## Sheet 2
-        // # Doc 2
-        // (With metadata showing D1 first, then S2, then S1, then D2)
+        // The physical file should change sheet order to match visual
 
-        expect(action.physicalMove?.type).toBe('move-workbook');
+        expect(action.physicalMove?.type).toBe('move-sheet');
         expect(action.metadataRequired).toBe(true); // CRITICAL: Sheet order differs!
         expect(action.newTabOrder).toBeDefined();
 
@@ -157,11 +151,10 @@ describe('H11 Sheet Order Bug Reproduction', () => {
         console.log('[H11 CONTROL] Result:', JSON.stringify(action, null, 2));
 
         // Visual: [D1, S2, S1]
-        // Physical after move-workbook: [D1, WB(S1, S2)]
-        // Visual sheet order (S2, S1) ≠ physical (S1, S2)
-        // → metadata REQUIRED
+        // Physical after move-sheet: [D1, WB(S2, S1)]
+        // SIDR3/H12: move-sheet to reorder sheets + metadata REQUIRED
 
-        expect(action.physicalMove?.type).toBe('move-workbook');
+        expect(action.physicalMove?.type).toBe('move-sheet');
         expect(action.metadataRequired).toBe(true);
     });
 });

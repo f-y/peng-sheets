@@ -543,12 +543,40 @@ function handleSheetToSheet(
         // SS2: Adjacent swap with docs (H9 / Physical Normalization)
         // =====================================================================
         case 'SS2_adjacent_with_docs': {
+
             // Check if doc becomes first (H9)
             if (ctx.newTabOrder.length > 0 && ctx.newTabOrder[0].type === 'document') {
                 const firstDocIdx = ctx.newTabOrder[0].index;
                 const isAfterWb = ctx.currentFileStructure.docsAfterWb.includes(firstDocIdx);
 
                 if (isAfterWb) {
+                    // SIDR3 (H12): Check if visual sheet order differs from physical
+                    // Visual: [D1, S2, S1, D2] → sheet order is [S2, S1]
+                    // Physical: [S1, S2] → needs reorder
+                    const visualSheetOrder = ctx.newTabOrder
+                        .filter((item) => item.type === 'sheet')
+                        .map((item) => item.index);
+                    const physicalSheetOrder = ctx.currentFileStructure.sheets;
+                    const sheetOrderDiffers =
+                        visualSheetOrder.length === physicalSheetOrder.length &&
+                        !visualSheetOrder.every((v, i) => v === physicalSheetOrder[i]);
+
+                    if (sheetOrderDiffers && ctx.sheetCount >= 2) {
+                        // SIDR3: Need to physically reorder sheets
+                        // The moved sheet should become last in physical order
+                        const movedSheetIdx = ctx.fromTab.sheetIndex!;
+                        return {
+                            actionType: 'physical+metadata',
+                            physicalMove: {
+                                type: 'move-sheet',
+                                fromSheetIndex: movedSheetIdx,
+                                toSheetIndex: ctx.sheetCount // Move to end
+                            },
+                            newTabOrder: ctx.newTabOrder,
+                            metadataRequired: true
+                        };
+                    }
+
                     // H9: Move workbook after doc, no metadata
                     return {
                         actionType: 'physical',
@@ -581,13 +609,52 @@ function handleSheetToSheet(
         // =====================================================================
         case 'SS3_non_adjacent':
         default: {
-            // Check if doc becomes first with different sheet order (H11)
+
+            // Check if doc becomes first with different sheet order (H11/H12)
             if (ctx.newTabOrder.length > 0 && ctx.newTabOrder[0].type === 'document') {
                 const firstDocIdx = ctx.newTabOrder[0].index;
                 const isAfterWb = ctx.currentFileStructure.docsAfterWb.includes(firstDocIdx);
 
                 if (isAfterWb) {
+                    // SIDR3 (H12): Check if visual sheet order differs from physical
+                    // When sheet order differs, we need move-sheet to physically reorder sheets
+                    // instead of move-workbook which doesn't change sheet order
+                    const visualSheetOrder = ctx.newTabOrder
+                        .filter((item) => item.type === 'sheet')
+                        .map((item) => item.index);
+                    const physicalSheetOrder = ctx.currentFileStructure.sheets;
+                    const sheetOrderDiffers =
+                        visualSheetOrder.length === physicalSheetOrder.length &&
+                        !visualSheetOrder.every((v, i) => v === physicalSheetOrder[i]);
+
+                    if (sheetOrderDiffers && ctx.sheetCount >= 2) {
+
+                        // SIDR3/H12: Need to physically reorder sheets
+                        // Calculate correct toSheetIndex based on visual sheet order
+                        const movedSheetIdx = ctx.fromTab.sheetIndex!;
+
+                        // Find the moved sheet's position in visual order
+                        const movedSheetVisualPos = visualSheetOrder.indexOf(movedSheetIdx);
+
+                        // toSheetIndex = visual position in post-removal array
+                        // moveSheet removes sheet first, then inserts at toIndex
+                        // So for visual [S2, S1, S3], S1 at visual pos 1 → toSheetIndex = 1
+                        const toSheetIndex = movedSheetVisualPos;
+
+                        return {
+                            actionType: 'physical+metadata',
+                            physicalMove: {
+                                type: 'move-sheet',
+                                fromSheetIndex: movedSheetIdx,
+                                toSheetIndex
+                            },
+                            newTabOrder: ctx.newTabOrder,
+                            metadataRequired: true
+                        };
+                    }
+
                     // H11: Move workbook, but sheet order differs - need metadata
+
                     return {
                         actionType: 'physical+metadata',
                         physicalMove: {
@@ -859,6 +926,25 @@ function handleDocToDoc(
 
         case 'DD4_cross_after_to_before': {
             toBeforeWorkbook = true;
+
+            // After physical move to before WB, doc indices change:
+            // - The moved doc becomes index 0 (first doc in file)
+            // - All other docs shift up by 1
+            const movedDocOldIndex = fromDocIndex;
+            const adjustedTabOrder = needsMetadata
+                ? ctx.newTabOrder.map((item) => {
+                    if (item.type !== 'document') return item;
+
+                    if (item.index === movedDocOldIndex) {
+                        // Moved doc becomes index 0
+                        return { ...item, index: 0 };
+                    } else {
+                        // All other docs shift up by 1
+                        return { ...item, index: item.index + 1 };
+                    }
+                })
+                : undefined;
+
             return {
                 actionType: needsMetadata ? 'physical+metadata' : 'physical',
                 physicalMove: {
@@ -868,7 +954,7 @@ function handleDocToDoc(
                     toAfterWorkbook: false,
                     toBeforeWorkbook
                 },
-                newTabOrder: needsMetadata ? ctx.newTabOrder : undefined,
+                newTabOrder: adjustedTabOrder,
                 metadataRequired: needsMetadata
             };
         }
@@ -894,6 +980,54 @@ function handleDocToDoc(
                     newTabOrder: ctx.newTabOrder,
                     metadataRequired: true
                 };
+            }
+
+            // DBS4 (H13): Check if visual doc order differs from physical
+            // When doc moves to between sheets and visual order differs, need physical reorder
+            const docsInVisualOrder = ctx.newTabOrder
+                .filter((item) => item.type === 'document')
+                .map((item) => item.index);
+            const physicalDocOrder = ctx.currentFileStructure.docsAfterWb;
+
+            if (docsInVisualOrder.length > 0 && physicalDocOrder.length > 0) {
+                const firstVisualDoc = docsInVisualOrder[0];
+                const firstPhysicalDoc = physicalDocOrder[0];
+
+                // H13/DBS4: If first visual doc differs from first physical doc, physical reorder needed
+                if (firstVisualDoc !== firstPhysicalDoc) {
+                    // After physical move, doc indices change:
+                    // - The moved doc (firstVisualDoc with OLD index) becomes index 0
+                    // - Other docs shift accordingly
+                    // We need to remap newTabOrder to use post-physical indices
+                    const movedDocOldIndex = firstVisualDoc;
+                    const adjustedTabOrder = ctx.newTabOrder.map((item) => {
+                        if (item.type !== 'document') return item;
+
+                        // Create new index mapping after physical move
+                        // The moved doc goes to position 0, others shift down
+                        if (item.index === movedDocOldIndex) {
+                            // Moved doc becomes index 0
+                            return { ...item, index: 0 };
+                        } else if (item.index < movedDocOldIndex) {
+                            // Docs before moved doc shift up by 1
+                            return { ...item, index: item.index + 1 };
+                        }
+                        return item;
+                    });
+
+                    return {
+                        actionType: 'physical+metadata',
+                        physicalMove: {
+                            type: 'move-document',
+                            fromDocIndex,
+                            toDocIndex: null,
+                            toAfterWorkbook: true,  // Move to first position after WB
+                            toBeforeWorkbook: false
+                        },
+                        newTabOrder: adjustedTabOrder,
+                        metadataRequired: true
+                    };
+                }
             }
 
             return {
@@ -974,8 +1108,7 @@ function handleDocToSheet(
         // If doc is not already first doc after WB, it needs physical reorder
         // =====================================================================
         case 'DBS2_after_wb_no_move':
-        default: {
-            // Check if this doc is NOT the first doc after WB
+        default: {            // Original DBS2 logic: Check if this doc is NOT the first doc after WB
             const firstDocAfterWb = Math.min(...ctx.currentFileStructure.docsAfterWb);
             const needsPhysicalReorder = fromDocIndex > firstDocAfterWb;
 
@@ -1075,6 +1208,40 @@ export function determineReorderAction(
                 // If result matches natural order, skip H9 and let normal routing handle it
                 // (This allows metadata REMOVAL when restoring natural order)
                 if (needsMetadata) {
+                    // SIDR3 (H12): Check if visual sheet order differs from physical
+                    // When sheet order differs, we need move-sheet instead of move-workbook
+                    const visualSheetOrder = newTabOrder
+                        .filter((item) => item.type === 'sheet')
+                        .map((item) => item.index);
+                    const physicalSheetOrder = fileStructure.sheets;
+                    const sheetOrderDiffers =
+                        visualSheetOrder.length === physicalSheetOrder.length &&
+                        !visualSheetOrder.every((v, i) => v === physicalSheetOrder[i]);
+
+
+                    if (sheetOrderDiffers && sheetCount >= 2) {
+
+                        // SIDR3/H12: Need to physically reorder sheets
+                        // The moved sheet should become last in physical order
+                        const movedSheetIdx = fromTab.sheetIndex!;
+
+                        // Calculate correct toSheetIndex based on visual sheet order
+                        // toSheetIndex = visual position in post-removal array
+                        const movedSheetVisualPos = visualSheetOrder.indexOf(movedSheetIdx);
+                        const toSheetIndex = movedSheetVisualPos;
+
+                        return {
+                            actionType: 'physical+metadata',
+                            physicalMove: {
+                                type: 'move-sheet',
+                                fromSheetIndex: movedSheetIdx,
+                                toSheetIndex
+                            },
+                            newTabOrder: newTabOrder,
+                            metadataRequired: true
+                        };
+                    }
+
                     return {
                         actionType: 'physical+metadata',
                         physicalMove: {
