@@ -338,8 +338,8 @@ Content 2
 // 3. Mixed Structure Scenarios (Docs before AND after WB)
 // =============================================================================
 
-// BUG: Classifier issues with Doc→Sheet patterns
-describe.skip('Integration: Mixed Structure (Docs before AND after WB)', () => {
+// Mixed structure scenarios with docs before AND after WB
+describe('Integration: Mixed Structure (Docs before AND after WB)', () => {
     // This is the USER's exact bug scenario
     const WORKBOOK_MD = `# Doc 1
 

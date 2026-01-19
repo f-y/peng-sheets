@@ -460,8 +460,8 @@ Content.
      * RCA: Doc→Doc Off-by-One Index Bug
      * Condition: WB exists before Docs OR WB doesn't exist, Doc moved backward
      */
-    // BUG: Classifier returns wrong toBeforeWorkbook flag for DD pattern
-    describe.skip('Doc→Doc Off-by-One Index Bug (RCA)', () => {
+    // Doc→Doc Off-by-One Index Bug RCA tests
+    describe('Doc→Doc Off-by-One Index Bug (RCA)', () => {
         /**
          * BUG CASE 1: WB exists before Docs
          * Initial: [WB, D1, D2]
