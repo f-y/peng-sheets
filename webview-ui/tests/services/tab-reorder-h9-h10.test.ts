@@ -209,7 +209,7 @@ describe('H10 Sheet-to-End', () => {
      * But S1 ends up after D2 visually, which should be handled by handleSheetToDoc.
      * Complex fix needed in determineReorderAction - marking as known bug.
      */
-    it.skip('production scenario with add-sheet tab', () => {
+    it('production scenario with add-sheet tab', () => {
         const tabs: TestTab[] = [
             { type: 'sheet', sheetIndex: 0 },
             { type: 'document', docIndex: 0 },
