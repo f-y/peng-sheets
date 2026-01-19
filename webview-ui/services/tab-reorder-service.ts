@@ -134,6 +134,46 @@ export interface PatternContext {
 // Core Functions
 // =============================================================================
 
+/**
+ * SIDR3 Helper: Compute move-sheet parameters for sheet reorder.
+ * 
+ * This is a pure function that calculates the correct toSheetIndex
+ * when visual sheet order differs from physical and requires reordering.
+ * 
+ * @param visualSheetOrder - Array of sheet indices in visual order (from newTabOrder)
+ * @param physicalSheetOrder - Array of sheet indices in physical order (from fileStructure.sheets)
+ * @param movedSheetIdx - The index of the sheet being moved
+ * @returns null if no reorder needed, or {fromSheetIndex, toSheetIndex} for move-sheet
+ */
+export function computeSidr3MoveSheet(
+    visualSheetOrder: number[],
+    physicalSheetOrder: number[],
+    movedSheetIdx: number
+): { fromSheetIndex: number; toSheetIndex: number } | null {
+    // Check if sheet order differs
+    const sheetOrderDiffers =
+        visualSheetOrder.length === physicalSheetOrder.length &&
+        !visualSheetOrder.every((v, i) => v === physicalSheetOrder[i]);
+
+    if (!sheetOrderDiffers || visualSheetOrder.length < 2) {
+        return null;
+    }
+
+    // Find the moved sheet's position in visual order
+    const movedSheetVisualPos = visualSheetOrder.indexOf(movedSheetIdx);
+    if (movedSheetVisualPos === -1) {
+        return null;
+    }
+
+    // toSheetIndex = visual position in post-removal array
+    // moveSheet removes sheet first, then inserts at toIndex
+    // So for visual [S2, S1, S3], S1 at visual pos 1 → toSheetIndex = 1
+    return {
+        fromSheetIndex: movedSheetIdx,
+        toSheetIndex: movedSheetVisualPos
+    };
+}
+
 export function deriveTabOrderFromFile(structure: FileStructure): TabOrderItem[] {
     const tabOrder: TabOrderItem[] = [];
     for (const docIndex of structure.docsBeforeWb) {
@@ -617,36 +657,20 @@ function handleSheetToSheet(
 
                 if (isAfterWb) {
                     // SIDR3 (H12): Check if visual sheet order differs from physical
-                    // When sheet order differs, we need move-sheet to physically reorder sheets
-                    // instead of move-workbook which doesn't change sheet order
                     const visualSheetOrder = ctx.newTabOrder
                         .filter((item) => item.type === 'sheet')
                         .map((item) => item.index);
                     const physicalSheetOrder = ctx.currentFileStructure.sheets;
-                    const sheetOrderDiffers =
-                        visualSheetOrder.length === physicalSheetOrder.length &&
-                        !visualSheetOrder.every((v, i) => v === physicalSheetOrder[i]);
+                    const movedSheetIdx = ctx.fromTab.sheetIndex!;
 
-                    if (sheetOrderDiffers && ctx.sheetCount >= 2) {
-
-                        // SIDR3/H12: Need to physically reorder sheets
-                        // Calculate correct toSheetIndex based on visual sheet order
-                        const movedSheetIdx = ctx.fromTab.sheetIndex!;
-
-                        // Find the moved sheet's position in visual order
-                        const movedSheetVisualPos = visualSheetOrder.indexOf(movedSheetIdx);
-
-                        // toSheetIndex = visual position in post-removal array
-                        // moveSheet removes sheet first, then inserts at toIndex
-                        // So for visual [S2, S1, S3], S1 at visual pos 1 → toSheetIndex = 1
-                        const toSheetIndex = movedSheetVisualPos;
-
+                    const sidr3Move = computeSidr3MoveSheet(visualSheetOrder, physicalSheetOrder, movedSheetIdx);
+                    if (sidr3Move) {
                         return {
                             actionType: 'physical+metadata',
                             physicalMove: {
                                 type: 'move-sheet',
-                                fromSheetIndex: movedSheetIdx,
-                                toSheetIndex
+                                fromSheetIndex: sidr3Move.fromSheetIndex,
+                                toSheetIndex: sidr3Move.toSheetIndex
                             },
                             newTabOrder: ctx.newTabOrder,
                             metadataRequired: true
@@ -1209,33 +1233,20 @@ export function determineReorderAction(
                 // (This allows metadata REMOVAL when restoring natural order)
                 if (needsMetadata) {
                     // SIDR3 (H12): Check if visual sheet order differs from physical
-                    // When sheet order differs, we need move-sheet instead of move-workbook
                     const visualSheetOrder = newTabOrder
                         .filter((item) => item.type === 'sheet')
                         .map((item) => item.index);
                     const physicalSheetOrder = fileStructure.sheets;
-                    const sheetOrderDiffers =
-                        visualSheetOrder.length === physicalSheetOrder.length &&
-                        !visualSheetOrder.every((v, i) => v === physicalSheetOrder[i]);
+                    const movedSheetIdx = fromTab.sheetIndex!;
 
-
-                    if (sheetOrderDiffers && sheetCount >= 2) {
-
-                        // SIDR3/H12: Need to physically reorder sheets
-                        // The moved sheet should become last in physical order
-                        const movedSheetIdx = fromTab.sheetIndex!;
-
-                        // Calculate correct toSheetIndex based on visual sheet order
-                        // toSheetIndex = visual position in post-removal array
-                        const movedSheetVisualPos = visualSheetOrder.indexOf(movedSheetIdx);
-                        const toSheetIndex = movedSheetVisualPos;
-
+                    const sidr3Move = computeSidr3MoveSheet(visualSheetOrder, physicalSheetOrder, movedSheetIdx);
+                    if (sidr3Move) {
                         return {
                             actionType: 'physical+metadata',
                             physicalMove: {
                                 type: 'move-sheet',
-                                fromSheetIndex: movedSheetIdx,
-                                toSheetIndex
+                                fromSheetIndex: sidr3Move.fromSheetIndex,
+                                toSheetIndex: sidr3Move.toSheetIndex
                             },
                             newTabOrder: newTabOrder,
                             metadataRequired: true

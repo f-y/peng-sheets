@@ -97,6 +97,13 @@ describe('H11 Sheet Order Bug Reproduction', () => {
 
         expect(action.physicalMove?.type).toBe('move-sheet');
         expect(action.metadataRequired).toBe(true); // CRITICAL: Sheet order differs!
+
+        // Deep Parameter Verification: Ensure correct physical reorder parameters
+        if (action.physicalMove?.type === 'move-sheet') {
+            expect(action.physicalMove.fromSheetIndex).toBe(0); // S1
+            expect(action.physicalMove.toSheetIndex).toBe(1);   // Visual pos 1 in [S2, S1]
+        }
+
         expect(action.newTabOrder).toBeDefined();
 
         if (action.newTabOrder) {

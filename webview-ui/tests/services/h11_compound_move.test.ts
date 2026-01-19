@@ -89,6 +89,12 @@ describe('H11 Compound Move Bug', () => {
         // 3. SIDR3 triggers move-sheet to reorder sheets + metadata
         expect(action.physicalMove?.type).toBe('move-sheet');
         expect(action.metadataRequired).toBe(true);
+
+        // Deep Parameter Verification
+        if (action.physicalMove?.type === 'move-sheet') {
+            expect(action.physicalMove.fromSheetIndex).toBe(0); // S1
+            expect(action.physicalMove.toSheetIndex).toBe(1);   // Visual pos 1 in [S2, S1]
+        }
     });
 
     /**
@@ -136,6 +142,12 @@ describe('H11 Compound Move Bug', () => {
         // → SIDR3/H12: move-sheet to reorder sheets + metadata REQUIRED
         expect(action.physicalMove?.type).toBe('move-sheet');
         expect(action.metadataRequired).toBe(true);
+
+        // Deep Parameter Verification
+        if (action.physicalMove?.type === 'move-sheet') {
+            expect(action.physicalMove.fromSheetIndex).toBe(0); // S1
+            expect(action.physicalMove.toSheetIndex).toBe(1);   // Visual pos 1 in [S2, S1]
+        }
     });
 
     /**
