@@ -1331,7 +1331,4 @@ export function determineReorderAction(
     }
 
     return result;
-
-    // Fallback
-    return { actionType: 'no-op', metadataRequired: false };
 }
