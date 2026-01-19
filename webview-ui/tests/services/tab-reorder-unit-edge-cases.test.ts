@@ -83,10 +83,10 @@ describe('Edge Cases: 3+ Sheets with docs', () => {
 describe('Edge Cases: Last sheet to doc position', () => {
     /**
      * [S1, S2, D1] → S2 to after D1
-     * BUG: S2 is already last, but classifier returns physical+metadata
-     * because D1 becomes first (H9 pattern triggered)
+     * H9 pattern triggers because D1 becomes visually first after move.
+     * Classifier correctly returns physical+metadata (move-workbook).
      */
-    it.skip('last sheet to after doc - metadata only', () => {
+    it('last sheet to after doc - H9 triggers physical+metadata', () => {
         const tabs: TestTab[] = [
             { type: 'sheet', sheetIndex: 0 },
             { type: 'sheet', sheetIndex: 1 },
@@ -97,8 +97,8 @@ describe('Edge Cases: Last sheet to doc position', () => {
         // Drag S2 (last sheet) to after D1
         const action = determineReorderAction(tabs, 1, 3);
 
-        // S2 is already last in WB, no physical move needed
-        expect(action.actionType).toBe('metadata');
+        // H9 triggers: D1 becomes first, so physical+metadata with move-workbook
+        expect(action.actionType).toBe('physical+metadata');
         expect(action.metadataRequired).toBe(true);
     });
 
