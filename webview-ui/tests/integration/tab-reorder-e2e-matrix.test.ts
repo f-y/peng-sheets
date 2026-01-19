@@ -315,8 +315,8 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
 
         const WB_S1_S2_D1_D2 = `# Tables\n\n## S1\n\n## S2\n\n# D1\n\n# D2\n`;
 
-        // BUG: DBS classifier returns metadata-only instead of physical+metadata for D8
-        it.skip('D8: Doc after WB -> between (reorder)', () => { // [WB(S1,S2), D1, D2] drag D2 between S1, S2
+        // D8: Doc after WB needs physical reorder when not first doc
+        it('D8: Doc after WB -> between (reorder)', () => { // [WB(S1,S2), D1, D2] drag D2 between S1, S2
             editor.initializeWorkbook(WB_S1_S2_D1_D2, CONFIG);
             const tabs: TestTab[] = [
                 { type: 'sheet', sheetIndex: 0 }, { type: 'sheet', sheetIndex: 1 },
@@ -325,14 +325,16 @@ describe('E2E: SPECS.md 8.6 Tab Reorder Matrix', () => {
             const result = executeTabReorderLikeMainTs(tabs, 3, 1); // Drag D2(3) to 1 (After S1)
 
             const state = JSON.parse(editor.getState());
-            // Physical: [WB, D2, D1]
+            // Physical: [WB, D2, D1] - D2 moved to first doc position
             expect(state.structure[1].title).toBe('D2');
             expect(state.structure[2].title).toBe('D1');
 
-            // Expected tab order: S1, D2, S2, D1
+            // tab_order uses post-move physical indices: D2=0, D1=1
+            // Display: S1, D2, S2, D1 → S1(sheet 0), D2(doc 1→0), S2(sheet 1), D1(doc 0→1)
+            // After physical move, D2 becomes docIndex 0, D1 becomes docIndex 1
             expect(result.metadata?.tab_order).toEqual([
-                { type: 'sheet', index: 0 }, { type: 'document', index: 0 },
-                { type: 'sheet', index: 1 }, { type: 'document', index: 1 }
+                { type: 'sheet', index: 0 }, { type: 'document', index: 1 },
+                { type: 'sheet', index: 1 }, { type: 'document', index: 0 }
             ]);
         });
 
