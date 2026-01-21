@@ -1042,16 +1042,19 @@ function handleDocToDoc(
 
     if (toTab?.type === 'document') {
         toDocIndex = toTab.docIndex!;
-    } else if (toTab === null || toTab === undefined) {
-        // Appending to end of list - let moveDocumentSection handle it
+    } else if (toTab === null || toTab === undefined || toTab.type === 'add-sheet') {
+        // Appending to end of doc list - let moveDocumentSection handle it via EOF insertion
         toDocIndex = null;
     } else {
-        // toTab is sheet or add-sheet - find last document before this position
-        // Add +1 because moveDocumentSection inserts BEFORE toDocIndex,
-        // but we want to insert AFTER the last doc (position after it)
+        // toTab is sheet - find target doc position before this sheet
+        // moveDocumentSection inserts BEFORE toDocIndex, so we need the index of the doc
+        // that should come AFTER the moved doc
         for (let i = toIndex - 1; i >= 0; i--) {
             if (tabs[i].type === 'document' && i !== fromIndex) {
-                toDocIndex = tabs[i].docIndex! + 1; // +1 to insert AFTER this doc
+                // Insert before the NEXT doc after this one (i.e., at position of this doc + 1)
+                // But since we're inserting and moveDocumentSection adjusts for removal,
+                // we use the raw doc index (not +1)
+                toDocIndex = tabs[i].docIndex! + 1;
                 break;
             }
         }
@@ -1472,8 +1475,13 @@ export function determineReorderAction(
             targetZone = 'inside-wb';
         }
     } else if (toTab?.type === 'add-sheet') {
-        // Depending on existing structure? Usually Inside.
-        targetZone = 'inside-wb';
+        // Document moving to add-sheet position means appending to end of docs.
+        // This is outside-wb for documents but inside-wb for sheets.
+        if (fromTab.type === 'document') {
+            targetZone = 'outside-wb';
+        } else {
+            targetZone = 'inside-wb';
+        }
     } else if (toTab?.type === 'document') {
         // Special Case: Sheet moving to just after last sheet (toIndex is first doc after sheets)
         // This is a sheet swap, not a sheet-to-doc move

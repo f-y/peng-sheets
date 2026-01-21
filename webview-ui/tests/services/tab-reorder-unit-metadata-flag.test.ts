@@ -180,8 +180,9 @@ describe('Category A: metadataRequired MUST be false', () => {
 
             const action = determineReorderAction(tabs, 2, 4);
 
-            // Without physicalStructure, classifier returns metadata
-            expect(action.actionType).toBe('metadata');
+            // D1→D2 requires physical reorder (D1,D2 → D2,D1 in file)
+            expect(action.actionType).toBe('physical');
+            expect(action.physicalMove?.type).toBe('move-document');
         });
     });
 });

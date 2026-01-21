@@ -4,6 +4,15 @@
 
 ## Sheet 1
 
+### Table 1
+
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+| a | a |  |
+| b | b |  |
+
+### Table 2
+
 | Column 1 | Column 2 | Column 3 |
 | --- | --- | --- |
 |  |  |  |
@@ -14,6 +23,10 @@
 | --- | --- | --- |
 |  |  |  |
 
-<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "document", "index": 1}, {"type": "sheet", "index": 1}]} -->
+## Sheet 3
 
-# Doc 2
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+|  |  |  |
+
+# Doc 3

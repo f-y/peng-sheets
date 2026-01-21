@@ -48,7 +48,7 @@ import {
 
 // Register the VS Code Design System components
 import { SpreadsheetService } from './services/spreadsheet-service';
-import { determineReorderAction } from './services/tab-reorder-service';
+import { TabReorderExecutor } from './executors/tab-reorder-executor';
 import {
     IVisualMetadata,
     ValidationMetadata,
@@ -58,7 +58,6 @@ import {
 } from './services/types';
 import { recalculateAllFormulas, calculateAllFormulas } from './services/formula-recalculator';
 import { ClipboardStore } from './stores/clipboard-store';
-import * as editor from '../src/editor';
 
 // Register the VS Code Design System components
 provideVSCodeDesignSystem().register();
@@ -1046,29 +1045,54 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
      * Add a new Document at a specific tab order position.
      * See SPECS.md 8.5 for physical insertion rules.
      *
-     * Physical insertion rules:
-     * - If no sheets before target: insert after the last doc before target (or at file start)
-     * - If sheets before target (cross-type position):
-     *   - Always insert AFTER Workbook section
-     *   - If other Docs exist after Workbook AND before target in tab_order, insert after the last such Doc
+     * For Add New Document (targetTabOrderIndex == validTabs.length):
+     * - Simply insert at EOF (afterWorkbook=true, afterDocIndex=-1)
+     *
+     * For insertion at other positions (future enhancement):
+     * - Calculate physical position based on surrounding tabs
      */
     private _addDocumentAtPosition(targetTabOrderIndex: number) {
+        // Count valid tabs (excluding add-sheet)
+        const validTabCount = this.tabs.filter((t) => t.type !== 'add-sheet').length;
+
+        // Generate default document name
+        const docCount = this.tabs.filter((t) => t.type === 'document').length;
+        const newDocName = `${t('documentNamePrefix')} ${docCount + 1}`;
+
+        // Store pending new tab index
+        this._pendingNewTabIndex = targetTabOrderIndex;
+
+        // Simple case: Add at end (most common for Add New Document)
+        if (targetTabOrderIndex >= validTabCount) {
+            // Find the last document after workbook to insert after it
+            const firstSheetIdx = this.tabs.findIndex((tab) => tab.type === 'sheet');
+            let lastDocAfterWorkbook = -1;
+
+            for (const tab of this.tabs) {
+                if (tab.type === 'document' && tab.docIndex !== undefined) {
+                    // If no sheets exist, or this doc appears after first sheet in tab order
+                    if (firstSheetIdx === -1 || this.tabs.indexOf(tab) > firstSheetIdx) {
+                        lastDocAfterWorkbook = tab.docIndex;
+                    }
+                }
+            }
+
+            // Insert after the last doc after WB (if any), otherwise just after WB
+            this.spreadsheetService.addDocument(newDocName, lastDocAfterWorkbook, true, targetTabOrderIndex - 1);
+            return;
+        }
+
+        // Complex case: Insert at specific position (rare, for future drag-drop support)
         // Check if there are any sheets before target position
         const sheetsBeforeTarget =
-            this.tabs
-                .slice(0, Math.min(targetTabOrderIndex, this.tabs.length))
-                .filter((t) => t.type === 'sheet' || t.type === 'add-sheet').length > 0;
+            this.tabs.slice(0, Math.min(targetTabOrderIndex, this.tabs.length)).filter((tab) => tab.type === 'sheet')
+                .length > 0;
 
-        // Find the first sheet index to determine Workbook boundary
-        const firstSheetIdx = this.tabs.findIndex((t) => t.type === 'sheet');
-
-        // Determine physical insertion position
         let afterDocIndex = -1;
         let afterWorkbook = false;
 
         if (!sheetsBeforeTarget) {
             // No sheets before target = inserting among docs before Workbook
-            // Count docs before target position
             let docsBeforeTarget = 0;
             for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
                 if (this.tabs[i].type === 'document') {
@@ -1077,34 +1101,15 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             }
             afterDocIndex = docsBeforeTarget - 1;
         } else {
-            // Sheets before target = cross-type position
-            // Per SPECS.md 8.5: Always insert after Workbook
+            // Sheets before target = insert after Workbook
             afterWorkbook = true;
-
-            // Find the last Doc that is:
-            // 1. After Workbook in tab_order (appears after first sheet)
-            // 2. Before target position in tab_order
-            let lastDocAfterWorkbookBeforeTarget: number | null = null;
+            const firstSheetIdx = this.tabs.findIndex((tab) => tab.type === 'sheet');
             for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
-                // Only consider docs that appear after first sheet in tab_order
                 if (this.tabs[i].type === 'document' && i > firstSheetIdx) {
-                    lastDocAfterWorkbookBeforeTarget = this.tabs[i].docIndex!;
+                    afterDocIndex = this.tabs[i].docIndex!;
                 }
             }
-
-            if (lastDocAfterWorkbookBeforeTarget !== null) {
-                // Insert after that doc
-                afterDocIndex = lastDocAfterWorkbookBeforeTarget;
-            }
-            // else: afterDocIndex = -1, meaning insert at first position after Workbook
         }
-
-        // Generate default document name
-        const docCount = this.tabs.filter((t) => t.type === 'document').length;
-        const newDocName = `${t('documentNamePrefix')} ${docCount + 1}`;
-
-        // Store pending new tab index
-        this._pendingNewTabIndex = targetTabOrderIndex;
 
         this.spreadsheetService.addDocument(newDocName, afterDocIndex, afterWorkbook, targetTabOrderIndex - 1);
     }
@@ -1383,7 +1388,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     /**
      * Handle tab reorder from bottom-tabs component drag-drop
      *
-     * Uses tab-reorder-service to determine the correct action based on SPECS.md 8.6.
+     * Uses TabReorderExecutor for SPECS.md 8.6 compliant reordering.
      */
     private async _handleTabReorder(fromIndex: number, toIndex: number) {
         const tabs = this.tabs.map((t) => ({
@@ -1392,208 +1397,24 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             docIndex: t.docIndex
         }));
 
-        const action = determineReorderAction(tabs, fromIndex, toIndex);
-
-        if (action.actionType === 'no-op') {
-            return;
-        }
-
         // Use batch to combine physical move + metadata into single undo operation
         this.spreadsheetService.startBatch();
 
         try {
-            // BUG FIX: For D8 (physical+metadata), we need to update metadata FIRST,
-            // then do the physical move LAST. This ensures the final update (physical move)
-            // contains the full file including the updated metadata.
+            const result = TabReorderExecutor.execute(tabs, fromIndex, toIndex, {
+                postBatchUpdate: (update) => this._postBatchUpdate(update),
+                reorderTabsArray: (from, to) => this._reorderTabsArray(from, to),
+                getCurrentTabOrder: () => this._getCurrentTabOrder() as { type: 'sheet' | 'document'; index: number }[]
+            });
 
-            // Update metadata FIRST (if needed) so it's included in the physical move result
-            if (action.metadataRequired && action.physicalMove) {
-                if (action.newTabOrder) {
-                    const result = editor.updateWorkbookTabOrder(action.newTabOrder);
-                    // Don't send this - it will be included in the physical move result
-                    if (result && result.error) {
-                        console.error('[TabReorder] Metadata update failed:', result.error);
-                    }
-                }
-            } else if (!action.metadataRequired && action.physicalMove) {
-                // Result is natural order - remove existing tab_order before physical move
-                editor.updateWorkbookTabOrder(null);
-            }
-
-            // Execute physical move AFTER metadata (so it includes the metadata changes)
-            if (action.physicalMove) {
-                switch (action.physicalMove.type) {
-                    case 'move-sheet': {
-                        const { fromSheetIndex, toSheetIndex } = action.physicalMove;
-                        // Only pass toIndex if metadata is required, otherwise null (no metadata)
-                        const targetTabOrderIndex = action.metadataRequired ? toIndex : null;
-                        const result = editor.moveSheet(fromSheetIndex, toSheetIndex, targetTabOrderIndex);
-                        if (result) this._postBatchUpdate(result);
-                        break;
-                    }
-                    case 'move-workbook': {
-                        const { direction, targetDocIndex } = action.physicalMove;
-                        const toAfterDoc = direction === 'after-doc';
-                        const moveResult = editor.moveWorkbookSection(targetDocIndex, toAfterDoc, false, toIndex);
-
-                        if (moveResult && !moveResult.error && moveResult.content) {
-                            // After physical move, regenerate workbook section to handle metadata
-                            // generateAndGetRange auto-removes tab_order if it matches natural order
-                            const wbUpdate = editor.generateAndGetRange();
-
-                            if (wbUpdate && !wbUpdate.error && wbUpdate.content) {
-                                const lines = moveResult.content.split('\n');
-                                const wbStart = wbUpdate.startLine ?? 0;
-                                const wbEnd = wbUpdate.endLine ?? 0;
-                                const wbContentLines = wbUpdate.content.trimEnd().split('\n');
-                                if (wbUpdate.content) {
-                                    wbContentLines.push('');
-                                }
-
-                                const mergedLines = [
-                                    ...lines.slice(0, wbStart),
-                                    ...wbContentLines,
-                                    ...lines.slice(wbEnd + 1)
-                                ];
-                                const mergedContent = mergedLines.join('\n');
-
-                                this._postBatchUpdate({
-                                    content: mergedContent,
-                                    startLine: 0,
-                                    endLine: lines.length
-                                });
-                            } else {
-                                this._postBatchUpdate(moveResult);
-                            }
-                        } else if (moveResult) {
-                            this._postBatchUpdate(moveResult);
-                        }
-                        break;
-                    }
-                    case 'move-document': {
-                        const { fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook } = action.physicalMove;
-
-                        // Step 1: Physical move (updates mdText but not workbook section)
-                        const moveResult = editor.moveDocumentSection(
-                            fromDocIndex,
-                            toDocIndex,
-                            toAfterWorkbook,
-                            toBeforeWorkbook
-                        );
-
-                        if (moveResult.error) {
-                            console.error('[TabReorder] Move failed:', moveResult.error);
-                            break;
-                        }
-
-                        // Step 2: Always regenerate workbook section to ensure metadata changes are included.
-                        // This is necessary for:
-                        // - metadataRequired=true (D8 case): add new tab_order
-                        // - metadataRequired=false: remove existing tab_order (cleaned by generateAndGetRange)
-                        if (moveResult.content) {
-                            const wbUpdate = editor.generateAndGetRange();
-
-                            if (wbUpdate && !wbUpdate.error && wbUpdate.content) {
-                                const lines = moveResult.content.split('\n');
-                                const wbStart = wbUpdate.startLine ?? 0;
-                                const wbEnd = wbUpdate.endLine ?? 0;
-                                const wbContentLines = wbUpdate.content.trimEnd().split('\n');
-                                if (wbUpdate.content) {
-                                    wbContentLines.push('');
-                                }
-
-                                const mergedLines = [
-                                    ...lines.slice(0, wbStart),
-                                    ...wbContentLines,
-                                    ...lines.slice(wbEnd + 1)
-                                ];
-                                const mergedContent = mergedLines.join('\n');
-
-                                this._postBatchUpdate({
-                                    content: mergedContent,
-                                    startLine: 0,
-                                    endLine: lines.length
-                                });
-                            } else {
-                                this._postBatchUpdate(moveResult);
-                            }
-                        }
-                        break;
-                    }
-                }
-
-                // Execute secondary physical moves (e.g., doc moves triggered by sheet reorder)
-                if (action.secondaryPhysicalMoves && action.secondaryPhysicalMoves.length > 0) {
-                    for (const secondaryMove of action.secondaryPhysicalMoves) {
-                        if (secondaryMove.type === 'move-document') {
-                            const { fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook } = secondaryMove;
-
-                            const moveResult = editor.moveDocumentSection(
-                                fromDocIndex,
-                                toDocIndex,
-                                toAfterWorkbook,
-                                toBeforeWorkbook
-                            );
-
-                            if (moveResult.error) {
-                                console.error('[TabReorder] Secondary move failed:', moveResult.error);
-                            } else if (moveResult.content) {
-                                // Regenerate workbook section to include metadata changes
-                                const wbUpdate = editor.generateAndGetRange();
-
-                                if (wbUpdate && !wbUpdate.error && wbUpdate.content) {
-                                    const lines = moveResult.content.split('\n');
-                                    const wbStart = wbUpdate.startLine ?? 0;
-                                    const wbEnd = wbUpdate.endLine ?? 0;
-                                    const wbContentLines = wbUpdate.content.trimEnd().split('\n');
-                                    if (wbUpdate.content) {
-                                        wbContentLines.push('');
-                                    }
-
-                                    const mergedLines = [
-                                        ...lines.slice(0, wbStart),
-                                        ...wbContentLines,
-                                        ...lines.slice(wbEnd + 1)
-                                    ];
-                                    const mergedContent = mergedLines.join('\n');
-
-                                    this._postBatchUpdate({
-                                        content: mergedContent,
-                                        startLine: 0,
-                                        endLine: lines.length
-                                    });
-                                } else {
-                                    this._postBatchUpdate(moveResult);
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                // Metadata-only case (no physical move)
-                if (action.metadataRequired) {
-                    if (action.newTabOrder) {
-                        const result = editor.updateWorkbookTabOrder(action.newTabOrder);
-                        if (result) this._postBatchUpdate(result);
-                    } else {
-                        this._reorderTabsArray(fromIndex, toIndex);
-                        const tabOrder = this._getCurrentTabOrder();
-                        const result = editor.updateWorkbookTabOrder(tabOrder as editor.TabOrderItem[]);
-                        if (result) this._postBatchUpdate(result);
-                    }
-                } else if (action.actionType === 'metadata') {
-                    const result = editor.updateWorkbookTabOrder(null);
-                    if (result) this._postBatchUpdate(result);
-                    this._reorderTabsArray(fromIndex, toIndex);
-                }
+            if (result.success && result.newActiveTabIndex !== undefined) {
+                this.activeTabIndex = result.newActiveTabIndex;
+            } else if (!result.success) {
+                console.error('[TabReorder] Failed:', result.error);
             }
         } finally {
             this.spreadsheetService.endBatch();
         }
-
-        // Calculate final position and select the moved tab
-        const newIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
-        this.activeTabIndex = newIndex;
     }
 
     /**

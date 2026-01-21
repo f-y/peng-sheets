@@ -99,12 +99,14 @@ export function addDocument(
         if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
             const stripped = line.trim();
             if (stripped === rootMarker) {
-                if (afterWorkbook) {
-                    // Get workbook range and insert after it
+                if (afterWorkbook && afterDocIndex < 0) {
+                    // Insert right after workbook (before any docs after WB)
+                    // Used for between-sheets insertion per SPECS.md 8.5
                     const [, wbEnd] = getWorkbookRange(mdText, rootMarker, configDict.sheetHeaderLevel ?? 2);
                     insertLine = wbEnd;
                     break;
                 }
+                // Either not afterWorkbook, or we have a specific afterDocIndex to find
                 continue;
             }
 
@@ -436,9 +438,45 @@ export function moveDocumentSection(
         const [, wbEnd] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
         insertLine = wbEnd;
     } else if (toBeforeWorkbook) {
-        const tempText = linesWithoutDoc.join('\n');
-        const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
-        insertLine = wbStart;
+        // Moving to before workbook section
+        // If toDocIndex is specified, insert at that position among docs-before-WB
+        // Otherwise, insert just before WB
+        if (toDocIndex !== null && toDocIndex === 0) {
+            // Insert at the very beginning (before first doc)
+            insertLine = 0;
+        } else if (toDocIndex !== null) {
+            // Find the target doc position
+            let docIdx = 0;
+            let foundTarget = false;
+            let inCodeBlock = false;
+            const tempText = linesWithoutDoc.join('\n');
+            const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
+
+            for (let i = 0; i < wbStart; i++) {
+                const line = linesWithoutDoc[i];
+                if (line.trim().startsWith('```')) {
+                    inCodeBlock = !inCodeBlock;
+                }
+                if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
+                    const stripped = line.trim();
+                    if (stripped !== rootMarker) {
+                        if (docIdx === toDocIndex) {
+                            insertLine = i;
+                            foundTarget = true;
+                            break;
+                        }
+                        docIdx++;
+                    }
+                }
+            }
+            if (!foundTarget) {
+                insertLine = wbStart;
+            }
+        } else {
+            const tempText = linesWithoutDoc.join('\n');
+            const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
+            insertLine = wbStart;
+        }
     } else if (toDocIndex !== null) {
         // Adjust toDocIndex for the case where source doc was before target
         // Since we removed fromDocIndex first, indices shift down
