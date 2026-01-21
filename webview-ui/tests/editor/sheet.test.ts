@@ -94,7 +94,7 @@ describe('Sheet Service Tests', () => {
         });
 
         it('should add sheet at specific index', () => {
-            const result = addSheet('Inserted', null, 0);
+            const result = addSheet('Inserted', null, null, 0);
             expect(result.error).toBeUndefined();
 
             const state = JSON.parse(getState());
@@ -105,12 +105,28 @@ describe('Sheet Service Tests', () => {
         it('should update tab_order when adding sheet at specific index', () => {
             // Add first sheet at position 0 with tab_order position 0
             addSheet('Sheet A');
-            const result = addSheet('Sheet B', null, 0, 0);
+            const result = addSheet('Sheet B', null, null, 0, 0);
             expect(result.error).toBeUndefined();
 
             const state = JSON.parse(getState());
             // Sheet B should be first in physical order
             expect(state.workbook.sheets[0].name).toBe('Sheet B');
+        });
+
+        it('should include table name in markdown output for new sheet', () => {
+            const result = addSheet('New Sheet');
+            expect(result.error).toBeUndefined();
+
+            // Verify the markdown content includes table name
+            const content = result.content!;
+
+            // Extract the "New Sheet" section
+            const newSheetStart = content.indexOf('## New Sheet');
+            expect(newSheetStart).toBeGreaterThan(-1);
+
+            const newSheetSection = content.substring(newSheetStart);
+            // The new sheet section should contain its table name
+            expect(newSheetSection).toContain('### Table 1');
         });
     });
 

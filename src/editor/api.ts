@@ -74,10 +74,11 @@ export function updateWorkbookTabOrder(tabOrder: TabOrderItem[] | null): UpdateR
 export function addSheet(
     newName: string,
     columnNames: string[] | null = null,
+    tableName: string | null = null,
     afterSheetIndex: number | null = null,
     targetTabOrderIndex: number | null = null
 ): UpdateResult {
-    return sheetService.addSheet(getContext(), newName, columnNames, afterSheetIndex, targetTabOrderIndex);
+    return sheetService.addSheet(getContext(), newName, columnNames, tableName, afterSheetIndex, targetTabOrderIndex);
 }
 
 /**

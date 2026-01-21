@@ -21,6 +21,7 @@ export function addSheet(
     context: EditorContext,
     newName: string,
     columnNames: string[] | null = null,
+    tableName: string | null = null,
     afterSheetIndex: number | null = null,
     targetTabOrderIndex: number | null = null
 ): UpdateResult {
@@ -44,8 +45,10 @@ export function addSheet(
     const finalCols = columnNames ?? ['Column 1', 'Column 2', 'Column 3'];
 
     try {
-        // Create new sheet with custom headers
+        // Create new sheet with custom headers and table name
+        const finalTableName = tableName ?? 'Table 1';
         const newTable = new Table({
+            name: finalTableName,
             headers: finalCols,
             rows: [finalCols.map(() => '')],
             metadata: {}

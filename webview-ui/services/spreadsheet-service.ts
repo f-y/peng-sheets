@@ -288,6 +288,10 @@ export class SpreadsheetService {
         return ['Column 1', 'Column 2', 'Column 3'];
     }
 
+    private _getDefaultTableName(): string {
+        return t('table', '1');
+    }
+
     // --- Table Operations ---
 
     public updateTableMetadata(sheetIdx: number, tableIdx: number, name: string, description: string) {
@@ -488,9 +492,10 @@ export class SpreadsheetService {
 
     public addSheet(newSheetName: string, afterSheetIndex?: number, targetTabOrderIndex?: number) {
         const headers = this._getDefaultColumnHeaders();
+        const tableName = this._getDefaultTableName();
         const afterIdx = afterSheetIndex !== undefined ? afterSheetIndex : null;
         const targetIdx = targetTabOrderIndex !== undefined ? targetTabOrderIndex : null;
-        this._performAction(() => editor.addSheet(newSheetName, headers, afterIdx, targetIdx));
+        this._performAction(() => editor.addSheet(newSheetName, headers, tableName, afterIdx, targetIdx));
     }
 
     public createSpreadsheet() {

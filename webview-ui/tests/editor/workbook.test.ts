@@ -65,7 +65,7 @@ describe('Workbook Service Edge Cases', () => {
             initializeWorkbook(md, SAMPLE_CONFIG);
 
             // Add at position 0 (before Sheet 1)
-            const result = addSheet('New First', null, 0);
+            const result = addSheet('New First', null, null, 0);
             expect(result.error).toBeUndefined();
 
             const state = JSON.parse(getState());
