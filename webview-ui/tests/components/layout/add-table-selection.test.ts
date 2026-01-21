@@ -24,9 +24,7 @@ describe('LayoutContainer - Add Table Auto-Selection', () => {
         };
 
         element.layout = initialLayout;
-        element.tables = [
-            { name: 'Table 1', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 }
-        ];
+        element.tables = [{ name: 'Table 1', rows: [[]], headers: [], metadata: {}, start_line: 0, end_line: 0 }];
         await element.updateComplete;
 
         // Verify initial state
@@ -130,7 +128,7 @@ describe('LayoutContainer - Add Table Auto-Selection', () => {
             type: 'pane',
             id: 'test-pane',
             tables: [0, 1],
-            activeTableIndex: 1  // Currently viewing Table 2
+            activeTableIndex: 1 // Currently viewing Table 2
         };
 
         element.layout = initialLayout;
@@ -144,7 +142,7 @@ describe('LayoutContainer - Add Table Auto-Selection', () => {
         let layout = (element as any)._currentLayout;
         expect(layout.activeTableIndex).to.equal(1);
 
-        // Simulate backend adding a new table WITHOUT user clicking "+" 
+        // Simulate backend adding a new table WITHOUT user clicking "+"
         // (e.g., table added via programmatic API or from another source)
         // In this case, there's NO pending target pane
         element.tables = [

@@ -16,6 +16,7 @@ All notable changes to the "PengSheets" extension will be documented in this fil
 
 ### Fixed
 - Fix sheet reordering across interleaved documents being incorrectly treated as physical-only moves, causing metadata removal and incorrect document order.
+- Fix document save button not working.
 
 ## [1.0.6] - 2026-01-11
 

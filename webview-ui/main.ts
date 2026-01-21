@@ -624,7 +624,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             console.log('Python result:', range);
 
             if (range && isIDocumentSectionRange(range)) {
-                if (range.start_line !== undefined && range.end_line !== undefined) {
+                if (range.startLine !== undefined && range.endLine !== undefined) {
                     // Use title from event (may have been edited) or fall back to existing
                     const newTitle = detail.title || activeTab.title;
                     const header = `# ${newTitle}`;
@@ -635,9 +635,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                     // Send update to VS Code
                     vscode.postMessage({
                         type: 'updateRange',
-                        startLine: range.start_line,
-                        endLine: range.end_line,
-                        endCol: range.end_col,
+                        startLine: range.startLine,
+                        endLine: range.endLine,
+                        endCol: range.endCol,
                         content: fullContent
                     });
 

@@ -89,9 +89,9 @@ export interface StructureItem {
 }
 
 export interface IDocumentSectionRange {
-    start_line?: number;
-    end_line?: number;
-    end_col?: number;
+    startLine?: number;
+    endLine?: number;
+    endCol?: number;
     error?: string;
 }
 
@@ -273,5 +273,5 @@ export function isDocumentJSON(data: unknown): data is DocumentJSON {
 }
 
 export function isIDocumentSectionRange(data: unknown): data is IDocumentSectionRange {
-    return typeof data === 'object' && data !== null && ('start_line' in data || 'error' in data);
+    return typeof data === 'object' && data !== null && ('startLine' in data || 'error' in data);
 }
