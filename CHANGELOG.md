@@ -2,6 +2,22 @@
 
 All notable changes to the "PengSheets" extension will be documented in this file.
 
+## [Unreleased]
+
+### Added
+- **Formula Columns**: A powerful new feature for automatic calculations and cross-table lookups
+  - **Calculation mode**: Apply formulas to columns using arithmetic expressions (`[Price] * [Quantity]`) or aggregate functions (SUM, AVG, COUNT, MIN, MAX). *Note: Currently limited to columns within the same table.*
+  - **Table Lookup mode**: VLOOKUP-style cross-table references to pull values from other tables
+  - **Formula Dialog**: Intuitive UI with Expression Builder for building formulas visually
+  - **Live Preview**: See calculation results in real-time before applying
+  - **Auto-recalculation**: Values update automatically when source data changes
+  - **Local Undo/Redo**: Expression input supports Cmd/Ctrl+Z for undo and Cmd/Ctrl+Shift+Z for redo within the dialog
+  - **Error Detection**: Non-numeric values in calculations return N/A for easy detection of broken references
+
+### Fixed
+- Fix sheet reordering across interleaved documents being incorrectly treated as physical-only moves, causing metadata removal and incorrect document order.
+- Fix document save button not working.
+
 ## [1.0.6] - 2026-01-11
 
 ### Fixed

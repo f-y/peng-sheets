@@ -2,7 +2,7 @@
  * Move Document Section Tests
  *
  * Created as part of Phase 1 migration verification.
- * Tests for moveDocumentSection parity between Python and TypeScript.
+ * Tests for moveDocumentSection (pure physical move function).
  *
  * KNOWN ISSUES (marked as skip for test-first fixing):
  * 1. effective_to_index calculation missing when toDocIndex is null
@@ -51,7 +51,7 @@ Second document content.
          */
         it('should move document to after workbook', () => {
             // Move Doc Zero (index 0) to after workbook
-            const result = moveDocumentSection(0, null, true, false, 1);
+            const result = moveDocumentSection(0, null, true, false);
 
             expect(result.error).toBeUndefined();
             expect(result.file_changed).toBe(true);
@@ -68,7 +68,7 @@ Second document content.
 
         it('should move document to before workbook', () => {
             // Move Doc One (index 1) to before workbook
-            const result = moveDocumentSection(1, null, false, true, 0);
+            const result = moveDocumentSection(1, null, false, true);
 
             expect(result.error).toBeUndefined();
             expect(result.file_changed).toBe(true);
@@ -116,7 +116,7 @@ More content.
         it('should update tab_order when moving document', () => {
             // Initial: [doc 0, sheet 1, sheet 0, doc 1]
             // Move doc 0 to after workbook (targetTabOrderIndex=2)
-            const result = moveDocumentSection(0, null, true, false, 2);
+            const result = moveDocumentSection(0, null, true, false);
 
             expect(result.error).toBeUndefined();
 
@@ -157,7 +157,7 @@ More content.
          * Testing effective_to_index calculation
          */
         it('should correctly calculate effective_to_index when toDocIndex is null', () => {
-            const result = moveDocumentSection(0, null, true, false, 1);
+            const result = moveDocumentSection(0, null, true, false);
             expect(result.error).toBeUndefined();
 
             const state = JSON.parse(getState());
@@ -202,7 +202,7 @@ More content.
          */
         it('should update metadata comment in markdown after move', () => {
             // Move Doc Zero to after workbook
-            const result = moveDocumentSection(0, null, true, false, 1);
+            const result = moveDocumentSection(0, null, true, false);
 
             expect(result.error).toBeUndefined();
 
@@ -220,6 +220,490 @@ More content.
             const workbookTabOrder = state.workbook.metadata.tab_order;
 
             expect(embeddedMetadata.tab_order).toEqual(workbookTabOrder);
+        });
+    });
+
+    describe('Between-sheets Document move (SPECS.md 8.5)', () => {
+        /**
+         * BUG REPRODUCTION: When moving a Document to a sheet position (between sheets),
+         * the Document should physically move to AFTER Workbook, not stay before it.
+         *
+         * Initial state:
+         * - Physical: [Doc1, Doc3, # Tables (sheets), Doc2]
+         * - Tab order: [Doc1, Sheet1, Doc3, Sheet2, Doc2] (Doc3 is between sheets)
+         *
+         * Move Doc3 (which is before Workbook) to between Sheet1 and Sheet2:
+         * - Expected: Doc3 physically moves to after Workbook
+         * - Bug: Doc3 stays before Workbook
+         */
+        it('should move doc before workbook to after workbook when targeting sheet position', () => {
+            const HYBRID_MD = `# Doc 1
+
+First content.
+
+# Doc 3
+
+Content that should move.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+## Sheet 2
+
+| B |
+|---|
+| 2 |
+
+<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "sheet", "index": 1}, {"type": "document", "index": 2}]} -->
+
+# Doc 2
+
+Content after workbook.
+`;
+            initializeWorkbook(HYBRID_MD, SAMPLE_CONFIG);
+
+            // Verify initial state
+            const state = JSON.parse(getState());
+            const initialDocs = state.structure.filter((s: { type: string }) => s.type === 'document');
+            expect(initialDocs.length).toBe(3);
+            expect(initialDocs[0].title).toBe('Doc 1');
+            expect(initialDocs[1].title).toBe('Doc 3'); // Before Workbook
+            expect(initialDocs[2].title).toBe('Doc 2'); // After Workbook
+
+            // Move Doc 3 (index 1) to between Sheet1 and Sheet2 (targetTabOrderIndex=2)
+            // This is a "cross-type" move, so toAfterWorkbook should be true
+            const result = moveDocumentSection(1, null, true, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Doc 3 should now be AFTER workbook section, not before
+            const tablesPos = content.indexOf('# Tables');
+            const doc3Pos = content.indexOf('# Doc 3');
+            const doc2Pos = content.indexOf('# Doc 2');
+
+            expect(doc3Pos).toBeGreaterThan(tablesPos); // KEY: Doc 3 is after Tables
+            expect(doc3Pos).toBeLessThan(doc2Pos); // Doc 3 is before Doc 2
+        });
+
+        /**
+         * EXACT USER SCENARIO: Doc3 (before Workbook) to after Sheet2
+         * Initial: [Doc1, Doc3, Workbook(Sheet1, Sheet2), Doc2]
+         * Move Doc3 to between sheets (after Sheet2)
+         * Expected: Doc3 physically goes after Workbook, BEFORE Doc2
+         * Bug: Doc3 ends up at file end (AFTER Doc2)
+         */
+        it('should insert doc before existing doc after workbook', () => {
+            // Exact markdown from user scenario (no initial metadata)
+            const EXACT_USER_MD = `# Doc 1
+
+Integrates with Pydantic and Dataclasses to validate table data as structured data.
+
+# Doc 3
+
+# Tables
+
+## Sheet 1
+
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+|  |  |  |
+
+## Sheet 2
+
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+|  |  |  |
+
+# Doc 2
+
+`;
+            initializeWorkbook(EXACT_USER_MD, SAMPLE_CONFIG);
+
+            // Verify initial state
+            const state = JSON.parse(getState());
+            const docs = state.structure.filter((s: { type: string }) => s.type === 'document');
+            expect(docs[0].title).toBe('Doc 1');
+            expect(docs[1].title).toBe('Doc 3'); // Before Workbook
+            expect(docs[2].title).toBe('Doc 2'); // After Workbook
+
+            // Move Doc 3 (docIndex=1) to after Workbook with toAfterWorkbook=true
+            // In UI: toIndex=4 (position after Sheet2, which is at lastSheetIdx=3, so toIndex=lastSheetIdx+1=4)
+            // Tab order: [Doc1=0, Doc3=1, Sheet1=2, Sheet2=3, Doc2=4]
+            // Dropping after Sheet2 means toIndex=4 (where Doc2 currently is)
+            const result = moveDocumentSection(1, null, true, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Doc 3 should be AFTER Workbook but BEFORE Doc 2
+            const tablesPos = content.indexOf('# Tables');
+            const doc3Pos = content.indexOf('# Doc 3');
+            const doc2Pos = content.indexOf('# Doc 2');
+
+            expect(doc3Pos).toBeGreaterThan(tablesPos);
+            expect(doc3Pos).toBeLessThan(doc2Pos); // KEY: Doc 3 BEFORE Doc 2
+        });
+
+        /**
+         * moveDocumentSection is now a pure physical move.
+         * Metadata handling should be done by the caller.
+         * This test verifies existing metadata is preserved (not modified).
+         */
+        it('should preserve existing metadata comment (not modify it)', () => {
+            const HYBRID_MD = `# Doc 1
+
+First content.
+
+# Doc 3
+
+Content.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+## Sheet 2
+
+| B |
+|---|
+| 2 |
+
+<!-- md-spreadsheet-workbook-metadata: {"tab_order": [{"type": "document", "index": 0}, {"type": "sheet", "index": 0}, {"type": "document", "index": 1}, {"type": "sheet", "index": 1}, {"type": "document", "index": 2}]} -->
+
+# Doc 2
+
+Content.
+`;
+            initializeWorkbook(HYBRID_MD, SAMPLE_CONFIG);
+
+            // Move Doc 3 (index 1) from before Workbook to after Workbook
+            const result = moveDocumentSection(1, null, true, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Metadata comment should still exist (moveDocumentSection doesn't remove it)
+            const metadataMatch = content.match(/<!-- md-spreadsheet-workbook-metadata: ({.*?}) -->/);
+            expect(metadataMatch).not.toBeNull();
+
+            // Physical move verified: Doc 3 is now after Tables
+            const tablesPos = content.indexOf('# Tables');
+            const doc3Pos = content.indexOf('# Doc 3');
+            expect(doc3Pos).toBeGreaterThan(tablesPos);
+        });
+
+        /**
+         * Pure physical move - does NOT add metadata.
+         * Metadata addition is now the caller's responsibility (SPECS.md 8.6).
+         */
+        it('should not add metadata comment - pure physical move only', () => {
+            const NO_META_MD = `# Doc 1
+
+First content.
+
+# Doc 3
+
+Content.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+## Sheet 2
+
+| B |
+|---|
+| 2 |
+
+# Doc 2
+
+Content.
+`;
+            initializeWorkbook(NO_META_MD, SAMPLE_CONFIG);
+
+            // Move Doc 3 (index 1) from before Workbook to after Workbook
+            const result = moveDocumentSection(1, null, true, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // moveDocumentSection is pure - should NOT add metadata
+            const metadataMatch = content.match(/<!-- md-spreadsheet-workbook-metadata: ({.*?}) -->/);
+            expect(metadataMatch).toBeNull();
+
+            // Physical move verified: Doc 3 is now after Tables
+            const tablesPos = content.indexOf('# Tables');
+            const doc3Pos = content.indexOf('# Doc 3');
+            expect(doc3Pos).toBeGreaterThan(tablesPos);
+        });
+    });
+
+    /**
+     * RCA: Doc→Doc Off-by-One Index Bug
+     * Condition: WB exists before Docs OR WB doesn't exist, Doc moved backward
+     */
+    // Doc→Doc Off-by-One Index Bug RCA tests
+    describe('Doc→Doc Off-by-One Index Bug (RCA)', () => {
+        /**
+         * BUG CASE 1: WB exists before Docs
+         * Initial: [WB, D1, D2]
+         * Action: Move D1 after D2 (to position 2, insert before EOF)
+         * Expected: [WB, D2, D1]
+         */
+        it('should move D1 after D2 when WB is before - [WB, D1, D2] → [WB, D2, D1]', () => {
+            const MD = `# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+# Doc 1
+
+First doc.
+
+# Doc 2
+
+Second doc.
+`;
+            initializeWorkbook(MD, SAMPLE_CONFIG);
+
+            // Move D1 (index 0) after D2 (index 1)
+            // New API: toDocIndex=2 means "insert at position 2" (= after D2, at EOF)
+            const result = moveDocumentSection(0, 2, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Expected order: Tables, Doc 2, Doc 1
+            const tablesPos = content.indexOf('# Tables');
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+
+            expect(tablesPos).toBeLessThan(doc2Pos);
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 comes before D1
+        });
+
+        /**
+         * BUG CASE 2: WB doesn't exist (Documents only)
+         * Initial: [D1, D2, D3]
+         * Action: Move D1 after D2 (to position 2, insert before D3)
+         * Expected: [D2, D1, D3]
+         */
+        it('should move D1 after D2 when no WB - [D1, D2, D3] → [D2, D1, D3]', () => {
+            const MD = `# Doc 1
+
+First doc.
+
+# Doc 2
+
+Second doc.
+
+# Doc 3
+
+Third doc.
+`;
+            initializeWorkbook(MD, SAMPLE_CONFIG);
+
+            // Move D1 (index 0) after D2
+            // New API: toDocIndex=2 means "insert at position 2" (= before D3, after D2)
+            const result = moveDocumentSection(0, 2, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Expected order: Doc 2, Doc 1, Doc 3
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+            const doc3Pos = content.indexOf('# Doc 3');
+
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 comes before D1
+            expect(doc1Pos).toBeLessThan(doc3Pos); // D1 comes before D3
+        });
+
+        /**
+         * BUG CASE 3: Docs before WB
+         * Initial: [D1, D2, WB]
+         * Action: Move D1 after D2 (to position 2, insert before WB)
+         * Expected: [D2, D1, WB]
+         */
+        it('should move D1 after D2 when Docs before WB - [D1, D2, WB] → [D2, D1, WB]', () => {
+            const MD = `# Doc 1
+
+First doc.
+
+# Doc 2
+
+Second doc.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+`;
+            initializeWorkbook(MD, SAMPLE_CONFIG);
+
+            // Move D1 (index 0) after D2
+            // New API: toDocIndex=2 means "insert at position 2" (but only 2 docs exist, so at end of docs)
+            const result = moveDocumentSection(0, 2, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Expected order: Doc 2, Doc 1, Tables
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+            const tablesPos = content.indexOf('# Tables');
+
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 comes before D1
+            expect(doc1Pos).toBeLessThan(tablesPos); // D1 comes before Tables
+        });
+    });
+
+    /**
+     * EXACT REPRODUCTION: sample-workspace/workbook.md
+     * Structure: [WB(S1, S2), Doc1, Doc2, Doc3]
+     */
+    describe('Exact Reproduction: workbook.md [WB, D1, D2, D3]', () => {
+        const WORKBOOK_MD = `# Tables
+
+## Sheet 1
+
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+|  |  |  |
+
+## Sheet 2
+
+| Column 1 | Column 2 | Column 3 |
+| --- | --- | --- |
+|  |  |  |
+
+# Doc 1
+
+# Doc 2
+
+# Doc 3
+`;
+
+        beforeEach(() => {
+            initializeWorkbook(WORKBOOK_MD, SAMPLE_CONFIG);
+        });
+
+        /**
+         * USER BUG REPORT 1: Doc1 → after Doc2
+         * Initial: [WB, D1, D2, D3]
+         * Action: Move D1 after D2 (to position 2, insert before D3)
+         * Expected: [WB, D2, D1, D3]
+         */
+        it('should move Doc1 after Doc2 - [WB, D1, D2, D3] → [WB, D2, D1, D3]', () => {
+            // Doc1 is index 0, Doc2 is index 1
+            // New API: toDocIndex=2 means "insert at position 2" (before D3)
+            const result = moveDocumentSection(0, 2, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+            const tablesPos = content.indexOf('# Tables');
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+            const doc3Pos = content.indexOf('# Doc 3');
+
+            // Expected order: Tables < Doc2 < Doc1 < Doc3
+            expect(tablesPos).toBeLessThan(doc2Pos);
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 before D1
+            expect(doc1Pos).toBeLessThan(doc3Pos); // D1 before D3
+        });
+
+        /**
+         * USER BUG REPORT 2: Doc2 → after Doc3
+         * Initial: [WB, D1, D2, D3]
+         * Action: Move D2 after D3 (to position 3, insert at end)
+         * Expected: [WB, D1, D3, D2]
+         */
+        it('should move Doc2 after Doc3 - [WB, D1, D2, D3] → [WB, D1, D3, D2]', () => {
+            // Doc2 is index 1, Doc3 is index 2
+            // New API: toDocIndex=3 means "insert at position 3" (at end, after D3)
+            const result = moveDocumentSection(1, 3, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+            const tablesPos = content.indexOf('# Tables');
+            const doc1Pos = content.indexOf('# Doc 1');
+            const doc2Pos = content.indexOf('# Doc 2');
+            const doc3Pos = content.indexOf('# Doc 3');
+
+            // Expected order: Tables < Doc1 < Doc3 < Doc2
+            expect(tablesPos).toBeLessThan(doc1Pos);
+            expect(doc1Pos).toBeLessThan(doc3Pos); // D1 before D3
+            expect(doc3Pos).toBeLessThan(doc2Pos); // KEY: D3 before D2
+        });
+    });
+
+    describe('D1 E2E Scenario: Before-WB doc reorder', () => {
+        // D1 scenario: [D1, D2, WB] → [D2, D1, WB]
+        // This is the exact E2E failing scenario
+        const D1_D2_WB = `# D1
+
+First doc.
+
+# D2
+
+Second doc.
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+`;
+
+        beforeEach(() => {
+            initializeWorkbook(D1_D2_WB, SAMPLE_CONFIG);
+        });
+
+        it('should reorder D1 after D2 (toDocIndex=2)', () => {
+            // fromDocIndex=0 (D1), toDocIndex=2 (position after D2)
+            const result = moveDocumentSection(0, 2, false, false);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+            const doc1Pos = content.indexOf('# D1');
+            const doc2Pos = content.indexOf('# D2');
+            const tablesPos = content.indexOf('# Tables');
+
+            // Expected order: D2 < D1 < Tables
+            expect(doc2Pos).toBeLessThan(doc1Pos); // KEY: D2 should come before D1
+            expect(doc1Pos).toBeLessThan(tablesPos);
         });
     });
 });

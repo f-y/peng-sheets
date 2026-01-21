@@ -40,6 +40,7 @@ import {
     IColumnResizeDetail,
     IColumnFilterDetail,
     IValidationUpdateDetail,
+    IFormulaUpdateDetail,
     IMoveRowsDetail,
     IMoveColumnsDetail,
     IMoveCellsDetail
@@ -47,7 +48,15 @@ import {
 
 // Register the VS Code Design System components
 import { SpreadsheetService } from './services/spreadsheet-service';
-import { IVisualMetadata, ValidationMetadata } from './services/types';
+import { TabReorderExecutor } from './executors/tab-reorder-executor';
+import {
+    IVisualMetadata,
+    ValidationMetadata,
+    FormulaMetadata,
+    FormulaDefinition,
+    TableMetadata
+} from './services/types';
+import { recalculateAllFormulas, calculateAllFormulas } from './services/formula-recalculator';
 import { ClipboardStore } from './stores/clipboard-store';
 
 // Register the VS Code Design System components
@@ -115,6 +124,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     // Track pending new tab index for selection after add (original tab index + 1)
     private _pendingNewTabIndex: number | null = null;
+
+    // Track whether initial formula calculation has been done
+    private _formulasInitialized: boolean = false;
 
     @state()
     private _activeToolbarFormat: ToolbarFormatState = {};
@@ -214,6 +226,41 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         }
     }
 
+    _handleFormulaUpdate(detail: IFormulaUpdateDetail) {
+        const { sheetIndex, tableIndex, colIndex, formula } = detail;
+        // Get current visual metadata and merge formula
+        const tab = this.tabs.find((t) => t.type === 'sheet' && t.sheetIndex === sheetIndex);
+        if (tab && isSheetJSON(tab.data)) {
+            const table = tab.data.tables[tableIndex];
+            if (table) {
+                const currentVisual = ((table.metadata as Record<string, unknown>)?.visual as IVisualMetadata) || {};
+
+                // Ensure formulas object exists
+                const currentFormulas: FormulaMetadata = currentVisual.formulas || {};
+
+                if (formula === null) {
+                    // Remove formula for this column
+                    delete currentFormulas[colIndex.toString()];
+                } else {
+                    // Set formula for this column
+                    currentFormulas[colIndex.toString()] = formula as FormulaDefinition;
+                }
+
+                const newVisual: IVisualMetadata = {
+                    ...currentVisual,
+                    formulas: Object.keys(currentFormulas).length > 0 ? currentFormulas : undefined
+                };
+
+                // Clean up undefined formulas key
+                if (newVisual.formulas === undefined) {
+                    delete newVisual.formulas;
+                }
+
+                this.spreadsheetService.updateVisualMetadata(sheetIndex, tableIndex, newVisual);
+            }
+        }
+    }
+
     _handleSheetMetadataUpdate(detail: ISheetMetadataUpdateDetail) {
         const { sheetIndex, metadata } = detail;
         // Optimistic Update: Update local state immediately
@@ -269,7 +316,131 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         endCol: number,
         newValue: string
     ) {
+        // Check if this is a header cell edit (column rename)
+        if (startRow === -1 && endRow === -1) {
+            this._handleColumnRename(sheetIdx, tableIdx, startCol, endCol, newValue);
+            return;
+        }
+
+        // Simply update the range - formula recalculation is handled automatically
+        // by the onDataChanged callback in SpreadsheetService._performAction
         this.spreadsheetService.updateRange(sheetIdx, tableIdx, startRow, endRow, startCol, endCol, newValue);
+    }
+
+    /**
+     * Handle column header rename with formula reference propagation.
+     */
+    private _handleColumnRename(
+        sheetIdx: number,
+        tableIdx: number,
+        startCol: number,
+        endCol: number,
+        newValue: string
+    ) {
+        if (!this.workbook) {
+            this.spreadsheetService.updateRange(sheetIdx, tableIdx, -1, -1, startCol, endCol, newValue);
+            return;
+        }
+
+        const sheet = this.workbook.sheets[sheetIdx];
+        if (!sheet) {
+            this.spreadsheetService.updateRange(sheetIdx, tableIdx, -1, -1, startCol, endCol, newValue);
+            return;
+        }
+
+        const table = sheet.tables[tableIdx];
+        if (!table) {
+            this.spreadsheetService.updateRange(sheetIdx, tableIdx, -1, -1, startCol, endCol, newValue);
+            return;
+        }
+
+        // Capture old column name before update
+        const oldName = table.headers?.[startCol];
+
+        // Perform the header update
+        this.spreadsheetService.updateRange(sheetIdx, tableIdx, -1, -1, startCol, endCol, newValue);
+
+        // Propagate column name change to formula references
+        if (oldName && oldName !== newValue) {
+            this._propagateColumnRename(sheetIdx, tableIdx, oldName, newValue);
+        }
+    }
+
+    /**
+     * Propagate column rename to all formula references.
+     * Updates formulas that reference the old column name.
+     */
+    private _propagateColumnRename(sheetIdx: number, tableIdx: number, oldName: string, newName: string) {
+        if (!this.workbook) return;
+
+        const table = this.workbook.sheets[sheetIdx]?.tables[tableIdx];
+        if (!table) return;
+
+        const meta = table.metadata as TableMetadata | undefined;
+        const visual = meta?.visual;
+        const formulas = visual?.formulas;
+        if (!formulas || Object.keys(formulas).length === 0) return;
+
+        let updated = false;
+        const newFormulas: FormulaMetadata = { ...formulas };
+
+        for (const [colKey, formula] of Object.entries(formulas)) {
+            if (!formula || typeof formula !== 'object') continue;
+
+            if (formula.type === 'arithmetic') {
+                // Work with ArithmeticFormula type
+                let arithmeticCopy = { ...formula };
+
+                // Update expression references
+                if (formula.expression && formula.expression.includes(`[${oldName}]`)) {
+                    arithmeticCopy = {
+                        ...arithmeticCopy,
+                        expression: formula.expression.replace(
+                            new RegExp(`\\[${this._escapeRegex(oldName)}\\]`, 'g'),
+                            `[${newName}]`
+                        )
+                    };
+                    updated = true;
+                }
+
+                // Update columns array
+                if (formula.columns) {
+                    const newColumns = formula.columns.map((col: string) => (col === oldName ? newName : col));
+                    if (JSON.stringify(newColumns) !== JSON.stringify(formula.columns)) {
+                        arithmeticCopy = { ...arithmeticCopy, columns: newColumns };
+                        updated = true;
+                    }
+                }
+
+                newFormulas[colKey] = arithmeticCopy;
+            } else if (formula.type === 'lookup') {
+                // Work with LookupFormula type
+                let lookupCopy = { ...formula };
+
+                // Update lookup references for local join key
+                if (formula.joinKeyLocal === oldName) {
+                    lookupCopy = { ...lookupCopy, joinKeyLocal: newName };
+                    updated = true;
+                }
+
+                newFormulas[colKey] = lookupCopy;
+            }
+        }
+
+        if (updated) {
+            // Update visual metadata with new formulas
+            this.spreadsheetService.updateVisualMetadata(sheetIdx, tableIdx, {
+                ...visual,
+                formulas: newFormulas
+            });
+        }
+    }
+
+    /**
+     * Escape special regex characters in a string.
+     */
+    private _escapeRegex(str: string): string {
+        return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     }
 
     _handleDeleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
@@ -453,20 +624,23 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             console.log('Python result:', range);
 
             if (range && isIDocumentSectionRange(range)) {
-                if (range.start_line !== undefined && range.end_line !== undefined) {
+                if ('error' in range && range.error) {
+                    console.error('Python error:', range.error);
+                } else if (range.startLine !== undefined && range.endLine !== undefined) {
                     // Use title from event (may have been edited) or fall back to existing
                     const newTitle = detail.title || activeTab.title;
                     const header = `# ${newTitle}`;
                     // Ensure content ends with newline for separation from next section
                     const body = detail.content.endsWith('\n') ? detail.content : detail.content + '\n';
-                    const fullContent = header + '\n' + body;
+                    // Add trailing newline for proper section separation
+                    const fullContent = header + '\n' + body + '\n';
 
                     // Send update to VS Code
                     vscode.postMessage({
                         type: 'updateRange',
-                        startLine: range.start_line,
-                        endLine: range.end_line,
-                        endCol: range.end_col,
+                        startLine: range.startLine,
+                        endLine: range.endLine,
+                        endCol: range.endCol,
                         content: fullContent
                     });
 
@@ -493,8 +667,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                     if (detail.save) {
                         this._handleSave();
                     }
-                } else if (range.error) {
-                    console.error('Python error:', range.error);
                 }
             }
         } catch (error) {
@@ -547,6 +719,24 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         // Start service initialization immediately for faster startup
         // Don't await - let it run in parallel with component mounting
         this._initPromise = this.spreadsheetService.initialize();
+
+        // Register callback for automatic formula recalculation after any data change
+        // Use getCurrentWorkbook() to get fresh state from editor after mutations
+        // withinBatch: true because caller manages the batch for single undo
+        this.spreadsheetService.setOnDataChangedCallback(() => {
+            const currentWorkbook = this.spreadsheetService.getCurrentWorkbook();
+            recalculateAllFormulas(
+                currentWorkbook,
+                this.spreadsheetService,
+                () => {
+                    // Note: Don't replace this.workbook here - it would overwrite local UI state
+                    // (like activeTableIndex) with stale values from editor.
+                    // recalculateAllFormulas already updates cell values in-place.
+                    this.requestUpdate();
+                },
+                true
+            );
+        });
 
         try {
             const initialContent = window.initialContent;
@@ -701,6 +891,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                                   .layout="${(activeTab.data as SheetJSON).metadata?.layout}"
                                   .tables="${(activeTab.data as SheetJSON).tables}"
                                   .sheetIndex="${activeTab.sheetIndex}"
+                                  .workbook="${this.workbook}"
                                   .dateFormat="${((this.config?.validation as Record<string, unknown>)
                                       ?.dateFormat as string) || 'YYYY-MM-DD'}"
                                   @save-requested="${this._handleSave}"
@@ -853,35 +1044,17 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     /**
      * Add a new Document at a specific tab order position.
-     * Calculates the physical afterDocIndex based on Documents before targetTabOrderIndex.
+     * See SPECS.md 8.5 for physical insertion rules.
+     *
+     * For Add New Document (targetTabOrderIndex == validTabs.length):
+     * - Simply insert at EOF (afterWorkbook=true, afterDocIndex=-1)
+     *
+     * For insertion at other positions (future enhancement):
+     * - Calculate physical position based on surrounding tabs
      */
     private _addDocumentAtPosition(targetTabOrderIndex: number) {
-        // Count Document items in tabs before the target position (excluding add-sheet)
-        let docsBeforeTarget = 0;
-        for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
-            if (this.tabs[i].type === 'document') {
-                docsBeforeTarget++;
-            }
-        }
-
-        // Determine physical insertion position
-        let afterDocIndex = docsBeforeTarget - 1; // Insert after this document index
-        let afterWorkbook = false;
-
-        // If no documents before target, check if there are sheets before
-        // (meaning we're inserting after/within the workbook area)
-        if (docsBeforeTarget === 0) {
-            // Check if there are any sheets before target position
-            const sheetsBeforeTarget =
-                this.tabs
-                    .slice(0, Math.min(targetTabOrderIndex, this.tabs.length))
-                    .filter((t) => t.type === 'sheet' || t.type === 'add-sheet').length > 0;
-            if (sheetsBeforeTarget) {
-                afterWorkbook = true;
-            } else {
-                afterDocIndex = -1; // Insert at beginning
-            }
-        }
+        // Count valid tabs (excluding add-sheet)
+        const validTabCount = this.tabs.filter((t) => t.type !== 'add-sheet').length;
 
         // Generate default document name
         const docCount = this.tabs.filter((t) => t.type === 'document').length;
@@ -889,6 +1062,55 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
         // Store pending new tab index
         this._pendingNewTabIndex = targetTabOrderIndex;
+
+        // Simple case: Add at end (most common for Add New Document)
+        if (targetTabOrderIndex >= validTabCount) {
+            // Find the last document after workbook to insert after it
+            const firstSheetIdx = this.tabs.findIndex((tab) => tab.type === 'sheet');
+            let lastDocAfterWorkbook = -1;
+
+            for (const tab of this.tabs) {
+                if (tab.type === 'document' && tab.docIndex !== undefined) {
+                    // If no sheets exist, or this doc appears after first sheet in tab order
+                    if (firstSheetIdx === -1 || this.tabs.indexOf(tab) > firstSheetIdx) {
+                        lastDocAfterWorkbook = tab.docIndex;
+                    }
+                }
+            }
+
+            // Insert after the last doc after WB (if any), otherwise just after WB
+            this.spreadsheetService.addDocument(newDocName, lastDocAfterWorkbook, true, targetTabOrderIndex - 1);
+            return;
+        }
+
+        // Complex case: Insert at specific position (rare, for future drag-drop support)
+        // Check if there are any sheets before target position
+        const sheetsBeforeTarget =
+            this.tabs.slice(0, Math.min(targetTabOrderIndex, this.tabs.length)).filter((tab) => tab.type === 'sheet')
+                .length > 0;
+
+        let afterDocIndex = -1;
+        let afterWorkbook = false;
+
+        if (!sheetsBeforeTarget) {
+            // No sheets before target = inserting among docs before Workbook
+            let docsBeforeTarget = 0;
+            for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
+                if (this.tabs[i].type === 'document') {
+                    docsBeforeTarget++;
+                }
+            }
+            afterDocIndex = docsBeforeTarget - 1;
+        } else {
+            // Sheets before target = insert after Workbook
+            afterWorkbook = true;
+            const firstSheetIdx = this.tabs.findIndex((tab) => tab.type === 'sheet');
+            for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
+                if (this.tabs[i].type === 'document' && i > firstSheetIdx) {
+                    afterDocIndex = this.tabs[i].docIndex!;
+                }
+            }
+        }
 
         this.spreadsheetService.addDocument(newDocName, afterDocIndex, afterWorkbook, targetTabOrderIndex - 1);
     }
@@ -1148,6 +1370,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
             this.requestUpdate();
 
+            // Calculate all formula column values on initial load only
+            if (!this._formulasInitialized) {
+                this._formulasInitialized = true;
+                calculateAllFormulas(this.workbook, this.spreadsheetService, () => this.requestUpdate());
+            }
+
             // Update output message if successful
             this.output = 'Parsed successfully!';
         } catch (err: unknown) {
@@ -1161,185 +1389,59 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     /**
      * Handle tab reorder from bottom-tabs component drag-drop
      *
-     * Reordering follows SPECS.md section 8.4:
-     * - Document↔Document: Physical move in Markdown
-     * - Sheet↔Sheet: Physical move within Workbook
-     * - Document↔Workbook boundary: Physical move in Markdown
-     * - Sheet↔Document (cross-type within UI): Metadata-only update
+     * Uses TabReorderExecutor for SPECS.md 8.6 compliant reordering.
      */
     private async _handleTabReorder(fromIndex: number, toIndex: number) {
-        if (fromIndex === toIndex) return;
+        const tabs = this.tabs.map((t) => ({
+            type: t.type as 'sheet' | 'document' | 'add-sheet',
+            sheetIndex: t.sheetIndex,
+            docIndex: t.docIndex
+        }));
 
-        const fromTab = this.tabs[fromIndex];
-        const toTab = toIndex < this.tabs.length ? this.tabs[toIndex] : null;
+        // Use batch to combine physical move + metadata into single undo operation
+        this.spreadsheetService.startBatch();
 
-        // Determine the boundary context: is the target at a Workbook boundary?
-        // Find the first and last sheet tab indices to determine Workbook boundaries
-        const firstSheetIdx = this.tabs.findIndex((t) => t.type === 'sheet');
-        const lastSheetIdx = this.tabs.reduce((acc, t, i) => (t.type === 'sheet' ? i : acc), -1);
-        const hasWorkbook = firstSheetIdx !== -1;
+        try {
+            const result = TabReorderExecutor.execute(tabs, fromIndex, toIndex, {
+                postBatchUpdate: (update) => this._postBatchUpdate(update),
+                reorderTabsArray: (from, to) => this._reorderTabsArray(from, to),
+                getCurrentTabOrder: () => this._getCurrentTabOrder() as { type: 'sheet' | 'document'; index: number }[]
+            });
 
-        if (fromTab.type === 'sheet') {
-            // Check if there are documents after the workbook (last doc index > last sheet index)
-            const lastDocIdx = this.tabs.reduce((acc, t, i) => (t.type === 'document' ? i : acc), -1);
-            const hasDocsAfterWorkbook = lastDocIdx > lastSheetIdx;
-            const sheetCount = this.tabs.filter((t) => t.type === 'sheet').length;
-
-            // Helper: Compute what the new tab order would look like after this move
-            const computeNewTabOrder = (): typeof this.tabs => {
-                const newTabs = [...this.tabs];
-                const [moved] = newTabs.splice(fromIndex, 1);
-                const insertIdx = fromIndex < toIndex ? toIndex - 1 : toIndex;
-                newTabs.splice(insertIdx, 0, moved);
-                return newTabs;
-            };
-
-            // Helper: Check if a Document should be before Workbook based on new tab order
-            const shouldDocumentBeBeforeWorkbook = (
-                newTabs: typeof this.tabs
-            ): { needed: boolean; docIndex?: number; targetTabOrderIndex?: number } => {
-                const newFirstSheetIdx = newTabs.findIndex((t) => t.type === 'sheet');
-                if (newFirstSheetIdx <= 0) return { needed: false };
-
-                // Check if there's a document before the first sheet
-                for (let i = 0; i < newFirstSheetIdx; i++) {
-                    if (newTabs[i].type === 'document') {
-                        // Check if currently this doc is after workbook in file
-                        const currentDocIdx = this.tabs.findIndex((t) => t === newTabs[i]);
-                        if (currentDocIdx > firstSheetIdx) {
-                            return { needed: true, docIndex: newTabs[i].docIndex!, targetTabOrderIndex: i };
-                        }
-                    }
-                }
-                return { needed: false };
-            };
-
-            // Helper: Check if Workbook should be before a Document based on new tab order
-            const shouldWorkbookBeBeforeDocument = (
-                newTabs: typeof this.tabs
-            ): { needed: boolean; toDocIndex?: number; targetTabOrderIndex?: number } => {
-                const newFirstSheetIdx = newTabs.findIndex((t) => t.type === 'sheet');
-                // If no sheets or sheet is NOT first, no need to move workbook
-                if (newFirstSheetIdx !== 0) return { needed: false };
-
-                // Sheet is first in new tab_order. Check if currently a Document is before Workbook in file.
-                if (firstSheetIdx > 0) {
-                    for (let i = 0; i < firstSheetIdx; i++) {
-                        if (this.tabs[i].type === 'document') {
-                            return { needed: true, toDocIndex: this.tabs[i].docIndex!, targetTabOrderIndex: 0 };
-                        }
-                    }
-                }
-                return { needed: false };
-            };
-
-            // FIRST: For multi-sheet workbooks, check if this move requires physical adjustment
-            // This takes precedence over Sheet→Sheet reorder
-            if (sheetCount > 1) {
-                const newTabs = computeNewTabOrder();
-
-                // Check if a Document needs to move before Workbook
-                const docAdjustment = shouldDocumentBeBeforeWorkbook(newTabs);
-                if (docAdjustment.needed) {
-                    this.spreadsheetService.moveDocumentSection(
-                        docAdjustment.docIndex!,
-                        null,
-                        false,
-                        true,
-                        docAdjustment.targetTabOrderIndex!
-                    );
-                    return;
-                }
-
-                // Check if Workbook needs to move before a Document
-                const wbAdjustment = shouldWorkbookBeBeforeDocument(newTabs);
-                if (wbAdjustment.needed) {
-                    this.spreadsheetService.moveWorkbookSection(
-                        wbAdjustment.toDocIndex!,
-                        false,
-                        wbAdjustment.targetTabOrderIndex!
-                    );
-                    return;
-                }
+            if (result.success && result.newActiveTabIndex !== undefined) {
+                this.activeTabIndex = result.newActiveTabIndex;
+            } else if (!result.success) {
+                console.error('[TabReorder] Failed:', result.error);
             }
-
-            if (toTab?.type === 'sheet') {
-                // Sheet → Sheet: Physical reorder within workbook
-                const fromSheetIndex = fromTab.sheetIndex!;
-                const toSheetIndex = toTab.sheetIndex!;
-                this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
-            } else if (toTab?.type === 'document') {
-                // Sheet → Document position
-                if (sheetCount === 1) {
-                    // Single sheet = Workbook crosses Document boundary (physical move)
-                    // Python handles metadata (including sheetIndex recalculation)
-                    const toDocIndex = toTab.docIndex!;
-                    this.spreadsheetService.moveWorkbookSection(toDocIndex, false, toIndex);
-                    // Note: Do NOT call _updateTabOrder here - Python handles metadata correctly
-                } else {
-                    // Multiple sheets = Metadata-only (cross-type display order)
-                    this._reorderTabsArray(fromIndex, toIndex);
-                    this._updateTabOrder();
-                }
-            } else if ((toTab?.type === 'add-sheet' || !toTab) && hasDocsAfterWorkbook) {
-                // Sheet → End of tabs (after last Document)
-                if (sheetCount === 1) {
-                    // Single sheet = Move Workbook to file end
-                    // Python handles metadata
-                    const docCount = this.tabs.filter((t) => t.type === 'document').length;
-                    this.spreadsheetService.moveWorkbookSection(docCount, false, toIndex);
-                    // Note: Do NOT call _updateTabOrder here - Python handles metadata correctly
-                } else {
-                    // Multiple sheets = Metadata-only
-                    this._reorderTabsArray(fromIndex, toIndex);
-                    this._updateTabOrder();
-                }
-            } else if (toTab?.type === 'add-sheet' || !toTab) {
-                // Sheet → add-sheet (no docs after): Just reorder within workbook
-                const fromSheetIndex = fromTab.sheetIndex!;
-                const toSheetIndex = sheetCount;
-                this._moveSheet(fromSheetIndex, toSheetIndex, toIndex);
-            } else {
-                // Fallback: metadata-only
-                this._reorderTabsArray(fromIndex, toIndex);
-                this._updateTabOrder();
-            }
-        } else if (fromTab.type === 'document') {
-            const fromDocIndex = fromTab.docIndex!;
-
-            if (toTab?.type === 'document') {
-                // Document → Document: Physical reorder in file
-                // Python updates both file content and metadata (including docIndex recalculation)
-                const toDocIndex = toTab.docIndex!;
-                this.spreadsheetService.moveDocumentSection(fromDocIndex, toDocIndex, false, false, toIndex);
-                // Note: Do NOT call _updateTabOrder here - it would overwrite Python's correct metadata
-                // with stale local docIndex values. Wait for server response to refresh tabs.
-            } else if (!hasWorkbook) {
-                // No workbook exists - just reorder metadata
-                this._reorderTabsArray(fromIndex, toIndex);
-                this._updateTabOrder();
-            } else if (toIndex <= firstSheetIdx) {
-                // Document → Before Workbook: Physical move
-                // Python updates both file content and metadata (including docIndex recalculation)
-                this.spreadsheetService.moveDocumentSection(fromDocIndex, null, false, true, toIndex);
-                // Note: Do NOT call _updateTabOrder here - Python handles metadata correctly
-            } else if (toIndex > lastSheetIdx || toTab?.type === 'add-sheet' || !toTab) {
-                // Document → After Workbook: Physical move
-                // Python updates both file content and metadata (including docIndex recalculation)
-                this.spreadsheetService.moveDocumentSection(fromDocIndex, null, true, false, toIndex);
-                // Note: Do NOT call _updateTabOrder here - Python handles metadata correctly
-            } else {
-                // Document → Between sheets (inside Workbook UI): Metadata-only
-                this._reorderTabsArray(fromIndex, toIndex);
-                this._updateTabOrder();
-            }
+        } finally {
+            this.spreadsheetService.endBatch();
         }
+    }
 
-        // Calculate final position and select the moved tab
-        // When moving from left to right: newIndex = toIndex - 1 (because original was removed first)
-        // When moving from right to left: newIndex = toIndex
-        const newIndex = fromIndex < toIndex ? toIndex - 1 : toIndex;
-        this.activeTabIndex = newIndex;
+    /**
+     * Post an update to the batch (internal helper for _handleTabReorder).
+     */
+    private _postBatchUpdate(result: import('../src/editor/types').UpdateResult) {
+        if (result && !result.error && result.content !== undefined) {
+            this.spreadsheetService.postBatchUpdate({
+                startLine: result.startLine,
+                endLine: result.endLine,
+                endCol: result.endCol,
+                content: result.content
+            });
+        }
+    }
+
+    /**
+     * Get current tab order from local tabs array.
+     */
+    private _getCurrentTabOrder(): Array<{ type: string; index: number }> {
+        return this.tabs
+            .filter((t) => t.type === 'sheet' || t.type === 'document')
+            .map((t) => ({
+                type: t.type,
+                index: t.type === 'sheet' ? t.sheetIndex! : t.docIndex!
+            }));
     }
 
     /**

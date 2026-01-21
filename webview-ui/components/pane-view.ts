@@ -1,6 +1,6 @@
 import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { TableJSON, LeafNode } from '../types';
+import { TableJSON, LeafNode, WorkbookJSON } from '../types';
 import paneViewStyles from './styles/pane-view.css?inline';
 import './spreadsheet-table';
 import { t } from '../utils/i18n';
@@ -24,6 +24,9 @@ export class PaneView extends LitElement {
 
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
+
+    @property({ type: Object })
+    workbook: WorkbookJSON | null = null;
 
     @state()
     private _editingTabGlobalIndex: number | null = null;
@@ -113,6 +116,7 @@ export class PaneView extends LitElement {
                               .sheetIndex="${this.sheetIndex}"
                               .tableIndex="${activeGlobalIndex}"
                               .dateFormat="${this.dateFormat}"
+                              .workbook="${this.workbook}"
                           ></spreadsheet-table>
                       `
                     : html`

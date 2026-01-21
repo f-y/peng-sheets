@@ -1,8 +1,7 @@
 /**
  * PengSheets Editor API - Main entry point for the TypeScript editor module.
- * Converted from python-modules/src/md_spreadsheet_editor/api.py
  *
- * This module provides all public functions that mirror the Python API.
+ * This module provides all public functions for spreadsheet editing operations.
  */
 
 import { EditorContext, getEditorContext } from './context';
@@ -59,8 +58,9 @@ export function createNewSpreadsheet(columnNames: string[] | null = null): Updat
 
 /**
  * Update tab order in workbook metadata.
+ * Pass null to delete tab_order (when metadata is not needed).
  */
-export function updateWorkbookTabOrder(tabOrder: TabOrderItem[]): UpdateResult {
+export function updateWorkbookTabOrder(tabOrder: TabOrderItem[] | null): UpdateResult {
     return workbookService.updateWorkbookTabOrder(getContext(), tabOrder);
 }
 
@@ -74,10 +74,11 @@ export function updateWorkbookTabOrder(tabOrder: TabOrderItem[]): UpdateResult {
 export function addSheet(
     newName: string,
     columnNames: string[] | null = null,
+    tableName: string | null = null,
     afterSheetIndex: number | null = null,
     targetTabOrderIndex: number | null = null
 ): UpdateResult {
-    return sheetService.addSheet(getContext(), newName, columnNames, afterSheetIndex, targetTabOrderIndex);
+    return sheetService.addSheet(getContext(), newName, columnNames, tableName, afterSheetIndex, targetTabOrderIndex);
 }
 
 /**
@@ -406,22 +407,21 @@ export function deleteDocumentAndGetFullUpdate(docIndex: number): UpdateResult {
 }
 
 /**
- * Move document section.
+ * Move document section (physical move only).
+ * Does NOT update metadata - caller must handle metadata if needed per SPECS.md 8.6.
  */
 export function moveDocumentSection(
     fromDocIndex: number,
     toDocIndex: number | null = null,
     toAfterWorkbook = false,
-    toBeforeWorkbook = false,
-    targetTabOrderIndex: number | null = null
+    toBeforeWorkbook = false
 ): UpdateResult {
     return documentService.moveDocumentSection(
         getContext(),
         fromDocIndex,
         toDocIndex,
         toAfterWorkbook,
-        toBeforeWorkbook,
-        targetTabOrderIndex
+        toBeforeWorkbook
     );
 }
 

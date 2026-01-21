@@ -210,6 +210,17 @@ export class SSContextMenu extends LitElement {
         );
     }
 
+    private _handleFormulaColumn(e: MouseEvent) {
+        e.stopPropagation();
+        this.dispatchEvent(
+            new CustomEvent('ss-formula-column', {
+                detail: { index: this.index },
+                bubbles: true,
+                composed: true
+            })
+        );
+    }
+
     private _handleCopy(e: MouseEvent) {
         e.stopPropagation();
         this.dispatchEvent(
@@ -306,6 +317,7 @@ export class SSContextMenu extends LitElement {
                         : ''}
                     <div class="context-menu-separator"></div>
                     <div class="context-menu-item" @click="${this._handleDataValidation}">${t('dataValidation')}</div>
+                    <div class="context-menu-item" @click="${this._handleFormulaColumn}">${t('formulaColumn')}</div>
                 </div>
             `;
         }

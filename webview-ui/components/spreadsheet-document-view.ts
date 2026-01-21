@@ -74,8 +74,10 @@ export class SpreadsheetDocumentView extends LitElement {
         if (!this._isEditing) return;
         this._isEditing = false;
 
+        const currentFullContent = this._getFullContent();
+
         // Only save if content changed (compare full content including title)
-        if (this._editContent !== this._getFullContent()) {
+        if (this._editContent !== currentFullContent) {
             this._saveContent(shouldSave);
         } else if (shouldSave) {
             this.dispatchEvent(

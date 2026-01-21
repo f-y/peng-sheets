@@ -51,10 +51,16 @@ export class KeyboardController implements ReactiveController {
             e.preventDefault();
             if (isRangeSelection) return;
 
-            // Fetch current value
-            let currentVal = '';
             const r = this.host.selectionCtrl.selectedRow;
             const c = this.host.selectionCtrl.selectedCol;
+
+            // Prevent editing formula columns (except header row)
+            if (r >= 0 && this.host.isFormulaColumn(c)) {
+                return;
+            }
+
+            // Fetch current value
+            let currentVal = '';
 
             // Header logic ?
             if (r === -1 && c >= 0 && this.host.table?.headers) {
@@ -69,17 +75,22 @@ export class KeyboardController implements ReactiveController {
         }
 
         if (!isControl && e.key.length === 1 && !isRangeSelection) {
+            // Prevent editing formula columns (except header row)
+            const r = this.host.selectionCtrl.selectedRow;
+            const c = this.host.selectionCtrl.selectedCol;
+            if (r >= 0 && this.host.isFormulaColumn(c)) {
+                e.preventDefault();
+                return;
+            }
+
             e.preventDefault();
             this.host.editCtrl.startEditing(e.key, true);
             this.host.focusCell();
             return;
         }
 
-        if (isControl && (e.key === 's' || e.key === 'S')) {
-            e.preventDefault();
-            this.host.dispatchEvent(new CustomEvent('save-requested', { bubbles: true, composed: true }));
-            return;
-        }
+        // Note: Ctrl+S is handled by GlobalEventController at window level
+        // Do NOT add duplicate handling here!
 
         // Excel-compatible date/time shortcuts
         // Ctrl + ; inserts current date, Ctrl + Shift + ; inserts current time

@@ -1,6 +1,5 @@
 /**
  * Document service - Document section operations.
- * Converted from python-modules/src/md_spreadsheet_editor/services/document.py
  *
  * Handles hybrid notebooks with mixed documents and workbook sections.
  */
@@ -8,7 +7,7 @@
 import { Workbook } from 'md-spreadsheet-parser';
 import type { EditorContext } from '../context';
 import type { UpdateResult, EditorConfig, TabOrderItem } from '../types';
-import { generateAndGetRange, getWorkbookRange, initializeTabOrderFromStructure, reorderTabMetadata } from './workbook';
+import { generateAndGetRange, getWorkbookRange, initializeTabOrderFromStructure } from './workbook';
 
 // =============================================================================
 // Document Section Range
@@ -100,12 +99,14 @@ export function addDocument(
         if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
             const stripped = line.trim();
             if (stripped === rootMarker) {
-                if (afterWorkbook) {
-                    // Get workbook range and insert after it
+                if (afterWorkbook && afterDocIndex < 0) {
+                    // Insert right after workbook (before any docs after WB)
+                    // Used for between-sheets insertion per SPECS.md 8.5
                     const [, wbEnd] = getWorkbookRange(mdText, rootMarker, configDict.sheetHeaderLevel ?? 2);
                     insertLine = wbEnd;
                     break;
                 }
+                // Either not afterWorkbook, or we have a specific afterDocIndex to find
                 continue;
             }
 
@@ -151,12 +152,25 @@ export function addDocument(
             tabOrder = initializeTabOrderFromStructure(mdText, context.config, (workbook.sheets ?? []).length);
         }
 
-        // Calculate new document index (matching Python logic)
+        // Calculate new document index
+        // The index should reflect the physical position among documents
         let newDocIndex: number;
         if (afterDocIndex >= 0) {
+            // Inserting after a specific document
             newDocIndex = afterDocIndex + 1;
+        } else if (insertAfterTabOrderIndex >= 0 && insertAfterTabOrderIndex < tabOrder.length) {
+            // Inserting at a specific tab order position
+            // Count documents that appear BEFORE this position in tab_order
+            // These are the documents that will have lower indices than the new doc
+            let docsBeforePosition = 0;
+            for (let i = 0; i <= insertAfterTabOrderIndex; i++) {
+                if (tabOrder[i].type === 'document') {
+                    docsBeforePosition++;
+                }
+            }
+            newDocIndex = docsBeforePosition;
         } else {
-            // Count existing documents in tab_order
+            // Default: append at end
             newDocIndex = tabOrder.filter((item) => item.type === 'document').length;
         }
 
@@ -386,15 +400,15 @@ export function addDocumentAndGetFullUpdate(
 
 /**
  * Move a document section to a new position.
- * This is one of the most complex operations.
+ * This is a pure physical move - metadata is NOT updated here.
+ * The caller is responsible for updating tab_order metadata if needed (SPECS.md 8.6).
  */
 export function moveDocumentSection(
     context: EditorContext,
     fromDocIndex: number,
     toDocIndex: number | null = null,
     toAfterWorkbook = false,
-    toBeforeWorkbook = false,
-    targetTabOrderIndex: number | null = null
+    toBeforeWorkbook = false
 ): UpdateResult {
     // Get the document section to move
     const rangeResult = getDocumentSectionRange(context, fromDocIndex);
@@ -424,14 +438,55 @@ export function moveDocumentSection(
         const [, wbEnd] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
         insertLine = wbEnd;
     } else if (toBeforeWorkbook) {
-        const tempText = linesWithoutDoc.join('\n');
-        const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
-        insertLine = wbStart;
+        // Moving to before workbook section
+        // If toDocIndex is specified, insert at that position among docs-before-WB
+        // Otherwise, insert just before WB
+        if (toDocIndex !== null && toDocIndex === 0) {
+            // Insert at the very beginning (before first doc)
+            insertLine = 0;
+        } else if (toDocIndex !== null) {
+            // Find the target doc position
+            let docIdx = 0;
+            let foundTarget = false;
+            let inCodeBlock = false;
+            const tempText = linesWithoutDoc.join('\n');
+            const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
+
+            for (let i = 0; i < wbStart; i++) {
+                const line = linesWithoutDoc[i];
+                if (line.trim().startsWith('```')) {
+                    inCodeBlock = !inCodeBlock;
+                }
+                if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
+                    const stripped = line.trim();
+                    if (stripped !== rootMarker) {
+                        if (docIdx === toDocIndex) {
+                            insertLine = i;
+                            foundTarget = true;
+                            break;
+                        }
+                        docIdx++;
+                    }
+                }
+            }
+            if (!foundTarget) {
+                insertLine = wbStart;
+            }
+        } else {
+            const tempText = linesWithoutDoc.join('\n');
+            const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
+            insertLine = wbStart;
+        }
     } else if (toDocIndex !== null) {
+        // Adjust toDocIndex for the case where source doc was before target
+        // Since we removed fromDocIndex first, indices shift down
+        const adjustedToDocIndex = fromDocIndex < toDocIndex ? toDocIndex - 1 : toDocIndex;
+
         // Find the target document position
         let docIdx = 0;
         let targetLine = linesWithoutDoc.length;
         let inCodeBlock = false;
+        let foundTarget = false;
 
         for (let i = 0; i < linesWithoutDoc.length; i++) {
             const line = linesWithoutDoc[i];
@@ -442,12 +497,53 @@ export function moveDocumentSection(
             if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
                 const stripped = line.trim();
                 if (stripped !== rootMarker) {
-                    if (docIdx === toDocIndex) {
+                    if (docIdx === adjustedToDocIndex) {
+                        // Insert BEFORE this document (at its start line)
                         targetLine = i;
+                        foundTarget = true;
                         break;
                     }
                     docIdx++;
                 }
+            }
+        }
+
+        // Check if target is "After Last Document" (Append to doc zone)
+        if (!foundTarget && docIdx === adjustedToDocIndex) {
+            // For before-WB docs, insert before WB (not at EOF)
+            const tempText = linesWithoutDoc.join('\\n');
+            const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
+            const originalText = context.mdText;
+            const [originalWbStart] = getWorkbookRange(originalText, rootMarker, sheetHeaderLevel);
+            const fromDocWasBeforeWb = startLine < originalWbStart;
+
+            if (wbStart < linesWithoutDoc.length && fromDocWasBeforeWb) {
+                // WB exists and from-doc was before WB - insert just before WB
+                targetLine = wbStart;
+            } else {
+                // No WB or from-doc was after WB - insert at EOF
+                targetLine = linesWithoutDoc.length;
+            }
+            foundTarget = true;
+        }
+
+        // If target not found, insert at an appropriate boundary
+        if (!foundTarget) {
+            // Check if WB exists and determine where from-doc was originally
+            const tempText = linesWithoutDoc.join('\n');
+            const [wbStart] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
+
+            // Check if from-doc was before or after WB in original text
+            const originalText = context.mdText;
+            const [originalWbStart] = getWorkbookRange(originalText, rootMarker, sheetHeaderLevel);
+            const fromDocWasBeforeWb = startLine < originalWbStart;
+
+            if (wbStart < linesWithoutDoc.length && fromDocWasBeforeWb) {
+                // WB exists and from-doc was before WB - insert just before WB
+                targetLine = wbStart;
+            } else {
+                // No WB or from-doc was after WB - insert at EOF
+                targetLine = linesWithoutDoc.length;
             }
         }
         insertLine = targetLine;
@@ -457,45 +553,8 @@ export function moveDocumentSection(
 
     // Insert at new position
     linesWithoutDoc.splice(insertLine, 0, ...docContent);
-    let newMdText = linesWithoutDoc.join('\n');
+    const newMdText = linesWithoutDoc.join('\n');
     context.mdText = newMdText;
-
-    // Update tab_order (matching Python's effective_to_index calculation)
-    const workbook = context.workbook;
-    if (workbook && targetTabOrderIndex !== null) {
-        let effectiveToIndex: number;
-
-        if (toDocIndex !== null) {
-            effectiveToIndex = toDocIndex;
-        } else {
-            // Count documents before target position (excluding the moved doc)
-            const tabOrder = workbook.metadata?.tab_order || [];
-            let docsBeforeTarget = 0;
-            for (let i = 0; i < Math.min(targetTabOrderIndex, tabOrder.length); i++) {
-                const item = tabOrder[i];
-                if (item.type === 'document' && item.index !== fromDocIndex) {
-                    docsBeforeTarget++;
-                }
-            }
-            effectiveToIndex = docsBeforeTarget;
-        }
-
-        const updatedWb = reorderTabMetadata(workbook, 'document', fromDocIndex, effectiveToIndex, targetTabOrderIndex);
-        if (updatedWb) {
-            context.updateWorkbook(updatedWb);
-
-            // Update metadata comment in markdown (matching Python behavior)
-            const newMetadata = JSON.stringify(updatedWb.metadata);
-            const metadataComment = `<!-- md-spreadsheet-workbook-metadata: ${newMetadata} -->`;
-
-            // Replace existing metadata comment or append
-            const metadataPattern = /<!-- md-spreadsheet-workbook-metadata: \{.*?\} -->/;
-            if (metadataPattern.test(newMdText)) {
-                newMdText = newMdText.replace(metadataPattern, metadataComment);
-                context.mdText = newMdText;
-            }
-        }
-    }
 
     return {
         content: context.mdText,
@@ -615,18 +674,24 @@ export function moveWorkbookSection(
     context.mdText = newMdText;
 
     // Update workbook reference
+    // IMPORTANT: Preserve existing tab_order if it was pre-set by updateWorkbookTabOrder
+    // Only initialize from structure if tab_order is missing
     if (context.workbook && targetTabOrderIndex !== null) {
-        // Tab order update for workbook movement is complex
-        // For now, we just regenerate the state
-        const metadata = { ...(context.workbook.metadata || {}) };
-        const tabOrder = initializeTabOrderFromStructure(
-            newMdText,
-            context.config,
-            (context.workbook.sheets ?? []).length
-        );
-        metadata.tab_order = tabOrder;
-        const newWorkbook = new Workbook({ ...context.workbook, metadata });
-        context.updateWorkbook(newWorkbook);
+        const existingTabOrder = context.workbook.metadata?.tab_order;
+
+        if (!existingTabOrder || (Array.isArray(existingTabOrder) && existingTabOrder.length === 0)) {
+            // No existing tab_order, initialize from structure
+            const metadata = { ...(context.workbook.metadata || {}) };
+            const tabOrder = initializeTabOrderFromStructure(
+                newMdText,
+                context.config,
+                (context.workbook.sheets ?? []).length
+            );
+            metadata.tab_order = tabOrder;
+            const newWorkbook = new Workbook({ ...context.workbook, metadata });
+            context.updateWorkbook(newWorkbook);
+        }
+        // If tab_order already exists (pre-set by caller), keep it as-is
     }
 
     return {

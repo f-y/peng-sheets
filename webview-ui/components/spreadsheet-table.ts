@@ -26,13 +26,15 @@ import './cells/ss-ghost-cell';
 import './menus/ss-context-menu';
 import './menus/ss-metadata-editor';
 import './menus/ss-validation-dialog';
+import './menus/ss-formula-dialog';
 import './spreadsheet-table-view';
 import type { ValidationRule } from '../controllers/validation-controller';
+import type { FormulaDefinition, TableMetadata } from '../services/types';
 import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 
 provideVSCodeDesignSystem().register(vsCodeButton());
 
-import { TableJSON } from '../types';
+import { TableJSON, WorkbookJSON } from '../types';
 
 @customElement('spreadsheet-table')
 export class SpreadsheetTable extends LitElement {
@@ -49,6 +51,9 @@ export class SpreadsheetTable extends LitElement {
 
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
+
+    @property({ type: Object })
+    workbook: WorkbookJSON | null = null;
 
     selectionCtrl = new SelectionController(this);
     editCtrl = new EditController(this);
@@ -91,6 +96,9 @@ export class SpreadsheetTable extends LitElement {
     @state()
     validationDialog: { colIndex: number; currentRule: ValidationRule | null } | null = null;
 
+    @state()
+    formulaDialog: { colIndex: number; currentFormula: FormulaDefinition | null } | null = null;
+
     private _shouldFocusCell: boolean = false;
     private _isCommitting: boolean = false; // Kept in host for now as it coordinates editCtrl and Events
     private _restoreCaretPos: number | null = null;
@@ -108,6 +116,19 @@ export class SpreadsheetTable extends LitElement {
     public focusCell() {
         this._shouldFocusCell = true;
         this.requestUpdate();
+    }
+
+    /**
+     * Check if a column is a formula column (computed column).
+     * Used to prevent editing of computed cells.
+     */
+    public isFormulaColumn(colIndex: number): boolean {
+        if (!this.table?.metadata) return false;
+        const meta = this.table.metadata as Record<string, unknown>;
+        const visual = meta?.visual as Record<string, unknown> | undefined;
+        const formulas = visual?.formulas as Record<string, unknown> | undefined;
+        if (!formulas) return false;
+        return colIndex.toString() in formulas;
     }
 
     /**
@@ -538,8 +559,9 @@ export class SpreadsheetTable extends LitElement {
     private _handleOpenValidationDialog = (e: CustomEvent<{ index: number }>) => {
         const colIndex = e.detail.index;
         // Get current validation rule from visual metadata
-        const visual = (this.table?.metadata as Record<string, unknown>)?.visual as Record<string, unknown> | undefined;
-        const validation = visual?.validation as Record<string, ValidationRule> | undefined;
+        const meta = this.table?.metadata as TableMetadata | undefined;
+        const visual = meta?.visual;
+        const validation = visual?.validation;
         const currentRule = validation?.[colIndex.toString()] || null;
         this.validationDialog = { colIndex, currentRule };
         this.contextMenu = null; // Close context menu
@@ -569,6 +591,46 @@ export class SpreadsheetTable extends LitElement {
      */
     private _handleValidationDialogClose = () => {
         this.validationDialog = null;
+    };
+
+    /**
+     * Handle opening the formula dialog from context menu.
+     */
+    private _handleOpenFormulaDialog = (e: CustomEvent<{ index: number }>) => {
+        const colIndex = e.detail.index;
+        // Get current formula from visual metadata
+        const meta = this.table?.metadata as TableMetadata | undefined;
+        const visual = meta?.visual;
+        const formulas = visual?.formulas;
+        const currentFormula = formulas?.[colIndex.toString()] || null;
+        this.formulaDialog = { colIndex, currentFormula };
+        this.contextMenu = null; // Close context menu
+    };
+
+    /**
+     * Handle formula update from dialog.
+     */
+    private _handleFormulaUpdate = (e: CustomEvent<{ colIndex: number; formula: FormulaDefinition | null }>) => {
+        const { colIndex, formula } = e.detail;
+        // Dispatch event to window for GlobalEventController
+        window.dispatchEvent(
+            new CustomEvent('formula-update', {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    tableIndex: this.tableIndex,
+                    colIndex,
+                    formula
+                }
+            })
+        );
+        this.formulaDialog = null;
+    };
+
+    /**
+     * Handle closing formula dialog.
+     */
+    private _handleFormulaDialogClose = () => {
+        this.formulaDialog = null;
     };
 
     /**
@@ -705,6 +767,11 @@ export class SpreadsheetTable extends LitElement {
                 @view-filter-change="${this.filterCtrl.handleFilterChange}"
                 @view-clear-filter="${this.filterCtrl.handleClearFilter}"
                 @view-data-validation="${this._handleOpenValidationDialog}"
+                @view-formula-column="${this._handleOpenFormulaDialog}"
+                @view-formula-click="${(e: CustomEvent<{ col: number }>) =>
+                    this._handleOpenFormulaDialog(
+                        new CustomEvent('ss-formula-click', { detail: { index: e.detail.col } })
+                    )}"
                 @view-cell-contextmenu="${this.eventCtrl.handleCellContextMenu}"
                 @view-copy="${() => {
                     this.clipboardCtrl.copyToClipboard();
@@ -729,6 +796,21 @@ export class SpreadsheetTable extends LitElement {
                           @ss-validation-update="${this._handleValidationUpdate}"
                           @ss-dialog-close="${this._handleValidationDialogClose}"
                       ></ss-validation-dialog>
+                  `
+                : ''}
+            ${this.formulaDialog
+                ? html`
+                      <ss-formula-dialog
+                          .colIndex="${this.formulaDialog.colIndex}"
+                          .currentFormula="${this.formulaDialog.currentFormula}"
+                          .headers="${this.table?.headers ?? []}"
+                          .rows="${this.table?.rows ?? []}"
+                          .workbook="${this.workbook}"
+                          .currentSheetIndex="${this.sheetIndex}"
+                          .currentTableIndex="${this.tableIndex}"
+                          @ss-formula-update="${this._handleFormulaUpdate}"
+                          @ss-formula-cancel="${this._handleFormulaDialogClose}"
+                      ></ss-formula-dialog>
                   `
                 : ''}
         `;

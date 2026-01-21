@@ -5,7 +5,7 @@
  * for moving between visible rows (respecting filters).
  */
 
-import type { VisualMetadata } from '../types/metadata';
+import type { IVisualMetadata as VisualMetadata } from '../services/types';
 
 export { VisualMetadata };
 

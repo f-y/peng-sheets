@@ -94,7 +94,7 @@ describe('Sheet Service Tests', () => {
         });
 
         it('should add sheet at specific index', () => {
-            const result = addSheet('Inserted', null, 0);
+            const result = addSheet('Inserted', null, null, 0);
             expect(result.error).toBeUndefined();
 
             const state = JSON.parse(getState());
@@ -105,12 +105,28 @@ describe('Sheet Service Tests', () => {
         it('should update tab_order when adding sheet at specific index', () => {
             // Add first sheet at position 0 with tab_order position 0
             addSheet('Sheet A');
-            const result = addSheet('Sheet B', null, 0, 0);
+            const result = addSheet('Sheet B', null, null, 0, 0);
             expect(result.error).toBeUndefined();
 
             const state = JSON.parse(getState());
             // Sheet B should be first in physical order
             expect(state.workbook.sheets[0].name).toBe('Sheet B');
+        });
+
+        it('should include table name in markdown output for new sheet', () => {
+            const result = addSheet('New Sheet');
+            expect(result.error).toBeUndefined();
+
+            // Verify the markdown content includes table name
+            const content = result.content!;
+
+            // Extract the "New Sheet" section
+            const newSheetStart = content.indexOf('## New Sheet');
+            expect(newSheetStart).toBeGreaterThan(-1);
+
+            const newSheetSection = content.substring(newSheetStart);
+            // The new sheet section should contain its table name
+            expect(newSheetSection).toContain('### Table 1');
         });
     });
 
@@ -190,15 +206,10 @@ describe('Sheet Service Tests', () => {
             const result = deleteSheet(0);
             expect(result.error).toBeUndefined();
 
-            // After: tab_order should have 1 entry (the remaining sheet, now shifted to index 0)
+            // After: only 1 sheet remains - this is natural order, so tab_order should be removed
             const state2 = JSON.parse(getState());
-            const tabOrder = state2.workbook.metadata?.tab_order;
-
-            // Should have exactly 1 entry after deleting 1 of 2 sheets
-            expect(tabOrder?.length).toBe(1);
-
-            // The remaining entry should be index 0 (shifted from original index 1)
-            expect(tabOrder?.[0]).toEqual({ type: 'sheet', index: 0 });
+            // Single sheet with no docs = natural order, so no metadata needed
+            expect(state2.workbook.metadata?.tab_order).toBeUndefined();
         });
 
         it('should shift remaining sheet indices in tab_order after deletion', () => {
@@ -206,14 +217,10 @@ describe('Sheet Service Tests', () => {
             const result = deleteSheet(0);
             expect(result.error).toBeUndefined();
 
-            // After: remaining sheet (was index 1) should now be index 0
+            // After: only 1 sheet remains - this is natural order, so tab_order should be removed
             const state = JSON.parse(getState());
-            const tabOrder = state.workbook.metadata?.tab_order;
-            if (tabOrder && tabOrder.length > 0) {
-                const sheetEntries = tabOrder.filter((item: { type: string }) => item.type === 'sheet');
-                // The remaining sheet should have index 0
-                expect(sheetEntries[0]?.index).toBe(0);
-            }
+            // Single sheet with no docs = natural order, so no metadata needed
+            expect(state.workbook.metadata?.tab_order).toBeUndefined();
         });
 
         it('should handle deleting middle sheet with tab_order', () => {
@@ -310,6 +317,51 @@ describe('Sheet Service Tests', () => {
 
             const state = JSON.parse(getState());
             expect(state.workbook.sheets[0].name).toBe('Sheet 1');
+        });
+
+        /**
+         * BUG REPRODUCTION: Sheet reorder when documents exist
+         * When moving Sheet1 after Sheet2 with docs in file:
+         * - Should physically reorder sheets in markdown
+         * - NOT just update metadata
+         */
+        it('should physically reorder sheets when documents exist in file', () => {
+            const HYBRID_MD = `# Doc 1
+
+Content.
+
+# Doc 3
+
+# Tables
+
+## Sheet 1
+
+| A |
+|---|
+| 1 |
+
+## Sheet 2
+
+| B |
+|---|
+| 2 |
+
+# Doc 2
+`;
+            initializeWorkbook(HYBRID_MD, SAMPLE_CONFIG);
+
+            // Move Sheet 1 (index 0) after Sheet 2 (index 1)
+            const result = moveSheet(0, 1, 1);
+
+            expect(result.error).toBeUndefined();
+
+            const content = result.content!;
+
+            // Sheet 2 should now be BEFORE Sheet 1 in file (physical reorder)
+            const sheet1Pos = content.indexOf('## Sheet 1');
+            const sheet2Pos = content.indexOf('## Sheet 2');
+
+            expect(sheet2Pos).toBeLessThan(sheet1Pos); // KEY: Physical order changed
         });
     });
 });

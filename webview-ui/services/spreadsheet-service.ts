@@ -15,14 +15,46 @@ import * as editor from '../../src/editor';
 export class SpreadsheetService {
     private _initialized: boolean = false;
     private _isBatching: boolean = false;
+    private _batchFirstUpdate: boolean = true;
+    private _batchUpdates: IUpdateSpec[] = [];
     private _pendingUpdateSpec: IUpdateSpec | null = null;
     private vscode: IVSCodeApi;
     private _isSyncing: boolean = false;
     private _skipNextParse: boolean = false;
     private _requestQueue: Array<() => Promise<void>> = [];
+    private _onDataChanged?: () => void;
+
+    // Deferred metadata updates (e.g., tab switches) - applied with next actual edit
+    private _deferredMetadataUpdates: Map<number, Record<string, unknown>> = new Map();
 
     constructor(vscode: IVSCodeApi) {
         this.vscode = vscode;
+    }
+
+    /**
+     * Queue a deferred metadata update (e.g., tab switch).
+     * The update will be applied when the next actual file edit occurs.
+     */
+    public queueDeferredMetadataUpdate(sheetIndex: number, metadata: Record<string, unknown>) {
+        const existing = this._deferredMetadataUpdates.get(sheetIndex) || {};
+        this._deferredMetadataUpdates.set(sheetIndex, { ...existing, ...metadata });
+    }
+
+    /**
+     * Apply any pending deferred metadata updates within current batch.
+     * Called at the start of startBatch() to include deferred updates.
+     */
+    private _applyDeferredUpdates() {
+        if (this._deferredMetadataUpdates.size === 0) return;
+
+        for (const [sheetIndex, metadata] of this._deferredMetadataUpdates.entries()) {
+            // Apply deferred update using updateRangeBatch pattern
+            const result = editor.updateSheetMetadata(sheetIndex, metadata);
+            if (result) {
+                this._postUpdateMessage(result);
+            }
+        }
+        this._deferredMetadataUpdates.clear();
     }
 
     /**
@@ -64,6 +96,20 @@ export class SpreadsheetService {
         this._skipNextParse = value;
     }
 
+    /**
+     * Get the current workbook JSON from the editor's state.
+     * Used for formula recalculation to ensure we have the latest data after mutations.
+     */
+    public getCurrentWorkbook(): import('../types').WorkbookJSON | null {
+        try {
+            const stateJson = editor.getState();
+            const state = JSON.parse(stateJson);
+            return state.workbook || null;
+        } catch {
+            return null;
+        }
+    }
+
     // Queue management for compatibility with existing async patterns
     private _enqueueRequest(task: () => Promise<void>) {
         this._requestQueue.push(task);
@@ -98,25 +144,22 @@ export class SpreadsheetService {
 
     /**
      * Sends the result of an operation back to the VS Code extension.
+     * When batching, accumulates updates to send together at endBatch.
      */
     private _postUpdateMessage(
         updateSpec: IUpdateSpec,
         options: { undoStopBefore?: boolean; undoStopAfter?: boolean } = {}
     ) {
-        if (this._isBatching) {
-            if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
-                this._pendingUpdateSpec = {
-                    type: 'updateRange',
-                    startLine: updateSpec.startLine,
-                    endLine: updateSpec.endLine,
-                    content: updateSpec.content,
-                    endCol: updateSpec.endCol
-                };
-            }
-            return;
-        }
-
         if (updateSpec && !updateSpec.error && updateSpec.startLine !== undefined) {
+            if (this._isBatching) {
+                // During batch: accumulate updates to send together at endBatch
+                this._batchUpdates.push({
+                    ...updateSpec,
+                    type: 'updateRange'
+                });
+                return;
+            }
+
             this.vscode.postMessage({
                 type: 'updateRange',
                 startLine: updateSpec.startLine,
@@ -133,6 +176,14 @@ export class SpreadsheetService {
         }
     }
 
+    /**
+     * Post an update to the current batch.
+     * Must be called between startBatch() and endBatch().
+     */
+    public postBatchUpdate(updateSpec: IUpdateSpec) {
+        this._postUpdateMessage(updateSpec);
+    }
+
     public notifyUpdateReceived() {
         this._isSyncing = false;
         this._scheduleProcessQueue();
@@ -140,31 +191,93 @@ export class SpreadsheetService {
 
     public startBatch() {
         this._isBatching = true;
+        this._batchFirstUpdate = true;
+        this._batchUpdates = [];
         this._pendingUpdateSpec = null;
+        // Apply any deferred metadata updates (e.g., tab switches) at batch start
+        this._applyDeferredUpdates();
     }
 
     public endBatch() {
         this._isBatching = false;
-        if (this._pendingUpdateSpec) {
-            this._postUpdateMessage(this._pendingUpdateSpec);
-            this._pendingUpdateSpec = null;
+        const updates = this._batchUpdates;
+        this._batchUpdates = [];
+        this._batchFirstUpdate = true;
+        this._pendingUpdateSpec = null;
+
+        if (updates.length === 0) return;
+
+        if (updates.length === 1) {
+            // Single update: just send it
+            const update = updates[0];
+            this.vscode.postMessage({
+                type: 'updateRange',
+                startLine: update.startLine,
+                endLine: update.endLine,
+                endCol: update.endCol,
+                content: update.content,
+                undoStopBefore: true,
+                undoStopAfter: true
+            });
+            return;
+        }
+
+        // Multiple updates: Use the LAST update's content (has all cumulative changes)
+        // with a range that spans from earliest startLine to latest endLine.
+        // This ensures formula recalculations (which happen after the initial edit)
+        // are included in the final document content sent to VS Code.
+        const lastUpdate = updates[updates.length - 1];
+        let minStartLine = updates[0].startLine ?? 0;
+        let maxEndLine = updates[0].endLine ?? 0;
+        let maxEndCol = updates[0].endCol ?? 0;
+
+        for (const update of updates) {
+            minStartLine = Math.min(minStartLine, update.startLine ?? 0);
+            if ((update.endLine ?? 0) > maxEndLine) {
+                maxEndLine = update.endLine ?? 0;
+                maxEndCol = update.endCol ?? 0;
+            } else if ((update.endLine ?? 0) === maxEndLine) {
+                maxEndCol = Math.max(maxEndCol, update.endCol ?? 0);
+            }
+        }
+
+        this.vscode.postMessage({
+            type: 'updateRange',
+            startLine: minStartLine,
+            endLine: maxEndLine,
+            endCol: maxEndCol,
+            content: lastUpdate.content,
+            undoStopBefore: true,
+            undoStopAfter: true
+        });
+    }
+
+    /**
+     * Execute a TypeScript editor function and post the result.
+     * Operations are synchronous since we use the pure TypeScript editor.
+     * Uses batch to consolidate action + formula recalculation into single undo.
+     */
+    private _performAction<T extends IUpdateSpec>(fn: () => T) {
+        // Start batch to group action + formula recalculations into single undo
+        this.startBatch();
+        try {
+            const result = fn();
+            if (result) this._postUpdateMessage(result);
+            // Trigger data change callback for formula recalculation (within same batch)
+            this._onDataChanged?.();
+        } catch (err) {
+            console.error('Operation failed:', err);
+        } finally {
+            this.endBatch();
         }
     }
 
     /**
-     * Execute a TypeScript editor function and post the result
+     * Register a callback to be called after any data-modifying operation.
+     * Used by main.ts to trigger formula recalculation.
      */
-    private _performAction<T extends IUpdateSpec>(fn: () => T) {
-        this._enqueueRequest(async () => {
-            try {
-                const result = fn();
-                if (result) this._postUpdateMessage(result);
-            } catch (err) {
-                console.error('Operation failed:', err);
-                this._isSyncing = false;
-                this._scheduleProcessQueue();
-            }
-        });
+    public setOnDataChangedCallback(callback: () => void) {
+        this._onDataChanged = callback;
     }
 
     private _getDefaultColumnHeaders(): string[] {
@@ -173,6 +286,10 @@ export class SpreadsheetService {
             return ['列名1', '列名2', '列名3'];
         }
         return ['Column 1', 'Column 2', 'Column 3'];
+    }
+
+    private _getDefaultTableName(): string {
+        return t('table', '1');
     }
 
     // --- Table Operations ---
@@ -213,17 +330,36 @@ export class SpreadsheetService {
         endCol: number,
         newValue: string
     ) {
-        this._enqueueRequest(async () => {
-            let lastResult: IUpdateSpec | null = null;
+        // Start batch to group cell update + formula recalculations into single undo
+        this.startBatch();
+        try {
             for (let r = startRow; r <= endRow; r++) {
                 for (let c = startCol; c <= endCol; c++) {
-                    lastResult = editor.updateCell(sheetIdx, tableIdx, r, c, newValue);
+                    const result = editor.updateCell(sheetIdx, tableIdx, r, c, newValue);
+                    if (result) {
+                        this._postUpdateMessage(result);
+                    }
                 }
             }
-            if (lastResult) {
-                this._postUpdateMessage(lastResult);
-            }
-        });
+            // Trigger data change callback for formula recalculation (within same batch)
+            this._onDataChanged?.();
+        } catch (err) {
+            console.error('updateRange failed:', err);
+        } finally {
+            this.endBatch();
+        }
+    }
+
+    /**
+     * Synchronous version of updateRange for use within batches.
+     * This bypasses the async queue and directly accumulates in the batch.
+     * Must be called between startBatch() and endBatch().
+     */
+    public updateRangeBatch(sheetIdx: number, tableIdx: number, rowIndex: number, colIndex: number, newValue: string) {
+        const result = editor.updateCell(sheetIdx, tableIdx, rowIndex, colIndex, newValue);
+        if (result) {
+            this._postUpdateMessage(result);
+        }
     }
 
     public deleteRow(sheetIdx: number, tableIdx: number, rowIndex: number) {
@@ -356,9 +492,10 @@ export class SpreadsheetService {
 
     public addSheet(newSheetName: string, afterSheetIndex?: number, targetTabOrderIndex?: number) {
         const headers = this._getDefaultColumnHeaders();
+        const tableName = this._getDefaultTableName();
         const afterIdx = afterSheetIndex !== undefined ? afterSheetIndex : null;
         const targetIdx = targetTabOrderIndex !== undefined ? targetTabOrderIndex : null;
-        this._performAction(() => editor.addSheet(newSheetName, headers, afterIdx, targetIdx));
+        this._performAction(() => editor.addSheet(newSheetName, headers, tableName, afterIdx, targetIdx));
     }
 
     public createSpreadsheet() {
@@ -379,8 +516,8 @@ export class SpreadsheetService {
         this._performAction(() => editor.moveSheet(fromIdx, toIdx, targetIdx));
     }
 
-    public updateWorkbookTabOrder(tabOrder: Array<{ type: string; index: number }>) {
-        this._performAction(() => editor.updateWorkbookTabOrder(tabOrder as editor.TabOrderItem[]));
+    public updateWorkbookTabOrder(tabOrder: Array<{ type: string; index: number }> | null) {
+        this._performAction(() => editor.updateWorkbookTabOrder(tabOrder as editor.TabOrderItem[] | null));
     }
 
     // --- Document Operations ---
@@ -408,12 +545,11 @@ export class SpreadsheetService {
         fromDocIndex: number,
         toDocIndex: number | null = null,
         toAfterWorkbook: boolean = false,
-        toBeforeWorkbook: boolean = false,
-        targetTabOrderIndex: number = -1
+        toBeforeWorkbook: boolean = false
     ) {
-        const targetIdx = targetTabOrderIndex === -1 ? null : targetTabOrderIndex;
+        // Pure physical move - metadata is handled by caller via tab-reorder-service
         this._performAction(() =>
-            editor.moveDocumentSection(fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook, targetIdx)
+            editor.moveDocumentSection(fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook)
         );
     }
 

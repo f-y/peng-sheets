@@ -519,6 +519,9 @@ function shiftColumnMetadata(
         if (visual.filters) {
             visual.filters = shiftDict(visual.filters as Record<string, unknown>);
         }
+        if (visual.formulas) {
+            visual.formulas = shiftDict(visual.formulas as Record<string, unknown>);
+        }
 
         newMetadata.visual = visual;
     }

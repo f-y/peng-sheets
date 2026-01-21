@@ -1,6 +1,6 @@
 import { html, LitElement, unsafeCSS } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { SplitNode, TableJSON } from '../types';
+import { SplitNode, TableJSON, WorkbookJSON } from '../types';
 import splitViewStyles from './styles/split-view.css?inline';
 import './pane-view';
 
@@ -19,6 +19,9 @@ export class SplitView extends LitElement {
 
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
+
+    @property({ type: Object })
+    workbook: WorkbookJSON | null = null;
 
     // Resizing state
     private _isResizing = false;
@@ -63,12 +66,14 @@ export class SplitView extends LitElement {
                               .tables="${this.tables}"
                               .sheetIndex="${this.sheetIndex}"
                               .dateFormat="${this.dateFormat}"
+                              .workbook="${this.workbook}"
                           ></split-view>`
                         : html`<pane-view
                               .node="${child}"
                               .tables="${this.tables}"
                               .sheetIndex="${this.sheetIndex}"
                               .dateFormat="${this.dateFormat}"
+                              .workbook="${this.workbook}"
                           ></pane-view>`;
 
                 return html`${resizer}

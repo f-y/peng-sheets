@@ -26,6 +26,18 @@ import {
     CellEventDetail
 } from '../mixins/cell-events';
 
+// Helper to emit formula icon click event
+function emitFormulaClick(host: LitElement, col: number, e: MouseEvent): void {
+    e.stopPropagation();
+    host.dispatchEvent(
+        new CustomEvent('ss-formula-click', {
+            bubbles: true,
+            composed: true,
+            detail: { col, x: e.clientX, y: e.clientY }
+        })
+    );
+}
+
 @customElement('ss-column-header')
 export class SSColumnHeader extends LitElement {
     // Disable shadow DOM - render to light DOM
@@ -52,6 +64,7 @@ export class SSColumnHeader extends LitElement {
     @property({ type: Boolean }) isDragging = false;
     @property({ type: Boolean }) isDropTarget = false;
     @property({ type: Boolean }) isDropTargetEnd = false;
+    @property({ type: Boolean }) isFormula = false;
 
     // Copied range edge properties (for dashed border indicator)
     @property({ type: Boolean }) copyTop = false;
@@ -112,6 +125,10 @@ export class SSColumnHeader extends LitElement {
         emitFilterClick(this, this.col, e);
     };
 
+    private _onFormulaClick = (e: MouseEvent) => {
+        emitFormulaClick(this, this.col, e);
+    };
+
     private _onResizeStart = (e: MouseEvent) => {
         e.stopPropagation();
         emitResizeStart(this, this.col, e.clientX, this.width);
@@ -170,11 +187,21 @@ export class SSColumnHeader extends LitElement {
                     @blur="${this._onBlur}"
                     .textContent="${live(this.value)}"
                 ></span>
-                <span
-                    class="filter-icon codicon codicon-filter ${this.hasActiveFilter ? 'active' : ''}"
-                    @click="${this._onFilterClick}"
-                    @mousedown="${this._stopPropagation}"
-                ></span>
+                <span class="header-icons-container">
+                    ${this.isFormula
+                        ? html`<span
+                              class="formula-icon codicon codicon-symbol-operator"
+                              title="Click to edit formula"
+                              @click="${this._onFormulaClick}"
+                              @mousedown="${this._stopPropagation}"
+                          ></span>`
+                        : ''}
+                    <span
+                        class="filter-icon codicon codicon-filter ${this.hasActiveFilter ? 'active' : ''}"
+                        @click="${this._onFilterClick}"
+                        @mousedown="${this._stopPropagation}"
+                    ></span>
+                </span>
                 <div
                     class="col-resize-handle"
                     contenteditable="false"

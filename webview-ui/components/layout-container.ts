@@ -1,6 +1,6 @@
 import { html, css, LitElement, PropertyValues } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { LayoutNode, SplitNode, LeafNode, TableJSON } from '../types';
+import { LayoutNode, SplitNode, LeafNode, TableJSON, WorkbookJSON } from '../types';
 import './pane-view';
 import './split-view';
 import { nanoid } from 'nanoid';
@@ -28,29 +28,98 @@ export class LayoutContainer extends LitElement {
     @property({ type: String })
     dateFormat: string = 'YYYY-MM-DD';
 
+    @property({ type: Object })
+    workbook: WorkbookJSON | null = null;
+
     // Internal state to handle optimistic updates during drag/drop
     @state()
     private _currentLayout: LayoutNode | null = null;
 
     private _pendingNewTableTargetPaneId: string | null = null;
+    private _previousSheetIndex: number | null = null;
 
     willUpdate(changedProperties: PropertyValues) {
         if (changedProperties.has('layout') || changedProperties.has('tables')) {
-            this._initializeLayout();
+            // Detect if this is a sheet switch (sheetIndex changed)
+            const isSheetSwitch = this._previousSheetIndex !== null && this._previousSheetIndex !== this.sheetIndex;
+            this._initializeLayout(isSheetSwitch);
+            this._previousSheetIndex = this.sheetIndex;
         }
     }
 
-    private _initializeLayout() {
+    private _initializeLayout(isSheetSwitch: boolean = false) {
         if (this.layout) {
-            this._currentLayout = this._reconcileLayout(this.layout, this.tables.length);
+            // Only collect local activeTableIndex values if NOT switching sheets
+            // When switching sheets, use file's saved values to restore state
+            const localActiveIndices = new Map<string, number>();
+            if (!isSheetSwitch && this._currentLayout) {
+                this._traverse(this._currentLayout, (node) => {
+                    if (node.type === 'pane') {
+                        // Skip collecting local index for pending new table target pane
+                        // This allows the auto-selection logic in _addToSpecificPane to work
+                        if (node.id !== this._pendingNewTableTargetPaneId) {
+                            localActiveIndices.set(node.id, node.activeTableIndex);
+                        }
+                    }
+                });
+            }
+
+            // Reconcile layout with new data
+            let newLayout = this._reconcileLayout(this.layout, this.tables.length);
+
+            // Restore local activeTableIndex values (only when not switching sheets)
+            if (localActiveIndices.size > 0) {
+                newLayout = this._restoreActiveIndices(newLayout, localActiveIndices);
+            }
+
+            this._currentLayout = newLayout;
         } else {
             // Default: All tables in one pane
+            // Determine the active table index:
+            // 1. If a new table was just added via "+" button, select the new (last) table
+            // 2. If we have an existing layout and not switching sheets, preserve the current selection
+            // 3. Otherwise, default to 0
+            let defaultActiveIndex = 0;
+            const shouldSelectLastTable = this._pendingNewTableTargetPaneId !== null;
+
+            if (shouldSelectLastTable) {
+                defaultActiveIndex = Math.max(0, this.tables.length - 1);
+                this._pendingNewTableTargetPaneId = null;
+            } else if (!isSheetSwitch && this._currentLayout && this._currentLayout.type === 'pane') {
+                // Preserve existing selection (clamp to valid range)
+                defaultActiveIndex = Math.min(
+                    this._currentLayout.activeTableIndex,
+                    Math.max(0, this.tables.length - 1)
+                );
+            }
+
             this._currentLayout = {
                 type: 'pane',
                 id: 'root',
                 tables: this.tables.map((_, i) => i),
-                activeTableIndex: 0
+                activeTableIndex: defaultActiveIndex
             };
+        }
+    }
+
+    /**
+     * Restore local activeTableIndex values after reconciliation.
+     * This ensures tab selection is preserved across parent updates.
+     */
+    private _restoreActiveIndices(node: LayoutNode, localIndices: Map<string, number>): LayoutNode {
+        if (node.type === 'pane') {
+            const localIndex = localIndices.get(node.id);
+            if (localIndex !== undefined && localIndex !== node.activeTableIndex) {
+                // Ensure index is still valid
+                const validIndex = Math.min(localIndex, Math.max(0, node.tables.length - 1));
+                return { ...node, activeTableIndex: validIndex };
+            }
+            return node;
+        } else {
+            const newChildren = node.children.map((c) => this._restoreActiveIndices(c, localIndices));
+            // Check if any child actually changed
+            const changed = newChildren.some((c, i) => c !== node.children[i]);
+            return changed ? { ...node, children: newChildren as LayoutNode[] } : node;
         }
     }
 
@@ -165,6 +234,7 @@ export class LayoutContainer extends LitElement {
                 .tables="${this.tables}"
                 .sheetIndex="${this.sheetIndex}"
                 .dateFormat="${this.dateFormat}"
+                .workbook="${this.workbook}"
             ></split-view>`;
         } else {
             return html`<pane-view
@@ -172,6 +242,7 @@ export class LayoutContainer extends LitElement {
                 .tables="${this.tables}"
                 .sheetIndex="${this.sheetIndex}"
                 .dateFormat="${this.dateFormat}"
+                .workbook="${this.workbook}"
             ></pane-view>`;
         }
     }
@@ -245,8 +316,30 @@ export class LayoutContainer extends LitElement {
 
         if (newLayout && newLayout !== this._currentLayout) {
             this._currentLayout = newLayout;
-            this._dispatchPersistence();
+            if (type === 'switch-tab') {
+                // Dispatch deferred persistence - will be saved with next actual file edit
+                this._dispatchDeferredPersistence();
+            } else {
+                this._dispatchPersistence();
+            }
         }
+    }
+
+    /**
+     * Dispatch deferred persistence event for non-undo operations like tab switching.
+     * The update will be saved to file when the next actual edit occurs.
+     */
+    private _dispatchDeferredPersistence() {
+        this.dispatchEvent(
+            new CustomEvent('sheet-metadata-deferred', {
+                detail: {
+                    sheetIndex: this.sheetIndex,
+                    metadata: { layout: this._currentLayout }
+                },
+                bubbles: true,
+                composed: true
+            })
+        );
     }
 
     private _addTableToLayout(

@@ -65,11 +65,17 @@ export function initializeTabOrderFromStructure(
 
 /**
  * Update the tab display order in workbook metadata.
+ * Pass null to delete tab_order (when metadata is not needed).
  */
-export function updateWorkbookTabOrder(context: EditorContext, tabOrder: TabOrderItem[]): UpdateResult {
+export function updateWorkbookTabOrder(context: EditorContext, tabOrder: TabOrderItem[] | null): UpdateResult {
     const wbTransform = (wb: Workbook): Workbook => {
         const currentMetadata = wb.metadata ? { ...wb.metadata } : {};
-        currentMetadata.tab_order = tabOrder;
+        if (tabOrder === null) {
+            // Delete tab_order when not needed
+            delete currentMetadata.tab_order;
+        } else {
+            currentMetadata.tab_order = tabOrder;
+        }
         return new Workbook({
             ...wb,
             metadata: currentMetadata
@@ -165,11 +171,86 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
     const mdText = context.mdText;
     const config = context.config;
 
+    // Check if tab_order matches natural order - if so, remove it before generating
+    // Natural order is computed from ACTUAL FILE STRUCTURE, not from tab_order
+    if (workbook && workbook.metadata?.tab_order) {
+        const tabOrder = workbook.metadata.tab_order as TabOrderItem[];
+        const numSheets = (workbook.sheets ?? []).length;
+
+        // Parse file structure from mdText to get true natural order
+        const mdText = context.mdText;
+        const configDict = context.config ? JSON.parse(context.config) : {};
+        const rootMarker = configDict.rootMarker ?? '# Tables';
+        const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
+
+        // Get workbook position in file
+        const [wbStart, wbEnd] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
+        const lines = mdText.split('\n');
+
+        // Find docs before and after WB in the ACTUAL FILE
+        const docsBeforeWb: number[] = [];
+        const docsAfterWb: number[] = [];
+        let docIdx = 0;
+        let inCodeBlock = false;
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.trim().startsWith('```')) {
+                inCodeBlock = !inCodeBlock;
+            }
+
+            if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
+                const stripped = line.trim();
+                if (stripped !== rootMarker) {
+                    // This is a document section
+                    if (i < wbStart) {
+                        docsBeforeWb.push(docIdx);
+                    } else if (i >= wbEnd) {
+                        docsAfterWb.push(docIdx);
+                    }
+                    docIdx++;
+                }
+            }
+        }
+
+        // Compute natural order from file structure
+        const naturalOrder: TabOrderItem[] = [
+            ...docsBeforeWb.map((idx) => ({ type: 'document' as const, index: idx })),
+            ...Array.from({ length: numSheets }, (_, i) => ({ type: 'sheet' as const, index: i })),
+            ...docsAfterWb.map((idx) => ({ type: 'document' as const, index: idx }))
+        ];
+
+        // Compare tab_order with computed natural order
+        let matchesNatural = tabOrder.length === naturalOrder.length;
+        if (matchesNatural) {
+            for (let i = 0; i < tabOrder.length; i++) {
+                if (tabOrder[i].type !== naturalOrder[i].type || tabOrder[i].index !== naturalOrder[i].index) {
+                    matchesNatural = false;
+                    break;
+                }
+            }
+        }
+
+        // If matches natural, remove tab_order from metadata
+        if (matchesNatural) {
+            const newMetadata = { ...workbook.metadata };
+            delete newMetadata.tab_order;
+            const cleanedWorkbook = new Workbook({
+                ...workbook,
+                metadata: Object.keys(newMetadata).length > 0 ? newMetadata : undefined
+            });
+            context.updateWorkbook(cleanedWorkbook);
+        }
+    }
+
+    // Re-get workbook after potential cleanup
+    const cleanWorkbook = context.workbook;
+
     // Generate Markdown (Full Workbook)
     let newMd = '';
-    if (workbook && (workbook.sheets ?? []).length > 0) {
+    if (cleanWorkbook && (cleanWorkbook.sheets ?? []).length > 0) {
         if (schema) {
-            newMd = workbook.toMarkdown(schema);
+            newMd = cleanWorkbook.toMarkdown(schema);
         }
     }
 

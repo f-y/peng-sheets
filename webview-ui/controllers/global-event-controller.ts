@@ -17,6 +17,7 @@ import {
     ISheetMetadataUpdateDetail,
     IPasteCellsDetail,
     IValidationUpdateDetail,
+    IFormulaUpdateDetail,
     IMoveRowsDetail,
     IMoveColumnsDetail,
     IMoveCellsDetail,
@@ -63,6 +64,7 @@ export interface GlobalEventHost extends ReactiveControllerHost {
     _handleDocumentChange(detail: { sectionIndex: number; content: string; title?: string; save?: boolean }): void;
     _handleSave(): void;
     _handleValidationUpdate(detail: IValidationUpdateDetail): void;
+    _handleFormulaUpdate(detail: IFormulaUpdateDetail): void;
     _handleMoveRows(detail: IMoveRowsDetail): void;
     _handleMoveColumns(detail: IMoveColumnsDetail): void;
     _handleMoveCells(detail: IMoveCellsDetail): void;
@@ -108,6 +110,7 @@ export class GlobalEventController implements ReactiveController {
     private _boundRequestDeleteTable: (e: Event) => void;
     private _boundMetadataChange: (e: Event) => void;
     private _boundSheetMetadataUpdate: (e: Event) => void;
+    private _boundSheetMetadataDeferred: (e: Event) => void;
     private _boundPasteCells: (e: Event) => void;
     private _boundPostMessage: (e: Event) => void;
     private _boundDocumentChange: (e: Event) => void;
@@ -117,6 +120,7 @@ export class GlobalEventController implements ReactiveController {
     private _boundMoveCells: (e: Event) => void;
     private _boundInsertRowsAt: (e: Event) => void;
     private _boundInsertColumnsAt: (e: Event) => void;
+    private _boundFormulaUpdate: (e: Event) => void;
     private _boundMessage: (e: MessageEvent) => void;
     private _boundRequestSkipParse: () => void;
 
@@ -142,6 +146,7 @@ export class GlobalEventController implements ReactiveController {
         this._boundRequestDeleteTable = this._handleRequestDeleteTable.bind(this);
         this._boundMetadataChange = this._handleMetadataChange.bind(this);
         this._boundSheetMetadataUpdate = this._handleSheetMetadataUpdate.bind(this);
+        this._boundSheetMetadataDeferred = this._handleSheetMetadataDeferred.bind(this);
         this._boundPasteCells = this._handlePasteCells.bind(this);
         this._boundPostMessage = this._handlePostMessage.bind(this);
         this._boundDocumentChange = this._handleDocumentChange.bind(this);
@@ -151,6 +156,7 @@ export class GlobalEventController implements ReactiveController {
         this._boundMoveCells = this._handleMoveCells.bind(this);
         this._boundInsertRowsAt = this._handleInsertRowsAt.bind(this);
         this._boundInsertColumnsAt = this._handleInsertColumnsAt.bind(this);
+        this._boundFormulaUpdate = this._handleFormulaUpdate.bind(this);
         this._boundMessage = this._handleMessage.bind(this);
         this._boundRequestSkipParse = this._handleRequestSkipParse.bind(this);
     }
@@ -181,6 +187,7 @@ export class GlobalEventController implements ReactiveController {
         window.addEventListener('metadata-update', this._boundMetadataUpdate);
         window.addEventListener('metadata-change', this._boundMetadataChange);
         window.addEventListener('sheet-metadata-update', this._boundSheetMetadataUpdate);
+        window.addEventListener('sheet-metadata-deferred', this._boundSheetMetadataDeferred);
 
         // Table operations
         window.addEventListener('request-add-table', this._boundRequestAddTable);
@@ -192,6 +199,7 @@ export class GlobalEventController implements ReactiveController {
         window.addEventListener('post-message', this._boundPostMessage);
         window.addEventListener('document-change', this._boundDocumentChange);
         window.addEventListener('validation-update', this._boundValidationUpdate);
+        window.addEventListener('formula-update', this._boundFormulaUpdate);
 
         // Move operations (drag-and-drop)
         window.addEventListener('move-rows', this._boundMoveRows);
@@ -226,6 +234,7 @@ export class GlobalEventController implements ReactiveController {
         window.removeEventListener('metadata-update', this._boundMetadataUpdate);
         window.removeEventListener('metadata-change', this._boundMetadataChange);
         window.removeEventListener('sheet-metadata-update', this._boundSheetMetadataUpdate);
+        window.removeEventListener('sheet-metadata-deferred', this._boundSheetMetadataDeferred);
         window.removeEventListener('request-add-table', this._boundRequestAddTable);
         window.removeEventListener('request-rename-table', this._boundRequestRenameTable);
         window.removeEventListener('request-delete-table', this._boundRequestDeleteTable);
@@ -233,6 +242,7 @@ export class GlobalEventController implements ReactiveController {
         window.removeEventListener('post-message', this._boundPostMessage);
         window.removeEventListener('document-change', this._boundDocumentChange);
         window.removeEventListener('validation-update', this._boundValidationUpdate);
+        window.removeEventListener('formula-update', this._boundFormulaUpdate);
         window.removeEventListener('move-rows', this._boundMoveRows);
         window.removeEventListener('move-columns', this._boundMoveColumns);
         window.removeEventListener('move-cells', this._boundMoveCells);
@@ -376,6 +386,12 @@ export class GlobalEventController implements ReactiveController {
         this.host._handleSheetMetadataUpdate((e as CustomEvent<ISheetMetadataUpdateDetail>).detail);
     }
 
+    private _handleSheetMetadataDeferred(e: Event): void {
+        // Queue deferred update to be applied with next actual file edit
+        const detail = (e as CustomEvent<ISheetMetadataUpdateDetail>).detail;
+        this.host.spreadsheetService.queueDeferredMetadataUpdate(detail.sheetIndex, detail.metadata);
+    }
+
     private _handlePasteCells(e: Event): void {
         this.host._handlePasteCells((e as CustomEvent<IPasteCellsDetail>).detail);
     }
@@ -399,6 +415,10 @@ export class GlobalEventController implements ReactiveController {
 
     private _handleValidationUpdate(e: Event): void {
         this.host._handleValidationUpdate((e as CustomEvent<IValidationUpdateDetail>).detail);
+    }
+
+    private _handleFormulaUpdate(e: Event): void {
+        this.host._handleFormulaUpdate((e as CustomEvent<IFormulaUpdateDetail>).detail);
     }
 
     private _handleMoveRows(e: Event): void {

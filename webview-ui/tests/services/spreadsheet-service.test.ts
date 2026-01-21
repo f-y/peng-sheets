@@ -114,8 +114,9 @@ describe('SpreadsheetService (TypeScript)', () => {
         it('should not post messages during batch', async () => {
             service.startBatch();
 
-            service.updateRange(0, 0, 0, 0, 0, 0, 'Value1');
-            service.updateRange(0, 0, 1, 1, 0, 0, 'Value2');
+            // Use updateRangeBatch for explicit batch control (updateRange manages its own batch)
+            service.updateRangeBatch(0, 0, 0, 0, 'Value1');
+            service.updateRangeBatch(0, 0, 1, 0, 'Value2');
 
             await new Promise((r) => setTimeout(r, 50));
 
@@ -123,17 +124,26 @@ describe('SpreadsheetService (TypeScript)', () => {
             expect(mockVscode.postMessage).not.toHaveBeenCalled();
         });
 
-        it('should post single message when batch ends', async () => {
+        it('should post single message with final update when batch ends', async () => {
             service.startBatch();
 
-            service.updateRange(0, 0, 0, 0, 0, 0, 'Value1');
-            service.updateRange(0, 0, 1, 1, 0, 0, 'Value2');
+            // Use updateRangeBatch for explicit batch control (updateRange manages its own batch)
+            service.updateRangeBatch(0, 0, 0, 0, 'Value1');
+            service.updateRangeBatch(0, 0, 1, 0, 'Value2');
 
             await new Promise((r) => setTimeout(r, 50));
 
             service.endBatch();
 
-            expect(mockVscode.postMessage).toHaveBeenCalledTimes(1);
+            // Should send a single updateRange message with the final cumulative update
+            const calls = (mockVscode.postMessage as ReturnType<typeof vi.fn>).mock.calls;
+            expect(calls.length).toBe(1);
+
+            const message = calls[0][0];
+            expect(message.type).toBe('updateRange');
+            // Final update should have both undo stops
+            expect(message.undoStopBefore).toBe(true);
+            expect(message.undoStopAfter).toBe(true);
         });
     });
 

@@ -14,6 +14,7 @@ import codiconsStyles from '@vscode/codicons/dist/codicon.css?inline';
 import { getEditingHtml, formatCellValue, renderMarkdown, NumberFormat } from '../utils/spreadsheet-helpers';
 import { calculateCellRangeState } from '../utils/edit-mode-helpers';
 import { VisualMetadata } from '../controllers/row-visibility-controller';
+import { TableMetadata } from '../services/types';
 import { t } from '../utils/i18n';
 
 import { TableJSON, AlignmentType } from '../types';
@@ -194,6 +195,9 @@ export class SpreadsheetTableView extends LitElement {
                           @ss-data-validation="${(e: CustomEvent<{ index: number }>) => {
                               this._bubbleEvent('view-data-validation', e.detail);
                           }}"
+                          @ss-formula-column="${(e: CustomEvent<{ index: number }>) => {
+                              this._bubbleEvent('view-formula-column', e.detail);
+                          }}"
                           @ss-copy="${() => {
                               this._bubbleEvent('view-copy', {});
                           }}"
@@ -365,6 +369,7 @@ export class SpreadsheetTableView extends LitElement {
                         .copyTop="${headerInCopyRange}"
                         .copyLeft="${headerCopyLeft}"
                         .copyRight="${headerCopyRight}"
+                        .isFormula="${this._hasFormula(c)}"
                         @ss-col-click="${(e: CustomEvent) => this._bubbleEvent('view-col-click', e.detail)}"
                         @ss-col-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-col-mousedown', e.detail)}"
                         @ss-col-dblclick="${(e: CustomEvent) => this._bubbleEvent('view-col-dblclick', e.detail)}"
@@ -373,6 +378,7 @@ export class SpreadsheetTableView extends LitElement {
                         @ss-col-blur="${(e: CustomEvent) => this._bubbleEvent('view-col-blur', e.detail)}"
                         @ss-col-keydown="${(e: CustomEvent) => this._bubbleEvent('view-col-keydown', e.detail)}"
                         @ss-filter-click="${(e: CustomEvent) => this._bubbleEvent('view-filter-click', e.detail)}"
+                        @ss-formula-click="${(e: CustomEvent) => this._bubbleEvent('view-formula-click', e.detail)}"
                         @ss-resize-start="${(e: CustomEvent) => this._bubbleEvent('view-resize-start', e.detail)}"
                     ></ss-column-header>
                 `;
@@ -492,6 +498,7 @@ export class SpreadsheetTableView extends LitElement {
                         .dateFormat="${this.dateFormat}"
                         .isDraggable="${rangeState.inRange && isRangeSelection}"
                         .isCellDropTarget="${this._isCellInDropRange(r, c)}"
+                        .isFormula="${this._hasFormula(c)}"
                         @ss-cell-click="${(e: CustomEvent) => this._bubbleEvent('view-cell-click', e.detail)}"
                         @ss-cell-mousedown="${(e: CustomEvent) => this._bubbleEvent('view-cell-mousedown', e.detail)}"
                         @ss-cell-dblclick="${(e: CustomEvent) => this._bubbleEvent('view-cell-dblclick', e.detail)}"
@@ -641,5 +648,17 @@ export class SpreadsheetTableView extends LitElement {
         const dropMaxC = this.cellDropCol + srcWidth;
 
         return row >= dropMinR && row <= dropMaxR && col >= dropMinC && col <= dropMaxC;
+    }
+
+    /**
+     * Check if a column has a formula defined.
+     */
+    private _hasFormula(colIndex: number): boolean {
+        if (!this.table?.metadata) return false;
+        const meta = this.table.metadata as TableMetadata | undefined;
+        const visual = meta?.visual;
+        const formulas = visual?.formulas;
+        if (!formulas) return false;
+        return formulas[String(colIndex)] !== undefined;
     }
 }

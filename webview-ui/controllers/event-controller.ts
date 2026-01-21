@@ -463,6 +463,14 @@ export class EventController implements ReactiveController {
 
     handleCellDblclick = (e: CustomEvent<{ row: number; col: number }>) => {
         const { row, col } = e.detail;
+
+        // Prevent editing formula columns
+        if (this.host.isFormulaColumn(col)) {
+            this.host.selectionCtrl.selectCell(row, col);
+            this.host.focusCell();
+            return;
+        }
+
         const value = this.host.table?.rows?.[row]?.[col] ?? '';
         this.host.selectionCtrl.selectCell(row, col);
         this.host.editCtrl.startEditing(value);

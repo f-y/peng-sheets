@@ -358,45 +358,63 @@
 }
 
 /* Filter and format icon styles */
+.header-icons-container {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    margin-left: 2px;
+}
+
 .filter-icon {
-    position: absolute;
-    right: 6px;
-    top: 50%;
-    transform: translateY(-50%);
     font-size: 12px;
     cursor: pointer;
     color: var(--vscode-descriptionForeground);
     opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.2s;
-    z-index: 200;
+    width: 0;
+    overflow: hidden;
+    transition: opacity 0.2s, width 0.15s;
 }
 
 .cell.header-col:hover .filter-icon,
 .filter-icon.active {
-    visibility: visible;
     opacity: 1;
+    width: 14px;
     color: var(--vscode-textLink-foreground);
 }
 
 .format-icon {
-    position: absolute;
-    right: 22px;
-    top: 50%;
-    transform: translateY(-50%);
     font-size: 12px;
     cursor: pointer;
     color: var(--vscode-descriptionForeground);
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.2s;
-    z-index: 200;
 }
 
 .cell.header-col:hover .format-icon {
     visibility: visible;
     opacity: 1;
     color: var(--vscode-textLink-foreground);
+}
+
+/* Formula column indicator */
+.formula-icon {
+    font-size: 11px;
+    color: var(--vscode-textLink-foreground, #3794ff);
+    opacity: 0.8;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.formula-icon:hover {
+    opacity: 1;
+}
+
+/* Formula column cells (read-only) */
+.formula-cell {
+    background-color: rgba(55, 148, 255, 0.04);
+    cursor: not-allowed;
 }
 
 /* Validation error styles */

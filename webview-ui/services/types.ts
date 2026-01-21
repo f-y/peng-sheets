@@ -9,6 +9,7 @@
 export type {
     UpdateResult as IUpdateSpec,
     VisualMetadata as IVisualMetadata,
+    TableMetadata,
     ValidationMetadata,
     TabOrderItem,
     CellRange,
@@ -16,7 +17,14 @@ export type {
     ColumnFormat,
     NumberFormat,
     ValidationRule,
-    EditorConfig
+    EditorConfig,
+    // Formula types (Computed Columns)
+    FormulaDefinition,
+    FormulaMetadata,
+    FormulaFunctionType,
+    ArithmeticFormula,
+    LookupFormula,
+    TableIdentity
 } from '../../src/editor/types';
 
 // VSCode API interface (specific to webview context)

@@ -88,12 +88,9 @@ export interface StructureItem {
     content?: string;
 }
 
-export interface IDocumentSectionRange {
-    start_line?: number;
-    end_line?: number;
-    end_col?: number;
-    error?: string;
-}
+export type IDocumentSectionRange =
+    | { startLine: number; endLine: number; endCol?: number; error?: undefined }
+    | { startLine?: undefined; endLine?: undefined; endCol?: undefined; error: string };
 
 export interface IMetadataEditDetail {
     sheetIndex: number;
@@ -217,6 +214,13 @@ export interface IValidationUpdateDetail {
     rule: unknown; // ValidationRule | null
 }
 
+export interface IFormulaUpdateDetail {
+    sheetIndex: number;
+    tableIndex: number;
+    colIndex: number;
+    formula: unknown; // FormulaDefinition | null
+}
+
 export interface IMoveRowsDetail {
     sheetIndex: number;
     tableIndex: number;
@@ -266,5 +270,5 @@ export function isDocumentJSON(data: unknown): data is DocumentJSON {
 }
 
 export function isIDocumentSectionRange(data: unknown): data is IDocumentSectionRange {
-    return typeof data === 'object' && data !== null && ('start_line' in data || 'error' in data);
+    return typeof data === 'object' && data !== null && ('startLine' in data || 'error' in data);
 }
