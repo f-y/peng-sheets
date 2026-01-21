@@ -624,13 +624,16 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             console.log('Python result:', range);
 
             if (range && isIDocumentSectionRange(range)) {
-                if (range.startLine !== undefined && range.endLine !== undefined) {
+                if ('error' in range && range.error) {
+                    console.error('Python error:', range.error);
+                } else if (range.startLine !== undefined && range.endLine !== undefined) {
                     // Use title from event (may have been edited) or fall back to existing
                     const newTitle = detail.title || activeTab.title;
                     const header = `# ${newTitle}`;
                     // Ensure content ends with newline for separation from next section
                     const body = detail.content.endsWith('\n') ? detail.content : detail.content + '\n';
-                    const fullContent = header + '\n' + body;
+                    // Add trailing newline for proper section separation
+                    const fullContent = header + '\n' + body + '\n';
 
                     // Send update to VS Code
                     vscode.postMessage({
@@ -664,8 +667,6 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                     if (detail.save) {
                         this._handleSave();
                     }
-                } else if (range.error) {
-                    console.error('Python error:', range.error);
                 }
             }
         } catch (error) {

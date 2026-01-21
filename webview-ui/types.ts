@@ -88,12 +88,9 @@ export interface StructureItem {
     content?: string;
 }
 
-export interface IDocumentSectionRange {
-    startLine?: number;
-    endLine?: number;
-    endCol?: number;
-    error?: string;
-}
+export type IDocumentSectionRange =
+    | { startLine: number; endLine: number; endCol?: number; error?: undefined }
+    | { startLine?: undefined; endLine?: undefined; endCol?: undefined; error: string };
 
 export interface IMetadataEditDetail {
     sheetIndex: number;
