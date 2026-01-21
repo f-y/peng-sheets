@@ -64,7 +64,7 @@ describe('Bug Reproduction: Interleaved Metadata Physical Move', () => {
         ];
 
         // Drag S1 (tabIndex 0) to after S2 (tabIndex 3)
-        const result = executeTabReorderLikeMainTs(tabs, 0, 3);
+        const _result = executeTabReorderLikeMainTs(tabs, 0, 3);
 
         const state = JSON.parse(editor.getState());
 
@@ -98,7 +98,7 @@ describe('Bug Reproduction: Interleaved Metadata Physical Move', () => {
         ];
 
         // Drag D2 (tabIndex 3) to after S1 (tabIndex 1)
-        const result = executeTabReorderLikeMainTs(tabs, 3, 1);
+        const _result = executeTabReorderLikeMainTs(tabs, 3, 1);
 
         const state = JSON.parse(editor.getState());
 

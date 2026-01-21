@@ -14,7 +14,6 @@ import {
     determineReorderAction,
     deriveTabOrderFromFile,
     isMetadataRequired,
-    parseFileStructure,
     type FileStructure,
     type TabOrderItem
 } from '../../services/tab-reorder-service';
@@ -33,7 +32,7 @@ interface TestTab {
  * Create tabs array from file structure notation.
  * Example: createTabs('[D1, WB(S1,S2), D2]')
  */
-function createTabs(structure: string): TestTab[] {
+function _createTabs(structure: string): TestTab[] {
     const tabs: TestTab[] = [];
     // Parse: [D1, WB(S1,S2), D2] or [WB(S1,S2)]
     const match = structure.match(/\[(.*)\]/);

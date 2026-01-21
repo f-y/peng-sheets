@@ -108,7 +108,7 @@ export function verifyFinalState(
     expectedTabOrder: TabOrderItem[] | null // Expected metadata tab_order or null if removed
 ): void {
     // 1. Verify Physical Order
-    const actualOrder = currentStructure.map((item) => {
+    const _actualOrder = currentStructure.map((item) => {
         if (item.type === 'workbook') return 'WB'; // Represent WB as a block
         return item.title || item.name;
     });

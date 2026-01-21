@@ -292,7 +292,7 @@ function classifySheetToDocPattern(ctx: PatternContext): SheetToDocPattern {
 
     // Check for doc-between-sheets scenario (sheet after a doc)
     const firstSheetPos = sheetPositions.length > 0 ? sheetPositions[0] : -1;
-    const lastSheetPos = sheetPositions.length > 0 ? sheetPositions[sheetPositions.length - 1] : -1;
+    const _lastSheetPos = sheetPositions.length > 0 ? sheetPositions[sheetPositions.length - 1] : -1;
 
     // Is sheet isolated (after first sheet but surrounded by docs)?
     const isAfterFirstSheet = movedSheetNewPos > firstSheetPos;
@@ -1038,7 +1038,7 @@ function handleDocToDoc(
     // Compute target parameters
     let toDocIndex: number | null = null;
     let toBeforeWorkbook = false;
-    const toAfterWorkbook = false;
+    const _toAfterWorkbook = false;
 
     if (toTab?.type === 'document') {
         toDocIndex = toTab.docIndex!;
@@ -1232,7 +1232,7 @@ function handleDocToSheet(
     const pattern = classifyDocToSheetPattern(ctx);
 
     const fromDocIndex = ctx.fromTab.docIndex!;
-    const needsMetadata = isMetadataRequired(ctx.newTabOrder, ctx.currentFileStructure);
+    const _needsMetadata = isMetadataRequired(ctx.newTabOrder, ctx.currentFileStructure);
 
     switch (pattern) {
         // =====================================================================
@@ -1348,7 +1348,7 @@ export function determineReorderAction(
 
     // Identify Zones
     const firstSheetIdx = tabs.findIndex((t) => t.type === 'sheet');
-    const lastSheetIdx = tabs.reduce((acc, t, i) => (t.type === 'sheet' ? i : acc), -1);
+    const _lastSheetIdx = tabs.reduce((acc, t, i) => (t.type === 'sheet' ? i : acc), -1);
     const hasWorkbook = firstSheetIdx !== -1;
 
     // =========================================================================

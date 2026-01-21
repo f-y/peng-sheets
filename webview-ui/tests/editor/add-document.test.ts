@@ -479,12 +479,12 @@ More content.
             const tabOrder = state.workbook.metadata.tab_order;
 
             // Get document titles from structure in their physical order
-            const docsInPhysicalOrder = state.structure
+            const _docsInPhysicalOrder = state.structure
                 .filter((s: { type: string }) => s.type === 'document')
                 .map((s: { title: string }) => s.title);
 
             // Get document indices from tab_order
-            const docEntriesInTabOrder = tabOrder.filter((item: { type: string }) => item.type === 'document');
+            const _docEntriesInTabOrder = tabOrder.filter((item: { type: string }) => item.type === 'document');
 
             // The document indices in tab_order should correspond to physical order
             // Doc 0 = "Doc Zero" (before workbook)

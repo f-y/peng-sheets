@@ -678,7 +678,7 @@ describe('Integration: Mixed Structure scenarios', () => {
 
             const state = JSON.parse(editor.getState());
             const fileStructure = buildFileStructure(state.structure, state.workbook?.sheets?.length ?? 0);
-            const naturalOrder = deriveTabOrderFromFile(fileStructure);
+            const _naturalOrder = deriveTabOrderFromFile(fileStructure);
 
             const needsMetadata = isMetadataRequired(customOrder, fileStructure);
             expect(needsMetadata).toBe(true);
@@ -741,7 +741,7 @@ describe('Integration: Mixed Structure scenarios', () => {
 
             const state = JSON.parse(editor.getState());
             const fileStructure = buildFileStructure(state.structure, state.workbook?.sheets?.length ?? 0);
-            const naturalOrder = deriveTabOrderFromFile(fileStructure);
+            const _naturalOrder = deriveTabOrderFromFile(fileStructure);
 
             const needsMetadata = isMetadataRequired(customOrder, fileStructure);
             expect(needsMetadata).toBe(true);
@@ -780,7 +780,7 @@ describe('Integration: Edge Cases', () => {
 
             const state = JSON.parse(editor.getState());
             const fileStructure = buildFileStructure(state.structure, state.workbook?.sheets?.length ?? 0);
-            const naturalOrder = deriveTabOrderFromFile(fileStructure);
+            const _naturalOrder = deriveTabOrderFromFile(fileStructure);
 
             const needsMetadata = isMetadataRequired(customOrder, fileStructure);
             expect(needsMetadata).toBe(true);
@@ -837,7 +837,7 @@ Content 2
 
             const state = JSON.parse(editor.getState());
             const fileStructure = buildFileStructure(state.structure, state.workbook?.sheets?.length ?? 0);
-            const naturalOrder = deriveTabOrderFromFile(fileStructure);
+            const _naturalOrder = deriveTabOrderFromFile(fileStructure);
 
             const needsMetadata = isMetadataRequired(customOrder, fileStructure);
             expect(needsMetadata).toBe(true);
@@ -851,7 +851,7 @@ Content 2
 
             const state = JSON.parse(editor.getState());
             const fileStructure = buildFileStructure(state.structure, state.workbook?.sheets?.length ?? 0);
-            const fileNaturalOrder = deriveTabOrderFromFile(fileStructure);
+            const _fileNaturalOrder = deriveTabOrderFromFile(fileStructure);
 
             const needsMetadata = isMetadataRequired(naturalOrderInput, fileStructure);
             expect(needsMetadata).toBe(false);

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import * as editor from '../../../src/editor';
 import { executeTabReorderLikeMainTs } from '../helpers/tab-reorder-test-utils';
 import type { TestTab } from '../helpers/tab-reorder-test-utils';
