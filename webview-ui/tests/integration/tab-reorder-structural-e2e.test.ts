@@ -1,6 +1,6 @@
 /**
  * Structural E2E Tests for Tab Reorder
- * 
+ *
  * These tests verify the PHYSICAL FILE STRUCTURE after reorder operations,
  * not just action classification or metadata. This prevents bugs like SIDR3
  * where toSheetIndex was calculated incorrectly.
@@ -33,7 +33,7 @@ describe('Tab Reorder Structural E2E', () => {
          * User Bug Report (Critical):
          * Tab: [S1, D1, S2, D2, S3]
          * Action: S1 → after D2 (between D2 and S3)
-         * 
+         *
          * Expected Physical: [Sheet 2, Sheet 1, Sheet 3]
          * Bug Result: [Sheet 2, Sheet 3, Sheet 1] (WRONG!)
          */
@@ -69,11 +69,11 @@ describe('Tab Reorder Structural E2E', () => {
             editor.initializeWorkbook(INITIAL_MD, '{}');
 
             const tabs: TestTab[] = [
-                { type: 'sheet', sheetIndex: 0 },    // S1
-                { type: 'document', docIndex: 0 },   // D1
-                { type: 'sheet', sheetIndex: 1 },    // S2
-                { type: 'document', docIndex: 1 },   // D2
-                { type: 'sheet', sheetIndex: 2 },    // S3
+                { type: 'sheet', sheetIndex: 0 }, // S1
+                { type: 'document', docIndex: 0 }, // D1
+                { type: 'sheet', sheetIndex: 1 }, // S2
+                { type: 'document', docIndex: 1 }, // D2
+                { type: 'sheet', sheetIndex: 2 }, // S3
                 { type: 'add-sheet' }
             ];
 

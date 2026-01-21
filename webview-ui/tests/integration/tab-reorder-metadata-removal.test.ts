@@ -111,11 +111,11 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
             const fileStructure = buildFileStructure(state.structure, state.workbook?.sheets?.length ?? 0);
 
             const newTabOrder: TabOrderItem[] = [
-                { type: 'document', index: 0 },  // D1
-                { type: 'sheet', index: 0 },     // S1
-                { type: 'sheet', index: 1 },     // S2
-                { type: 'document', index: 1 },  // D3 (first doc after WB)
-                { type: 'document', index: 2 }   // D2 (second doc after WB)
+                { type: 'document', index: 0 }, // D1
+                { type: 'sheet', index: 0 }, // S1
+                { type: 'sheet', index: 1 }, // S2
+                { type: 'document', index: 1 }, // D3 (first doc after WB)
+                { type: 'document', index: 2 } // D2 (second doc after WB)
             ];
 
             const naturalOrder = deriveTabOrderFromFile(fileStructure);
@@ -147,19 +147,19 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
 
     /**
      * USER BUG REPORT (Hazard 61):
-     * 
+     *
      * Initial State:
      * - Physical: [WB(S1, S2), D1, D3, D2]
      * - tab_order: [S1, D1, S2, D3, D2] - D1 displayed between sheets
      * - Display: S1 → D1 → S2 → D3 → D2
-     * 
+     *
      * Action: Move S1 to directly before S2 (remove D1 from between sheets)
-     * 
+     *
      * Expected:
      * - New display: [D1, S1, S2, D3, D2]
      * - This matches natural order for [D1, WB, D3, D2]
      * - Metadata should be REMOVED
-     * 
+     *
      * Bug: Metadata is NOT removed
      */
     describe('USER BUG: S1→before S2 (D1 was between sheets)', () => {
@@ -221,11 +221,11 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
 
             // Simulate UI tabs array based on tab_order: [S1, D1, S2, D3, D2]
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
-                { type: 'sheet', sheetIndex: 0 },    // S1 at index 0
-                { type: 'document', docIndex: 0 },   // D1 at index 1
-                { type: 'sheet', sheetIndex: 1 },    // S2 at index 2
-                { type: 'document', docIndex: 1 },   // D3 at index 3
-                { type: 'document', docIndex: 2 }    // D2 at index 4
+                { type: 'sheet', sheetIndex: 0 }, // S1 at index 0
+                { type: 'document', docIndex: 0 }, // D1 at index 1
+                { type: 'sheet', sheetIndex: 1 }, // S2 at index 2
+                { type: 'document', docIndex: 1 }, // D3 at index 3
+                { type: 'document', docIndex: 2 } // D2 at index 4
             ];
 
             // User action: Move S1 (index 0) to before S2 (index 2)
@@ -244,11 +244,11 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
 
             // Simulate UI tabs array based on tab_order: [S1, D1, S2, D3, D2]
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
-                { type: 'sheet', sheetIndex: 0 },    // S1 at index 0
-                { type: 'document', docIndex: 0 },   // D1 at index 1
-                { type: 'sheet', sheetIndex: 1 },    // S2 at index 2
-                { type: 'document', docIndex: 1 },   // D3 at index 3
-                { type: 'document', docIndex: 2 }    // D2 at index 4
+                { type: 'sheet', sheetIndex: 0 }, // S1 at index 0
+                { type: 'document', docIndex: 0 }, // D1 at index 1
+                { type: 'sheet', sheetIndex: 1 }, // S2 at index 2
+                { type: 'document', docIndex: 1 }, // D3 at index 3
+                { type: 'document', docIndex: 2 } // D2 at index 4
             ];
 
             // User action: Move S1 (index 0) to before S2 (index 2)
@@ -272,18 +272,18 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
 
     /**
      * NEW BUG (Regression from fix):
-     * 
+     *
      * Initial State (clean file, no tab_order):
      * - Physical: [D1, WB(S1, S2), D3, D2]
      * - Display: [D1, S1, S2, D3, D2] (natural order)
-     * 
+     *
      * Action: Move S1 to before D1 (tab index 1 → 0)
-     * 
+     *
      * Expected:
      * - Physical: stays same [D1, WB(S1, S2), D3, D2]
      * - Display: [S1, D1, S2, D3, D2]
      * - tab_order metadata ADDED: [S1, D1, S2, D3, D2]
-     * 
+     *
      * Bug: Entire WB moves to before D1 → [WB(S1, S2), D1, D3, D2]
      */
     // Regression test for S1→before D1 from clean file
@@ -330,11 +330,11 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
         it('S1→before D1 should return physical+metadata action', () => {
             // Display order (natural): [D1, S1, S2, D3, D2]
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
-                { type: 'document', docIndex: 0 },   // D1 at index 0
-                { type: 'sheet', sheetIndex: 0 },    // S1 at index 1
-                { type: 'sheet', sheetIndex: 1 },    // S2 at index 2
-                { type: 'document', docIndex: 1 },   // D3 at index 3
-                { type: 'document', docIndex: 2 }    // D2 at index 4
+                { type: 'document', docIndex: 0 }, // D1 at index 0
+                { type: 'sheet', sheetIndex: 0 }, // S1 at index 1
+                { type: 'sheet', sheetIndex: 1 }, // S2 at index 2
+                { type: 'document', docIndex: 1 }, // D3 at index 3
+                { type: 'document', docIndex: 2 } // D2 at index 4
             ];
 
             // User action: Move S1 (index 1) to before D1 (index 0)
@@ -351,11 +351,11 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
         it('S1→before D1 should include correct newTabOrder', () => {
             // Display order (natural): [D1, S1, S2, D3, D2]
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
-                { type: 'document', docIndex: 0 },   // D1 at index 0
-                { type: 'sheet', sheetIndex: 0 },    // S1 at index 1
-                { type: 'sheet', sheetIndex: 1 },    // S2 at index 2
-                { type: 'document', docIndex: 1 },   // D3 at index 3
-                { type: 'document', docIndex: 2 }    // D2 at index 4
+                { type: 'document', docIndex: 0 }, // D1 at index 0
+                { type: 'sheet', sheetIndex: 0 }, // S1 at index 1
+                { type: 'sheet', sheetIndex: 1 }, // S2 at index 2
+                { type: 'document', docIndex: 1 }, // D3 at index 3
+                { type: 'document', docIndex: 2 } // D2 at index 4
             ];
 
             // User action: Move S1 (index 1) to before D1 (index 0)
@@ -374,11 +374,11 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
         it('E2E: Full _handleTabReorder flow should produce correct metadata', () => {
             // Simulate the EXACT flow of _handleTabReorder
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
-                { type: 'document', docIndex: 0 },   // D1 at index 0
-                { type: 'sheet', sheetIndex: 0 },    // S1 at index 1
-                { type: 'sheet', sheetIndex: 1 },    // S2 at index 2
-                { type: 'document', docIndex: 1 },   // D3 at index 3
-                { type: 'document', docIndex: 2 }    // D2 at index 4
+                { type: 'document', docIndex: 0 }, // D1 at index 0
+                { type: 'sheet', sheetIndex: 0 }, // S1 at index 1
+                { type: 'sheet', sheetIndex: 1 }, // S2 at index 2
+                { type: 'document', docIndex: 1 }, // D3 at index 3
+                { type: 'document', docIndex: 2 } // D2 at index 4
             ];
 
             // Get action (lines 1388-1395 in main.ts)
@@ -412,11 +412,7 @@ describe('Integration: Metadata REMOVAL scenarios', () => {
                             wbContentLines.push('');
                         }
 
-                        const mergedLines = [
-                            ...lines.slice(0, wbStart),
-                            ...wbContentLines,
-                            ...lines.slice(wbEnd + 1)
-                        ];
+                        const mergedLines = [...lines.slice(0, wbStart), ...wbContentLines, ...lines.slice(wbEnd + 1)];
                         const mergedContent = mergedLines.join('\n');
 
                         // Check merged content has correct metadata
@@ -567,10 +563,10 @@ Content
 
         it('moving doc to between sheets should require metadata', () => {
             const tabs = [
-                { type: 'document' as const, docIndex: 0 },  // D1
-                { type: 'sheet' as const, sheetIndex: 0 },   // S1
-                { type: 'sheet' as const, sheetIndex: 1 },   // S2
-                { type: 'document' as const, docIndex: 1 },  // D2
+                { type: 'document' as const, docIndex: 0 }, // D1
+                { type: 'sheet' as const, sheetIndex: 0 }, // S1
+                { type: 'sheet' as const, sheetIndex: 1 }, // S2
+                { type: 'document' as const, docIndex: 1 }, // D2
                 { type: 'add-sheet' as const }
             ];
 
@@ -663,10 +659,10 @@ describe('Integration: Mixed Structure scenarios', () => {
             const naturalOrder = deriveTabOrderFromFile(fileStructure);
 
             expect(naturalOrder).toEqual([
-                { type: 'document', index: 0 },  // Doc Before
-                { type: 'sheet', index: 0 },     // S1
-                { type: 'document', index: 1 },  // Doc After 1
-                { type: 'document', index: 2 }   // Doc After 2
+                { type: 'document', index: 0 }, // Doc Before
+                { type: 'sheet', index: 0 }, // S1
+                { type: 'document', index: 1 }, // Doc After 1
+                { type: 'document', index: 2 } // Doc After 2
             ]);
         });
 
@@ -737,7 +733,7 @@ describe('Integration: Mixed Structure scenarios', () => {
             const customOrder: TabOrderItem[] = [
                 { type: 'document', index: 0 },
                 { type: 'sheet', index: 0 },
-                { type: 'document', index: 1 },  // D2 moved
+                { type: 'document', index: 1 }, // D2 moved
                 { type: 'sheet', index: 1 },
                 { type: 'sheet', index: 2 },
                 { type: 'document', index: 2 }
@@ -864,16 +860,16 @@ Content 2
 
     /**
      * BUG REPORT: Natural Order Restoration should REMOVE tab_order
-     * 
+     *
      * Initial State:
      * - Physical: [WB(S1, S2), D1, D2]
      * - tab_order: [S1, D1, S2, D1, D2] → Display: [S1, D1, S2, D2]
-     * 
+     *
      * Scenario 1: S1 → between D1 and S2 (moveSheet causes WB to move)
      * - New physical: [D1, WB(S1, S2), D2]
      * - New display: [D1, S1, S2, D2] = natural order
      * - Expected: tab_order should be REMOVED
-     * 
+     *
      * Scenario 2: D1 → before S1 (moveDocument)
      * - New physical: [D1, WB(S1, S2), D2]
      * - New display: [D1, S1, S2, D2] = natural order
@@ -919,10 +915,10 @@ Content 2
             // Current display: [S1, D1, S2, D2] (indices 0, 1, 2, 3)
             // Action: Move S1 (index 0) to after D1 (index 1) → results in [D1, S1, S2, D2]
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
-                { type: 'sheet', sheetIndex: 0 },    // S1 at index 0
-                { type: 'document', docIndex: 0 },   // D1 at index 1
-                { type: 'sheet', sheetIndex: 1 },    // S2 at index 2
-                { type: 'document', docIndex: 1 }    // D2 at index 3
+                { type: 'sheet', sheetIndex: 0 }, // S1 at index 0
+                { type: 'document', docIndex: 0 }, // D1 at index 1
+                { type: 'sheet', sheetIndex: 1 }, // S2 at index 2
+                { type: 'document', docIndex: 1 } // D2 at index 3
             ];
 
             const action = determineReorderAction(tabs, 0, 2); // S1 to position 2 (after D1)
@@ -953,11 +949,7 @@ Content 2
                         const wbContentLines = wbUpdate.content.trimEnd().split('\n');
                         wbContentLines.push('');
 
-                        const mergedLines = [
-                            ...lines.slice(0, wbStart),
-                            ...wbContentLines,
-                            ...lines.slice(wbEnd + 1)
-                        ];
+                        const mergedLines = [...lines.slice(0, wbStart), ...wbContentLines, ...lines.slice(wbEnd + 1)];
                         const mergedContent = mergedLines.join('\n');
 
                         // New physical: [D1, WB, D2], display: [D1, S1, S2, D2] = natural
@@ -976,15 +968,15 @@ Content 2
         it('Scenario 2 (moveDocument): D1 → before S1 should REMOVE tab_order', () => {
             /**
              * This test verifies the fix in main.ts:
-             * 
+             *
              * BUG: When metadataRequired=false, main.ts skipped generateAndGetRange(),
              *      so old tab_order remained in the file.
              * FIX: Always call generateAndGetRange() for move-document to ensure
              *      metadata cleanup is included in result.
-             * 
+             *
              * This test simulates the FIXED main.ts flow:
              * 1. Remove tab_order first (because metadataRequired=false)
-             * 2. Execute physical move 
+             * 2. Execute physical move
              * 3. ALWAYS regenerate workbook (the key fix!)
              * 4. Merge results
              */
@@ -992,10 +984,10 @@ Content 2
             // Current display: [S1, D1, S2, D2] (indices 0, 1, 2, 3)
             // Action: Move D1 (index 1) to before S1 (index 0) → results in [D1, S1, S2, D2]
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
-                { type: 'sheet', sheetIndex: 0 },    // S1 at index 0
-                { type: 'document', docIndex: 0 },   // D1 at index 1
-                { type: 'sheet', sheetIndex: 1 },    // S2 at index 2
-                { type: 'document', docIndex: 1 }    // D2 at index 3
+                { type: 'sheet', sheetIndex: 0 }, // S1 at index 0
+                { type: 'document', docIndex: 0 }, // D1 at index 1
+                { type: 'sheet', sheetIndex: 1 }, // S2 at index 2
+                { type: 'document', docIndex: 1 } // D2 at index 3
             ];
 
             const action = determineReorderAction(tabs, 1, 0); // D1 to position 0
@@ -1013,7 +1005,12 @@ Content 2
             // Step 2: Execute physical move (main.ts line 1476-1481)
             if (action.physicalMove?.type === 'move-document') {
                 const { fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook } = action.physicalMove;
-                const moveResult = editor.moveDocumentSection(fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook);
+                const moveResult = editor.moveDocumentSection(
+                    fromDocIndex,
+                    toDocIndex,
+                    toAfterWorkbook,
+                    toBeforeWorkbook
+                );
 
                 expect(moveResult.error).toBeUndefined();
                 expect(moveResult.content).toBeDefined();
@@ -1032,11 +1029,7 @@ Content 2
                         const wbContentLines = wbUpdate.content.trimEnd().split('\n');
                         wbContentLines.push('');
 
-                        const mergedLines = [
-                            ...lines.slice(0, wbStart),
-                            ...wbContentLines,
-                            ...lines.slice(wbEnd + 1)
-                        ];
+                        const mergedLines = [...lines.slice(0, wbStart), ...wbContentLines, ...lines.slice(wbEnd + 1)];
                         const mergedContent = mergedLines.join('\n');
 
                         // Verify: tab_order should be REMOVED (natural order)
@@ -1049,11 +1042,11 @@ Content 2
         it('REGRESSION: OLD buggy behavior would leave tab_order (proves fix is needed)', () => {
             /**
              * This test proves the fix is needed by showing what the OLD behavior produced.
-             * 
+             *
              * OLD BUG (before fix):
              * - When metadataRequired=false, skip generateAndGetRange()
              * - Just send moveResult directly → contains OLD tab_order
-             * 
+             *
              * This test simulates the OLD buggy flow and verifies it WOULD fail.
              */
             const tabs: Array<{ type: 'sheet' | 'document' | 'add-sheet'; sheetIndex?: number; docIndex?: number }> = [
@@ -1072,7 +1065,12 @@ Content 2
             // Step 2: Physical move
             if (action.physicalMove?.type === 'move-document') {
                 const { fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook } = action.physicalMove;
-                const moveResult = editor.moveDocumentSection(fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook);
+                const moveResult = editor.moveDocumentSection(
+                    fromDocIndex,
+                    toDocIndex,
+                    toAfterWorkbook,
+                    toBeforeWorkbook
+                );
 
                 // OLD BUGGY BEHAVIOR: skip regeneration when metadataRequired=false
                 // This would send moveResult.content directly, which still has OLD tab_order

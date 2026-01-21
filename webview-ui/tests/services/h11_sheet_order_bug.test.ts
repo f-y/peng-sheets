@@ -1,22 +1,22 @@
 /**
  * H11 Sheet Order Bug Reproduction
- * 
+ *
  * User Bug Report:
  * [S1, D1, S2, D2] → S1 to between S2/D2
- * 
+ *
  * Actual Bug Result:
  * Physical: [D1, WB(S2, S1), D2] - sheets reversed!
- * 
+ *
  * Expected Correct Result:
  * - Visual: [D1, S2, S1, D2]
  * - Physical: [D1, WB(S1, S2), D2] - original sheet order preserved
  * - Metadata: REQUIRED (because visual S2 before S1, but physical S1 before S2)
- * 
+ *
  * Root Cause Analysis:
  * The H11 fix checks if sheets are "contiguous" in newTabOrder and returns
  * metadataRequired: false. But it doesn't verify that the SHEET ORDER in
  * visual matches the physical sheet order.
- * 
+ *
  * In [D1, S2, S1, D2]:
  * - Sheets ARE contiguous (S2, S1 are adjacent)
  * - But visual order (S2, S1) ≠ physical order (S1, S2)
@@ -40,7 +40,7 @@ describe('H11 Sheet Order Bug Reproduction', () => {
 
     /**
      * REPRODUCTION TEST: [S1, D1, S2, D2] → S1 to between S2/D2
-     * 
+     *
      * Expected:
      * - Physical: [D1, WB(S1, S2), D2] - move WB after D1, keep sheet order
      * - Visual: [D1, S2, S1, D2] - S2 before S1 in display
@@ -74,10 +74,10 @@ describe('H11 Sheet Order Bug Reproduction', () => {
 
         // Visual tabs (from metadata): [S1, D1, S2, D2]
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 (index 0)
-            { type: 'document', docIndex: 0 },    // D1 (index 1)  
-            { type: 'sheet', sheetIndex: 1 },    // S2 (index 2)
-            { type: 'document', docIndex: 1 },    // D2 (index 3)
+            { type: 'sheet', sheetIndex: 0 }, // S1 (index 0)
+            { type: 'document', docIndex: 0 }, // D1 (index 1)
+            { type: 'sheet', sheetIndex: 1 }, // S2 (index 2)
+            { type: 'document', docIndex: 1 }, // D2 (index 3)
             { type: 'add-sheet' }
         ];
 
@@ -101,7 +101,7 @@ describe('H11 Sheet Order Bug Reproduction', () => {
         // Deep Parameter Verification: Ensure correct physical reorder parameters
         if (action.physicalMove?.type === 'move-sheet') {
             expect(action.physicalMove.fromSheetIndex).toBe(0); // S1
-            expect(action.physicalMove.toSheetIndex).toBe(1);   // Visual pos 1 in [S2, S1]
+            expect(action.physicalMove.toSheetIndex).toBe(1); // Visual pos 1 in [S2, S1]
         }
 
         expect(action.newTabOrder).toBeDefined();
@@ -109,9 +109,9 @@ describe('H11 Sheet Order Bug Reproduction', () => {
         if (action.newTabOrder) {
             expect(action.newTabOrder).toEqual([
                 { type: 'document', index: 0 }, // D1
-                { type: 'sheet', index: 1 },    // S2 (visual position 2)
-                { type: 'sheet', index: 0 },    // S1 (visual position 3)
-                { type: 'document', index: 1 }  // D2
+                { type: 'sheet', index: 1 }, // S2 (visual position 2)
+                { type: 'sheet', index: 0 }, // S1 (visual position 3)
+                { type: 'document', index: 1 } // D2
             ]);
         }
     });
@@ -144,9 +144,9 @@ describe('H11 Sheet Order Bug Reproduction', () => {
         editor.initializeWorkbook(INITIAL_MD, '{}');
 
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1
-            { type: 'document', docIndex: 0 },    // D1
-            { type: 'sheet', sheetIndex: 1 },    // S2
+            { type: 'sheet', sheetIndex: 0 }, // S1
+            { type: 'document', docIndex: 0 }, // D1
+            { type: 'sheet', sheetIndex: 1 }, // S2
             { type: 'add-sheet' }
         ];
 

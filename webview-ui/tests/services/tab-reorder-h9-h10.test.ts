@@ -33,10 +33,10 @@ describe('H9 Physical Normalization', () => {
      */
     it('should return move-workbook when D1 becomes visually first', () => {
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 (visual 0)
-            { type: 'document', docIndex: 0 },    // D1 (visual 1) - physically AFTER WB
-            { type: 'sheet', sheetIndex: 1 },    // S2 (visual 2)
-            { type: 'document', docIndex: 1 }     // D2 (visual 3)
+            { type: 'sheet', sheetIndex: 0 }, // S1 (visual 0)
+            { type: 'document', docIndex: 0 }, // D1 (visual 1) - physically AFTER WB
+            { type: 'sheet', sheetIndex: 1 }, // S2 (visual 2)
+            { type: 'document', docIndex: 1 } // D2 (visual 3)
         ];
 
         const action = determineReorderAction(tabs, 0, 2);
@@ -75,7 +75,7 @@ describe('H9 Physical Normalization', () => {
      */
     it('should NOT return move-workbook when D1 is already before WB', () => {
         const tabs: TestTab[] = [
-            { type: 'document', docIndex: 0 },    // D1 (before WB physically)
+            { type: 'document', docIndex: 0 }, // D1 (before WB physically)
             { type: 'sheet', sheetIndex: 0 },
             { type: 'sheet', sheetIndex: 1 }
         ];
@@ -204,7 +204,7 @@ describe('H10 Sheet-to-End', () => {
 
     /**
      * Production scenario with add-sheet tab
-     * 
+     *
      * BUG: Dispatcher routes this to handleSheetToSheet because toTab is add-sheet.
      * But S1 ends up after D2 visually, which should be handled by handleSheetToDoc.
      * Complex fix needed in determineReorderAction - marking as known bug.

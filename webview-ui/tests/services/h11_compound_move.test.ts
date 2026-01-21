@@ -1,19 +1,19 @@
 /**
  * H11 Bug: Compound Action Required (move-workbook + move-sheet)
- * 
+ *
  * Finite Pattern Test Suite for H11 scenarios.
  * Each test explicitly sets up physical file structure via initializeWorkbook.
- * 
+ *
  * Bug Scenario:
  * - Initial Tab: [S1, D1, S2, D2] (visual, via metadata or interleaving)
- * - Initial Physical: [WB(S1, S2), D1, D2]  
+ * - Initial Physical: [WB(S1, S2), D1, D2]
  * - Action: Drag S1 to between S2 and D2
- * 
+ *
  * Expected:
  * - Visual: [D1, S2, S1, D2]
  * - Physical: [D1, WB(S2, S1), D2] (D1 first, WB with S2 before S1, then D2)
  * - Metadata: NOT needed (physical = visual)
- * 
+ *
  * Actual Bug:
  * - Physical unchanged: [WB(S1, S2), D1, D2] with metadata
  */
@@ -37,7 +37,7 @@ describe('H11 Compound Move Bug', () => {
      * H11_A: [S1, D1, S2, D2] → S1 to S2/D2 gap
      * Physical: [WB(S1,S2), D1, D2] → D1, D2 are docsAfterWb
      * Visual via metadata: [S1, D1, S2, D2]
-     * 
+     *
      * Action: S1 to index 3 (between S2 and D2)
      * Expected result: [D1, WB(S1,S2), D2] WITH metadata (sheet order S2,S1 differs from physical S1,S2)
      */
@@ -69,10 +69,10 @@ describe('H11 Compound Move Bug', () => {
 
         // Visual tabs (from metadata)
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 (vis 0)
-            { type: 'document', docIndex: 0 },    // D1 (vis 1)  
-            { type: 'sheet', sheetIndex: 1 },    // S2 (vis 2)
-            { type: 'document', docIndex: 1 },    // D2 (vis 3)
+            { type: 'sheet', sheetIndex: 0 }, // S1 (vis 0)
+            { type: 'document', docIndex: 0 }, // D1 (vis 1)
+            { type: 'sheet', sheetIndex: 1 }, // S2 (vis 2)
+            { type: 'document', docIndex: 1 }, // D2 (vis 3)
             { type: 'add-sheet' }
         ];
 
@@ -93,7 +93,7 @@ describe('H11 Compound Move Bug', () => {
         // Deep Parameter Verification
         if (action.physicalMove?.type === 'move-sheet') {
             expect(action.physicalMove.fromSheetIndex).toBe(0); // S1
-            expect(action.physicalMove.toSheetIndex).toBe(1);   // Visual pos 1 in [S2, S1]
+            expect(action.physicalMove.toSheetIndex).toBe(1); // Visual pos 1 in [S2, S1]
         }
     });
 
@@ -124,9 +124,9 @@ describe('H11 Compound Move Bug', () => {
         editor.initializeWorkbook(INITIAL_MD, '{}');
 
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1
-            { type: 'document', docIndex: 0 },    // D1
-            { type: 'sheet', sheetIndex: 1 },    // S2
+            { type: 'sheet', sheetIndex: 0 }, // S1
+            { type: 'document', docIndex: 0 }, // D1
+            { type: 'sheet', sheetIndex: 1 }, // S2
             { type: 'add-sheet' }
         ];
 
@@ -146,7 +146,7 @@ describe('H11 Compound Move Bug', () => {
         // Deep Parameter Verification
         if (action.physicalMove?.type === 'move-sheet') {
             expect(action.physicalMove.fromSheetIndex).toBe(0); // S1
-            expect(action.physicalMove.toSheetIndex).toBe(1);   // Visual pos 1 in [S2, S1]
+            expect(action.physicalMove.toSheetIndex).toBe(1); // Visual pos 1 in [S2, S1]
         }
     });
 
@@ -179,10 +179,10 @@ describe('H11 Compound Move Bug', () => {
 
         // No metadata, so visual = physical: [S1, S2, D1, D2]
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 (0)
-            { type: 'sheet', sheetIndex: 1 },    // S2 (1)
-            { type: 'document', docIndex: 0 },    // D1 (2)
-            { type: 'document', docIndex: 1 },    // D2 (3)
+            { type: 'sheet', sheetIndex: 0 }, // S1 (0)
+            { type: 'sheet', sheetIndex: 1 }, // S2 (1)
+            { type: 'document', docIndex: 0 }, // D1 (2)
+            { type: 'document', docIndex: 1 }, // D2 (3)
             { type: 'add-sheet' }
         ];
 

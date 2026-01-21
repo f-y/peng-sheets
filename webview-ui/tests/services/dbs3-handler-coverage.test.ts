@@ -1,13 +1,13 @@
 /**
  * DBS3 Handler Coverage Test
- * 
+ *
  * This test specifically targets the DBS3 case block at lines 1106-1128
  * in tab-reorder-service.ts.
- * 
+ *
  * DBS3 triggers when:
  * - Doc is after WB (not in docsBeforeWb)
  * - isMetadataRequired returns false
- * 
+ *
  * The key is to create a scenario where moving a doc to a sheet position
  * does NOT require metadata (physical order matches visual order after move).
  */
@@ -26,7 +26,7 @@ describe('DBS3 Handler Coverage', () => {
      * DBS3 Trigger Test:
      * Physical: [WB(S1), D1, D2, D3]
      * Visual (natural): [S1, D1, D2, D3]
-     * 
+     *
      * Move D3 to before D1: [S1, D3, D1, D2]
      * This creates doc reorder WITHOUT metadata needed because
      * the physical file can represent this order with move-document.
@@ -52,9 +52,9 @@ describe('DBS3 Handler Coverage', () => {
 
         const tabs: TestTab[] = [
             { type: 'sheet', sheetIndex: 0 },
-            { type: 'document', docIndex: 0 },  // D1 (physical order 0)
-            { type: 'document', docIndex: 1 },  // D2 (physical order 1)
-            { type: 'document', docIndex: 2 },  // D3 (physical order 2)
+            { type: 'document', docIndex: 0 }, // D1 (physical order 0)
+            { type: 'document', docIndex: 1 }, // D2 (physical order 1)
+            { type: 'document', docIndex: 2 }, // D3 (physical order 2)
             { type: 'add-sheet' }
         ];
 
@@ -75,7 +75,7 @@ describe('DBS3 Handler Coverage', () => {
     /**
      * Direct Doc→Sheet scenario:
      * [S1, S2, D1] → D1 to between S1/S2 → [S1, D1, S2]
-     * 
+     *
      * toTab.type is 'sheet' (S2), so this dispatches to handleDocToSheet.
      * D1 is after WB, and metadata may not be needed.
      */
@@ -101,9 +101,9 @@ describe('DBS3 Handler Coverage', () => {
         editor.initializeWorkbook(INITIAL_MD, '{}');
 
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },   // S1
-            { type: 'sheet', sheetIndex: 1 },   // S2
-            { type: 'document', docIndex: 0 },  // D1
+            { type: 'sheet', sheetIndex: 0 }, // S1
+            { type: 'sheet', sheetIndex: 1 }, // S2
+            { type: 'document', docIndex: 0 }, // D1
             { type: 'add-sheet' }
         ];
 
@@ -120,7 +120,7 @@ describe('DBS3 Handler Coverage', () => {
     /**
      * DBS3 specific scenario with 3 docs:
      * [S1, D1, D2, D3] → D1 to after D3 via sheet position
-     * 
+     *
      * If we drop D1 at the position after S1 but looking to move docs...
      */
     it('should exercise DBS3 handler when doc moves within after-WB docs', () => {
@@ -144,10 +144,10 @@ describe('DBS3 Handler Coverage', () => {
 
         // Natural order: [S1, DA, DB, DC]
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },   // S1 (index 0)
-            { type: 'document', docIndex: 0 },  // DA (index 1)
-            { type: 'document', docIndex: 1 },  // DB (index 2)
-            { type: 'document', docIndex: 2 },  // DC (index 3)
+            { type: 'sheet', sheetIndex: 0 }, // S1 (index 0)
+            { type: 'document', docIndex: 0 }, // DA (index 1)
+            { type: 'document', docIndex: 1 }, // DB (index 2)
+            { type: 'document', docIndex: 2 }, // DC (index 3)
             { type: 'add-sheet' }
         ];
 

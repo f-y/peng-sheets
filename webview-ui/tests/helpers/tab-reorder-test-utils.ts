@@ -14,7 +14,7 @@ export interface TestTab {
  * Simulates the exact logic of main.ts: _handleTabReorder
  * This ensures that tests verify the ACTUAL behavior of the application,
  * not just the return value of determineReorderAction.
- * 
+ *
  * @see webview-ui/main.ts: _handleTabReorder
  */
 export function executeTabReorderLikeMainTs(
@@ -29,7 +29,6 @@ export function executeTabReorderLikeMainTs(
     newTabOrder?: TabOrderItem[] | null;
     physicalMove?: any;
 } {
-
     // 1. Determine Action
     const action = determineReorderAction(tabs, fromIndex, toIndex);
     console.log(`[DEBUG] Reorder ${fromIndex} -> ${toIndex}`, JSON.stringify(action, null, 2));
@@ -70,7 +69,12 @@ export function executeTabReorderLikeMainTs(
             }
             case 'move-document': {
                 const { fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook } = action.physicalMove;
-                const moveResult = editor.moveDocumentSection(fromDocIndex, toDocIndex, toAfterWorkbook, toBeforeWorkbook);
+                const moveResult = editor.moveDocumentSection(
+                    fromDocIndex,
+                    toDocIndex,
+                    toAfterWorkbook,
+                    toBeforeWorkbook
+                );
 
                 // Fix for Hazard 61: Always regenerate workbook section for move-document
                 if (moveResult.content) {
@@ -103,9 +107,8 @@ export function verifyFinalState(
     expectedPhysicalOrder: string[], // List of titles/names in physical order
     expectedTabOrder: TabOrderItem[] | null // Expected metadata tab_order or null if removed
 ): void {
-
     // 1. Verify Physical Order
-    const actualOrder = currentStructure.map(item => {
+    const actualOrder = currentStructure.map((item) => {
         if (item.type === 'workbook') return 'WB'; // Represent WB as a block
         return item.title || item.name;
     });
@@ -115,11 +118,11 @@ export function verifyFinalState(
 
     // Actually, let's verify by checking titles against the expected list.
     // Workbook sheets will be returned individually.
-    // We expect the test caller to provide the expected flattened list if needed, 
+    // We expect the test caller to provide the expected flattened list if needed,
     // OR we simplify to just checking Doc/Sheet names.
 
     // Let's refine: verifyFinalState should take the raw structure array and check names.
-    const actualNames = currentStructure.map(item => item.title || item.name);
+    const actualNames = currentStructure.map((item) => item.title || item.name);
 
     // We'll trust the caller to provide the correct flat list of names
     expect(actualNames).toEqual(expectedPhysicalOrder);
@@ -137,8 +140,8 @@ export function verifyFinalState(
     } else {
         expect(metadata?.tab_order).toBeDefined();
         // Compare tab_order content logic
-        // We match type and index. 
-        // Note: index might change if sheets reordered? 
+        // We match type and index.
+        // Note: index might change if sheets reordered?
         // SPECS say index is 0-based index within that TYPE.
         expect(metadata.tab_order).toEqual(expectedTabOrder);
     }

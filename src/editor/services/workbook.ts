@@ -224,8 +224,7 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
         let matchesNatural = tabOrder.length === naturalOrder.length;
         if (matchesNatural) {
             for (let i = 0; i < tabOrder.length; i++) {
-                if (tabOrder[i].type !== naturalOrder[i].type ||
-                    tabOrder[i].index !== naturalOrder[i].index) {
+                if (tabOrder[i].type !== naturalOrder[i].type || tabOrder[i].index !== naturalOrder[i].index) {
                     matchesNatural = false;
                     break;
                 }

@@ -39,12 +39,12 @@ export type PhysicalMove =
     | { type: 'move-sheet'; fromSheetIndex: number; toSheetIndex: number }
     | { type: 'move-workbook'; direction: 'before-doc' | 'after-doc'; targetDocIndex: number }
     | {
-        type: 'move-document';
-        fromDocIndex: number;
-        toDocIndex: number | null;
-        toAfterWorkbook: boolean;
-        toBeforeWorkbook: boolean;
-    };
+          type: 'move-document';
+          fromDocIndex: number;
+          toDocIndex: number | null;
+          toAfterWorkbook: boolean;
+          toBeforeWorkbook: boolean;
+      };
 
 /**
  * Result of determining what action to take for a tab reorder.
@@ -52,6 +52,8 @@ export type PhysicalMove =
 export interface ReorderAction {
     actionType: 'no-op' | 'physical' | 'metadata' | 'physical+metadata';
     physicalMove?: PhysicalMove;
+    /** Secondary physical moves needed when primary move causes doc position changes */
+    secondaryPhysicalMoves?: PhysicalMove[];
     newFileStructure?: FileStructure;
     newTabOrder?: TabOrderItem[];
     metadataRequired: boolean;
@@ -72,9 +74,9 @@ export interface TabInfo {
  * @see SPECS.md 8.6.8 Sheet → Sheet (In-Workbook)
  */
 export type SheetToSheetPattern =
-    | 'SS1_adjacent_no_docs'           // Adjacent swap, no docs present
-    | 'SS2_adjacent_with_docs'          // Adjacent swap, docs exist
-    | 'SS3_non_adjacent';               // Non-adjacent swap
+    | 'SS1_adjacent_no_docs' // Adjacent swap, no docs present
+    | 'SS2_adjacent_with_docs' // Adjacent swap, docs exist
+    | 'SS3_non_adjacent'; // Non-adjacent swap
 
 /**
  * Sheet → Document patterns (Workbook moves or metadata)
@@ -82,37 +84,37 @@ export type SheetToSheetPattern =
  */
 export type SheetToDocPattern =
     // Before Document
-    | 'SBD1_single_before_doc'          // Single sheet before doc
-    | 'SBD2_multi_before_doc'           // Multi-sheet, one before doc
-    // After Document  
-    | 'SAD1_single_after_doc'           // Single sheet after doc
-    | 'SAD2_multi_after_no_reorder'     // Multi-sheet after doc, no sheet reorder
-    | 'SAD3_doc_first_order_same'       // Doc first, sheets contiguous, order same (H9)
-    | 'SAD4_doc_first_order_differs'    // Doc first, sheets contiguous, order differs (H11)
-    | 'SAD5_sheet_past_docs'            // Sheet to end across docs (H10)
+    | 'SBD1_single_before_doc' // Single sheet before doc
+    | 'SBD2_multi_before_doc' // Multi-sheet, one before doc
+    // After Document
+    | 'SAD1_single_after_doc' // Single sheet after doc
+    | 'SAD2_multi_after_no_reorder' // Multi-sheet after doc, no sheet reorder
+    | 'SAD3_doc_first_order_same' // Doc first, sheets contiguous, order same (H9)
+    | 'SAD4_doc_first_order_differs' // Doc first, sheets contiguous, order differs (H11)
+    | 'SAD5_sheet_past_docs' // Sheet to end across docs (H10)
     // Inside Doc Range (C8)
-    | 'SIDR1_inside_not_last'           // Non-last sheet to doc range
-    | 'SIDR2_inside_already_last';      // Last sheet to doc range
+    | 'SIDR1_inside_not_last' // Non-last sheet to doc range
+    | 'SIDR2_inside_already_last'; // Last sheet to doc range
 
 /**
  * Document → Document patterns
  * @see SPECS.md 8.6.8 Document → Document
  */
 export type DocToDocPattern =
-    | 'DD1_both_before_wb'              // Both before WB
-    | 'DD2_both_after_wb'               // Both after WB
-    | 'DD3_cross_before_to_after'       // Cross WB: before→after
-    | 'DD4_cross_after_to_before'       // Cross WB: after→before
-    | 'DD5_interleaved_reorder';        // Interleaved docs reorder
+    | 'DD1_both_before_wb' // Both before WB
+    | 'DD2_both_after_wb' // Both after WB
+    | 'DD3_cross_before_to_after' // Cross WB: before→after
+    | 'DD4_cross_after_to_before' // Cross WB: after→before
+    | 'DD5_interleaved_reorder'; // Interleaved docs reorder
 
 /**
  * Document → Between Sheets patterns
  * @see SPECS.md 8.6.8 Document → Between Sheets
  */
 export type DocToSheetPattern =
-    | 'DBS1_before_wb_to_between'       // Doc before WB → between sheets
-    | 'DBS2_after_wb_no_move'           // Doc after WB, already in position
-    | 'DBS3_after_wb_reorder';          // Doc after WB needs reorder
+    | 'DBS1_before_wb_to_between' // Doc before WB → between sheets
+    | 'DBS2_after_wb_no_move' // Doc after WB, already in position
+    | 'DBS3_after_wb_reorder'; // Doc after WB needs reorder
 
 /**
  * Context for pattern classification
@@ -129,17 +131,16 @@ export interface PatternContext {
     sheetCount: number;
 }
 
-
 // =============================================================================
 // Core Functions
 // =============================================================================
 
 /**
  * SIDR3 Helper: Compute move-sheet parameters for sheet reorder.
- * 
+ *
  * This is a pure function that calculates the correct toSheetIndex
  * when visual sheet order differs from physical and requires reordering.
- * 
+ *
  * @param visualSheetOrder - Array of sheet indices in visual order (from newTabOrder)
  * @param physicalSheetOrder - Array of sheet indices in physical order (from fileStructure.sheets)
  * @param movedSheetIdx - The index of the sheet being moved
@@ -287,9 +288,7 @@ function classifySheetToDocPattern(ctx: PatternContext): SheetToDocPattern {
         .map((item, idx) => (item.type === 'sheet' ? idx : -1))
         .filter((idx) => idx !== -1);
 
-    const movedSheetNewPos = newTabOrder.findIndex(
-        (item) => item.type === 'sheet' && item.index === movedSheetIdx
-    );
+    const movedSheetNewPos = newTabOrder.findIndex((item) => item.type === 'sheet' && item.index === movedSheetIdx);
 
     // Check for doc-between-sheets scenario (sheet after a doc)
     const firstSheetPos = sheetPositions.length > 0 ? sheetPositions[0] : -1;
@@ -312,16 +311,15 @@ function classifySheetToDocPattern(ctx: PatternContext): SheetToDocPattern {
 
         if (isPhysicallyAfterWb) {
             // Check sheet contiguity and order
-            const sheetIndices = newTabOrder
-                .filter((item) => item.type === 'sheet')
-                .map((item) => item.index);
+            const sheetIndices = newTabOrder.filter((item) => item.type === 'sheet').map((item) => item.index);
 
             const physicalSheetOrder = currentFileStructure.sheets.slice().sort((a, b) => a - b);
 
             // Are sheets contiguous in newTabOrder?
             let sheetsContiguous = true;
             let prevWasSheet = false;
-            for (const item of newTabOrder.slice(1)) { // skip first (doc)
+            for (const item of newTabOrder.slice(1)) {
+                // skip first (doc)
                 if (item.type === 'sheet') {
                     if (!prevWasSheet && newTabOrder.indexOf(item) > 1) {
                         // Check if there's a doc gap
@@ -370,9 +368,7 @@ function classifySheetToDocPattern(ctx: PatternContext): SheetToDocPattern {
     }
 
     // Multi-sheet: before or after doc
-    const movingSheetPos = ctx.newTabs.findIndex(
-        (t) => t.type === 'sheet' && t.sheetIndex === fromTab.sheetIndex
-    );
+    const movingSheetPos = ctx.newTabs.findIndex((t) => t.type === 'sheet' && t.sheetIndex === fromTab.sheetIndex);
     const firstDoc = ctx.newTabs.find((t) => t.type === 'document');
     const firstDocPos = firstDoc ? ctx.newTabs.indexOf(firstDoc) : -1;
 
@@ -423,9 +419,7 @@ function classifySheetToSheetPattern(ctx: PatternContext): SheetToSheetPattern {
 
             if (sheetsContiguous) {
                 // Check sheet order
-                const visualSheetOrder = newTabOrder
-                    .filter((item) => item.type === 'sheet')
-                    .map((item) => item.index);
+                const visualSheetOrder = newTabOrder.filter((item) => item.type === 'sheet').map((item) => item.index);
                 const physicalSheetOrder = currentFileStructure.sheets;
                 const orderMatches =
                     visualSheetOrder.length === physicalSheetOrder.length &&
@@ -461,16 +455,11 @@ function classifyDocToDocPattern(ctx: PatternContext): DocToDocPattern {
     const isFromAfter = currentFileStructure.docsAfterWb.includes(fromDocIdx);
 
     // Find where doc ends up
-    const newDocPos = newTabOrder.findIndex(
-        (item) => item.type === 'document' && item.index === fromDocIdx
-    );
+    const newDocPos = newTabOrder.findIndex((item) => item.type === 'document' && item.index === fromDocIdx);
     const sheetsInNew = newTabOrder.filter((item) => item.type === 'sheet');
-    const firstSheetPosInNew = sheetsInNew.length > 0
-        ? newTabOrder.findIndex((item) => item.type === 'sheet')
-        : -1;
-    const lastSheetPosInNew = sheetsInNew.length > 0
-        ? newTabOrder.reduce((acc, item, i) => (item.type === 'sheet' ? i : acc), -1)
-        : -1;
+    const firstSheetPosInNew = sheetsInNew.length > 0 ? newTabOrder.findIndex((item) => item.type === 'sheet') : -1;
+    const lastSheetPosInNew =
+        sheetsInNew.length > 0 ? newTabOrder.reduce((acc, item, i) => (item.type === 'sheet' ? i : acc), -1) : -1;
 
     const isToBeforeSheets = firstSheetPosInNew === -1 || newDocPos < firstSheetPosInNew;
     const isToAfterSheets = lastSheetPosInNew === -1 || newDocPos > lastSheetPosInNew;
@@ -567,15 +556,41 @@ function handleSheetToSheet(
                     metadataRequired: false
                 };
             }
-            // Physical sheet swap, no docs
+
+            // Check if any doc needs to move to before-WB
+            const ss1SecondaryMoves: PhysicalMove[] = [];
+            if (ctx.newTabOrder[0]?.type === 'document') {
+                for (const item of ctx.newTabOrder) {
+                    if (item.type !== 'document') continue;
+                    const docIdx = item.index;
+                    const isCurrentlyAfterWb = ctx.currentFileStructure.docsAfterWb.includes(docIdx);
+
+                    const docVisualPos = ctx.newTabOrder.findIndex((t) => t.type === 'document' && t.index === docIdx);
+                    const firstSheetPos = ctx.newTabOrder.findIndex((t) => t.type === 'sheet');
+
+                    if (firstSheetPos >= 0 && docVisualPos < firstSheetPos && isCurrentlyAfterWb) {
+                        ss1SecondaryMoves.push({
+                            type: 'move-document',
+                            fromDocIndex: docIdx,
+                            toDocIndex: null,
+                            toAfterWorkbook: false,
+                            toBeforeWorkbook: true
+                        });
+                    }
+                }
+            }
+
+            // Physical sheet swap
             return {
-                actionType: 'physical',
+                actionType: ss1SecondaryMoves.length > 0 ? 'physical+metadata' : 'physical',
                 physicalMove: {
                     type: 'move-sheet',
                     fromSheetIndex: ctx.fromTab.sheetIndex!,
                     toSheetIndex
                 },
-                metadataRequired: false
+                secondaryPhysicalMoves: ss1SecondaryMoves.length > 0 ? ss1SecondaryMoves : undefined,
+                metadataRequired: ss1SecondaryMoves.length > 0,
+                newTabOrder: ss1SecondaryMoves.length > 0 ? ctx.newTabOrder : undefined
             };
         }
 
@@ -583,7 +598,6 @@ function handleSheetToSheet(
         // SS2: Adjacent swap with docs (H9 / Physical Normalization)
         // =====================================================================
         case 'SS2_adjacent_with_docs': {
-
             // Check if doc becomes first (H9)
             if (ctx.newTabOrder.length > 0 && ctx.newTabOrder[0].type === 'document') {
                 const firstDocIdx = ctx.newTabOrder[0].index;
@@ -601,10 +615,47 @@ function handleSheetToSheet(
                         visualSheetOrder.length === physicalSheetOrder.length &&
                         !visualSheetOrder.every((v, i) => v === physicalSheetOrder[i]);
 
+                    console.log(
+                        '[DEBUG SS2] visualSheet:',
+                        visualSheetOrder,
+                        'physicalSheet:',
+                        physicalSheetOrder,
+                        'differs:',
+                        sheetOrderDiffers,
+                        'newTabOrder:',
+                        ctx.newTabOrder
+                    );
+
                     if (sheetOrderDiffers && ctx.sheetCount >= 2) {
                         // SIDR3: Need to physically reorder sheets
                         // The moved sheet should become last in physical order
                         const movedSheetIdx = ctx.fromTab.sheetIndex!;
+
+                        // Check if any doc needs to move to before-WB
+                        const secondaryMoves: PhysicalMove[] = [];
+                        for (const item of ctx.newTabOrder) {
+                            if (item.type !== 'document') continue;
+                            const docIdx = item.index;
+                            const isCurrentlyAfterWb = ctx.currentFileStructure.docsAfterWb.includes(docIdx);
+
+                            // Find where this doc appears in newTabOrder relative to sheets
+                            const docVisualPos = ctx.newTabOrder.findIndex(
+                                (t) => t.type === 'document' && t.index === docIdx
+                            );
+                            const firstSheetPos = ctx.newTabOrder.findIndex((t) => t.type === 'sheet');
+
+                            // If doc is before all sheets in visual order, but physically after WB
+                            if (docVisualPos < firstSheetPos && isCurrentlyAfterWb) {
+                                secondaryMoves.push({
+                                    type: 'move-document',
+                                    fromDocIndex: docIdx,
+                                    toDocIndex: null,
+                                    toAfterWorkbook: false,
+                                    toBeforeWorkbook: true
+                                });
+                            }
+                        }
+
                         return {
                             actionType: 'physical+metadata',
                             physicalMove: {
@@ -612,6 +663,7 @@ function handleSheetToSheet(
                                 fromSheetIndex: movedSheetIdx,
                                 toSheetIndex: ctx.sheetCount // Move to end
                             },
+                            secondaryPhysicalMoves: secondaryMoves.length > 0 ? secondaryMoves : undefined,
                             newTabOrder: ctx.newTabOrder,
                             metadataRequired: true
                         };
@@ -632,6 +684,30 @@ function handleSheetToSheet(
 
             // Normal sheet swap with metadata if needed
             const needsMeta = isMetadataRequired(ctx.newTabOrder, ctx.currentFileStructure);
+
+            // Check if any doc needs to move to before-WB
+            const ss2SecondaryMoves: PhysicalMove[] = [];
+            if (ctx.newTabOrder[0]?.type === 'document') {
+                for (const item of ctx.newTabOrder) {
+                    if (item.type !== 'document') continue;
+                    const docIdx = item.index;
+                    const isCurrentlyAfterWb = ctx.currentFileStructure.docsAfterWb.includes(docIdx);
+
+                    const docVisualPos = ctx.newTabOrder.findIndex((t) => t.type === 'document' && t.index === docIdx);
+                    const firstSheetPos = ctx.newTabOrder.findIndex((t) => t.type === 'sheet');
+
+                    if (firstSheetPos >= 0 && docVisualPos < firstSheetPos && isCurrentlyAfterWb) {
+                        ss2SecondaryMoves.push({
+                            type: 'move-document',
+                            fromDocIndex: docIdx,
+                            toDocIndex: null,
+                            toAfterWorkbook: false,
+                            toBeforeWorkbook: true
+                        });
+                    }
+                }
+            }
+
             return {
                 actionType: 'physical',
                 physicalMove: {
@@ -639,6 +715,7 @@ function handleSheetToSheet(
                     fromSheetIndex: ctx.fromTab.sheetIndex!,
                     toSheetIndex
                 },
+                secondaryPhysicalMoves: ss2SecondaryMoves.length > 0 ? ss2SecondaryMoves : undefined,
                 metadataRequired: needsMeta,
                 newTabOrder: needsMeta ? ctx.newTabOrder : undefined
             };
@@ -649,7 +726,6 @@ function handleSheetToSheet(
         // =====================================================================
         case 'SS3_non_adjacent':
         default: {
-
             // Check if doc becomes first with different sheet order (H11/H12)
             if (ctx.newTabOrder.length > 0 && ctx.newTabOrder[0].type === 'document') {
                 const firstDocIdx = ctx.newTabOrder[0].index;
@@ -665,6 +741,31 @@ function handleSheetToSheet(
 
                     const sidr3Move = computeSidr3MoveSheet(visualSheetOrder, physicalSheetOrder, movedSheetIdx);
                     if (sidr3Move) {
+                        // Check if any doc needs to move to before-WB
+                        const secondaryMoves: PhysicalMove[] = [];
+                        for (const item of ctx.newTabOrder) {
+                            if (item.type !== 'document') continue;
+                            const docIdx = item.index;
+                            const isCurrentlyAfterWb = ctx.currentFileStructure.docsAfterWb.includes(docIdx);
+
+                            // Find where this doc appears in newTabOrder relative to sheets
+                            const docVisualPos = ctx.newTabOrder.findIndex(
+                                (t) => t.type === 'document' && t.index === docIdx
+                            );
+                            const firstSheetPos = ctx.newTabOrder.findIndex((t) => t.type === 'sheet');
+
+                            // If doc is before all sheets in visual order, but physically after WB
+                            if (docVisualPos < firstSheetPos && isCurrentlyAfterWb) {
+                                secondaryMoves.push({
+                                    type: 'move-document',
+                                    fromDocIndex: docIdx,
+                                    toDocIndex: null,
+                                    toAfterWorkbook: false,
+                                    toBeforeWorkbook: true
+                                });
+                            }
+                        }
+
                         return {
                             actionType: 'physical+metadata',
                             physicalMove: {
@@ -672,6 +773,7 @@ function handleSheetToSheet(
                                 fromSheetIndex: sidr3Move.fromSheetIndex,
                                 toSheetIndex: sidr3Move.toSheetIndex
                             },
+                            secondaryPhysicalMoves: secondaryMoves.length > 0 ? secondaryMoves : undefined,
                             newTabOrder: ctx.newTabOrder,
                             metadataRequired: true
                         };
@@ -694,6 +796,32 @@ function handleSheetToSheet(
 
             // Normal sheet move with metadata
             const needsMeta = isMetadataRequired(ctx.newTabOrder, ctx.currentFileStructure);
+
+            // Check if any doc needs to move to before-WB
+            const secondaryMoves: PhysicalMove[] = [];
+            if (ctx.newTabOrder[0]?.type === 'document') {
+                for (const item of ctx.newTabOrder) {
+                    if (item.type !== 'document') continue;
+                    const docIdx = item.index;
+                    const isCurrentlyAfterWb = ctx.currentFileStructure.docsAfterWb.includes(docIdx);
+
+                    // Find where this doc appears relative to sheets
+                    const docVisualPos = ctx.newTabOrder.findIndex((t) => t.type === 'document' && t.index === docIdx);
+                    const firstSheetPos = ctx.newTabOrder.findIndex((t) => t.type === 'sheet');
+
+                    // If doc is before all sheets in visual order, but physically after WB
+                    if (firstSheetPos >= 0 && docVisualPos < firstSheetPos && isCurrentlyAfterWb) {
+                        secondaryMoves.push({
+                            type: 'move-document',
+                            fromDocIndex: docIdx,
+                            toDocIndex: null,
+                            toAfterWorkbook: false,
+                            toBeforeWorkbook: true
+                        });
+                    }
+                }
+            }
+
             return {
                 actionType: needsMeta ? 'physical+metadata' : 'physical',
                 physicalMove: {
@@ -701,6 +829,7 @@ function handleSheetToSheet(
                     fromSheetIndex: ctx.fromTab.sheetIndex!,
                     toSheetIndex
                 },
+                secondaryPhysicalMoves: secondaryMoves.length > 0 ? secondaryMoves : undefined,
                 metadataRequired: needsMeta,
                 newTabOrder: needsMeta ? ctx.newTabOrder : undefined
             };
@@ -720,7 +849,6 @@ function handleSheetToDoc(
 ): ReorderAction {
     const ctx = buildPatternContext(tabs, fromIndex, toIndex, physicalStructure);
     const pattern = classifySheetToDocPattern(ctx);
-
 
     switch (pattern) {
         // =====================================================================
@@ -785,7 +913,7 @@ function handleSheetToDoc(
                     targetDocIndex: firstDocIdx
                 },
                 newTabOrder: ctx.newTabOrder,
-                metadataRequired: true  // KEY FIX: Sheet order differs from physical!
+                metadataRequired: true // KEY FIX: Sheet order differs from physical!
             };
         }
 
@@ -810,6 +938,32 @@ function handleSheetToDoc(
         case 'SIDR1_inside_not_last': {
             // C8: Non-last sheet to inside doc range
             //     → move-sheet to end of WB + metadata
+            //     PLUS: secondary doc moves if docs need to change WB position
+            const secondaryMoves: PhysicalMove[] = [];
+
+            // Check if any doc needs to move to before-WB
+            // This happens when a doc becomes first in visual order but is currently after-WB
+            for (const item of ctx.newTabOrder) {
+                if (item.type !== 'document') continue;
+                const docIdx = item.index;
+                const isCurrentlyAfterWb = ctx.currentFileStructure.docsAfterWb.includes(docIdx);
+
+                // Find where this doc appears in newTabOrder
+                const docVisualPos = ctx.newTabOrder.findIndex((t) => t.type === 'document' && t.index === docIdx);
+                const firstSheetPos = ctx.newTabOrder.findIndex((t) => t.type === 'sheet');
+
+                // If doc is before all sheets in visual order, but physically after WB
+                if (docVisualPos < firstSheetPos && isCurrentlyAfterWb) {
+                    secondaryMoves.push({
+                        type: 'move-document',
+                        fromDocIndex: docIdx,
+                        toDocIndex: null,
+                        toAfterWorkbook: false,
+                        toBeforeWorkbook: true
+                    });
+                }
+            }
+
             return {
                 actionType: 'physical+metadata',
                 physicalMove: {
@@ -817,6 +971,7 @@ function handleSheetToDoc(
                     fromSheetIndex: ctx.fromTab.sheetIndex!,
                     toSheetIndex: ctx.sheetCount
                 },
+                secondaryPhysicalMoves: secondaryMoves.length > 0 ? secondaryMoves : undefined,
                 newTabOrder: ctx.newTabOrder,
                 metadataRequired: true
             };
@@ -883,7 +1038,7 @@ function handleDocToDoc(
     // Compute target parameters
     let toDocIndex: number | null = null;
     let toBeforeWorkbook = false;
-    let toAfterWorkbook = false;
+    const toAfterWorkbook = false;
 
     if (toTab?.type === 'document') {
         toDocIndex = toTab.docIndex!;
@@ -896,7 +1051,7 @@ function handleDocToDoc(
         // but we want to insert AFTER the last doc (position after it)
         for (let i = toIndex - 1; i >= 0; i--) {
             if (tabs[i].type === 'document' && i !== fromIndex) {
-                toDocIndex = tabs[i].docIndex! + 1;  // +1 to insert AFTER this doc
+                toDocIndex = tabs[i].docIndex! + 1; // +1 to insert AFTER this doc
                 break;
             }
         }
@@ -940,7 +1095,7 @@ function handleDocToDoc(
                     type: 'move-document',
                     fromDocIndex,
                     toDocIndex,
-                    toAfterWorkbook: false,  // Don't use wbEnd, just append to EOF
+                    toAfterWorkbook: false, // Don't use wbEnd, just append to EOF
                     toBeforeWorkbook: false
                 },
                 newTabOrder: needsMetadata ? ctx.newTabOrder : undefined,
@@ -957,16 +1112,16 @@ function handleDocToDoc(
             const movedDocOldIndex = fromDocIndex;
             const adjustedTabOrder = needsMetadata
                 ? ctx.newTabOrder.map((item) => {
-                    if (item.type !== 'document') return item;
+                      if (item.type !== 'document') return item;
 
-                    if (item.index === movedDocOldIndex) {
-                        // Moved doc becomes index 0
-                        return { ...item, index: 0 };
-                    } else {
-                        // All other docs shift up by 1
-                        return { ...item, index: item.index + 1 };
-                    }
-                })
+                      if (item.index === movedDocOldIndex) {
+                          // Moved doc becomes index 0
+                          return { ...item, index: 0 };
+                      } else {
+                          // All other docs shift up by 1
+                          return { ...item, index: item.index + 1 };
+                      }
+                  })
                 : undefined;
 
             return {
@@ -1045,7 +1200,7 @@ function handleDocToDoc(
                             type: 'move-document',
                             fromDocIndex,
                             toDocIndex: null,
-                            toAfterWorkbook: true,  // Move to first position after WB
+                            toAfterWorkbook: true, // Move to first position after WB
                             toBeforeWorkbook: false
                         },
                         newTabOrder: adjustedTabOrder,
@@ -1092,11 +1247,11 @@ function handleDocToSheet(
                     type: 'move-document',
                     fromDocIndex,
                     toDocIndex: null,
-                    toAfterWorkbook: true,  // KEY FIX: Doc moves to after WB
+                    toAfterWorkbook: true, // KEY FIX: Doc moves to after WB
                     toBeforeWorkbook: false
                 },
                 newTabOrder: ctx.newTabOrder,
-                metadataRequired: true  // Always true for between-sheets position
+                metadataRequired: true // Always true for between-sheets position
             };
         }
 
@@ -1132,7 +1287,8 @@ function handleDocToSheet(
         // If doc is not already first doc after WB, it needs physical reorder
         // =====================================================================
         case 'DBS2_after_wb_no_move':
-        default: {            // Original DBS2 logic: Check if this doc is NOT the first doc after WB
+        default: {
+            // Original DBS2 logic: Check if this doc is NOT the first doc after WB
             const firstDocAfterWb = Math.min(...ctx.currentFileStructure.docsAfterWb);
             const needsPhysicalReorder = fromDocIndex > firstDocAfterWb;
 
@@ -1144,7 +1300,7 @@ function handleDocToSheet(
                         type: 'move-document',
                         fromDocIndex,
                         toDocIndex: null,
-                        toAfterWorkbook: true,  // Move to first position after WB
+                        toAfterWorkbook: true, // Move to first position after WB
                         toBeforeWorkbook: false
                     },
                     newTabOrder: ctx.newTabOrder,
@@ -1161,7 +1317,6 @@ function handleDocToSheet(
         }
     }
 }
-
 
 // =============================================================================
 // Main Dispatcher
@@ -1192,8 +1347,8 @@ export function determineReorderAction(
     const fromTab = tabs[fromIndex];
 
     // Identify Zones
-    const firstSheetIdx = tabs.findIndex(t => t.type === 'sheet');
-    const lastSheetIdx = tabs.reduce((acc, t, i) => t.type === 'sheet' ? i : acc, -1);
+    const firstSheetIdx = tabs.findIndex((t) => t.type === 'sheet');
+    const lastSheetIdx = tabs.reduce((acc, t, i) => (t.type === 'sheet' ? i : acc), -1);
     const hasWorkbook = firstSheetIdx !== -1;
 
     // =========================================================================
@@ -1201,7 +1356,7 @@ export function determineReorderAction(
     // This requires move-workbook to normalize the physical structure
     // NOTE: Only applies when WB has MULTIPLE sheets. Single-sheet cases use S3/S4 pattern.
     // =========================================================================
-    const sheetCount = tabs.filter(t => t.type === 'sheet').length;
+    const sheetCount = tabs.filter((t) => t.type === 'sheet').length;
     if (hasWorkbook && fromTab.type === 'sheet' && sheetCount > 1) {
         // Simulate the new tab order after this move
         const newTabs = [...tabs];
@@ -1241,6 +1396,29 @@ export function determineReorderAction(
 
                     const sidr3Move = computeSidr3MoveSheet(visualSheetOrder, physicalSheetOrder, movedSheetIdx);
                     if (sidr3Move) {
+                        // Check if any doc needs to move to before-WB
+                        const secondaryMoves: PhysicalMove[] = [];
+                        for (const item of newTabOrder) {
+                            if (item.type !== 'document') continue;
+                            const dIdx = item.index;
+                            const isCurrentlyAfterWb = fileStructure.docsAfterWb.includes(dIdx);
+
+                            const docVisualPos = newTabOrder.findIndex(
+                                (t) => t.type === 'document' && t.index === dIdx
+                            );
+                            const firstSheetPos = newTabOrder.findIndex((t) => t.type === 'sheet');
+
+                            if (firstSheetPos >= 0 && docVisualPos < firstSheetPos && isCurrentlyAfterWb) {
+                                secondaryMoves.push({
+                                    type: 'move-document',
+                                    fromDocIndex: dIdx,
+                                    toDocIndex: null,
+                                    toAfterWorkbook: false,
+                                    toBeforeWorkbook: true
+                                });
+                            }
+                        }
+
                         return {
                             actionType: 'physical+metadata',
                             physicalMove: {
@@ -1248,6 +1426,7 @@ export function determineReorderAction(
                                 fromSheetIndex: sidr3Move.fromSheetIndex,
                                 toSheetIndex: sidr3Move.toSheetIndex
                             },
+                            secondaryPhysicalMoves: secondaryMoves.length > 0 ? secondaryMoves : undefined,
                             newTabOrder: newTabOrder,
                             metadataRequired: true
                         };
@@ -1317,7 +1496,8 @@ export function determineReorderAction(
     if (fromTab.type === 'sheet') {
         if (targetZone === 'inside-wb') result = handleSheetToSheet(fromIndex, toIndex, tabs, physicalStructure);
         else result = handleSheetToDoc(fromIndex, toIndex, tabs, physicalStructure);
-    } else { // fromTab.type === 'document'
+    } else {
+        // fromTab.type === 'document'
         if (targetZone === 'outside-wb') result = handleDocToDoc(fromIndex, toIndex, tabs, physicalStructure);
         else result = handleDocToSheet(fromIndex, toIndex, tabs, physicalStructure);
     }

@@ -1,6 +1,6 @@
 /**
  * SIDR3 toSheetIndex Comprehensive Tests
- * 
+ *
  * These tests verify the EXACT toSheetIndex value returned by SIDR3,
  * not just the action type.
  */
@@ -24,13 +24,13 @@ describe('SIDR3 toSheetIndex Verification', () => {
      * User Bug Report (Critical):
      * Tab: [S1, D1, S2, D2, S3]
      * Action: S1 → after D2 (between D2 and S3)
-     * 
+     *
      * Expected:
      * - Visual tab order: [D1, S2, D2, S1, S3]
      * - Visual sheet order: [S2, S1, S3]
      * - Physical sheet MUST be: [S2, S1, S3]
      * - toSheetIndex: 2 (S1 goes to position 2, after S2)
-     * 
+     *
      * Bug Result:
      * - toSheetIndex: 3 → Physical [S2, S3, S1] (WRONG!)
      */
@@ -67,11 +67,11 @@ describe('SIDR3 toSheetIndex Verification', () => {
 
         // Visual tabs (from metadata): [S1, D1, S2, D2, S3]
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },    // S1 (idx 0)
-            { type: 'document', docIndex: 0 },   // D1 (idx 1)
-            { type: 'sheet', sheetIndex: 1 },    // S2 (idx 2)
-            { type: 'document', docIndex: 1 },   // D2 (idx 3)
-            { type: 'sheet', sheetIndex: 2 },    // S3 (idx 4)
+            { type: 'sheet', sheetIndex: 0 }, // S1 (idx 0)
+            { type: 'document', docIndex: 0 }, // D1 (idx 1)
+            { type: 'sheet', sheetIndex: 1 }, // S2 (idx 2)
+            { type: 'document', docIndex: 1 }, // D2 (idx 3)
+            { type: 'sheet', sheetIndex: 2 }, // S3 (idx 4)
             { type: 'add-sheet' }
         ];
 

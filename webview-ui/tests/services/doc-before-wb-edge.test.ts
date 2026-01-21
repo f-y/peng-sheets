@@ -1,9 +1,9 @@
 /**
  * Doc Before-WB to Between-Sheets Coverage Test
- * 
+ *
  * Targets uncovered lines 995, 1039, 1057 in handleDocToDoc default case
  * where doc is before WB and moves to between sheets position.
- * 
+ *
  * These are edge cases in the H13/DBS4 pattern area.
  */
 
@@ -22,7 +22,7 @@ describe('Doc Before-WB Edge Cases', () => {
      * Initial physical: [D1, WB(S1, S2)]
      * Visual via metadata: [D1, S1, S2]
      * Move D1 to between S1/S2: [S1, D1, S2]
-     * 
+     *
      * This triggers the isFromBeforeWb branch at line 994.
      */
     it('Doc before WB moves to between sheets (line 995 coverage)', () => {
@@ -50,9 +50,9 @@ describe('Doc Before-WB Edge Cases', () => {
 
         // Visual order from metadata: [D1, S1, S2]
         const tabs: TestTab[] = [
-            { type: 'document', docIndex: 0 },  // D1 - visual 0 (before WB)
-            { type: 'sheet', sheetIndex: 0 },   // S1 - visual 1
-            { type: 'sheet', sheetIndex: 1 },   // S2 - visual 2
+            { type: 'document', docIndex: 0 }, // D1 - visual 0 (before WB)
+            { type: 'sheet', sheetIndex: 0 }, // S1 - visual 1
+            { type: 'sheet', sheetIndex: 1 }, // S2 - visual 2
             { type: 'add-sheet' }
         ];
 
@@ -69,7 +69,7 @@ describe('Doc Before-WB Edge Cases', () => {
      * H13/DBS4 with multiple docs: first visual doc != first physical doc
      * Physical: [D1, D2, WB(S1)]
      * Visual: [D2, S1, D1] (via metadata)
-     * 
+     *
      * This tests the physical reorder logic where doc indices need remapping.
      */
     it('Multiple before-WB docs with reorder (lines 1039, 1057 coverage)', () => {
@@ -93,9 +93,9 @@ describe('Doc Before-WB Edge Cases', () => {
 
         // Visual order: [D2, S1, D1] (D2 before WB, D1 after WB)
         const tabs: TestTab[] = [
-            { type: 'document', docIndex: 1 },  // D2 - visual 0 (before WB)
-            { type: 'sheet', sheetIndex: 0 },   // S1 - visual 1
-            { type: 'document', docIndex: 0 },  // D1 - visual 2 (after WB)
+            { type: 'document', docIndex: 1 }, // D2 - visual 0 (before WB)
+            { type: 'sheet', sheetIndex: 0 }, // S1 - visual 1
+            { type: 'document', docIndex: 0 }, // D1 - visual 2 (after WB)
             { type: 'add-sheet' }
         ];
 
@@ -131,9 +131,9 @@ describe('Doc Before-WB Edge Cases', () => {
 
         // Visual: [D1, D2, S1] (both docs before WB)
         const tabs: TestTab[] = [
-            { type: 'document', docIndex: 0 },  // D1 - visual 0
-            { type: 'document', docIndex: 1 },  // D2 - visual 1  
-            { type: 'sheet', sheetIndex: 0 },   // S1 - visual 2
+            { type: 'document', docIndex: 0 }, // D1 - visual 0
+            { type: 'document', docIndex: 1 }, // D2 - visual 1
+            { type: 'sheet', sheetIndex: 0 }, // S1 - visual 2
             { type: 'add-sheet' }
         ];
 

@@ -1,9 +1,9 @@
 /**
  * Bug Reproduction Tests: Interleaved Metadata Physical Move
- * 
+ *
  * File: [WB(S1,S2), D1, D2]
  * Tab order (via metadata): [S1, D1, S2, D2]
- * 
+ *
  * Bug 1: S1 -> after D1: Sheet order should change but doesn't
  * Bug 2: D2 -> after S1: Doc order should change but doesn't
  */
@@ -41,13 +41,13 @@ describe('Bug Reproduction: Interleaved Metadata Physical Move', () => {
 
     /**
      * Bug 1: S1 -> after S2
-     * 
+     *
      * Initial:
      * - File: [WB(S1,S2), D1, D2]
      * - Tab: [S1, D1, S2, D2] (from metadata)
-     * 
+     *
      * Action: Drag S1 (tabIndex 0) to after S2 (tabIndex 3)
-     * 
+     *
      * Expected Result:
      * - File: [WB(S2,S1), D1, D2] - Sheet order changes
      * - Tab: [D1, S2, S1, D2]
@@ -57,10 +57,10 @@ describe('Bug Reproduction: Interleaved Metadata Physical Move', () => {
 
         // Tab order from metadata: [S1(0), D1(1), S2(2), D2(3)]
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },   // S1 at tab 0
-            { type: 'document', docIndex: 0 },  // D1 at tab 1
-            { type: 'sheet', sheetIndex: 1 },   // S2 at tab 2
-            { type: 'document', docIndex: 1 }   // D2 at tab 3
+            { type: 'sheet', sheetIndex: 0 }, // S1 at tab 0
+            { type: 'document', docIndex: 0 }, // D1 at tab 1
+            { type: 'sheet', sheetIndex: 1 }, // S2 at tab 2
+            { type: 'document', docIndex: 1 } // D2 at tab 3
         ];
 
         // Drag S1 (tabIndex 0) to after S2 (tabIndex 3)
@@ -75,13 +75,13 @@ describe('Bug Reproduction: Interleaved Metadata Physical Move', () => {
 
     /**
      * Bug 2: D2 -> after S1
-     * 
+     *
      * Initial:
      * - File: [WB(S1,S2), D1, D2]
      * - Tab: [S1, D1, S2, D2] (from metadata)
-     * 
+     *
      * Action: Drag D2 (tabIndex 3) to after S1 (tabIndex 1)
-     * 
+     *
      * Expected Result:
      * - File: [WB(S1,S2), D2, D1] - Doc order changes
      * - Tab: [S1, D2, D1, S2]
@@ -91,10 +91,10 @@ describe('Bug Reproduction: Interleaved Metadata Physical Move', () => {
 
         // Tab order from metadata: [S1(0), D1(1), S2(2), D2(3)]
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },   // S1 at tab 0
-            { type: 'document', docIndex: 0 },  // D1 at tab 1
-            { type: 'sheet', sheetIndex: 1 },   // S2 at tab 2
-            { type: 'document', docIndex: 1 }   // D2 at tab 3
+            { type: 'sheet', sheetIndex: 0 }, // S1 at tab 0
+            { type: 'document', docIndex: 0 }, // D1 at tab 1
+            { type: 'sheet', sheetIndex: 1 }, // S2 at tab 2
+            { type: 'document', docIndex: 1 } // D2 at tab 3
         ];
 
         // Drag D2 (tabIndex 3) to after S1 (tabIndex 1)

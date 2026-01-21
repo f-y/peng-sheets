@@ -1,6 +1,6 @@
 /**
  * DBS3 Pattern Test: Doc after WB moves to sheet position (Doc→Sheet)
- * 
+ *
  * DBS3 triggers when:
  * - Doc is after WB (not before)
  * - Doc moves to a sheet position (toTab.type === 'sheet')
@@ -48,11 +48,11 @@ describe('DBS3 Doc-to-Sheet Physical Reorder', () => {
         editor.initializeWorkbook(INITIAL_MD, '{}');
 
         const tabs: TestTab[] = [
-            { type: 'sheet', sheetIndex: 0 },   // S1
-            { type: 'sheet', sheetIndex: 1 },   // S2
-            { type: 'document', docIndex: 0 },  // D1
-            { type: 'document', docIndex: 1 },  // D2
-            { type: 'document', docIndex: 2 },  // D3
+            { type: 'sheet', sheetIndex: 0 }, // S1
+            { type: 'sheet', sheetIndex: 1 }, // S2
+            { type: 'document', docIndex: 0 }, // D1
+            { type: 'document', docIndex: 1 }, // D2
+            { type: 'document', docIndex: 2 }, // D3
             { type: 'add-sheet' }
         ];
 
@@ -89,8 +89,8 @@ describe('DBS3 Doc-to-Sheet Physical Reorder', () => {
 
         const tabs: TestTab[] = [
             { type: 'sheet', sheetIndex: 0 },
-            { type: 'document', docIndex: 0 },  // D1
-            { type: 'document', docIndex: 1 },  // D2
+            { type: 'document', docIndex: 0 }, // D1
+            { type: 'document', docIndex: 1 }, // D2
             { type: 'add-sheet' }
         ];
 

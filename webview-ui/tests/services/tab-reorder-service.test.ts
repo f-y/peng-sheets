@@ -340,7 +340,7 @@ describe('SPECS.md 8.6.3 Document → Document', () => {
         expect(action.physicalMove?.type).toBe('move-document');
         if (action.physicalMove?.type === 'move-document') {
             expect(action.physicalMove.fromDocIndex).toBe(0);
-            expect(action.physicalMove.toDocIndex).toBe(2);  // D2(1) + 1 = 2
+            expect(action.physicalMove.toDocIndex).toBe(2); // D2(1) + 1 = 2
             expect(action.physicalMove.toBeforeWorkbook).toBe(false); // Uses toDocIndex not boundary
         }
         expect(action.metadataRequired).toBe(false);
@@ -464,9 +464,6 @@ describe('SPECS.md 8.6.5 Document → Between Sheets (Cross-Type)', () => {
         }
         expect(action.metadataRequired).toBe(true);
     });
-
-
-
 
     it('D7: Doc after WB to between Sheets - Metadata only', () => {
         // Initial: [D1, WB(S1,S2), D2]
@@ -778,7 +775,6 @@ it('[D1, S1, S2] - S1 before D1 - should be metadata only (Stability)', () => {
     expect(action.actionType).toBe('physical+metadata');
     expect(action.metadataRequired).toBe(true);
 });
-
 
 // =============================================================================
 // EDGE CASES: Multiple Docs between sheets, No Workbook, etc.

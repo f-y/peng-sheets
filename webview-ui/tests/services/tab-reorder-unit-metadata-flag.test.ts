@@ -29,15 +29,15 @@ describe('Category A: metadataRequired MUST be false', () => {
      * [S1, S2, D1, D2, D3] → S1 after S2 (toIndex=1)
      * Note: toIndex=1 means "insert before index 1 after removal"
      * This is a no-op since S1 is already before S2.
-     * 
+     *
      * For actual swap, we need toIndex=2 AFTER removal adjusts,
      * which means the "insert at" position in the post-removal array.
-     * 
+     *
      * Actually: Drag S1 from 0 to 2 means:
      * - Remove S1 → [S2, D1, D2, D3]
      * - Insert at 2 → [S2, D1, S1, D2, D3]
      * This puts D1 between sheets = metadata REQUIRED
-     * 
+     *
      * To get S1 after S2: After removal [S2,D1,D2,D3], insert at 1
      * Result: [S2, S1, D1, D2, D3] = no metadata needed
      */
