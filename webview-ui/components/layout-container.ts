@@ -55,7 +55,11 @@ export class LayoutContainer extends LitElement {
             if (!isSheetSwitch && this._currentLayout) {
                 this._traverse(this._currentLayout, (node) => {
                     if (node.type === 'pane') {
-                        localActiveIndices.set(node.id, node.activeTableIndex);
+                        // Skip collecting local index for pending new table target pane
+                        // This allows the auto-selection logic in _addToSpecificPane to work
+                        if (node.id !== this._pendingNewTableTargetPaneId) {
+                            localActiveIndices.set(node.id, node.activeTableIndex);
+                        }
                     }
                 });
             }
@@ -71,11 +75,29 @@ export class LayoutContainer extends LitElement {
             this._currentLayout = newLayout;
         } else {
             // Default: All tables in one pane
+            // Determine the active table index:
+            // 1. If a new table was just added via "+" button, select the new (last) table
+            // 2. If we have an existing layout and not switching sheets, preserve the current selection
+            // 3. Otherwise, default to 0
+            let defaultActiveIndex = 0;
+            const shouldSelectLastTable = this._pendingNewTableTargetPaneId !== null;
+
+            if (shouldSelectLastTable) {
+                defaultActiveIndex = Math.max(0, this.tables.length - 1);
+                this._pendingNewTableTargetPaneId = null;
+            } else if (!isSheetSwitch && this._currentLayout && this._currentLayout.type === 'pane') {
+                // Preserve existing selection (clamp to valid range)
+                defaultActiveIndex = Math.min(
+                    this._currentLayout.activeTableIndex,
+                    Math.max(0, this.tables.length - 1)
+                );
+            }
+
             this._currentLayout = {
                 type: 'pane',
                 id: 'root',
                 tables: this.tables.map((_, i) => i),
-                activeTableIndex: 0
+                activeTableIndex: defaultActiveIndex
             };
         }
     }
