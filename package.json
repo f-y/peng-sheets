@@ -233,6 +233,6 @@
         "vitest": "^4.0.15"
     },
     "dependencies": {
-        "md-spreadsheet-parser": "^1.2.0"
+        "md-spreadsheet-parser": "^1.2.1"
     }
 }

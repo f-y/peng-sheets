@@ -610,8 +610,14 @@ export class SpreadsheetTable extends LitElement {
     /**
      * Handle formula update from dialog.
      */
-    private _handleFormulaUpdate = (e: CustomEvent<{ colIndex: number; formula: FormulaDefinition | null }>) => {
-        const { colIndex, formula } = e.detail;
+    private _handleFormulaUpdate = (
+        e: CustomEvent<{
+            colIndex: number;
+            formula: FormulaDefinition | null;
+            sourceTableMetadata?: { sheetIndex: number; tableIndex: number; visual: unknown } | null;
+        }>
+    ) => {
+        const { colIndex, formula, sourceTableMetadata } = e.detail;
         // Dispatch event to window for GlobalEventController
         window.dispatchEvent(
             new CustomEvent('formula-update', {
@@ -619,7 +625,8 @@ export class SpreadsheetTable extends LitElement {
                     sheetIndex: this.sheetIndex,
                     tableIndex: this.tableIndex,
                     colIndex,
-                    formula
+                    formula,
+                    sourceTableMetadata
                 }
             })
         );

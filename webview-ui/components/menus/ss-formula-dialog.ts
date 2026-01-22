@@ -1177,29 +1177,30 @@ export class SSFormulaDialog extends LitElement {
     private _handleApply() {
         const formula = this._buildFormula();
 
-        // For lookup formulas, also persist the source table's metadata (including its ID)
+        // For lookup formulas, include source table metadata to persist its ID atomically
+        let sourceTableMetadata: {
+            sheetIndex: number;
+            tableIndex: number;
+            visual: unknown;
+        } | null = null;
+
         if (formula && formula.type === 'lookup') {
             const sourceTable = this._getSourceTable();
             if (sourceTable && sourceTable.metadata) {
                 const visual = (sourceTable.metadata as Record<string, unknown>).visual;
                 if (visual) {
-                    // Dispatch metadata update for source table
-                    window.dispatchEvent(
-                        new CustomEvent('metadata-change', {
-                            detail: {
-                                sheetIndex: this._sourceSheetIndex,
-                                tableIndex: this._sourceTableIndex,
-                                visual: visual
-                            }
-                        })
-                    );
+                    sourceTableMetadata = {
+                        sheetIndex: this._sourceSheetIndex,
+                        tableIndex: this._sourceTableIndex,
+                        visual: visual
+                    };
                 }
             }
         }
 
         this.dispatchEvent(
             new CustomEvent('ss-formula-update', {
-                detail: { colIndex: this.colIndex, formula },
+                detail: { colIndex: this.colIndex, formula, sourceTableMetadata },
                 bubbles: true,
                 composed: true
             })

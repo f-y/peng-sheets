@@ -1,7 +1,6 @@
 import { IVisualMetadata } from './services/types';
 
-import type { Align } from './types/metadata';
-
+export type Align = 'left' | 'center' | 'right';
 export type AlignmentType = Align | 'default';
 
 export interface TableJSON {
@@ -219,6 +218,11 @@ export interface IFormulaUpdateDetail {
     tableIndex: number;
     colIndex: number;
     formula: unknown; // FormulaDefinition | null
+    sourceTableMetadata?: {
+        sheetIndex: number;
+        tableIndex: number;
+        visual: unknown;
+    } | null;
 }
 
 export interface IMoveRowsDetail {
