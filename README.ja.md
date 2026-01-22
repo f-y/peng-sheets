@@ -38,6 +38,12 @@
   <img src="./images/demo.gif" alt="PengSheets デモ" width="800">
 </p>
 
+**数式列**を使えば、VLOOKUPのようにキーを使って他のテーブルの値を参照できます。計算結果はMarkdownに直接書き込まれるため、どのエディタでも読むことができます。
+
+<p align="center">
+  <img src="./images/demo_computed-columns.gif" alt="Computed Columns Demo" width="800">
+</p>
+
 **PengSheets**は、Markdownテーブルをリッチなスプレッドシートビューに変換します。[md-spreadsheet-parser](https://github.com/f-y/md-spreadsheet-parser)を活用し、堅牢なPythonパーサーをWebAssembly経由でエディタ内で直接実行することで、優れた解析精度とシームレスなマルチシートサポートを提供します。
 
 ## ✨ 特徴
@@ -46,6 +52,7 @@
 |:--------|:------------|
 | 🎯 **Excel風の編集** | 馴染みのあるスプレッドシート操作でMarkdownテーブルをナビゲート・編集 |
 | 📑 **マルチシートワークブック** | Markdownヘッダーを使って複数のシートでデータを整理 |
+| 🔢 **数式列** | 数式による自動計算列や、VLOOKUPスタイルのクロスシート参照 |
 | ⚡ **リアルタイム同期** | スプレッドシートでの変更が即座にMarkdownソースに反映 |
 | 🐍 **Python駆動の解析** | 信頼性の高いWebAssemblyベースのPythonパーサー |
 | 🌍 **多言語対応UI** | 英語と日本語のインターフェースをサポート |
@@ -151,7 +158,6 @@ npm install md-spreadsheet-parser
 
 PengSheetsを積極的に開発中です！予定している機能：
 
-- **算出列 (Computed Columns)**: 簡単な計算式やVLOOKUPのようなID参照機能の実装
 - **大規模テーブルのパフォーマンス改善**: 仮想化技術などを用いた、大量のデータを含むテーブルの高速化
 - **ドキュメント編集機能の高度化**: ドキュメントタブにおける画像挿入やリスト入力補完など、テキスト編集機能の強化
 - **検索・置換**: テーブル内のテキスト検索および置換機能の実装
