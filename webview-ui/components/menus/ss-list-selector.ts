@@ -97,13 +97,15 @@ export class SSListSelector extends LitElement {
     @property({ type: String }) header = '';
     @property({ type: Array }) items: ListSelectorItem[] = [];
     @property({ type: String }) selectedValue = '';
+    @property({ type: Number }) selectedIndex = -1;
     @property({ type: Boolean }) showGroups = false;
 
-    private _handleItemClick(item: ListSelectorItem) {
+    private _handleItemClick(item: ListSelectorItem, index: number) {
         this.selectedValue = item.value;
+        this.selectedIndex = index;
         this.dispatchEvent(
-            new CustomEvent<ListSelectorChangeEvent>('change', {
-                detail: { value: item.value, label: item.label },
+            new CustomEvent<ListSelectorChangeEvent & { index: number }>('change', {
+                detail: { value: item.value, label: item.label, index },
                 bubbles: true,
                 composed: true
             })
@@ -116,31 +118,32 @@ export class SSListSelector extends LitElement {
         }
 
         if (this.showGroups) {
-            // Group items by group property
-            const grouped = new Map<string, ListSelectorItem[]>();
-            for (const item of this.items) {
+            // Group items by group property, but preserve original indices
+            const grouped = new Map<string, { item: ListSelectorItem; index: number }[]>();
+            this.items.forEach((item, index) => {
                 const group = item.group || '';
                 if (!grouped.has(group)) {
                     grouped.set(group, []);
                 }
-                grouped.get(group)!.push(item);
-            }
+                grouped.get(group)!.push({ item, index });
+            });
 
             return Array.from(grouped.entries()).map(
                 ([group, groupItems]) => html`
                     ${group ? html`<div class="group-header">${group}</div>` : ''}
-                    ${groupItems.map((item) => this._renderItem(item))}
+                    ${groupItems.map(({ item, index }) => this._renderItem(item, index))}
                 `
             );
         }
 
-        return this.items.map((item) => this._renderItem(item));
+        return this.items.map((item, index) => this._renderItem(item, index));
     }
 
-    private _renderItem(item: ListSelectorItem) {
-        const isSelected = item.value === this.selectedValue;
+    private _renderItem(item: ListSelectorItem, index: number) {
+        // Prefer index-based selection; fall back to value-based if selectedIndex is -1
+        const isSelected = this.selectedIndex >= 0 ? index === this.selectedIndex : item.value === this.selectedValue;
         return html`
-            <div class="list-item ${isSelected ? 'selected' : ''}" @click="${() => this._handleItemClick(item)}">
+            <div class="list-item ${isSelected ? 'selected' : ''}" @click="${() => this._handleItemClick(item, index)}">
                 ${item.label}
             </div>
         `;

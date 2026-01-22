@@ -171,6 +171,12 @@ export class SSFormulaDialog extends LitElement {
                 background: var(--vscode-input-background);
             }
 
+            .select-control.value-select-highlight {
+                width: 80%;
+                border: 2px solid var(--vscode-charts-green, #4ade80);
+                box-shadow: 0 0 0 2px rgba(74, 222, 128, 0.2);
+            }
+
             .input-control {
                 width: 100%;
                 padding: 10px 12px;
@@ -500,7 +506,7 @@ export class SSFormulaDialog extends LitElement {
 
             /* Section label (no card) */
             .section-label {
-                font-size: 10px;
+                font-size: 12px;
                 font-weight: 700;
                 text-transform: uppercase;
                 letter-spacing: 0.8px;
@@ -656,7 +662,9 @@ export class SSFormulaDialog extends LitElement {
     @state() private _sourceSheetIndex = 0;
     @state() private _sourceTableIndex = 0;
     @state() private _joinKeyLocal = '';
+    @state() private _joinKeyLocalIndex = -1;
     @state() private _joinKeyRemote = '';
+    @state() private _joinKeyRemoteIndex = -1;
     @state() private _targetField = '';
 
     // Broken reference warning
@@ -797,26 +805,33 @@ export class SSFormulaDialog extends LitElement {
             .split(',')
             .map((w) => w.trim().toLowerCase());
 
-        // 1. Find matching column names
+        // 1. First priority: ID-like column names (from priority words)
         let localKey = '';
         let remoteKey = '';
-        for (const local of localHeaders) {
-            const match = sourceHeaders.find((s) => s.toLowerCase() === local.toLowerCase());
-            if (match) {
-                localKey = local;
-                remoteKey = match;
+        let localKeyIndex = -1;
+        let remoteKeyIndex = -1;
+        for (const word of priorityWords) {
+            const localIdx = localHeaders.findIndex((h) => h.toLowerCase().includes(word));
+            const remoteIdx = sourceHeaders.findIndex((h) => h.toLowerCase().includes(word));
+            if (localIdx >= 0 && remoteIdx >= 0) {
+                localKey = localHeaders[localIdx];
+                localKeyIndex = localIdx;
+                remoteKey = sourceHeaders[remoteIdx];
+                remoteKeyIndex = remoteIdx;
                 break;
             }
         }
 
-        // 2. Fallback to priority words
+        // 2. Fallback: matching column names in both tables
         if (!localKey) {
-            for (const word of priorityWords) {
-                const localMatch = localHeaders.find((h) => h.toLowerCase().includes(word));
-                const remoteMatch = sourceHeaders.find((h) => h.toLowerCase().includes(word));
-                if (localMatch && remoteMatch) {
-                    localKey = localMatch;
-                    remoteKey = remoteMatch;
+            for (let i = 0; i < localHeaders.length; i++) {
+                const local = localHeaders[i];
+                const remoteIndex = sourceHeaders.findIndex((s) => s.toLowerCase() === local.toLowerCase());
+                if (remoteIndex >= 0) {
+                    localKey = local;
+                    localKeyIndex = i;
+                    remoteKey = sourceHeaders[remoteIndex];
+                    remoteKeyIndex = remoteIndex;
                     break;
                 }
             }
@@ -825,11 +840,15 @@ export class SSFormulaDialog extends LitElement {
         // 3. Fallback to first column
         if (!localKey) {
             localKey = localHeaders[0] || '';
+            localKeyIndex = localHeaders.length > 0 ? 0 : -1;
             remoteKey = sourceHeaders[0] || '';
+            remoteKeyIndex = sourceHeaders.length > 0 ? 0 : -1;
         }
 
         this._joinKeyLocal = localKey;
+        this._joinKeyLocalIndex = localKeyIndex;
         this._joinKeyRemote = remoteKey;
+        this._joinKeyRemoteIndex = remoteKeyIndex;
 
         // Auto-select value column (first column not used as search key)
         const valueCol = sourceHeaders.find((h) => h !== remoteKey);
@@ -945,12 +964,14 @@ export class SSFormulaDialog extends LitElement {
         this._initLookupDefaults();
     }
 
-    private _handleJoinKeyRemoteListChange(e: CustomEvent<{ value: string }>) {
+    private _handleJoinKeyRemoteListChange(e: CustomEvent<{ value: string; index: number }>) {
         this._joinKeyRemote = e.detail.value;
+        this._joinKeyRemoteIndex = e.detail.index;
     }
 
-    private _handleThisTableListChange(e: CustomEvent<{ value: string }>) {
+    private _handleThisTableListChange(e: CustomEvent<{ value: string; index: number }>) {
         this._joinKeyLocal = e.detail.value;
+        this._joinKeyLocalIndex = e.detail.index;
     }
 
     private _isKeyMatchValid(): boolean {
@@ -1289,56 +1310,46 @@ export class SSFormulaDialog extends LitElement {
         const _sourceTableName = tables[this._sourceTableIndex]?.name ?? '';
 
         return html`
-            <!-- Data Flow Diagram -->
-            <div class="data-flow">
-                <div class="flow-step">
-                    <div class="flow-icon-wrapper">
-                        <!-- Database/Table icon -->
-                        <svg viewBox="0 0 24 24">
-                            <ellipse cx="12" cy="6" rx="8" ry="3" />
-                            <path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6" />
-                            <path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6" />
-                        </svg>
-                    </div>
-                    <span class="flow-label">${t('sourceTable')}</span>
-                </div>
-                <div class="flow-arrow">
-                    <svg viewBox="0 0 32 16">
-                        <path d="M2 8h24M20 3l6 5-6 5" />
-                    </svg>
-                </div>
-                <div class="flow-step active">
-                    <div class="flow-icon-wrapper">
-                        <!-- Link/Key icon -->
-                        <svg viewBox="0 0 24 24">
-                            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                        </svg>
-                    </div>
-                    <span class="flow-label">${t('keyMatching')}</span>
-                </div>
-                <div class="flow-arrow">
-                    <svg viewBox="0 0 32 16">
-                        <path d="M2 8h24M20 3l6 5-6 5" />
-                    </svg>
-                </div>
-                <div class="flow-step">
-                    <div class="flow-icon-wrapper">
-                        <!-- Document/Return icon -->
-                        <svg viewBox="0 0 24 24">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <path d="M12 18v-6" />
-                            <path d="M9 15l3 3 3-3" />
-                        </svg>
-                    </div>
-                    <span class="flow-label">${t('valueColumn')}</span>
-                </div>
-            </div>
-
-            <!-- 3-Column Grid Layout (matching mockup) -->
+            <!-- 3-Column Grid Layout -->
             <div class="lookup-grid">
-                <!-- LEFT: Source Table List -->
+                <!-- LEFT: This Table Column List -->
+                <div class="form-group">
+                    <ss-list-selector
+                        header="${t('thisTable')}"
+                        .items="${this.headers.map((h) => ({ value: h, label: h }))}"
+                        .selectedValue="${this._joinKeyLocal}"
+                        .selectedIndex="${this._joinKeyLocalIndex}"
+                        @change="${this._handleThisTableListChange}"
+                    ></ss-list-selector>
+                </div>
+
+                <!-- CENTER: KEY MATCHING + VALUE TO RETURN (stacked) -->
+                <div class="form-group center-stack">
+                    <!-- KEY MATCHING Section (VS-style display) -->
+                    <div class="section-label">${t('keyMatching').toUpperCase()}</div>
+                    <div class="key-match-visual vs-style ${this._isKeyMatchValid() ? 'match-success' : ''}">
+                        <div class="vs-display-box">
+                            <span class="vs-column-name">${this._joinKeyLocal || '—'}</span>
+                        </div>
+                        <div class="key-match-equals">=</div>
+                        <div class="vs-display-box">
+                            <span class="vs-column-name">${this._joinKeyRemote || '—'}</span>
+                        </div>
+                    </div>
+                    <div class="vs-hint">${t('keyMatchingHint')}</div>
+
+                    <!-- VALUE TO RETURN Section -->
+                    <div class="section-label" style="margin-top: 4px;">${t('valueColumn').toUpperCase()}</div>
+                    <select class="select-control value-select-highlight" @change="${this._handleTargetFieldChange}">
+                        ${sourceHeaders.map(
+                            (col) => html`
+                                <option value="${col}" ?selected="${col === this._targetField}">${col}</option>
+                            `
+                        )}
+                    </select>
+                </div>
+
+                <!-- RIGHT: Source Table List -->
                 <div class="form-group">
                     <!-- Header with Sheet selector -->
                     <div class="source-table-header">
@@ -1366,43 +1377,8 @@ export class SSFormulaDialog extends LitElement {
                         style="margin-top: 8px;"
                         .items="${sourceHeaders.map((h) => ({ value: h, label: h }))}"
                         .selectedValue="${this._joinKeyRemote}"
+                        .selectedIndex="${this._joinKeyRemoteIndex}"
                         @change="${this._handleJoinKeyRemoteListChange}"
-                    ></ss-list-selector>
-                </div>
-
-                <!-- CENTER: KEY MATCHING + VALUE TO RETURN (stacked) -->
-                <div class="form-group center-stack">
-                    <!-- KEY MATCHING Section (VS-style display) -->
-                    <div class="section-label">${t('keyMatching').toUpperCase()}</div>
-                    <div class="key-match-visual vs-style ${this._isKeyMatchValid() ? 'match-success' : ''}">
-                        <div class="vs-display-box">
-                            <span class="vs-column-name">${this._joinKeyRemote || '—'}</span>
-                        </div>
-                        <div class="key-match-equals">=</div>
-                        <div class="vs-display-box">
-                            <span class="vs-column-name">${this._joinKeyLocal || '—'}</span>
-                        </div>
-                    </div>
-                    <div class="vs-hint">${t('keyMatchingHint')}</div>
-
-                    <!-- VALUE TO RETURN Section -->
-                    <div class="section-label" style="margin-top: 4px;">${t('valueColumn').toUpperCase()}</div>
-                    <select class="select-control" style="width: 50%;" @change="${this._handleTargetFieldChange}">
-                        ${sourceHeaders.map(
-                            (col) => html`
-                                <option value="${col}" ?selected="${col === this._targetField}">${col}</option>
-                            `
-                        )}
-                    </select>
-                </div>
-
-                <!-- RIGHT: This Table Column List -->
-                <div class="form-group">
-                    <ss-list-selector
-                        header="${t('thisTable')}"
-                        .items="${this.headers.map((h) => ({ value: h, label: h }))}"
-                        .selectedValue="${this._joinKeyLocal}"
-                        @change="${this._handleThisTableListChange}"
                     ></ss-list-selector>
                 </div>
             </div>
