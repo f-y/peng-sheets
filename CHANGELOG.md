@@ -2,7 +2,7 @@
 
 All notable changes to the "PengSheets" extension will be documented in this file.
 
-## [Unreleased]
+## [1.1.0] - 2026-01-22
 
 ### Added
 - **Formula Columns**: A powerful new feature for automatic calculations and cross-table lookups
