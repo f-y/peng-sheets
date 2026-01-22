@@ -431,7 +431,7 @@ export function moveDocumentSection(
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     // Calculate new insertion point
-    let insertLine: number;
+    let insertLine: number = linesWithoutDoc.length;
 
     if (toAfterWorkbook) {
         const tempText = linesWithoutDoc.join('\n');

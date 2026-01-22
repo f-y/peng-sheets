@@ -758,7 +758,10 @@ export class SSFormulaDialog extends LitElement {
                 const meta = table.metadata as TableMetadata | undefined;
                 // Check metadata.visual.id (where parser puts custom metadata)
                 const visual = meta?.visual;
-                if (visual?.id === tableId || meta?.id === tableId) {
+                const explicitId = visual?.id ?? meta?.id;
+                // Also check synthetic ID (sheetIndex * 1000 + tableIndex)
+                const syntheticId = si * 1000 + ti;
+                if (explicitId === tableId || syntheticId === tableId) {
                     this._sourceSheetIndex = si;
                     this._sourceTableIndex = ti;
                     return true;
@@ -968,14 +971,73 @@ export class SSFormulaDialog extends LitElement {
         return table?.headers ?? [];
     }
 
-    private _getSourceTableId(): number | undefined {
+    /**
+     * Get or create a unique ID for the source table.
+     * If the table has no ID in metadata, assigns the next available ID (max + 1)
+     * and stores it in the table's visual metadata immediately.
+     */
+    private _getSourceTableId(): number {
         const table = this._getSourceTable();
-        if (!table) return undefined;
+        if (!table) {
+            // No table found - return 0 as fallback
+            return 0;
+        }
+
         const meta = table.metadata as TableMetadata | undefined;
-        // Check metadata.visual.id first (where parser puts custom metadata)
         const visual = meta?.visual;
+
+        // Check for existing ID
         if (typeof visual?.id === 'number') return visual.id;
-        return typeof meta?.id === 'number' ? meta.id : undefined;
+        if (typeof meta?.id === 'number') return meta.id;
+
+        // No ID exists - calculate and assign next available ID
+        const nextId = this._getNextAvailableTableId();
+
+        // Persist the ID to the table's metadata immediately
+        // This ensures Preview works and the ID is consistent
+        this._assignTableId(table, nextId);
+
+        return nextId;
+    }
+
+    /**
+     * Assign an ID to a table by updating its visual metadata.
+     */
+    private _assignTableId(table: TableJSON, id: number): void {
+        // Ensure metadata exists
+        if (!table.metadata) {
+            table.metadata = {};
+        }
+
+        const meta = table.metadata as Record<string, unknown>;
+
+        // Ensure visual exists
+        if (!meta.visual) {
+            meta.visual = {};
+        }
+
+        const visual = meta.visual as Record<string, unknown>;
+        visual.id = id;
+    }
+
+    /**
+     * Calculate the next available table ID by finding max existing ID + 1.
+     */
+    private _getNextAvailableTableId(): number {
+        if (!this.workbook) return 0;
+
+        let maxId = -1;
+        for (const sheet of this.workbook.sheets) {
+            for (const table of sheet.tables) {
+                const meta = table.metadata as TableMetadata | undefined;
+                const visual = meta?.visual;
+                const id = visual?.id ?? meta?.id;
+                if (typeof id === 'number' && id > maxId) {
+                    maxId = id;
+                }
+            }
+        }
+        return maxId + 1;
     }
 
     private _buildFormula(): FormulaDefinition | null {
@@ -1004,7 +1066,6 @@ export class SSFormulaDialog extends LitElement {
             return formula;
         } else {
             const sourceTableId = this._getSourceTableId();
-            if (sourceTableId === undefined) return null;
             if (!this._joinKeyLocal || !this._joinKeyRemote || !this._targetField) return null;
 
             const formula: LookupFormula = {
@@ -1096,6 +1157,27 @@ export class SSFormulaDialog extends LitElement {
 
     private _handleApply() {
         const formula = this._buildFormula();
+
+        // For lookup formulas, also persist the source table's metadata (including its ID)
+        if (formula && formula.type === 'lookup') {
+            const sourceTable = this._getSourceTable();
+            if (sourceTable && sourceTable.metadata) {
+                const visual = (sourceTable.metadata as Record<string, unknown>).visual;
+                if (visual) {
+                    // Dispatch metadata update for source table
+                    window.dispatchEvent(
+                        new CustomEvent('metadata-change', {
+                            detail: {
+                                sheetIndex: this._sourceSheetIndex,
+                                tableIndex: this._sourceTableIndex,
+                                visual: visual
+                            }
+                        })
+                    );
+                }
+            }
+        }
+
         this.dispatchEvent(
             new CustomEvent('ss-formula-update', {
                 detail: { colIndex: this.colIndex, formula },

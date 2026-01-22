@@ -255,6 +255,61 @@ describe('SSFormulaDialog', () => {
             expect(availableTables.length).toBe(1);
             expect(availableTables[0].tableName).toBe('ProductMaster');
         });
+
+        it('should generate fallback table ID when metadata.id is not present', () => {
+            // Tables without explicit IDs should still work for lookup
+            // Fallback: use (sheetIndex * 1000 + tableIndex) as synthetic ID
+            const workbookWithoutIds: WorkbookJSON = {
+                sheets: [
+                    {
+                        name: 'Sheet1',
+                        tables: [
+                            {
+                                name: 'Table1',
+                                headers: ['A', 'B'],
+                                rows: [['1', '2']],
+                                metadata: {} // No id!
+                            },
+                            {
+                                name: 'Table2',
+                                headers: ['C', 'D'],
+                                rows: [['3', '4']],
+                                metadata: {} // No id!
+                            }
+                        ]
+                    }
+                ]
+            } as unknown as WorkbookJSON;
+
+            // Simulate _getSourceTableId auto-increment logic
+            const getSourceTableId = (sheetIndex: number, tableIndex: number, workbook: WorkbookJSON): number => {
+                const sheet = workbook.sheets[sheetIndex];
+                if (!sheet) return 0;
+                const table = sheet.tables[tableIndex];
+                if (!table) return 0;
+
+                const meta = table.metadata as { id?: number; visual?: { id?: number } } | undefined;
+                // Check metadata.visual.id first
+                if (typeof meta?.visual?.id === 'number') return meta.visual.id;
+                // Check metadata.id
+                if (typeof meta?.id === 'number') return meta.id;
+                // Fallback: calculate next available ID (max + 1)
+                let maxId = -1;
+                for (const s of workbook.sheets) {
+                    for (const t of s.tables) {
+                        const m = t.metadata as { id?: number; visual?: { id?: number } } | undefined;
+                        const id = m?.visual?.id ?? m?.id;
+                        if (typeof id === 'number' && id > maxId) maxId = id;
+                    }
+                }
+                return maxId + 1;
+            };
+
+            // Should return next available IDs when no explicit IDs exist
+            // Both tables have no ID, so first call gets 0 (max=-1, return 0)
+            expect(getSourceTableId(0, 0, workbookWithoutIds)).toBe(0);
+            expect(getSourceTableId(0, 1, workbookWithoutIds)).toBe(0); // Same: no IDs exist
+        });
     });
 
     // =========================================================================

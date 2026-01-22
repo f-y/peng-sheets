@@ -23,6 +23,7 @@ vitest.config.ts
 test-setup.ts
 *.vsix
 images/demo.gif
+images/demo_computed-columns.gif
 images/socialPreview.png
 
 # Optimization Exclusions
@@ -37,3 +38,51 @@ schemas/**
 
 # Exclude duplicate WASM files (already copied to out/webview/)
 node_modules/md-spreadsheet-parser/dist/*.wasm
+
+
+# Exclude test/build caches
+.pytest_cache/**
+
+# Exclude source files from node_modules
+node_modules/md-spreadsheet-parser/src/**
+
+# Exclude devDependencies (only md-spreadsheet-parser and @bytecodealliance are needed at runtime)
+node_modules/@nodelib/**
+node_modules/@sec-ant/**
+node_modules/@sindresorhus/**
+node_modules/braces/**
+node_modules/cross-spawn/**
+node_modules/execa/**
+node_modules/fast-glob/**
+node_modules/fastq/**
+node_modules/figures/**
+node_modules/fill-range/**
+node_modules/get-stream/**
+node_modules/glob-parent/**
+node_modules/human-signals/**
+node_modules/is-extglob/**
+node_modules/is-glob/**
+node_modules/is-number/**
+node_modules/is-stream/**
+node_modules/isexe/**
+node_modules/merge-stream/**
+node_modules/merge2/**
+node_modules/micromatch/**
+node_modules/mimic-fn/**
+node_modules/npm-run-path/**
+node_modules/parse-ms/**
+node_modules/path-key/**
+node_modules/picomatch/**
+node_modules/pretty-ms/**
+node_modules/queue-microtask/**
+node_modules/reusify/**
+node_modules/run-parallel/**
+node_modules/shebang-command/**
+node_modules/shebang-regex/**
+node_modules/shelljs/**
+node_modules/signal-exit/**
+node_modules/strip-final-newline/**
+node_modules/to-regex-range/**
+node_modules/unicorn-magic/**
+node_modules/which/**
+node_modules/yoctocolors/**
