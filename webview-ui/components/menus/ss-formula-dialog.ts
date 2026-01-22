@@ -954,9 +954,28 @@ export class SSFormulaDialog extends LitElement {
     }
 
     private _isKeyMatchValid(): boolean {
-        // Show match success only when both columns are selected AND have the same name
+        // Show match success when both columns are selected AND at least one value matches
         if (!this._joinKeyLocal || !this._joinKeyRemote) return false;
-        return this._joinKeyLocal === this._joinKeyRemote;
+
+        // Get local column values
+        const localColIndex = this.headers.indexOf(this._joinKeyLocal);
+        if (localColIndex < 0) return false;
+        const localValues = new Set(this.rows.map((row) => row[localColIndex]?.trim()).filter(Boolean));
+        if (localValues.size === 0) return false;
+
+        // Get remote column values
+        const sourceTable = this._getSourceTable();
+        if (!sourceTable) return false;
+        const remoteColIndex = sourceTable.headers?.indexOf(this._joinKeyRemote) ?? -1;
+        if (remoteColIndex < 0) return false;
+        const remoteValues = new Set(sourceTable.rows.map((row) => row[remoteColIndex]?.trim()).filter(Boolean));
+        if (remoteValues.size === 0) return false;
+
+        // Check if any values match
+        for (const val of localValues) {
+            if (remoteValues.has(val)) return true;
+        }
+        return false;
     }
 
     private _getSourceTable(): TableJSON | null {
