@@ -111,7 +111,7 @@ export class EditorContext {
         let structure: StructureSection[] | null = null;
 
         if (this.state.schema) {
-            const rootMarker = this.state.schema.rootMarker ?? '# Tables';
+            const rootMarker = this.state.schema.rootMarker ?? '# Workbook';
             const sheetHeaderLevel = this.state.schema.sheetHeaderLevel ?? 2;
 
             // Augment workbook with line numbers

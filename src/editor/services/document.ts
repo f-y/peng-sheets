@@ -22,7 +22,7 @@ export function getDocumentSectionRange(
 ): { startLine: number; endLine: number } | { error: string } {
     const mdText = context.mdText;
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Tables';
+    const rootMarker = configDict.rootMarker ?? '# Workbook';
 
     const lines = mdText.split('\n');
     let docIdx = 0;
@@ -79,7 +79,7 @@ export function addDocument(
 ): UpdateResult {
     const mdText = context.mdText;
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Tables';
+    const rootMarker = configDict.rootMarker ?? '# Workbook';
 
     const lines = mdText.split('\n');
     // Python uses insertLine = 0 by default (insert at beginning)
@@ -427,7 +427,7 @@ export function moveDocumentSection(
     linesWithoutDoc.splice(startLine, endLine - startLine);
 
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Tables';
+    const rootMarker = configDict.rootMarker ?? '# Workbook';
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     // Calculate new insertion point
@@ -580,7 +580,7 @@ export function moveWorkbookSection(
     targetTabOrderIndex: number | null = null
 ): UpdateResult {
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Tables';
+    const rootMarker = configDict.rootMarker ?? '# Workbook';
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     const mdText = context.mdText;

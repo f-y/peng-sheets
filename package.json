@@ -114,7 +114,7 @@
         "properties": {
             "pengSheets.parsing.rootMarker": {
                 "type": "string",
-                "default": "# Tables",
+                "default": "# Workbook",
                 "description": "The marker indicating the start of the data section."
             },
             "pengSheets.parsing.sheetHeaderLevel": {

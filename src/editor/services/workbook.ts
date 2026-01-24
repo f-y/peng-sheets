@@ -16,7 +16,7 @@ export function initializeTabOrderFromStructure(
     numSheets: number
 ): TabOrderItem[] {
     const configDict: EditorConfig = config ? JSON.parse(config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Tables';
+    const rootMarker = configDict.rootMarker ?? '# Workbook';
 
     if (!mdText) {
         // No markdown text, just return sheets in order
@@ -180,7 +180,7 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
         // Parse file structure from mdText to get true natural order
         const mdText = context.mdText;
         const configDict = context.config ? JSON.parse(context.config) : {};
-        const rootMarker = configDict.rootMarker ?? '# Tables';
+        const rootMarker = configDict.rootMarker ?? '# Workbook';
         const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
         // Get workbook position in file
@@ -256,7 +256,7 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
 
     // Determine replacement range
     const configDict: EditorConfig = config ? JSON.parse(config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Tables';
+    const rootMarker = configDict.rootMarker ?? '# Workbook';
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     const [startLine, rawEndLine] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
