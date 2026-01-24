@@ -51,10 +51,14 @@ export interface TabData {
     metadata?: SheetMetadata;
 }
 
+export type SheetType = 'table' | 'doc';
+
 export interface SheetJSON {
     name: string;
     header_line?: number;
     tables: TableJSON[];
+    type: SheetType;
+    content: string | null;
     metadata?: Record<string, unknown>;
 }
 
@@ -65,6 +69,7 @@ export interface DocumentJSON {
 }
 
 export interface WorkbookJSON {
+    name: string;
     sheets: SheetJSON[];
     metadata?: {
         tab_order?: Array<{ type: string; index: number }>;
