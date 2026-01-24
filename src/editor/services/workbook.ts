@@ -180,11 +180,21 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
         // Parse file structure from mdText to get true natural order
         const mdText = context.mdText;
         const configDict = context.config ? JSON.parse(context.config) : {};
-        const rootMarker = configDict.rootMarker ?? '# Workbook';
         const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
-        // Get workbook position in file
-        const [wbStart, wbEnd] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
+        // Get workbook position in file - use parser-detected range if available
+        let wbStart: number;
+        let wbEnd: number;
+        let rootMarker: string;
+
+        if (workbook.startLine !== undefined && workbook.endLine !== undefined && workbook.name) {
+            wbStart = workbook.startLine;
+            wbEnd = workbook.endLine;
+            rootMarker = workbook.name;
+        } else {
+            rootMarker = configDict.rootMarker ?? '# Workbook';
+            [wbStart, wbEnd] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
+        }
         const lines = mdText.split('\n');
 
         // Find docs before and after WB in the ACTUAL FILE
@@ -255,11 +265,22 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
     }
 
     // Determine replacement range
+    // Use parser-detected workbook range if available, otherwise fall back to getWorkbookRange
     const configDict: EditorConfig = config ? JSON.parse(config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Workbook';
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
-    const [startLine, rawEndLine] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
+    let startLine: number;
+    let rawEndLine: number;
+
+    if (workbook?.startLine !== undefined && workbook?.endLine !== undefined) {
+        // Use parser-detected range
+        startLine = workbook.startLine;
+        rawEndLine = workbook.endLine;
+    } else {
+        // Fallback to manual detection (for backward compatibility)
+        const rootMarker = configDict.rootMarker ?? '# Workbook';
+        [startLine, rawEndLine] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
+    }
     const lines = mdText.split('\n');
 
     let endLine = rawEndLine;
