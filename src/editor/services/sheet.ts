@@ -141,6 +141,120 @@ export function addSheet(
 }
 
 /**
+ * Add a new doc sheet (document-type sheet within workbook).
+ * Similar to addSheet but creates a sheet with type='doc' and content instead of tables.
+ */
+export function addDocSheet(
+    context: EditorContext,
+    newName: string,
+    content: string = '',
+    afterSheetIndex: number | null = null,
+    targetTabOrderIndex: number | null = null
+): UpdateResult {
+    let workbook = context.workbook;
+
+    if (workbook === null) {
+        workbook = new Workbook({ sheets: [], metadata: {} });
+    }
+
+    let finalName = newName;
+    if (!finalName) {
+        // Generate default name if empty
+        const existingNames = (workbook.sheets ?? []).map((s) => s.name);
+        let i = 1;
+        while (existingNames.includes(`Document ${i}`)) {
+            i++;
+        }
+        finalName = `Document ${i}`;
+    }
+
+    try {
+        // Create new doc sheet with type='doc' and content
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sheetOpts: any = {
+            name: finalName,
+            tables: [],
+            type: 'doc',
+            content: content
+        };
+        const newSheet = new Sheet(sheetOpts);
+
+        const newSheets = [...(workbook.sheets ?? [])];
+        const currentMetadata = workbook.metadata ? { ...workbook.metadata } : {};
+        let tabOrder: TabOrderItem[] = [...(currentMetadata.tab_order || [])];
+        let newSheetIndex: number;
+
+        // Determine insertion position (same logic as addSheet)
+        if (afterSheetIndex !== null && afterSheetIndex >= 0 && afterSheetIndex <= newSheets.length) {
+            newSheetIndex = afterSheetIndex;
+            newSheets.splice(newSheetIndex, 0, newSheet);
+
+            if (!tabOrder.length) {
+                tabOrder = initializeTabOrderFromStructure(
+                    context.mdText,
+                    context.config,
+                    (workbook.sheets ?? []).length
+                );
+            }
+
+            for (const item of tabOrder) {
+                if (item.type === 'sheet' && item.index >= newSheetIndex) {
+                    item.index = item.index + 1;
+                }
+            }
+
+            if (targetTabOrderIndex !== null) {
+                tabOrder.splice(targetTabOrderIndex, 0, { type: 'sheet', index: newSheetIndex });
+            } else {
+                tabOrder.push({ type: 'sheet', index: newSheetIndex });
+            }
+
+            currentMetadata.tab_order = tabOrder;
+        } else {
+            newSheetIndex = newSheets.length;
+            newSheets.push(newSheet);
+
+            if (!tabOrder.length && newSheetIndex > 0) {
+                tabOrder = initializeTabOrderFromStructure(context.mdText, context.config, newSheetIndex);
+            }
+
+            if (targetTabOrderIndex !== null) {
+                tabOrder.splice(targetTabOrderIndex, 0, { type: 'sheet', index: newSheetIndex });
+            } else {
+                tabOrder.push({ type: 'sheet', index: newSheetIndex });
+            }
+            currentMetadata.tab_order = tabOrder;
+        }
+
+        // Cleanup redundant tab_order
+        let isRedundant = true;
+        if (tabOrder.length !== newSheets.length) {
+            isRedundant = false;
+        } else {
+            for (let i = 0; i < tabOrder.length; i++) {
+                if (tabOrder[i].type !== 'sheet' || tabOrder[i].index !== i) {
+                    isRedundant = false;
+                    break;
+                }
+            }
+        }
+
+        if (isRedundant && currentMetadata.tab_order) {
+            delete currentMetadata.tab_order;
+        }
+
+        const newWorkbook = new Workbook({
+            sheets: newSheets,
+            metadata: currentMetadata
+        });
+        context.updateWorkbook(newWorkbook);
+        return generateAndGetRange(context);
+    } catch (e) {
+        return { error: String(e) };
+    }
+}
+
+/**
  * Rename a sheet.
  */
 export function renameSheet(context: EditorContext, sheetIdx: number, newName: string): UpdateResult {

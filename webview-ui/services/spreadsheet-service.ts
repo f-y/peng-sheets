@@ -314,6 +314,15 @@ export class SpreadsheetService {
         this._performAction(() => editor.updateDocSheetContent(sheetIdx, content));
     }
 
+    public addDocSheet(
+        sheetName: string,
+        content: string = '',
+        afterSheetIndex: number | null = null,
+        targetTabOrderIndex: number | null = null
+    ) {
+        this._performAction(() => editor.addDocSheet(sheetName, content, afterSheetIndex, targetTabOrderIndex));
+    }
+
     public addTable(sheetIdx: number, tableName: string) {
         const headers = this._getDefaultColumnHeaders();
         this._performAction(() => editor.addTable(sheetIdx, headers, tableName));

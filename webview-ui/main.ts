@@ -1291,10 +1291,24 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
     private async _addDocument() {
         this.addTabDropdown = null;
-        // Delegate to _addDocumentAtPosition for consistent behavior with context menu
+        this.pendingAddSheet = true;
+
+        // Calculate the doc sheet name
+        let newDocName = `${t('documentNamePrefix')} 1`;
+        if (this.workbook && this.workbook.sheets) {
+            const docCount = this.workbook.sheets.filter((s: SheetJSON) => s.type === 'doc').length;
+            newDocName = `${t('documentNamePrefix')} ${docCount + 1}`;
+        }
+
+        // Calculate append indices (same as _addSheet for end-of-list)
         const validTabs = this.tabs.filter((t) => t.type === 'sheet' || t.type === 'document');
         const targetTabOrderIndex = validTabs.length;
-        this._addDocumentAtPosition(targetTabOrderIndex);
+
+        // Count sheets to append after the last one
+        const sheetsBeforeTarget = this.tabs.filter((t) => t.type === 'sheet').length;
+        const afterSheetIndex = sheetsBeforeTarget;
+
+        this.spreadsheetService.addDocSheet(newDocName, '', afterSheetIndex, targetTabOrderIndex);
     }
 
     private _onCreateSpreadsheet() {

@@ -82,6 +82,18 @@ export function addSheet(
 }
 
 /**
+ * Add a new doc sheet (document-type sheet within workbook).
+ */
+export function addDocSheet(
+    newName: string,
+    content: string = '',
+    afterSheetIndex: number | null = null,
+    targetTabOrderIndex: number | null = null
+): UpdateResult {
+    return sheetService.addDocSheet(getContext(), newName, content, afterSheetIndex, targetTabOrderIndex);
+}
+
+/**
  * Rename a sheet.
  */
 export function renameSheet(sheetIdx: number, newName: string): UpdateResult {
