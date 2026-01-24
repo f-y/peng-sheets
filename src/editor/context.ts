@@ -147,9 +147,11 @@ export class EditorContext {
         const configDict: EditorConfig = configJson ? JSON.parse(configJson) : {};
 
         this.state.schema = new MultiTableParsingSchema({
-            rootMarker: configDict.rootMarker ?? '# Tables',
-            sheetHeaderLevel: configDict.sheetHeaderLevel ?? 2,
-            tableHeaderLevel: configDict.tableHeaderLevel ?? 3,
+            // Use undefined defaults to enable flexible workbook auto-detection
+            // Parser will auto-detect: single H1 → workbook, fallback → # Tables / # Workbook
+            rootMarker: configDict.rootMarker ?? undefined,
+            sheetHeaderLevel: configDict.sheetHeaderLevel ?? undefined,
+            tableHeaderLevel: configDict.tableHeaderLevel ?? undefined,
             captureDescription: configDict.captureDescription ?? true,
             columnSeparator: configDict.columnSeparator ?? '|',
             headerSeparatorChar: configDict.headerSeparatorChar ?? '-',
