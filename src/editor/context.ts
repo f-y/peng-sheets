@@ -36,7 +36,7 @@ export class EditorContext {
     private static instance: EditorContext | null = null;
     private state: EditorState = createEditorState();
 
-    private constructor() {}
+    private constructor() { }
 
     static getInstance(): EditorContext {
         if (!EditorContext.instance) {
@@ -147,9 +147,9 @@ export class EditorContext {
         const configDict: EditorConfig = configJson ? JSON.parse(configJson) : {};
 
         this.state.schema = new MultiTableParsingSchema({
-            // Use explicit '# Workbook' default since NPM package (1.2.1) still uses '# Tables'
-            // TODO: Remove explicit default after updating NPM package to 1.2.3+
-            rootMarker: configDict.rootMarker ?? '# Workbook',
+            // Only override rootMarker if user explicitly configured it
+            // Parser defaults to '# Tables' which also works
+            rootMarker: configDict.rootMarker,
             sheetHeaderLevel: configDict.sheetHeaderLevel ?? undefined,
             tableHeaderLevel: configDict.tableHeaderLevel ?? undefined,
             captureDescription: configDict.captureDescription ?? true,
