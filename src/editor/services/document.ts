@@ -22,7 +22,7 @@ export function getDocumentSectionRange(
 ): { startLine: number; endLine: number } | { error: string } {
     const mdText = context.mdText;
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Workbook';
+    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
 
     const lines = mdText.split('\n');
     let docIdx = 0;
@@ -79,7 +79,7 @@ export function addDocument(
 ): UpdateResult {
     const mdText = context.mdText;
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Workbook';
+    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
 
     const lines = mdText.split('\n');
     // Python uses insertLine = 0 by default (insert at beginning)
@@ -102,8 +102,9 @@ export function addDocument(
                 if (afterWorkbook && afterDocIndex < 0) {
                     // Insert right after workbook (before any docs after WB)
                     // Used for between-sheets insertion per SPECS.md 8.5
-                    const [, wbEnd] = getWorkbookRange(mdText, rootMarker, configDict.sheetHeaderLevel ?? 2);
-                    insertLine = wbEnd;
+                    // Use parser-detected endLine if available, otherwise fall back to getWorkbookRange
+                    insertLine = context.workbook?.endLine
+                        ?? getWorkbookRange(mdText, rootMarker, configDict.sheetHeaderLevel ?? 2)[1];
                     break;
                 }
                 // Either not afterWorkbook, or we have a specific afterDocIndex to find
@@ -427,7 +428,7 @@ export function moveDocumentSection(
     linesWithoutDoc.splice(startLine, endLine - startLine);
 
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Workbook';
+    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     // Calculate new insertion point
@@ -580,14 +581,21 @@ export function moveWorkbookSection(
     targetTabOrderIndex: number | null = null
 ): UpdateResult {
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = configDict.rootMarker ?? '# Workbook';
+    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     const mdText = context.mdText;
     const lines = mdText.split('\n');
 
-    // Find workbook range
-    const [wbStart, wbEnd] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
+    // Find workbook range - use parser-detected range if available
+    let wbStart: number;
+    let wbEnd: number;
+    if (context.workbook?.startLine !== undefined && context.workbook?.endLine !== undefined) {
+        wbStart = context.workbook.startLine;
+        wbEnd = context.workbook.endLine;
+    } else {
+        [wbStart, wbEnd] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
+    }
 
     if (wbStart >= lines.length) {
         return { error: 'No workbook section found' };
