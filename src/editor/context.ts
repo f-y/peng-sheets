@@ -147,9 +147,9 @@ export class EditorContext {
         const configDict: EditorConfig = configJson ? JSON.parse(configJson) : {};
 
         this.state.schema = new MultiTableParsingSchema({
-            // Use undefined defaults to enable flexible workbook auto-detection
-            // Parser will auto-detect: single H1 → workbook, fallback → # Tables / # Workbook
-            rootMarker: configDict.rootMarker ?? undefined,
+            // Use explicit '# Workbook' default since NPM package (1.2.1) still uses '# Tables'
+            // TODO: Remove explicit default after updating NPM package to 1.2.3+
+            rootMarker: configDict.rootMarker ?? '# Workbook',
             sheetHeaderLevel: configDict.sheetHeaderLevel ?? undefined,
             tableHeaderLevel: configDict.tableHeaderLevel ?? undefined,
             captureDescription: configDict.captureDescription ?? true,
