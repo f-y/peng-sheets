@@ -306,6 +306,14 @@ export class SpreadsheetService {
         this._performAction(() => editor.updateSheetMetadata(sheetIdx, metadata));
     }
 
+    public updateSheetName(sheetIdx: number, newName: string) {
+        this._performAction(() => editor.updateSheetName(sheetIdx, newName));
+    }
+
+    public updateDocSheetContent(sheetIdx: number, content: string) {
+        this._performAction(() => editor.updateDocSheetContent(sheetIdx, content));
+    }
+
     public addTable(sheetIdx: number, tableName: string) {
         const headers = this._getDefaultColumnHeaders();
         this._performAction(() => editor.addTable(sheetIdx, headers, tableName));

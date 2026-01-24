@@ -718,6 +718,30 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         }
     }
 
+    async _handleDocSheetChange(detail: { sheetIndex: number; content: string; title?: string; save?: boolean }) {
+        console.log('Doc sheet change received:', detail);
+
+        // Update the sheet content via editor
+        try {
+            // Update sheet name if title changed
+            if (detail.title) {
+                this.spreadsheetService.updateSheetName(detail.sheetIndex, detail.title);
+            }
+
+            // Update sheet content
+            this.spreadsheetService.updateDocSheetContent(detail.sheetIndex, detail.content);
+
+            // Refresh local state
+            await this._parseWorkbook();
+
+            if (detail.save) {
+                this._handleSave();
+            }
+        } catch (error) {
+            console.error('Failed to update doc sheet:', error);
+        }
+    }
+
     private _handleUndo() {
         vscode.postMessage({ type: 'undo' });
         ClipboardStore.clear();
@@ -915,20 +939,30 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet' && isSheetJSON(activeTab.data)
-                    ? html`
-                          <div class="sheet-container" style="height: 100%">
-                              <layout-container
-                                  .layout="${(activeTab.data as SheetJSON).metadata?.layout}"
-                                  .tables="${(activeTab.data as SheetJSON).tables}"
+                    ? (activeTab.data as SheetJSON).type === 'doc'
+                        ? html`
+                              <spreadsheet-document-view
+                                  .title="${activeTab.title}"
+                                  .content="${(activeTab.data as SheetJSON).content ?? ''}"
+                                  .isDocSheet="${true}"
                                   .sheetIndex="${activeTab.sheetIndex}"
-                                  .workbook="${this.workbook}"
-                                  .dateFormat="${((this.config?.validation as Record<string, unknown>)
-                                      ?.dateFormat as string) || 'YYYY-MM-DD'}"
-                                  @save-requested="${this._handleSave}"
-                                  @selection-change="${this._handleSelectionChange}"
-                              ></layout-container>
-                          </div>
-                      `
+                                  @toolbar-action="${this._handleToolbarAction}"
+                              ></spreadsheet-document-view>
+                          `
+                        : html`
+                              <div class="sheet-container" style="height: 100%">
+                                  <layout-container
+                                      .layout="${(activeTab.data as SheetJSON).metadata?.layout}"
+                                      .tables="${(activeTab.data as SheetJSON).tables}"
+                                      .sheetIndex="${activeTab.sheetIndex}"
+                                      .workbook="${this.workbook}"
+                                      .dateFormat="${((this.config?.validation as Record<string, unknown>)
+                                          ?.dateFormat as string) || 'YYYY-MM-DD'}"
+                                      @save-requested="${this._handleSave}"
+                                      @selection-change="${this._handleSelectionChange}"
+                                  ></layout-container>
+                              </div>
+                          `
                     : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
                       ? html`
                             <spreadsheet-document-view

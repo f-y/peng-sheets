@@ -18,6 +18,12 @@ export class SpreadsheetDocumentView extends LitElement {
     @property({ type: Number })
     sectionIndex: number = 0;
 
+    @property({ type: Boolean })
+    isDocSheet: boolean = false;
+
+    @property({ type: Number })
+    sheetIndex: number = 0;
+
     @state()
     private _isEditing: boolean = false;
 
@@ -132,18 +138,35 @@ export class SpreadsheetDocumentView extends LitElement {
         this._debounceTimer = window.setTimeout(() => {
             const { title, body } = this._extractTitleAndBody(this._editContent);
 
-            this.dispatchEvent(
-                new CustomEvent('document-change', {
-                    bubbles: true,
-                    composed: true,
-                    detail: {
-                        sectionIndex: this.sectionIndex,
-                        content: body,
-                        title: title,
-                        save: shouldSave
-                    }
-                })
-            );
+            if (this.isDocSheet) {
+                // For doc sheets within workbook, dispatch doc-sheet-change event
+                this.dispatchEvent(
+                    new CustomEvent('doc-sheet-change', {
+                        bubbles: true,
+                        composed: true,
+                        detail: {
+                            sheetIndex: this.sheetIndex,
+                            content: body,
+                            title: title,
+                            save: shouldSave
+                        }
+                    })
+                );
+            } else {
+                // For standalone document sections
+                this.dispatchEvent(
+                    new CustomEvent('document-change', {
+                        bubbles: true,
+                        composed: true,
+                        detail: {
+                            sectionIndex: this.sectionIndex,
+                            content: body,
+                            title: title,
+                            save: shouldSave
+                        }
+                    })
+                );
+            }
         }, 100);
     }
 

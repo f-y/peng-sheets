@@ -166,6 +166,23 @@ export function updateSheetMetadata(
 }
 
 /**
+ * Update doc sheet content.
+ */
+export function updateDocSheetContent(context: EditorContext, sheetIdx: number, content: string): UpdateResult {
+    return applySheetUpdate(context, sheetIdx, (sheet) => {
+        // TODO: Remove workaround after updating md-spreadsheet-parser NPM package to 1.2.3+
+        // which includes the type and content properties on Sheet
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sheetOpts: any = {
+            ...sheet,
+            type: 'doc',
+            content
+        };
+        return new Sheet(sheetOpts);
+    });
+}
+
+/**
  * Delete a sheet.
  */
 export function deleteSheet(context: EditorContext, sheetIdx: number): UpdateResult {

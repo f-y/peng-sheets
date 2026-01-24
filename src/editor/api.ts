@@ -109,6 +109,20 @@ export function updateSheetMetadata(sheetIdx: number, metadata: Record<string, u
     return sheetService.updateSheetMetadata(getContext(), sheetIdx, metadata);
 }
 
+/**
+ * Update sheet name.
+ */
+export function updateSheetName(sheetIdx: number, newName: string): UpdateResult {
+    return sheetService.renameSheet(getContext(), sheetIdx, newName);
+}
+
+/**
+ * Update doc sheet content.
+ */
+export function updateDocSheetContent(sheetIdx: number, content: string): UpdateResult {
+    return sheetService.updateDocSheetContent(getContext(), sheetIdx, content);
+}
+
 // =============================================================================
 // Table Functions
 // =============================================================================
