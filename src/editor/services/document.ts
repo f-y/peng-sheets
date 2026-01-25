@@ -19,7 +19,8 @@ import { generateAndGetRange, getWorkbookRange, initializeTabOrderFromStructure 
  */
 function getWorkbookRangeFromContext(context: EditorContext): [number, number] {
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
+    const wbName = context.workbook?.name;
+    const rootMarker = wbName ? `# ${wbName}` : (configDict.rootMarker ?? '# Workbook');
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     if (context.workbook?.startLine !== undefined && context.workbook?.endLine !== undefined) {
@@ -41,7 +42,10 @@ export function getDocumentSectionRange(
 ): { startLine: number; endLine: number } | { error: string } {
     const mdText = context.mdText;
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
+    // workbook.name is just the name without the # prefix, so we need to add it
+    const wbName = context.workbook?.name;
+    const rootMarker = wbName ? `# ${wbName}` : (configDict.rootMarker ?? '# Workbook');
+
 
     const lines = mdText.split('\n');
     let docIdx = 0;
@@ -98,7 +102,8 @@ export function addDocument(
 ): UpdateResult {
     const mdText = context.mdText;
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
+    const wbName = context.workbook?.name;
+    const rootMarker = wbName ? `# ${wbName}` : (configDict.rootMarker ?? '# Workbook');
 
     const lines = mdText.split('\n');
     // Python uses insertLine = 0 by default (insert at beginning)
@@ -446,7 +451,8 @@ export function moveDocumentSection(
     linesWithoutDoc.splice(startLine, endLine - startLine);
 
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
+    const wbName = context.workbook?.name;
+    const rootMarker = wbName ? `# ${wbName}` : (configDict.rootMarker ?? '# Workbook');
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     // Calculate new insertion point
@@ -497,32 +503,58 @@ export function moveDocumentSection(
             insertLine = wbStart;
         }
     } else if (toDocIndex !== null) {
+        // toDocIndex semantics: insert at position toDocIndex
+        // This means: insert AFTER the document at position (toDocIndex - 1)
+        // When toDocIndex=0, insert at beginning
+        // When toDocIndex=numDocs, insert at end
+
         // Adjust toDocIndex for the case where source doc was before target
         // Since we removed fromDocIndex first, indices shift down
         const adjustedToDocIndex = fromDocIndex < toDocIndex ? toDocIndex - 1 : toDocIndex;
 
-        // Find the target document position
+        // Find the target insert position
         let docIdx = 0;
         let targetLine = linesWithoutDoc.length;
         let inCodeBlock = false;
         let foundTarget = false;
 
-        for (let i = 0; i < linesWithoutDoc.length; i++) {
-            const line = linesWithoutDoc[i];
-            if (line.trim().startsWith('```')) {
-                inCodeBlock = !inCodeBlock;
-            }
+        // If adjustedToDocIndex is 0, insert at beginning
+        if (adjustedToDocIndex === 0) {
+            targetLine = 0;
+            foundTarget = true;
+        } else {
+            // Find the document at position (adjustedToDocIndex - 1) and get its END
+            const targetDocIdx = adjustedToDocIndex - 1;
 
-            if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
-                const stripped = line.trim();
-                if (stripped !== rootMarker) {
-                    if (docIdx === adjustedToDocIndex) {
-                        // Insert BEFORE this document (at its start line)
-                        targetLine = i;
-                        foundTarget = true;
-                        break;
+            for (let i = 0; i < linesWithoutDoc.length; i++) {
+                const line = linesWithoutDoc[i];
+                if (line.trim().startsWith('```')) {
+                    inCodeBlock = !inCodeBlock;
+                }
+
+                if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
+                    const stripped = line.trim();
+                    if (stripped !== rootMarker) {
+                        if (docIdx === targetDocIdx) {
+                            // Found the target doc - now find its END (next H1 or EOF)
+                            let endLine = linesWithoutDoc.length;
+                            let endCodeBlock = false;
+                            for (let j = i + 1; j < linesWithoutDoc.length; j++) {
+                                const nextLine = linesWithoutDoc[j];
+                                if (nextLine.trim().startsWith('```')) {
+                                    endCodeBlock = !endCodeBlock;
+                                }
+                                if (!endCodeBlock && nextLine.startsWith('# ') && !nextLine.startsWith('## ')) {
+                                    endLine = j;
+                                    break;
+                                }
+                            }
+                            targetLine = endLine;
+                            foundTarget = true;
+                            break;
+                        }
+                        docIdx++;
                     }
-                    docIdx++;
                 }
             }
         }
@@ -599,7 +631,8 @@ export function moveWorkbookSection(
     targetTabOrderIndex: number | null = null
 ): UpdateResult {
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
-    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
+    const wbName = context.workbook?.name;
+    const rootMarker = wbName ? `# ${wbName}` : (configDict.rootMarker ?? '# Workbook');
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     const mdText = context.mdText;
