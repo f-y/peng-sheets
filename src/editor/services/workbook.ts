@@ -266,22 +266,18 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
     }
 
     // Determine replacement range
-    // Use parser-detected workbook range if available, otherwise fall back to getWorkbookRange
+    // ALWAYS use getWorkbookRange for dynamic detection since mdText may have changed
+    // (Parser values workbook.startLine/endLine become stale after addDocument/moveDocument)
     const configDict: EditorConfig = config ? JSON.parse(config) : {};
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     let startLine: number;
     let rawEndLine: number;
 
-    if (workbook?.startLine !== undefined && workbook?.endLine !== undefined) {
-        // Use parser-detected range
-        startLine = workbook.startLine;
-        rawEndLine = workbook.endLine;
-    } else {
-        // Fallback to manual detection (for backward compatibility)
-        const rootMarker = configDict.rootMarker ?? '# Workbook';
-        [startLine, rawEndLine] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
-    }
+    // Build rootMarker from workbook name or config
+    const wbName = workbook?.name;
+    const rootMarker = wbName ? `# ${wbName}` : (configDict.rootMarker ?? '# Workbook');
+    [startLine, rawEndLine] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
     const lines = mdText.split('\n');
 
     let endLine = rawEndLine;

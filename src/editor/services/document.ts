@@ -46,7 +46,6 @@ export function getDocumentSectionRange(
     const wbName = context.workbook?.name;
     const rootMarker = wbName ? `# ${wbName}` : (configDict.rootMarker ?? '# Workbook');
 
-
     const lines = mdText.split('\n');
     let docIdx = 0;
     let currentDocStart: number | null = null;
