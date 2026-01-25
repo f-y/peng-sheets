@@ -190,7 +190,8 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
         if (workbook.startLine !== undefined && workbook.endLine !== undefined && workbook.name) {
             wbStart = workbook.startLine;
             wbEnd = workbook.endLine;
-            rootMarker = workbook.name;
+            // workbook.name is just the name without # prefix, add it for line comparison
+            rootMarker = `# ${workbook.name}`;
         } else {
             rootMarker = configDict.rootMarker ?? '# Workbook';
             [wbStart, wbEnd] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
