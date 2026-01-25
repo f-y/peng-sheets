@@ -518,11 +518,32 @@ export function moveDocumentSection(
         let inCodeBlock = false;
         let foundTarget = false;
 
-        // If adjustedToDocIndex is 0, insert at beginning
+        // If adjustedToDocIndex is 0, insert at first doc position
+        // This needs to respect the doc zone (before or after WB)
         if (adjustedToDocIndex === 0) {
-            targetLine = 0;
+            // For WB-after-docs case: first doc position is at beginning
+            // For WB-before-docs case: first doc position is after WB
+            // We need to decide based on where the from-doc was originally
+            const tempText = linesWithoutDoc.join('\n');
+            const [wbStart, wbEnd] = getWorkbookRange(tempText, rootMarker, sheetHeaderLevel);
+            const originalText = context.mdText;
+            const [originalWbStart] = getWorkbookRange(originalText, rootMarker, sheetHeaderLevel);
+            const fromDocWasBeforeWb = startLine < originalWbStart;
+
+            if (fromDocWasBeforeWb) {
+                // Doc was before WB - insert at file beginning
+                targetLine = 0;
+            } else if (wbStart < linesWithoutDoc.length) {
+                // Doc was after WB (or WB exists and we need to respect zones)
+                // Insert at beginning of after-WB zone = after WB
+                targetLine = wbEnd;
+            } else {
+                // No WB, insert at beginning
+                targetLine = 0;
+            }
             foundTarget = true;
         } else {
+
             // Find the document at position (adjustedToDocIndex - 1) and get its END
             const targetDocIdx = adjustedToDocIndex - 1;
 
