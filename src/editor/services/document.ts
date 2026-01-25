@@ -10,6 +10,25 @@ import type { UpdateResult, EditorConfig, TabOrderItem } from '../types';
 import { generateAndGetRange, getWorkbookRange, initializeTabOrderFromStructure } from './workbook';
 
 // =============================================================================
+// Helper Functions
+// =============================================================================
+
+/**
+ * Get workbook range from context, using parser-detected values when available.
+ * Falls back to getWorkbookRange for dynamic/modified text.
+ */
+function getWorkbookRangeFromContext(context: EditorContext): [number, number] {
+    const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
+    const rootMarker = context.workbook?.name ?? configDict.rootMarker ?? '# Workbook';
+    const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
+
+    if (context.workbook?.startLine !== undefined && context.workbook?.endLine !== undefined) {
+        return [context.workbook.startLine, context.workbook.endLine];
+    }
+    return getWorkbookRange(context.mdText, rootMarker, sheetHeaderLevel);
+}
+
+// =============================================================================
 // Document Section Range
 // =============================================================================
 
@@ -102,9 +121,8 @@ export function addDocument(
                 if (afterWorkbook && afterDocIndex < 0) {
                     // Insert right after workbook (before any docs after WB)
                     // Used for between-sheets insertion per SPECS.md 8.5
-                    // Use parser-detected endLine if available, otherwise fall back to getWorkbookRange
-                    insertLine = context.workbook?.endLine
-                        ?? getWorkbookRange(mdText, rootMarker, configDict.sheetHeaderLevel ?? 2)[1];
+                    const [, wbEnd] = getWorkbookRangeFromContext(context);
+                    insertLine = wbEnd;
                     break;
                 }
                 // Either not afterWorkbook, or we have a specific afterDocIndex to find
@@ -588,14 +606,7 @@ export function moveWorkbookSection(
     const lines = mdText.split('\n');
 
     // Find workbook range - use parser-detected range if available
-    let wbStart: number;
-    let wbEnd: number;
-    if (context.workbook?.startLine !== undefined && context.workbook?.endLine !== undefined) {
-        wbStart = context.workbook.startLine;
-        wbEnd = context.workbook.endLine;
-    } else {
-        [wbStart, wbEnd] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
-    }
+    const [wbStart, wbEnd] = getWorkbookRangeFromContext(context);
 
     if (wbStart >= lines.length) {
         return { error: 'No workbook section found' };
