@@ -373,6 +373,10 @@ export function addDocumentAndGetFullUpdate(
     afterWorkbook = false,
     insertAfterTabOrderIndex = -1
 ): UpdateResult {
+    // Capture original line count BEFORE modifying context
+    // This represents what VS Code currently has - needed for accurate replace range
+    const originalLineCount = context.mdText.split('\n').length;
+
     // 1. Add the document (updates md_text in context)
     const addResult = addDocument(context, title, afterDocIndex, afterWorkbook, insertAfterTabOrderIndex);
     if (addResult.error) {
@@ -382,7 +386,6 @@ export function addDocumentAndGetFullUpdate(
     // 2. Get current md_text from context
     let currentMd = context.mdText;
     let lines = currentMd.split('\n');
-    const originalLineCount = lines.length;
 
     // 3. Regenerate workbook content
     const wbUpdate = generateAndGetRange(context);
@@ -406,6 +409,8 @@ export function addDocumentAndGetFullUpdate(
     const fullStateJson = context.getFullStateDict();
     const fullState = JSON.parse(fullStateJson);
 
+    // Use originalLineCount (captured before modification) as endLine
+    // This represents VS Code's current document range that we're replacing
     return {
         content: currentMd,
         startLine: 0,
