@@ -438,6 +438,10 @@ export function moveDocumentSection(
     toAfterWorkbook = false,
     toBeforeWorkbook = false
 ): UpdateResult {
+    // Capture original line count BEFORE modifying context
+    // This represents what VS Code currently has - needed for accurate replace range
+    const originalLineCount = context.mdText.split('\n').length;
+
     // Get the document section to move
     const rangeResult = getDocumentSectionRange(context, fromDocIndex);
     if ('error' in rangeResult) {
@@ -635,7 +639,7 @@ export function moveDocumentSection(
     return {
         content: context.mdText,
         startLine: 0,
-        endLine: lines.length,
+        endLine: originalLineCount - 1,
         file_changed: true
     };
 }

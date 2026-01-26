@@ -1394,6 +1394,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 });
             }
 
+
             // Reorder tabs based on tab_order metadata if available
             const tabOrder = this.workbook?.metadata?.tab_order as Array<{ type: string; index: number }> | undefined;
             if (tabOrder && tabOrder.length > 0) {
