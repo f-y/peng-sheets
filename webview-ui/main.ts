@@ -1145,34 +1145,32 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             return;
         }
 
-        // Complex case: Insert at specific position (rare, for future drag-drop support)
-        // Check if there are any sheets before target position
+        // Complex case: Insert at specific position (from context menu)
+        // Need to find the document that should be BEFORE this new document
+        // based on what documents appear before targetTabOrderIndex in the display order
+
+        // Collect documents that appear before target position in tabs
+        const docsBeforeTarget: number[] = [];
+        for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
+            const tab = this.tabs[i];
+            if (tab.type === 'document' && tab.docIndex !== undefined) {
+                docsBeforeTarget.push(tab.docIndex);
+            }
+        }
+
+        // The afterDocIndex should be the last document before target position (by docIndex)
+        // Sort docIndices to find the maximum (physically last among those before target)
+        let afterDocIndex = -1;
+        if (docsBeforeTarget.length > 0) {
+            afterDocIndex = Math.max(...docsBeforeTarget);
+        }
+
+        // Determine if we're inserting before or after workbook
+        // If there are sheets before target position, we're after workbook
         const sheetsBeforeTarget =
             this.tabs.slice(0, Math.min(targetTabOrderIndex, this.tabs.length)).filter((tab) => tab.type === 'sheet')
                 .length > 0;
-
-        let afterDocIndex = -1;
-        let afterWorkbook = false;
-
-        if (!sheetsBeforeTarget) {
-            // No sheets before target = inserting among docs before Workbook
-            let docsBeforeTarget = 0;
-            for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
-                if (this.tabs[i].type === 'document') {
-                    docsBeforeTarget++;
-                }
-            }
-            afterDocIndex = docsBeforeTarget - 1;
-        } else {
-            // Sheets before target = insert after Workbook
-            afterWorkbook = true;
-            const firstSheetIdx = this.tabs.findIndex((tab) => tab.type === 'sheet');
-            for (let i = 0; i < Math.min(targetTabOrderIndex, this.tabs.length); i++) {
-                if (this.tabs[i].type === 'document' && i > firstSheetIdx) {
-                    afterDocIndex = this.tabs[i].docIndex!;
-                }
-            }
-        }
+        const afterWorkbook = sheetsBeforeTarget;
 
         this.spreadsheetService.addDocument(newDocName, afterDocIndex, afterWorkbook, targetTabOrderIndex);
     }
