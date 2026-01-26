@@ -648,7 +648,7 @@ export function moveWorkbookSection(
     toDocIndex: number | null = null,
     toAfterDoc = false,
     toBeforeDoc = false,
-    targetTabOrderIndex: number | null = null
+    _targetTabOrderIndex: number | null = null
 ): UpdateResult {
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
     const wbName = context.workbook?.name;
@@ -745,23 +745,30 @@ export function moveWorkbookSection(
     const newMdText = linesWithoutWb.join('\n');
     context.mdText = newMdText;
 
-    // Update workbook reference
-    // IMPORTANT: Preserve existing tab_order if it was pre-set by updateWorkbookTabOrder
-    // Only initialize from structure if tab_order is missing
-    if (context.workbook && targetTabOrderIndex !== null) {
+    // Only initialize from structure if tab_order is missing AND was not explicitly removed
+    if (context.workbook && _targetTabOrderIndex !== null) {
         const existingTabOrder = context.workbook.metadata?.tab_order;
 
         if (!existingTabOrder || (Array.isArray(existingTabOrder) && existingTabOrder.length === 0)) {
-            // No existing tab_order, initialize from structure
-            const metadata = { ...(context.workbook.metadata || {}) };
-            const tabOrder = initializeTabOrderFromStructure(
-                newMdText,
-                context.config,
-                (context.workbook.sheets ?? []).length
-            );
-            metadata.tab_order = tabOrder;
-            const newWorkbook = new Workbook({ ...context.workbook, metadata });
-            context.updateWorkbook(newWorkbook);
+            // Check if tab_order was explicitly removed by updateWorkbookTabOrder(null)
+            // If metadata is undefined or empty object, it was explicitly cleared - don't reinit
+            // (metadata becomes undefined when tab_order was the only property and was deleted)
+            const metadataWasCleared = !context.workbook.metadata ||
+                Object.keys(context.workbook.metadata).length === 0;
+
+            if (!metadataWasCleared) {
+                // Metadata exists with other properties but no tab_order - initialize from structure
+                const metadata = { ...(context.workbook.metadata || {}) };
+                const tabOrder = initializeTabOrderFromStructure(
+                    newMdText,
+                    context.config,
+                    (context.workbook.sheets ?? []).length
+                );
+                metadata.tab_order = tabOrder;
+                const newWorkbook = new Workbook({ ...context.workbook, metadata });
+                context.updateWorkbook(newWorkbook);
+            }
+            // If metadataWasCleared, respect the explicit deletion by updateWorkbookTabOrder(null)
         }
         // If tab_order already exists (pre-set by caller), keep it as-is
     }

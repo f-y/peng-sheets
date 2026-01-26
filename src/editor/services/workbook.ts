@@ -76,9 +76,11 @@ export function updateWorkbookTabOrder(context: EditorContext, tabOrder: TabOrde
         } else {
             currentMetadata.tab_order = tabOrder;
         }
+        // If metadata is empty after deletion, set to undefined to avoid empty {} in output
+        const finalMetadata = Object.keys(currentMetadata).length > 0 ? currentMetadata : undefined;
         return new Workbook({
             ...wb,
-            metadata: currentMetadata
+            metadata: finalMetadata
         });
     };
 

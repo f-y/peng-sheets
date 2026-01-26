@@ -111,7 +111,9 @@ export class EditorContext {
         let structure: StructureSection[] | null = null;
 
         if (this.state.schema) {
-            const rootMarker = this.state.schema.rootMarker ?? '# Workbook';
+            // When rootMarker is undefined (auto-detection), use workbook.name
+            // Parser sets workbook.name from the detected root section (e.g., "Tables")
+            const rootMarker = this.state.schema.rootMarker ?? `# ${this.state.workbook.name}`;
             const sheetHeaderLevel = this.state.schema.sheetHeaderLevel ?? 2;
 
             // Augment workbook with line numbers
