@@ -112,45 +112,46 @@ export function addDocument(
 
     let inCodeBlock = false;
 
-    // Parse the structure to find insertion point
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        if (line.trim().startsWith('```')) {
-            inCodeBlock = !inCodeBlock;
-        }
+    // If afterWorkbook is true, always insert after the workbook section
+    // afterDocIndex is then interpreted relative to documents AFTER workbook
+    if (afterWorkbook) {
+        const [, wbEnd] = getWorkbookRangeFromContext(context);
+        insertLine = wbEnd;
+        // No need to search for document positions - insert at workbook end
+    } else {
+        // Parse the structure to find insertion point
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.trim().startsWith('```')) {
+                inCodeBlock = !inCodeBlock;
+            }
 
-        if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
-            const stripped = line.trim();
-            if (stripped === rootMarker) {
-                if (afterWorkbook && afterDocIndex < 0) {
-                    // Insert right after workbook (before any docs after WB)
-                    // Used for between-sheets insertion per SPECS.md 8.5
-                    const [, wbEnd] = getWorkbookRangeFromContext(context);
-                    insertLine = wbEnd;
+            if (!inCodeBlock && line.startsWith('# ') && !line.startsWith('## ')) {
+                const stripped = line.trim();
+                if (stripped === rootMarker) {
+                    // Workbook found - skip it (not inserting after workbook)
+                    continue;
+                }
+
+                // Document found
+                if (afterDocIndex >= 0 && docCount === afterDocIndex) {
+                    // Find end of this document
+                    let nextI = i + 1;
+                    while (nextI < lines.length) {
+                        const nextLine = lines[nextI];
+                        if (nextLine.trim().startsWith('```')) {
+                            inCodeBlock = !inCodeBlock;
+                        }
+                        if (!inCodeBlock && nextLine.startsWith('# ') && !nextLine.startsWith('## ')) {
+                            break;
+                        }
+                        nextI++;
+                    }
+                    insertLine = nextI;
                     break;
                 }
-                // Either not afterWorkbook, or we have a specific afterDocIndex to find
-                continue;
+                docCount++;
             }
-
-            // Document found
-            if (afterDocIndex >= 0 && docCount === afterDocIndex) {
-                // Find end of this document
-                let nextI = i + 1;
-                while (nextI < lines.length) {
-                    const nextLine = lines[nextI];
-                    if (nextLine.trim().startsWith('```')) {
-                        inCodeBlock = !inCodeBlock;
-                    }
-                    if (!inCodeBlock && nextLine.startsWith('# ') && !nextLine.startsWith('## ')) {
-                        break;
-                    }
-                    nextI++;
-                }
-                insertLine = nextI;
-                break;
-            }
-            docCount++;
         }
     }
 
@@ -427,7 +428,6 @@ export function addDocumentAndGetFullUpdate(
         content: currentMd,
         startLine: 0,
         endLine: originalLineCount - 1,
-        endCol: 0,
         workbook: fullState.workbook,
         structure: fullState.structure,
         file_changed: true
