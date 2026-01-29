@@ -130,6 +130,7 @@ export function addSheet(
         }
 
         const newWorkbook = new Workbook({
+            ...workbook,
             sheets: newSheets,
             metadata: currentMetadata
         });
@@ -244,6 +245,7 @@ export function addDocSheet(
         }
 
         const newWorkbook = new Workbook({
+            ...workbook,
             sheets: newSheets,
             metadata: currentMetadata
         });
