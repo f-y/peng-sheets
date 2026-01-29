@@ -155,12 +155,24 @@ export function addDocument(
     }
 
     // Create the new document content
-    const newDocContent = `\n# ${title}\n\n`;
-
-    // Build new text
+    // - If inserting at beginning (insertLine=0), no leading newlines needed
+    // - Otherwise, ensure blank line before header (two newlines: one to end previous line, one blank line)
     const beforeLines = lines.slice(0, insertLine);
     const afterLines = lines.slice(insertLine);
 
+    let newDocContent: string;
+    if (insertLine === 0) {
+        // At beginning - just the document header with trailing blank line
+        newDocContent = `# ${title}\n\n`;
+    } else {
+        // Check if the previous line ends properly
+        const lastLine = beforeLines[beforeLines.length - 1];
+        const needsExtraNewline = lastLine.trim() !== '';
+        // Ensure blank line before header
+        newDocContent = needsExtraNewline ? `\n\n# ${title}\n\n` : `\n# ${title}\n\n`;
+    }
+
+    // Build new text
     const newMdText = beforeLines.join('\n') + newDocContent + afterLines.join('\n');
     context.mdText = newMdText;
 
@@ -551,7 +563,6 @@ export function moveDocumentSection(
             }
             foundTarget = true;
         } else {
-
             // Find the document at position (adjustedToDocIndex - 1) and get its END
             const targetDocIdx = adjustedToDocIndex - 1;
 
@@ -631,8 +642,52 @@ export function moveDocumentSection(
         insertLine = linesWithoutDoc.length;
     }
 
-    // Insert at new position
-    linesWithoutDoc.splice(insertLine, 0, ...docContent);
+    // Ensure proper blank line separation when inserting
+    // 1. If inserting at beginning, ensure blank line after document
+    // 2. If inserting in middle, ensure blank line before and after
+    // 3. If inserting at end, ensure blank line before
+
+    // First, normalize docContent to have exactly one trailing blank line
+    // Strip any leading/trailing blank lines from docContent for normalization
+    const normalizedContent = [...docContent];
+
+    // Remove trailing blank lines from docContent
+    while (normalizedContent.length > 0 && normalizedContent[normalizedContent.length - 1].trim() === '') {
+        normalizedContent.pop();
+    }
+
+    // Remove leading blank lines from docContent
+    while (normalizedContent.length > 0 && normalizedContent[0].trim() === '') {
+        normalizedContent.shift();
+    }
+
+    // Now insert with proper separation
+    if (insertLine === 0) {
+        // Inserting at beginning - add blank line after
+        linesWithoutDoc.splice(insertLine, 0, ...normalizedContent, '');
+    } else if (insertLine >= linesWithoutDoc.length) {
+        // Inserting at end - ensure blank line before if previous line is not blank
+        if (linesWithoutDoc.length > 0 && linesWithoutDoc[linesWithoutDoc.length - 1].trim() !== '') {
+            linesWithoutDoc.push('');
+        }
+        linesWithoutDoc.push(...normalizedContent);
+    } else {
+        // Inserting in middle - ensure blank lines before and after
+        const prevLine = linesWithoutDoc[insertLine - 1];
+        const needsBlankBefore = prevLine.trim() !== '';
+        const nextLine = linesWithoutDoc[insertLine];
+        const needsBlankAfter = nextLine.trim() !== '' && !nextLine.startsWith('#');
+
+        const contentToInsert = [...normalizedContent];
+        if (needsBlankAfter) {
+            contentToInsert.push('');
+        }
+        if (needsBlankBefore) {
+            contentToInsert.unshift('');
+        }
+        linesWithoutDoc.splice(insertLine, 0, ...contentToInsert);
+    }
+
     const newMdText = linesWithoutDoc.join('\n');
     context.mdText = newMdText;
 
@@ -662,7 +717,7 @@ export function moveWorkbookSection(
     const configDict: EditorConfig = context.config ? JSON.parse(context.config) : {};
     const wbName = context.workbook?.name;
     const rootMarker = wbName ? `# ${wbName}` : (configDict.rootMarker ?? '# Workbook');
-    const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
+    const _sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
     const mdText = context.mdText;
     const lines = mdText.split('\n');
@@ -762,8 +817,8 @@ export function moveWorkbookSection(
             // Check if tab_order was explicitly removed by updateWorkbookTabOrder(null)
             // If metadata is undefined or empty object, it was explicitly cleared - don't reinit
             // (metadata becomes undefined when tab_order was the only property and was deleted)
-            const metadataWasCleared = !context.workbook.metadata ||
-                Object.keys(context.workbook.metadata).length === 0;
+            const metadataWasCleared =
+                !context.workbook.metadata || Object.keys(context.workbook.metadata).length === 0;
 
             if (!metadataWasCleared) {
                 // Metadata exists with other properties but no tab_order - initialize from structure

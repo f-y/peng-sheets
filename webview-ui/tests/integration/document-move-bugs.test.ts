@@ -135,5 +135,4 @@ describe('Document Move Off-by-One Bug', () => {
             expect(action.physicalMove?.type).toBe('move-sheet');
         });
     });
-
 });

@@ -39,12 +39,12 @@ export type PhysicalMove =
     | { type: 'move-sheet'; fromSheetIndex: number; toSheetIndex: number }
     | { type: 'move-workbook'; direction: 'before-doc' | 'after-doc'; targetDocIndex: number }
     | {
-        type: 'move-document';
-        fromDocIndex: number;
-        toDocIndex: number | null;
-        toAfterWorkbook: boolean;
-        toBeforeWorkbook: boolean;
-    };
+          type: 'move-document';
+          fromDocIndex: number;
+          toDocIndex: number | null;
+          toAfterWorkbook: boolean;
+          toBeforeWorkbook: boolean;
+      };
 
 /**
  * Result of determining what action to take for a tab reorder.
@@ -1098,12 +1098,12 @@ function handleDocToDoc(
 
             // Check if moving to first position after WB
             // This happens when toTab is the first doc after WB in visual order
-            const firstDocAfterWbIndex = ctx.currentFileStructure.docsAfterWb.length > 0
-                ? Math.min(...ctx.currentFileStructure.docsAfterWb)
-                : null;
+            const firstDocAfterWbIndex =
+                ctx.currentFileStructure.docsAfterWb.length > 0
+                    ? Math.min(...ctx.currentFileStructure.docsAfterWb)
+                    : null;
 
-            const isMovingToFirstAfterWb = toTab?.type === 'document'
-                && toTab.docIndex === firstDocAfterWbIndex;
+            const isMovingToFirstAfterWb = toTab?.type === 'document' && toTab.docIndex === firstDocAfterWbIndex;
 
             if (isMovingToFirstAfterWb) {
                 // D4 case: Move to first position after WB
@@ -1145,16 +1145,16 @@ function handleDocToDoc(
             const movedDocOldIndex = fromDocIndex;
             const adjustedTabOrder = needsMetadata
                 ? ctx.newTabOrder.map((item) => {
-                    if (item.type !== 'document') return item;
+                      if (item.type !== 'document') return item;
 
-                    if (item.index === movedDocOldIndex) {
-                        // Moved doc becomes index 0
-                        return { ...item, index: 0 };
-                    } else {
-                        // All other docs shift up by 1
-                        return { ...item, index: item.index + 1 };
-                    }
-                })
+                      if (item.index === movedDocOldIndex) {
+                          // Moved doc becomes index 0
+                          return { ...item, index: 0 };
+                      } else {
+                          // All other docs shift up by 1
+                          return { ...item, index: item.index + 1 };
+                      }
+                  })
                 : undefined;
 
             return {
@@ -1420,7 +1420,7 @@ export function determineReorderAction(
                 const postMoveStructure: FileStructure = {
                     docsBeforeWb: [docIndex], // targetDoc moves before WB
                     sheets: fileStructure.sheets,
-                    docsAfterWb: fileStructure.docsAfterWb.filter(d => d !== docIndex),
+                    docsAfterWb: fileStructure.docsAfterWb.filter((d) => d !== docIndex),
                     hasWorkbook: true
                 };
                 const needsMetadata = isMetadataRequired(newTabOrder, postMoveStructure);

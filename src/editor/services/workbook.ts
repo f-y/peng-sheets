@@ -273,13 +273,10 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
     const configDict: EditorConfig = config ? JSON.parse(config) : {};
     const sheetHeaderLevel = configDict.sheetHeaderLevel ?? 2;
 
-    let startLine: number;
-    let rawEndLine: number;
-
     // Build rootMarker from workbook name or config
     const wbName = workbook?.name;
     const rootMarker = wbName ? `# ${wbName}` : (configDict.rootMarker ?? '# Workbook');
-    [startLine, rawEndLine] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
+    const [startLine, rawEndLine] = getWorkbookRange(mdText, rootMarker, sheetHeaderLevel);
     const lines = mdText.split('\n');
 
     let endLine = rawEndLine;
