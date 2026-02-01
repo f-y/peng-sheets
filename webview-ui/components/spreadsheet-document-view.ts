@@ -126,7 +126,12 @@ export class SpreadsheetDocumentView extends LitElement {
             break; // stop after first non-empty line
         }
 
-        const body = lines.slice(bodyStartIndex).join('\n');
+        let body = lines.slice(bodyStartIndex).join('\n');
+        // Strip exactly one leading newline to avoid double blank lines
+        // The markdown generator already adds a blank line after sheet headers
+        if (body.startsWith('\n')) {
+            body = body.substring(1);
+        }
         return { title, body };
     }
 
@@ -174,7 +179,7 @@ export class SpreadsheetDocumentView extends LitElement {
         return html`
             <div class="container">
                 ${this._isEditing
-                    ? html`
+                ? html`
                           <div class="edit-container">
                               <div class="edit-hint visible">${t('pressEscapeToCancel')}</div>
                               <textarea
@@ -194,7 +199,7 @@ export class SpreadsheetDocumentView extends LitElement {
                               Save
                           </button>
                       `
-                    : html`
+                : html`
                           <div class="output" @click=${this._enterEditMode}>
                               ${unsafeHTML(this._getRenderedContent())}
                           </div>

@@ -61,7 +61,7 @@ describe('DocSheet Batch Bug - VS Code Mock', () => {
         // Simulate _handleDocSheetChange: startBatch, updateSheetName, updateDocSheetContent, endBatch
         service.startBatch();
         service.updateSheetName(0, 'Document 1');
-        service.updateDocSheetContent(0, '\nafter');
+        service.updateDocSheetContent(0, 'after');
         service.endBatch();
 
         const updateRangeMessages = messages.filter((m) => m.type === 'updateRange');
@@ -79,12 +79,22 @@ describe('DocSheet Batch Bug - VS Code Mock', () => {
 
         // BUG: Should be 1, but is 2 before fix
         expect(updateRangeMessages.length).toBe(1);
+
+        // NEW: Verify content has correct formatting (exactly 1 blank line after header)
+        // User's expected output: '# Doc\n\n## Document 1\n\nafter\n'
+        // Bug output:             '# Doc\n\n## Document 1\n\n\nafter\n' (2 blank lines)
+        const msg = updateRangeMessages[0];
+        console.log('Generated content:', JSON.stringify(msg.content));
+        // Content should have exactly 1 blank line between header and 'after'
+        // That is: '# Doc\n\n## Document 1\n\nafter\n' (6 lines)
+        const expectedContent = '# Doc\n\n## Document 1\n\nafter\n';
+        expect(msg.content).toBe(expectedContent);
     });
 
     it('BUG REPRO: simulates exact file corruption matching user report', () => {
         service.startBatch();
         service.updateSheetName(0, 'Document 1');
-        service.updateDocSheetContent(0, '\nafter');
+        service.updateDocSheetContent(0, 'after');
         service.endBatch();
 
         const updateRangeMessages = messages.filter((m) => m.type === 'updateRange');
