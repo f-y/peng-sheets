@@ -15,6 +15,7 @@ import * as editor from '../../src/editor';
 export class SpreadsheetService {
     private _initialized: boolean = false;
     private _isBatching: boolean = false;
+    private _batchDepth: number = 0; // Support nested batch calls
     private _batchFirstUpdate: boolean = true;
     private _batchUpdates: IUpdateSpec[] = [];
     private _pendingUpdateSpec: IUpdateSpec | null = null;
@@ -190,15 +191,25 @@ export class SpreadsheetService {
     }
 
     public startBatch() {
-        this._isBatching = true;
-        this._batchFirstUpdate = true;
-        this._batchUpdates = [];
-        this._pendingUpdateSpec = null;
-        // Apply any deferred metadata updates (e.g., tab switches) at batch start
-        this._applyDeferredUpdates();
+        this._batchDepth++;
+        // Only initialize on outermost batch start
+        if (this._batchDepth === 1) {
+            this._isBatching = true;
+            this._batchFirstUpdate = true;
+            this._batchUpdates = [];
+            this._pendingUpdateSpec = null;
+            // Apply any deferred metadata updates (e.g., tab switches) at batch start
+            this._applyDeferredUpdates();
+        }
     }
 
     public endBatch() {
+        this._batchDepth--;
+        // Only finalize on outermost batch end
+        if (this._batchDepth > 0) {
+            return; // Still in a nested batch
+        }
+
         this._isBatching = false;
         const updates = this._batchUpdates;
         this._batchUpdates = [];
