@@ -325,6 +325,10 @@ export class SpreadsheetService {
         this._performAction(() => editor.updateDocSheetContent(sheetIdx, content));
     }
 
+    public updateDocumentContent(docIndex: number, title: string, content: string) {
+        this._performAction(() => editor.updateDocumentContent(docIndex, title, content));
+    }
+
     public addDocSheet(
         sheetName: string,
         content: string = '',

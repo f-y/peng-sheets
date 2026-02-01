@@ -28,7 +28,6 @@ import {
     isDocumentJSON,
     isDocSheetType,
     getSheetContent,
-    isIDocumentSectionRange,
     IMetadataEditDetail,
     IMetadataUpdateDetail,
     ISortRowsDetail,
@@ -650,56 +649,37 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         }
 
         try {
-            // Get the document section range from Python using docIndex
-            const range = await this.spreadsheetService.getDocumentSectionRange(docIndex);
+            // Use title from event (may have been edited) or fall back to existing
+            const newTitle = detail.title || activeTab.title;
 
-            console.log('Python result:', range);
+            // Use SpreadsheetService for unified handling (same pattern as DocSheet)
+            // This handles batch processing and content formatting internally
+            this.spreadsheetService.startBatch();
+            this.spreadsheetService.updateDocumentContent(docIndex, newTitle, detail.content);
+            this.spreadsheetService.endBatch();
 
-            if (range && isIDocumentSectionRange(range)) {
-                if ('error' in range && range.error) {
-                    console.error('Python error:', range.error);
-                } else if (range.startLine !== undefined && range.endLine !== undefined) {
-                    // Use title from event (may have been edited) or fall back to existing
-                    const newTitle = detail.title || activeTab.title;
-                    const header = `# ${newTitle}`;
-                    // Ensure content ends with newline for separation from next section
-                    const body = detail.content.endsWith('\n') ? detail.content : detail.content + '\n';
-                    // Add trailing newline for proper section separation
-                    const fullContent = header + '\n' + body + '\n';
+            // Update local state including title
+            activeTab.title = newTitle;
+            if (isDocumentJSON(activeTab.data)) {
+                activeTab.data.content = detail.content;
+            } else {
+                // Initialize if missing or wrong type
+                activeTab.data = {
+                    type: 'document',
+                    title: newTitle,
+                    content: detail.content
+                };
+            }
+            this.requestUpdate();
 
-                    // Send update to VS Code
-                    vscode.postMessage({
-                        type: 'updateRange',
-                        startLine: range.startLine,
-                        endLine: range.endLine,
-                        endCol: range.endCol,
-                        content: fullContent
-                    });
+            console.log('Document updated via SpreadsheetService:', {
+                docIndex,
+                title: newTitle,
+                contentLength: detail.content.length
+            });
 
-                    // Update local state including title
-                    activeTab.title = newTitle;
-                    if (isDocumentJSON(activeTab.data)) {
-                        activeTab.data.content = detail.content;
-                    } else {
-                        // Initialize if missing or wrong type
-                        activeTab.data = {
-                            type: 'document',
-                            title: newTitle,
-                            content: detail.content
-                        };
-                    }
-                    this.requestUpdate();
-
-                    console.log('Document updated:', {
-                        range,
-                        title: newTitle,
-                        content: fullContent.substring(0, 50) + '...'
-                    });
-
-                    if (detail.save) {
-                        this._handleSave();
-                    }
-                }
+            if (detail.save) {
+                this._handleSave();
             }
         } catch (error) {
             console.error('Failed to update document section:', error);
@@ -725,6 +705,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
 
         // Update the sheet content via editor
         try {
+            // CRITICAL: Wrap both name and content updates in a SINGLE batch.
+            // Without this, updateSheetName sends one updateRange (with old content),
+            // then updateDocSheetContent sends another (with new content but stale range).
+            // This caused the bug where old content was prepended to new content.
+            this.spreadsheetService.startBatch();
+
             // Update sheet name if title changed
             if (detail.title) {
                 this.spreadsheetService.updateSheetName(detail.sheetIndex, detail.title);
@@ -733,8 +719,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             // Update sheet content
             this.spreadsheetService.updateDocSheetContent(detail.sheetIndex, detail.content);
 
-            // Refresh local state
-            await this._parseWorkbook();
+            // End batch: this sends a SINGLE updateRange with the final content
+            this.spreadsheetService.endBatch();
 
             if (detail.save) {
                 this._handleSave();

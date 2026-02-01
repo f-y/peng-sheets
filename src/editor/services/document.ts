@@ -268,6 +268,49 @@ export function renameDocument(context: EditorContext, docIndex: number, newTitl
 }
 
 // =============================================================================
+// Update Document Content
+// =============================================================================
+
+/**
+ * Update document section content (title and body).
+ * This is the unified function for document saving, similar to updateDocSheetContent.
+ */
+export function updateDocumentContent(
+    context: EditorContext,
+    docIndex: number,
+    title: string,
+    content: string
+): UpdateResult {
+    const rangeResult = getDocumentSectionRange(context, docIndex);
+    if ('error' in rangeResult) {
+        return { error: rangeResult.error };
+    }
+
+    const { startLine, endLine } = rangeResult;
+    const lines = context.mdText.split('\n');
+
+    // Build new document content: header + blank line + body + trailing newline
+    const header = `# ${title}`;
+    const body = content.endsWith('\n') ? content : content + '\n';
+    const newDocContent = header + '\n\n' + body;
+    const newDocLines = newDocContent.split('\n');
+
+    // Replace the document section
+    const beforeLines = lines.slice(0, startLine);
+    const afterLines = lines.slice(endLine);
+    const newLines = [...beforeLines, ...newDocLines, ...afterLines];
+    const newMdText = newLines.join('\n');
+    context.mdText = newMdText;
+
+    return {
+        content: newMdText,
+        startLine: 0,
+        endLine: lines.length - 1,
+        file_changed: true
+    };
+}
+
+// =============================================================================
 // Delete Document
 // =============================================================================
 

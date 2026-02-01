@@ -419,6 +419,13 @@ export function renameDocument(docIndex: number, newTitle: string): UpdateResult
 }
 
 /**
+ * Update document section content (title and body).
+ */
+export function updateDocumentContent(docIndex: number, title: string, content: string): UpdateResult {
+    return documentService.updateDocumentContent(getContext(), docIndex, title, content);
+}
+
+/**
  * Delete a document section.
  */
 export function deleteDocument(docIndex: number): UpdateResult {
