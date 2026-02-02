@@ -283,9 +283,12 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
     let endCol = 0;
 
     if (endLine >= lines.length) {
+        // Range extends to EOF - replace everything to the end of the last line
         endLine = lines.length - 1;
         endCol = endLine >= 0 ? lines[endLine].length : 0;
     } else {
+        // Range ends before EOF (e.g., there's another H1 section after)
+        // endLine points to the next section's header, so we need to replace up to (but not including) that line
         if (endLine > 0) {
             endLine = endLine - 1;
             endCol = lines[endLine].length;

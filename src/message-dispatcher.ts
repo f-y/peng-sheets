@@ -11,7 +11,7 @@ export interface HandlerContext {
 export class MessageDispatcher {
     private _messageQueue: Promise<void> = Promise.resolve();
 
-    constructor(private context: HandlerContext) {}
+    constructor(private context: HandlerContext) { }
 
     public async dispatch(message: unknown): Promise<void> {
         if (!this.isValidMessage(message)) {
@@ -71,12 +71,30 @@ export class MessageDispatcher {
         }
 
         const { activeDocument } = this.context;
+
+        // DEBUG: Log the received message
+        console.log('[UpdateRange] Received:', {
+            startLine: message.startLine,
+            endLine: message.endLine,
+            endCol: message.endCol,
+            contentLines: message.content?.split('\n').length,
+            contentPreview: message.content?.substring(0, 100)
+        });
+        console.log('[UpdateRange] Document lineCount:', activeDocument.lineCount);
+
         const startPosition = new vscode.Position(message.startLine, 0);
         // Clamp endLine to valid document range, then get end of line for full replacement
         const safeEndLine = Math.min(message.endLine, activeDocument.lineCount - 1);
         const endCol = message.endCol ?? activeDocument.lineAt(safeEndLine).text.length;
         const endPosition = new vscode.Position(safeEndLine, endCol);
         const range = new vscode.Range(startPosition, endPosition);
+
+        console.log('[UpdateRange] Calculated range:', {
+            start: `${range.start.line}:${range.start.character}`,
+            end: `${range.end.line}:${range.end.character}`,
+            safeEndLine,
+            endCol
+        });
 
         // Find editor
         const editor = vscode.window.visibleTextEditors.find(
