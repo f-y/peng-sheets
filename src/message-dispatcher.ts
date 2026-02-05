@@ -11,7 +11,7 @@ export interface HandlerContext {
 export class MessageDispatcher {
     private _messageQueue: Promise<void> = Promise.resolve();
 
-    constructor(private context: HandlerContext) { }
+    constructor(private context: HandlerContext) {}
 
     public async dispatch(message: unknown): Promise<void> {
         if (!this.isValidMessage(message)) {

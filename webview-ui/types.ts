@@ -59,7 +59,7 @@ export interface SheetJSON {
     tables: TableJSON[];
     // WASM parser may return either camelCase or snake_case depending on version
     type?: SheetType;
-    sheetType?: string;  // camelCase from newer parser
+    sheetType?: string; // camelCase from newer parser
     sheet_type?: string; // snake_case from WASM bridge
     content?: string | null;
     metadata?: Record<string, unknown>;
@@ -93,10 +93,11 @@ export interface WorkbookJSON {
         tab_order?: Array<{ type: string; index: number }>;
         [key: string]: unknown;
     };
+    rootContent?: string;
 }
 
 export interface TabDefinition {
-    type: 'sheet' | 'document' | 'onboarding' | 'add-sheet';
+    type: 'sheet' | 'document' | 'root' | 'onboarding' | 'add-sheet';
     title: string;
     index: number;
     sheetIndex?: number;

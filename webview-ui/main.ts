@@ -113,7 +113,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
     confirmDeleteIndex: number | null = null;
 
     @state()
-    tabContextMenu: { x: number; y: number; index: number; tabType: 'sheet' | 'document' } | null = null;
+    tabContextMenu: { x: number; y: number; index: number; tabType: 'sheet' | 'document' | 'root' } | null = null;
 
     @state()
     isScrollableRight = false;
@@ -1049,6 +1049,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 @delete="${() => {
                 if (this.tabContextMenu?.tabType === 'sheet') {
                     this._deleteSheet(this.tabContextMenu.index);
+                } else if (this.tabContextMenu?.tabType === 'root') {
+                    this._deleteRootContent(this.tabContextMenu.index);
                 } else {
                     this._deleteDocument(this.tabContextMenu!.index);
                 }
@@ -1063,23 +1065,27 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 .open="${this.confirmDeleteIndex !== null}"
                 title="${this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
                 ? t('deleteDocument')
-                : t('deleteSheet')}"
+                : this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'root'
+                    ? t('deleteRootContent')
+                    : t('deleteSheet')}"
                 confirmLabel="${t('delete')}"
                 cancelLabel="${t('cancel')}"
                 @confirm="${this._performDelete}"
                 @cancel="${this._cancelDelete}"
             >
                 ${unsafeHTML(
-                    t(
-                        this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
-                            ? 'deleteDocumentConfirm'
-                            : 'deleteSheetConfirm',
-                        `<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null
-                            ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
-                            : ''
-                        }</span>`
-                    )
-                )}
+                        this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'root'
+                            ? t('deleteRootContentConfirm')
+                            : t(
+                                this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
+                                    ? 'deleteDocumentConfirm'
+                                    : 'deleteSheetConfirm',
+                                `<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null
+                                    ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
+                                    : ''
+                                }</span>`
+                            )
+                    )}
             </confirmation-modal>
 
             <add-tab-dropdown
@@ -1127,6 +1133,15 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
         const tab = this.tabs[index];
         if (tab && tab.type === 'document' && typeof tab.docIndex === 'number') {
             // Trigger modal for document deletion
+            this.confirmDeleteIndex = index;
+        }
+    }
+
+    private _deleteRootContent(index: number) {
+        this.tabContextMenu = null;
+        const tab = this.tabs[index];
+        if (tab && tab.type === 'root') {
+            // Trigger modal for root content deletion
             this.confirmDeleteIndex = index;
         }
     }
@@ -1259,6 +1274,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             this.spreadsheetService.deleteSheet(tab.sheetIndex);
         } else if (tab && tab.type === 'document' && typeof tab.docIndex === 'number') {
             this.spreadsheetService.deleteDocument(tab.docIndex);
+        } else if (tab && tab.type === 'root') {
+            this.spreadsheetService.deleteRootContent();
         }
     }
 

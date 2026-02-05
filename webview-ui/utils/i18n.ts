@@ -127,7 +127,11 @@ const translations = {
         clear: 'Clear',
         preview: 'Preview',
         remove: 'Remove',
-        brokenReference: 'Warning: Some references are broken. The referenced table or column may have been deleted.'
+        brokenReference: 'Warning: Some references are broken. The referenced table or column may have been deleted.',
+        rootTabName: 'Overview',
+        renameWorkbook: 'Rename Workbook',
+        deleteRootContent: 'Delete Root Content',
+        deleteRootContentConfirm: 'Are you sure you want to delete the root content?'
     },
     ja: {
         renameSheet: 'シート名の変更',
@@ -257,7 +261,11 @@ const translations = {
         clear: 'クリア',
         preview: 'プレビュー',
         remove: '削除',
-        brokenReference: '警告：参照が壊れています。参照先のテーブルまたは列が削除された可能性があります。'
+        brokenReference: '警告：参照が壊れています。参照先のテーブルまたは列が削除された可能性があります。',
+        rootTabName: '概要',
+        renameWorkbook: 'ワークブック名の変更',
+        deleteRootContent: 'ルートコンテンツを削除',
+        deleteRootContentConfirm: 'ルートコンテンツを削除してもよろしいですか？'
     }
 };
 

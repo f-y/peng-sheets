@@ -333,6 +333,14 @@ export class SpreadsheetService {
         this._performAction(() => editor.updateRootContent(content));
     }
 
+    public deleteRootContent() {
+        this._performAction(() => editor.deleteRootContent());
+    }
+
+    public renameWorkbook(newName: string) {
+        this._performAction(() => editor.renameWorkbook(newName));
+    }
+
     public addDocSheet(
         sheetName: string,
         content: string = '',

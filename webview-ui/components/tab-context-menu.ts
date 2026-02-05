@@ -28,9 +28,9 @@ export class TabContextMenu extends LitElement {
     @property({ type: Number })
     y = 0;
 
-    /** Type of the tab: 'sheet' or 'document' */
+    /** Type of the tab: 'sheet', 'document', or 'root' */
     @property({ type: String })
-    tabType: 'sheet' | 'document' = 'sheet';
+    tabType: 'sheet' | 'document' | 'root' = 'sheet';
 
     /** Adjusted Y position after overflow check */
     @state()
@@ -96,12 +96,21 @@ export class TabContextMenu extends LitElement {
         return html`
             <div class="context-menu" style="top: ${displayY}px; left: ${displayX}px;">
                 ${this.tabType === 'sheet'
-                    ? html`
+                ? html`
                           <div class="context-menu-item" @click="${() => this._dispatchAction('rename')}">
                               ${t('renameSheet')}
                           </div>
                           <div class="context-menu-item" @click="${() => this._dispatchAction('delete')}">
                               ${t('deleteSheet')}
+                          </div>
+                      `
+                : this.tabType === 'root'
+                    ? html`
+                          <div class="context-menu-item" @click="${() => this._dispatchAction('rename')}">
+                              ${t('renameWorkbook')}
+                          </div>
+                          <div class="context-menu-item" @click="${() => this._dispatchAction('delete')}">
+                              ${t('deleteRootContent')}
                           </div>
                       `
                     : html`

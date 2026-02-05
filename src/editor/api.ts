@@ -78,6 +78,20 @@ export function updateRootContent(content: string): UpdateResult {
     return workbookService.updateRootContent(getContext(), content);
 }
 
+/**
+ * Delete the root content of a workbook.
+ */
+export function deleteRootContent(): UpdateResult {
+    return workbookService.deleteRootContent(getContext());
+}
+
+/**
+ * Rename a workbook.
+ */
+export function renameWorkbook(newName: string): UpdateResult {
+    return workbookService.renameWorkbook(getContext(), newName);
+}
+
 // =============================================================================
 // Sheet Functions
 // =============================================================================

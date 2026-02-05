@@ -122,6 +122,34 @@ export function updateRootContent(context: EditorContext, content: string): Upda
 }
 
 /**
+ * Delete the root content of a workbook (set to empty string).
+ */
+export function deleteRootContent(context: EditorContext): UpdateResult {
+    const wbTransform = (wb: Workbook): Workbook => {
+        return new Workbook({
+            ...wb,
+            rootContent: ''
+        });
+    };
+
+    return updateWorkbook(context, wbTransform);
+}
+
+/**
+ * Rename a workbook (update workbook name).
+ */
+export function renameWorkbook(context: EditorContext, newName: string): UpdateResult {
+    const wbTransform = (wb: Workbook): Workbook => {
+        return new Workbook({
+            ...wb,
+            name: newName
+        });
+    };
+
+    return updateWorkbook(context, wbTransform);
+}
+
+/**
  * Get the line range of the workbook section in markdown.
  */
 export function getWorkbookRange(mdText: string, rootMarker: string, sheetHeaderLevel: number): [number, number] {

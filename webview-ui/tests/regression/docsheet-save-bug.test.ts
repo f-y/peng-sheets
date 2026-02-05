@@ -188,15 +188,15 @@ before
 
     /**
      * CRITICAL: This test reproduces the actual bug that was occurring.
-     * 
+     *
      * The bug was in _handleDocSheetChange which did:
      * 1. updateDocSheetContent() - updates workbook and sends updateRange message
      * 2. _parseWorkbook() - re-initializes workbook from OLD markdownInput
      * 3. _handleSave() - triggers VS Code to save
-     * 
+     *
      * Step 2 was the problem: it resets the workbook state using the old markdown,
      * which meant the updateRange message contained the OLD content mixed with new.
-     * 
+     *
      * This test verifies that after updateDocSheetContent, we should NOT
      * re-initialize the workbook with the old markdown.
      */
@@ -248,11 +248,11 @@ before
 
     /**
      * PRECISE VS Code Range Simulation
-     * 
+     *
      * This test simulates EXACTLY how VS Code's editBuilder.replace works:
      * - Range end position is EXCLUSIVE
      * - Position(line, col) means the character at (line, col) is NOT included
-     * 
+     *
      * Bug scenario:
      * - Original file: 7 lines (0-6), line 6 is empty (trailing newline)
      * - endLine: 6, endCol: 0
@@ -261,14 +261,14 @@ before
      */
     it('PRECISE: VS Code Range simulation with trailing newline edge case', () => {
         // This is the EXACT file content from user's scenario
-        const originalFile = "# Doc\n\n## Document 1\n\n\nbefore\n";
+        const originalFile = '# Doc\n\n## Document 1\n\n\nbefore\n';
 
         // This is what generateAndGetRange returns
         const updateSpec = {
             startLine: 0,
             endLine: 6,
             endCol: 0,
-            content: "# Doc\n\n## Document 1\n\n\nafter\n"
+            content: '# Doc\n\n## Document 1\n\n\nafter\n'
         };
 
         // Simulate VS Code's Range calculation (message-dispatcher.ts)
@@ -279,9 +279,9 @@ before
         const vsCodeLineCount = lines.length;
 
         // message-dispatcher.ts does this:
-        const safeEndLine = Math.min(updateSpec.endLine, vsCodeLineCount - 1);  // min(6, 6) = 6
+        const safeEndLine = Math.min(updateSpec.endLine, vsCodeLineCount - 1); // min(6, 6) = 6
         // endCol: 0 is NOT null/undefined, so ?? doesn't trigger
-        const endCol = updateSpec.endCol;  // 0
+        const endCol = updateSpec.endCol; // 0
 
         console.log('safeEndLine:', safeEndLine, 'endCol:', endCol);
 
@@ -289,7 +289,7 @@ before
         // Position(startLine, 0) to Position(endLine, endCol)
         let startCharOffset = 0;
         for (let i = 0; i < updateSpec.startLine; i++) {
-            startCharOffset += lines[i].length + 1;  // +1 for newline
+            startCharOffset += lines[i].length + 1; // +1 for newline
         }
 
         let endCharOffset = 0;
@@ -312,7 +312,9 @@ before
 
         // THE BUG: If endCharOffset < originalFile.length, old content remains!
         if (endCharOffset < originalFile.length) {
-            console.log('BUG DETECTED: endCharOffset (' + endCharOffset + ') < file length (' + originalFile.length + ')');
+            console.log(
+                'BUG DETECTED: endCharOffset (' + endCharOffset + ') < file length (' + originalFile.length + ')'
+            );
             console.log('Remaining content will be appended:', JSON.stringify(after));
         }
 
@@ -323,7 +325,7 @@ before
 
     /**
      * EXACT USER SCENARIO
-     * 
+     *
      * User's log shows: content: '\nafter'
      * This is from _extractTitleAndBody which separates title from body.
      * The body starts with a newline after the title line.
@@ -363,7 +365,8 @@ before
 
         console.log('Offsets - start:', startOffset, 'end:', endOffset, 'fileLen:', originalFile.length);
 
-        const finalContent = originalFile.substring(0, startOffset) + result.content + originalFile.substring(endOffset);
+        const finalContent =
+            originalFile.substring(0, startOffset) + result.content + originalFile.substring(endOffset);
         console.log('Final content:', JSON.stringify(finalContent));
 
         // BUG CHECK
@@ -377,31 +380,31 @@ before
 
     /**
      * BUG DOCUMENTATION - This test documents the bug that was fixed.
-     * 
+     *
      * Debug logs showed TWO updateRange messages:
      * 1st: {startLine: 0, endLine: 5, endCol: 0, content: '...before...'} - STALE!
      * 2nd: {startLine: 0, endLine: 5, endCol: 0, content: '...after...'}
-     * 
+     *
      * The bug occurred because:
      * 1. updateSheetName sends updateRange with OLD content
      * 2. VS Code applies it (file becomes 7 lines)
      * 3. updateDocSheetContent sends updateRange with NEW content
      * 4. But endLine: 5 only replaces lines 0-4, leaving line 5 (before) intact
-     * 
+     *
      * FIX: _handleDocSheetChange now wraps both operations in a single batch,
      * so only ONE updateRange message is sent with the final content.
      */
     it.skip('BUG DOCUMENTATION: two updateRange messages cause content to be prepended', () => {
         // Original file: 6 lines (as shown in debug log: Document lineCount: 6)
         // Note: The file in debug log was slightly different from our test
-        const originalFile = '# Doc\n\n## Document 1\n\n\nbefore';  // No trailing newline!
+        const originalFile = '# Doc\n\n## Document 1\n\n\nbefore'; // No trailing newline!
 
         // First updateRange (from updateSheetName) - contains OLD content
         const firstUpdate = {
             startLine: 0,
             endLine: 5,
             endCol: 0,
-            content: '# Doc\n\n## Document 1\n\n\nbefore\n'  // 7 lines
+            content: '# Doc\n\n## Document 1\n\n\nbefore\n' // 7 lines
         };
 
         // Simulate VS Code applying first update
@@ -409,23 +412,23 @@ before
         console.log('Original file lines:', lines.length, JSON.stringify(lines));
 
         // Range(0:0, 5:0) on 6-line file
-        let safeEndLine = Math.min(firstUpdate.endLine, lines.length - 1);  // min(5, 5) = 5
+        let safeEndLine = Math.min(firstUpdate.endLine, lines.length - 1); // min(5, 5) = 5
         let endOffset = 0;
         for (let i = 0; i < safeEndLine; i++) {
             endOffset += lines[i].length + 1;
         }
-        endOffset += firstUpdate.endCol;  // 0
+        endOffset += firstUpdate.endCol; // 0
 
         console.log('First update: endOffset =', endOffset, 'fileLen =', originalFile.length);
         // Apply first update
-        let fileContent = originalFile.substring(0, 0) + firstUpdate.content + originalFile.substring(endOffset);
+        const fileContent = originalFile.substring(0, 0) + firstUpdate.content + originalFile.substring(endOffset);
         console.log('After first update:', JSON.stringify(fileContent));
         console.log('After first update lines:', fileContent.split('\n').length);
 
         // Second updateRange (from updateDocSheetContent) - contains NEW content
         const secondUpdate = {
             startLine: 0,
-            endLine: 5,  // Same as first! But file is now 7 lines!
+            endLine: 5, // Same as first! But file is now 7 lines!
             endCol: 0,
             content: '# Doc\n\n## Document 1\n\n\nafter\n'
         };
@@ -435,14 +438,21 @@ before
         console.log('Before second update lines:', lines.length, JSON.stringify(lines));
 
         // Range(0:0, 5:0) on 7-line file - only replaces lines 0-4!
-        safeEndLine = Math.min(secondUpdate.endLine, lines.length - 1);  // min(5, 6) = 5
+        safeEndLine = Math.min(secondUpdate.endLine, lines.length - 1); // min(5, 6) = 5
         endOffset = 0;
         for (let i = 0; i < safeEndLine; i++) {
             endOffset += lines[i].length + 1;
         }
-        endOffset += secondUpdate.endCol;  // 0
+        endOffset += secondUpdate.endCol; // 0
 
-        console.log('Second update: safeEndLine =', safeEndLine, 'endOffset =', endOffset, 'fileLen =', fileContent.length);
+        console.log(
+            'Second update: safeEndLine =',
+            safeEndLine,
+            'endOffset =',
+            endOffset,
+            'fileLen =',
+            fileContent.length
+        );
         console.log('Text being replaced:', JSON.stringify(fileContent.substring(0, endOffset)));
         console.log('Text remaining:', JSON.stringify(fileContent.substring(endOffset)));
 
