@@ -294,8 +294,11 @@ export function generateAndGetRange(context: EditorContext): UpdateResult {
     const cleanWorkbook = context.workbook;
 
     // Generate Markdown (Full Workbook)
+    // Call toMarkdown when workbook has sheets OR rootContent
     let newMd = '';
-    if (cleanWorkbook && (cleanWorkbook.sheets ?? []).length > 0) {
+    const hasSheets = (cleanWorkbook?.sheets ?? []).length > 0;
+    const hasRootContent = !!cleanWorkbook?.rootContent;
+    if (cleanWorkbook && (hasSheets || hasRootContent)) {
         if (schema) {
             newMd = cleanWorkbook.toMarkdown(schema);
         }
