@@ -88,6 +88,40 @@ export function updateWorkbookTabOrder(context: EditorContext, tabOrder: TabOrde
 }
 
 /**
+ * Update workbook metadata with the provided fields.
+ * Merges the updates with existing metadata.
+ */
+export function updateWorkbookMetadata(context: EditorContext, updates: Record<string, unknown>): UpdateResult {
+    const wbTransform = (wb: Workbook): Workbook => {
+        const currentMetadata = wb.metadata ? { ...wb.metadata } : {};
+        const newMetadata = { ...currentMetadata, ...updates };
+        // If metadata is empty, set to undefined to avoid empty {} in output
+        const finalMetadata = Object.keys(newMetadata).length > 0 ? newMetadata : undefined;
+        return new Workbook({
+            ...wb,
+            metadata: finalMetadata
+        });
+    };
+
+    return updateWorkbook(context, wbTransform);
+}
+
+/**
+ * Update the root content of a workbook.
+ * Root content is the markdown content that appears before any sheets.
+ */
+export function updateRootContent(context: EditorContext, content: string): UpdateResult {
+    const wbTransform = (wb: Workbook): Workbook => {
+        return new Workbook({
+            ...wb,
+            rootContent: content
+        });
+    };
+
+    return updateWorkbook(context, wbTransform);
+}
+
+/**
  * Get the line range of the workbook section in markdown.
  */
 export function getWorkbookRange(mdText: string, rootMarker: string, sheetHeaderLevel: number): [number, number] {

@@ -64,6 +64,20 @@ export function updateWorkbookTabOrder(tabOrder: TabOrderItem[] | null): UpdateR
     return workbookService.updateWorkbookTabOrder(getContext(), tabOrder);
 }
 
+/**
+ * Update workbook metadata with the provided fields.
+ */
+export function updateWorkbookMetadata(updates: Record<string, unknown>): UpdateResult {
+    return workbookService.updateWorkbookMetadata(getContext(), updates);
+}
+
+/**
+ * Update the root content of a workbook.
+ */
+export function updateRootContent(content: string): UpdateResult {
+    return workbookService.updateRootContent(getContext(), content);
+}
+
 // =============================================================================
 // Sheet Functions
 // =============================================================================

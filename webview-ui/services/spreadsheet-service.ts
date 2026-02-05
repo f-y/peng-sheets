@@ -329,6 +329,10 @@ export class SpreadsheetService {
         this._performAction(() => editor.updateDocumentContent(docIndex, title, content));
     }
 
+    public updateRootContent(content: string) {
+        this._performAction(() => editor.updateRootContent(content));
+    }
+
     public addDocSheet(
         sheetName: string,
         content: string = '',
@@ -550,6 +554,10 @@ export class SpreadsheetService {
 
     public updateWorkbookTabOrder(tabOrder: Array<{ type: string; index: number }> | null) {
         this._performAction(() => editor.updateWorkbookTabOrder(tabOrder as editor.TabOrderItem[] | null));
+    }
+
+    public updateWorkbookMetadata(updates: Record<string, unknown>) {
+        this._performAction(() => editor.updateWorkbookMetadata(updates));
     }
 
     // --- Document Operations ---
