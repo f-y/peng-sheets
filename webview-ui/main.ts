@@ -927,8 +927,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 : html``}
             <div class="content-area">
                 ${activeTab.type === 'sheet' && isSheetJSON(activeTab.data)
-                ? isDocSheetType(activeTab.data as SheetJSON)
-                    ? html`
+                    ? isDocSheetType(activeTab.data as SheetJSON)
+                        ? html`
                               <spreadsheet-document-view
                                   .title="${activeTab.title}"
                                   .content="${getSheetContent(activeTab.data as SheetJSON)}"
@@ -937,7 +937,7 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                                   @toolbar-action="${this._handleToolbarAction}"
                               ></spreadsheet-document-view>
                           `
-                    : html`
+                        : html`
                               <div class="sheet-container" style="height: 100%">
                                   <layout-container
                                       .layout="${(activeTab.data as SheetJSON).metadata?.layout}"
@@ -945,28 +945,36 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                                       .sheetIndex="${activeTab.sheetIndex}"
                                       .workbook="${this.workbook}"
                                       .dateFormat="${((this.config?.validation as Record<string, unknown>)
-                            ?.dateFormat as string) || 'YYYY-MM-DD'}"
+                                          ?.dateFormat as string) || 'YYYY-MM-DD'}"
                                       @save-requested="${this._handleSave}"
                                       @selection-change="${this._handleSelectionChange}"
                                   ></layout-container>
                               </div>
                           `
-                : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
-                    ? html`
+                    : activeTab.type === 'document' && isDocumentJSON(activeTab.data)
+                      ? html`
                             <spreadsheet-document-view
                                 .title="${activeTab.title}"
                                 .content="${(activeTab.data as DocumentJSON).content}"
                                 @toolbar-action="${this._handleToolbarAction}"
                             ></spreadsheet-document-view>
                         `
-                    : html``}
+                      : activeTab.type === 'root'
+                        ? html`
+                              <spreadsheet-document-view
+                                  .title="${activeTab.title}"
+                                  .content="${(activeTab.data as { type: 'root'; content: string })?.content ?? ''}"
+                                  @toolbar-action="${this._handleToolbarAction}"
+                              ></spreadsheet-document-view>
+                          `
+                        : html``}
                 ${activeTab.type === 'onboarding'
-                ? html`
+                    ? html`
                           <spreadsheet-onboarding
                               @create-spreadsheet="${this._onCreateSpreadsheet}"
                           ></spreadsheet-onboarding>
                       `
-                : html``}
+                    : html``}
             </div>
 
             <bottom-tabs
@@ -975,17 +983,17 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 .editingIndex="${this.editingTabIndex}"
                 @tab-select="${(e: CustomEvent) => (this.activeTabIndex = e.detail.index)}"
                 @tab-edit-start="${(e: CustomEvent) =>
-                this._handleTabDoubleClick(e.detail.index, this.tabs[e.detail.index])}"
+                    this._handleTabDoubleClick(e.detail.index, this.tabs[e.detail.index])}"
                 @tab-rename="${(e: CustomEvent) =>
-                this._handleTabRename(e.detail.index, e.detail.tab, e.detail.newName)}"
+                    this._handleTabRename(e.detail.index, e.detail.tab, e.detail.newName)}"
                 @tab-context-menu="${(e: CustomEvent) => {
-                this.tabContextMenu = {
-                    x: e.detail.x,
-                    y: e.detail.y,
-                    index: e.detail.index,
-                    tabType: e.detail.tabType
-                };
-            }}"
+                    this.tabContextMenu = {
+                        x: e.detail.x,
+                        y: e.detail.y,
+                        index: e.detail.index,
+                        tabType: e.detail.tabType
+                    };
+                }}"
                 @tab-reorder="${(e: CustomEvent) => this._handleTabReorder(e.detail.fromIndex, e.detail.toIndex)}"
                 @add-sheet-click="${this._handleAddSheet}"
             ></bottom-tabs>
@@ -997,12 +1005,12 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 .tabType="${this.tabContextMenu?.tabType ?? 'sheet'}"
                 @rename="${() => this._renameTab(this.tabContextMenu!.index)}"
                 @delete="${() => {
-                if (this.tabContextMenu?.tabType === 'sheet') {
-                    this._deleteSheet(this.tabContextMenu.index);
-                } else {
-                    this._deleteDocument(this.tabContextMenu!.index);
-                }
-            }}"
+                    if (this.tabContextMenu?.tabType === 'sheet') {
+                        this._deleteSheet(this.tabContextMenu.index);
+                    } else {
+                        this._deleteDocument(this.tabContextMenu!.index);
+                    }
+                }}"
                 @add-document="${this._addDocumentFromMenu}"
                 @add-sheet="${this._addSheetFromMenu}"
                 @close="${() => (this.tabContextMenu = null)}"
@@ -1012,8 +1020,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             <confirmation-modal
                 .open="${this.confirmDeleteIndex !== null}"
                 title="${this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
-                ? t('deleteDocument')
-                : t('deleteSheet')}"
+                    ? t('deleteDocument')
+                    : t('deleteSheet')}"
                 confirmLabel="${t('delete')}"
                 cancelLabel="${t('cancel')}"
                 @confirm="${this._performDelete}"
@@ -1024,9 +1032,10 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                         this.confirmDeleteIndex !== null && this.tabs[this.confirmDeleteIndex]?.type === 'document'
                             ? 'deleteDocumentConfirm'
                             : 'deleteSheetConfirm',
-                        `<span style="color: var(--vscode-textPreformat-foreground);">${this.confirmDeleteIndex !== null
-                            ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
-                            : ''
+                        `<span style="color: var(--vscode-textPreformat-foreground);">${
+                            this.confirmDeleteIndex !== null
+                                ? this.tabs[this.confirmDeleteIndex]?.title?.replace(/</g, '&lt;')
+                                : ''
                         }</span>`
                     )
                 )}
@@ -1222,6 +1231,11 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             this.spreadsheetService.renameSheet(tab.sheetIndex, newName);
         } else if (tab.type === 'document' && typeof tab.docIndex === 'number') {
             this.spreadsheetService.renameDocument(tab.docIndex, newName);
+        } else if (tab.type === 'root') {
+            // Update root tab name in workbook metadata
+            this.spreadsheetService.updateWorkbookMetadata({
+                root_tab_name: newName
+            });
         }
     }
 
@@ -1341,6 +1355,17 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                     });
                 } else if (section.type === 'workbook') {
                     workbookFound = true;
+                    // Add root tab if workbook has rootContent
+                    const rootContent = this.workbook?.rootContent;
+                    if (rootContent) {
+                        const rootTabName = (this.workbook?.metadata?.root_tab_name as string) || t('rootTabName');
+                        newTabs.push({
+                            type: 'root',
+                            title: rootTabName,
+                            index: newTabs.length,
+                            data: { type: 'root', content: rootContent }
+                        });
+                    }
                     if (this.workbook && this.workbook.sheets.length > 0) {
                         this.workbook.sheets.forEach((sheet, shIdx: number) => {
                             newTabs.push({
@@ -1352,8 +1377,8 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                             });
                         });
                         // Note: Add-sheet button is added at the very end after all tabs are collected
-                    } else {
-                        // Empty workbook placeholder
+                    } else if (!rootContent) {
+                        // Empty workbook placeholder (only if no rootContent)
                         newTabs.push({
                             type: 'onboarding',
                             title: t('newSpreadsheet'),
@@ -1387,6 +1412,9 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
             if (tabOrder && tabOrder.length > 0) {
                 const reorderedTabs: TabDefinition[] = [];
 
+                // Extract root tab first - it's always at position 0
+                const rootTab = newTabs.find((t) => t.type === 'root');
+
                 for (const orderItem of tabOrder) {
                     let matchedTab: TabDefinition | undefined;
 
@@ -1402,16 +1430,21 @@ export class MdSpreadsheetEditor extends LitElement implements GlobalEventHost {
                 }
 
                 // Add any tabs not in tab_order (onboarding, etc.) at the end
-                // EXCEPT add-sheet which should always be last
+                // EXCEPT add-sheet which should always be last, and root which is always first
                 let addSheetTab: TabDefinition | undefined;
                 for (const tab of newTabs) {
                     if (!reorderedTabs.includes(tab)) {
                         if (tab.type === 'add-sheet') {
                             addSheetTab = tab;
-                        } else {
+                        } else if (tab.type !== 'root') {
                             reorderedTabs.push(tab);
                         }
                     }
+                }
+
+                // Insert root tab at the very beginning
+                if (rootTab) {
+                    reorderedTabs.unshift(rootTab);
                 }
                 // Always add add-sheet at the very end
                 if (addSheetTab) {
