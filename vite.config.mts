@@ -39,6 +39,10 @@ export default defineConfig({
         headers: {
             'Cross-Origin-Opener-Policy': 'same-origin',
             'Cross-Origin-Embedder-Policy': 'require-corp'
+        },
+        fs: {
+            // Allow serving files from the linked md-spreadsheet-parser package
+            allow: ['..']
         }
     },
     optimizeDeps: {

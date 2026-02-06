@@ -111,7 +111,9 @@ export class EditorContext {
         let structure: StructureSection[] | null = null;
 
         if (this.state.schema) {
-            const rootMarker = this.state.schema.rootMarker ?? '# Tables';
+            // When rootMarker is undefined (auto-detection), use workbook.name
+            // Parser sets workbook.name from the detected root section (e.g., "Tables")
+            const rootMarker = this.state.schema.rootMarker ?? `# ${this.state.workbook.name}`;
             const sheetHeaderLevel = this.state.schema.sheetHeaderLevel ?? 2;
 
             // Augment workbook with line numbers
@@ -147,9 +149,11 @@ export class EditorContext {
         const configDict: EditorConfig = configJson ? JSON.parse(configJson) : {};
 
         this.state.schema = new MultiTableParsingSchema({
-            rootMarker: configDict.rootMarker ?? '# Tables',
-            sheetHeaderLevel: configDict.sheetHeaderLevel ?? 2,
-            tableHeaderLevel: configDict.tableHeaderLevel ?? 3,
+            // Only override rootMarker if user explicitly configured it
+            // Parser defaults to '# Tables' which also works
+            rootMarker: configDict.rootMarker,
+            sheetHeaderLevel: configDict.sheetHeaderLevel ?? undefined,
+            tableHeaderLevel: configDict.tableHeaderLevel ?? undefined,
             captureDescription: configDict.captureDescription ?? true,
             columnSeparator: configDict.columnSeparator ?? '|',
             headerSeparatorChar: configDict.headerSeparatorChar ?? '-',
@@ -162,7 +166,17 @@ export class EditorContext {
         // Initialize tab_order if not present in metadata
         if (!workbook.metadata?.tab_order) {
             const numSheets = (workbook.sheets ?? []).length;
-            const tabOrder = initializeTabOrderFromStructure(mdText, configJson, numSheets);
+
+            // Use the Parser-detected workbook name for rootMarker
+            // This ensures tab_order reflects the actual file structure
+            let effectiveConfig = configJson;
+            if (workbook.name) {
+                const configWithRootMarker = configJson ? JSON.parse(configJson) : {};
+                configWithRootMarker.rootMarker = `# ${workbook.name}`;
+                effectiveConfig = JSON.stringify(configWithRootMarker);
+            }
+
+            const tabOrder = initializeTabOrderFromStructure(mdText, effectiveConfig, numSheets);
 
             const metadata = { ...(workbook.metadata || {}), tab_order: tabOrder };
             workbook = new Workbook({ ...workbook, metadata });

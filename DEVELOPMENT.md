@@ -46,6 +46,54 @@ async function example() {
 
 The extension uses the `md-spreadsheet-parser` NPM package for Markdown parsing. This package is installed as a dependency and bundled with the extension.
 
+### Using Development Parser (Not Published to PyPI)
+
+When using a locally built `md-spreadsheet-parser` during development:
+
+> [!IMPORTANT]
+> **Do NOT use `npm install` for local development parser.** Use direct copy instead.
+
+```bash
+# ❌ WRONG: npm install causes WASM loading errors in Vitest
+npm install ../md-spreadsheet-parser/packages/npm
+
+# ✅ CORRECT: Direct copy works reliably
+rm -rf node_modules/md-spreadsheet-parser
+cp -R ../md-spreadsheet-parser/packages/npm node_modules/md-spreadsheet-parser
+```
+
+**Why?** `npm install` with local paths creates symlinks or performs file transformations that break WASM loading in the Vitest test environment (`ERR_INVALID_URL_SCHEME` errors). Direct copy preserves the exact file structure.
+
+### Updating the Parser (Full Procedure)
+
+When updating parser after Python changes:
+
+> [!CAUTION]
+> **Must clean Extension build cache** after parser update, otherwise Vite may bundle stale WASM.
+
+```bash
+# 1. Build Python wheel in parser directory (use -o dist to ensure correct output)
+cd ../md-spreadsheet-parser
+uv build -o dist
+
+# 2. Build NPM package
+cd packages/npm
+npm run build
+
+# 3. Copy to Extension
+cd ../../..  # back to peng-sheets
+rm -rf node_modules/md-spreadsheet-parser
+cp -R ../md-spreadsheet-parser/packages/npm node_modules/md-spreadsheet-parser
+
+# 4. CRITICAL: Clean Extension build cache
+rm -rf out
+
+# 5. Rebuild Extension
+npm run compile
+```
+
+**Common Problem**: `uv build` in a workspace may output to the workspace root (`md-spreadsheet-suite/dist`) instead of the submodule (`md-spreadsheet-parser/dist`). Always use `uv build -o dist` to ensure correct output location.
+
 ## 4. Frontend Development (Webview)
 
 ### Testing
