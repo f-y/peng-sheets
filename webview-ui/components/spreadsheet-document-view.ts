@@ -199,7 +199,7 @@ export class SpreadsheetDocumentView extends LitElement {
         return html`
             <div class="container">
                 ${this._isEditing
-                ? html`
+                    ? html`
                           <div class="edit-container">
                               <div class="edit-hint visible">${t('pressEscapeToCancel')}</div>
                               <textarea
@@ -219,7 +219,7 @@ export class SpreadsheetDocumentView extends LitElement {
                               Save
                           </button>
                       `
-                : html`
+                    : html`
                           <div class="output" @click=${this._enterEditMode}>
                               ${unsafeHTML(this._getRenderedContent())}
                           </div>

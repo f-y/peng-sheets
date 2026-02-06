@@ -132,7 +132,7 @@ export class BottomTabs extends LitElement {
     }
 
     private _handleContextMenu(e: MouseEvent, index: number, tab: TabDefinition) {
-        if (tab.type === 'add-sheet' || tab.type === 'root') return;
+        if (tab.type === 'add-sheet') return;
         e.preventDefault();
         this.dispatchEvent(
             new CustomEvent('tab-context-menu', {
